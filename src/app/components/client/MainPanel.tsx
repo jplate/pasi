@@ -22,6 +22,7 @@ import ptrSrc from '../../../icons/ptr.png';
 import rstSrc from '../../../icons/rst.png';
 import trnSrc from '../../../icons/trn.png';
 import unvSrc from '../../../icons/unv.png';
+import favicon from '../../../icons/pasi_icon.svg';
 
 export const MARK_COLOR0 = '#8877bb';
 export const MARK_COLOR1 = '#b0251a';
