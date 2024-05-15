@@ -142,7 +142,7 @@ const MainPanel = () => {
     const clearSelection = () => { 
         selection.forEach(item => {
             if(item===focusItem) {
-                setFocusItem(null);
+                setFocusItem(focusRef.current = null);
             }
         });
         setSelection(selectionRef.current = []);
@@ -215,10 +215,10 @@ const MainPanel = () => {
                 // Handle dragging:
                 const startX = e.clientX - item.x; 
                 const startY = e.clientY - item.y; 
-                const xMinD = item.x - selection.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
-                const yMinD = item.y - selection.reduce((min, it) => it.y<min? it.y: min, item.y); // y-distance to the top-most selected item
                 const sel = selectionRef.current;
                 const selectionWithoutDuplicates = sel.filter((item, i) => i===sel.indexOf(item));
+                const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
+                const yMinD = item.y - selectionWithoutDuplicates.reduce((min, it) => it.y<min? it.y: min, item.y); // y-distance to the top-most selected item
                 
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
