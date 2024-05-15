@@ -302,7 +302,7 @@ const MainPanel = () => {
     console.log(`Rendering... focusItem=${focusItem && focusItem.key} selected=[${selectionRef.current.map(item => item.key).join(', ')}]`);
 
     return (
-        <div id='main-panel' className='flex'>
+        <div id='main-panel' className='flex mt-8'>
             <div id='canvas-and-code' className = 'flex-1 mb-3'>
                 <div id='canvas' ref={canvasRef} style={{background: 'white', minWidth: '800px', maxWidth: '1200px', height: '600px', position: 'relative', 
                             overflow: 'auto', border: 'solid', borderColor: tailwindColors['slate-200']}}
