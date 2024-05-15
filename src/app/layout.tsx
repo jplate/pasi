@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "Pasi Diagram Editor [UNDER CONSTRUCTION]",
   description: "An editor for 'ontological' diagrams",
   icons: {
-    icon: "/favicon.ico"
+    icon: "/images/icon.ico"
   }
 };
 
