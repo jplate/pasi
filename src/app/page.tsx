@@ -13,7 +13,7 @@ export default function Home() {
       <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
         <section>
           <p className='mb-2'>
-            Suppose you’re writing a paper in LaTeX and want to make a quick diagram to include in your text.
+            <strong>\&lt;\&lt;\&lt;UNDER CONSTRUCTION\&gt;\&gt;\&gt;</strong> Suppose you’re writing a paper in LaTeX and want to make a quick diagram to include in your text.
           </p>
           <p className='mb-2'>
             Here you can do that.
