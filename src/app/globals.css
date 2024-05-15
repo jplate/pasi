@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 210, 215, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 235, 240, 245;
+    --background-start-rgb: 5, 5, 5;
+    --background-end-rgb: 10, 10, 10;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+a.custom {
+  color: theme('colors.slate.500'); /* Set the color of the link */
+  text-decoration: none; /* Remove the underline */
+  transition: color 0.2s; /* Add a smooth color transition on hover */
+}
+
+a:hover {
+  color: theme('colors.slate.700'); 
+}
+
+#page-container { /* for some reason this prevents the override by the boostrap styles for the page background */
+  background-color: theme('colors.slate.100');
+}
