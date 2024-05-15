@@ -11,7 +11,7 @@ const lusitana = Lusitana({
 });
 
 export const metadata: Metadata = {
-  title: "Pasi Diagram Editor",
+  title: "Pasi Diagram Editor [UNDER CONSTRUCTION]",
   description: "An editor for 'ontological' diagrams",
 };
 

@@ -115,7 +115,7 @@ const CustomToggle = React.forwardRef<HTMLButtonElement, CustomToggleProps>(({ c
         {children}
     </button>
 ));
-
+CustomToggle.displayName = 'CustomToggle'; // Add a display name
 
 
 const MainPanel = () => {
