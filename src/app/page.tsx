@@ -18,7 +18,7 @@ export default function Home() {
 
 
   return (
-    <main className='flex min-h-screen flex-col items-center justify-between p-24' id='page-container'>
+    <main className='flex min-h-screen flex-col items-center justify-between p-24'>
       {isMobile? <MobileNotSupported />:
         <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
           <section>
@@ -38,7 +38,16 @@ export default function Home() {
           </section>
           <section>
             <MainPanel />
-          </section>      
+          </section> 
+          <section>
+            <p>
+              Alternatives that also export LaTeX code:
+            </p>
+            <ul className='list-disc'>
+              <li><a className='custom' href='https://inkscape.org/'>Inkscape</a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
+              <li><a className='custom' href='https://enjoysmath.github.io/quiver-bee/'>Quiver</a>, a powerful web-based editor that specializes on commutative diagrams.</li>
+            </ul>
+          </section>
         </div>
       }
     </main>

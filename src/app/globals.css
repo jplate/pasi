@@ -44,6 +44,3 @@ a:hover {
   color: theme('colors.slate.700'); 
 }
 
-#page-container { /* for some reason this prevents the override by the boostrap styles for the page background */
-  background-color: 'transparent';
-}
