@@ -32,7 +32,7 @@ export default function Home() {
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below, and then click either the <strong>Node</strong> or 
               the <strong>Contour</strong> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
               with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the grey area further below. 
-              To use that code in your document, you’ll need Peter Kabal’s <a className='custom' href='https://ctan.org/pkg/texdraw?lang=en'><code>texdraw</code></a> package.
+              To use that code in your document, you’ll need Peter Kabal’s <a className='custom' href='https://ctan.org/pkg/texdraw'><code>texdraw</code></a> package.
               You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
             </p>
           </section>
@@ -41,11 +41,13 @@ export default function Home() {
           </section> 
           <section>
             <p>
-              Alternatives that also export LaTeX code:
+              The following are a few alternative editors that also export LaTeX code:
             </p>
-            <ul className='list-disc'>
+            <ul className='list-disc translate-x-5'>
+              <li><a className='custom' href='https://sourceforge.net/projects/dia-installer/?source=directory'>Dia</a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
               <li><a className='custom' href='https://inkscape.org/'>Inkscape</a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
               <li><a className='custom' href='https://enjoysmath.github.io/quiver-bee/'>Quiver</a>, a powerful web-based editor that specializes on commutative diagrams.</li>
+              <li><a className='custom' href='https://tpx.sourceforge.net/'>TpX</a>, another desktop application, superficially similar to Dia.</li>
             </ul>
           </section>
         </div>
