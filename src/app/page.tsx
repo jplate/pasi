@@ -3,8 +3,8 @@
 
 import dynamic from "next/dynamic";
 import React, {useState, useEffect} from "react";
+import 'tippy.js/dist/tippy.css';
 
-import MobileNotSupported from './components/client/MobileNotSupported.tsx';
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
@@ -12,14 +12,20 @@ const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ss
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
 
+  
   useEffect(() => {
+    Object.freeze(Object.prototype); // to prevent prototype pollution
     setIsMobile(matchMedia('(pointer:fine)').matches==false);
   }, []);
 
 
   return (
     <main className='flex min-h-screen flex-col items-center justify-between p-24'>
-      {isMobile? <MobileNotSupported />:
+      {isMobile? 
+        <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
+            <p><strong>Mobile device not supported.</strong></p>
+            <p>Please access this web application from a laptop or desktop.</p>
+        </div>:
         <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
           <section>
             <p className='mb-2'>
@@ -41,7 +47,7 @@ export default function Home() {
           </section> 
           <section>
             <p>
-              The following are a few alternative editors that also export LaTeX code:
+              The following are a few other editors that also export LaTeX code:
             </p>
             <ul className='list-disc translate-x-5'>
               <li><a className='custom' href='https://sourceforge.net/projects/dia-installer/?source=directory'>Dia</a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Lusitana } from "next/font/google";
 import Image from 'next/image';
 import "./globals.css";
+import tippy from 'tippy.js';
+import 'tippy.js/dist/tippy.css';
 
 // const inter = Inter({ subsets: ["latin"] });
 
@@ -18,14 +20,12 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
   return (
     <html lang="en">
-      <body className={lusitana.className+' antialiased'}>{children}</body>
+      <body className={lusitana.className+' antialiased'}>
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,8 +1,10 @@
-import React, {useState, useRef} from 'react';
-import Tabs from 'react-bootstrap/Tabs';
-import Tab from 'react-bootstrap/Tab';
-import Dropdown from 'react-bootstrap/Dropdown';
+import React, {useState, useRef, forwardRef} from 'react';
+import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, {StaticImageData} from 'next/image';  
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
+import 'tippy.js/themes/light.css';
 
 import Point from './Point.tsx';
 import ENode from './ENode.tsx';
@@ -37,6 +39,7 @@ const tailwindColors = {
     'slate-700': '#4a5568',
     'slate-800': '#2d3748',
 };
+
 
 const customStyles = {  // for overriding the styles of React Bootstrap components
     '--bs-btn-bg': tailwindColors['slate-400'],
@@ -117,6 +120,7 @@ const CustomToggle = React.forwardRef<HTMLButtonElement, CustomToggleProps>(({ c
     </button>
 ));
 CustomToggle.displayName = 'CustomToggle'; // Add a display name
+
 
 
 const MainPanel = () => {
@@ -299,13 +303,14 @@ const MainPanel = () => {
     }
 
 
+
     console.log(`Rendering... focusItem=${focusItem && focusItem.key} selected=[${selectionRef.current.map(item => item.key).join(', ')}]`);
 
     return (
         <div id='main-panel' className='flex mt-8'>
             <div id='canvas-and-code' className = 'flex-1 mb-3'>
                 <div id='canvas' ref={canvasRef} style={{background: 'white', minWidth: '800px', maxWidth: '1200px', height: '600px', position: 'relative', 
-                            overflow: 'auto', border: 'solid', borderColor: tailwindColors['slate-200']}}
+                            overflow: 'auto', border: 'solid', borderColor: tailwindColors['slate-400']}}
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
                         <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} 
@@ -329,22 +334,24 @@ const MainPanel = () => {
             <div id='button-panels' style={{flex: 1, minWidth: '300px', maxWidth: '380px', userSelect: 'none'}}>
                 <div id='button-panel-1' className='flex flex-col' style={{height: '600px', margin: '0px 25px 0px'}}>
                     <div id='add-panel' className='grid grid-cols-2 mb-2'>
-                        <button id='node-button' className='block mr-1 px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                        <button id='node-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                                     enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
                                 disabled={points.length<1} onClick={addEntityNodes}>  
                             Node
                         </button>
-                        <button id='contour-button' className='block px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                        <button id='contour-button' className='block px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                                     enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
                                 disabled={points.length<1} onClick={addContours}>  
                             Contour
                         </button> 
-                    </div>
-                    <div id='di-panel' className='grid justify-items-stretch border p-2 mb-2 rounded-lg'>
-                        <Dropdown>
-                            <Dropdown.Toggle as={CustomToggle} id='dropdown-toggle'>
+                    </div>                    
+
+                    <div id='di-panel' className='grid justify-items-stretch border border-slate-300 p-2 mb-2 rounded-lg'>
+                        <Menu>
+                            <MenuButton className='inline-flex items-center gap-2 mb-2 rounded-lg bg-slate-50/85 px-4 py-1 text-sm text-slate-600 shadow-inner 
+                                        focus:outline-none data-[hover]:bg-slate-200 data-[open]:bg-slate-200 data-[focus]:outline-1 data-[focus]:outline-white'>
                                 <div className='flex-none text-left mr-2'>
                                     {depItemLabels[depItemIndex].getImageComp()}
                                 </div>
@@ -352,84 +359,136 @@ const MainPanel = () => {
                                     {depItemLabels[depItemIndex].label}
                                 </div>
                                 <div className='flex-none w-[28px] ml-2 text-right'>
-                                    &#x25bc; {/* downward-pointing arrow symbol*/}
-                                </div>                                
-                            </Dropdown.Toggle>
-                            <Dropdown.Menu //style={customStyles}
-                                    >                                
-                                {depItemLabels.map((label, index) => 
-                                    <Dropdown.Item key={'di-'+label.label} onClick={() => setDepItemIndex(index)}>
-                                        <span> 
-                                            <div className='inline mr-2'>
-                                                {label.getImageComp()}
-                                            </div>
-                                            {label.label}
-                                        </span>
-                                    </Dropdown.Item>
-                                )}
-                            </Dropdown.Menu>
-                        </Dropdown>
-                        <button id='create-button' className='block px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                                    <ChevronDownIcon className="size-4 fill-slate-600" />                                    
+                                </div> 
+                            </MenuButton>
+                            <Transition
+                                    enter='transition ease-out duration-75'
+                                    enterFrom='opacity-0 scale-95'
+                                    enterTo='opacity-100 scale-100'
+                                    leave='transition ease-in duration-100'
+                                    leaveFrom='opacity-100 scale-100'
+                                    leaveTo='opacity-0 scale-95'>
+                                <MenuItems
+                                        anchor='bottom end'
+                                        className='w-72 origin-top-right rounded-lg border border-slate-300 bg-slate-50/85 p-1 text-sm text-slate-600 [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                    {depItemLabels.map((label, index) => 
+                                        <MenuItem key={'di-'+index}>
+                                            <button className="group flex w-full items-center gap-2 rounded-lg px-2 py-1 data-[focus]:bg-slate-200/60" onClick={() => setDepItemIndex(index)}>
+                                                <div className='inline mr-2'>
+                                                    {label.getImageComp()}
+                                                </div>
+                                                {label.label}
+                                            </button>
+                                        </MenuItem>
+                                    )}
+                                </MenuItems>
+                            </Transition>
+                        </Menu>                
+                        <button id='create-button' className='block px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                                     enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
                             Create
                         </button>
                     </div>
-                    <button id='combi-button' className='block mb-3 px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                    <button id='combi-button' className='block mb-3 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                                 enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
                             disabled={selection.length<1}> 
                         Copy Selection
                     </button> 
-                    <div className='flex-1 mb-2'>
-                        <Tabs defaultActiveKey='tab1' id='tabbed-pane' // </div>style={customStyles}
-                                >
-                            <Tab eventKey='tab1' title='Edit'>
-                                Content for Tab 1
+
+                    <TabGroup className='flex-1'>
+                        <TabList className="grid grid-cols-3">
+                            <Tab key='editor-tab'className="rounded-l-lg py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
+                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
+                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                                Editor
                             </Tab>
-                            <Tab eventKey='tab2' title='Transform'>
-                                Content for Tab 2
+                            <Tab key='transform-tab' className="py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
+                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
+                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                                Transform
                             </Tab>
-                            <Tab eventKey='tab3' title='Groups'>
-                                Content for Tab 3
+                            <Tab key='group-tab' className="rounded-r-lg py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
+                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
+                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                                Groups
                             </Tab>
-                        </Tabs>
-                    </div>
+                        </TabList>
+                        <TabPanels className="mt-3 flex-1">
+                            <TabPanel key='editor-panel' className="rounded-xl bg-white/5 p-3 overflow-y-auto">
+                                Editor panel
+                                <ul>
+                                </ul>
+                            </TabPanel>
+                            <TabPanel key='transform-panel' className="rounded-xl bg-white/5 p-3">
+                                Transform panel
+                                <ul>
+                                </ul>
+                            </TabPanel>
+                            <TabPanel key='groups-panel' className="rounded-xl bg-white/5 p-3">
+                                Groups panel
+                                <ul>
+                                </ul>
+                            </TabPanel>
+                        </TabPanels>
+                    </TabGroup>
+
                     <div id='undo-panel' className='grid grid-cols-3'>
-                        <button id='undo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
-                            Undo
-                        </button>
-                        <button id='redo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
-                            Redo
-                        </button>
-                        <button id='del-button' className='block px-4 py-1 text-base bg-pink-50 text-pink-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:hover:border-transparent transition 
-                                    enabled:active:text-white enabled:active:bg-red-400 focus:outline-none focus:ring-1 focus:ring-pink-400 focus:ring-offset-1'
-                                disabled={selection.length<1} onClick={deleteSelection}> 
-                            Del
-                        </button>
+                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Undo'>
+                            <button id='undo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
+                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <g transform="rotate(-45 12 12)">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                    </g>
+                                </svg>
+                                <span className='sr-only'>Undo</span>
+                            </button>
+                        </Tippy>
+                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Redo'>
+                            <button id='redo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
+                                        enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <g transform="rotate(45 12 12)">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
+                                    </g>
+                                </svg>
+                                <span className='sr-only'>Redo</span> 
+                            </button>
+                        </Tippy>
+                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Delete'>
+                            <button id='del-button' className='block px-4 py-1 text-base bg-pink-50/85 text-pink-600 font-medium rounded-lg border 
+                                        disabled:opacity-50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
+                                        enabled:active:text-white enabled:active:bg-red-400-400 focus:outline-none focus:ring-1 focus:ring-pink-400 focus:ring-offset-1'
+                                    disabled={selection.length<1} onClick={deleteSelection} > 
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>                         
+                                <span className='sr-only'>Delete</span> 
+                            </button>
+                        </Tippy>
                     </div>
                 </div>
                 <div id='button-panel-2'
                     className='grid justify-items-stretch'
                     style={{margin: '25px 25px 25px'}}>
-                   <button className='block mb-2 px-4 py-1 text-lg bg-slate-50 text-slate-600  font-medium rounded-lg border 
-                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                   <button className='block mb-2 px-4 py-1 text-lg bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                         enabled:active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2'> 
                       Generate
                     </button>
-                    <div className='flex justify-end mb-4 px-4 py-1 text-sm'>
+                    <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
-                        <input className='w-16 ml-1 mr-1 text-right' type='number' step='0.1' value={pixel}
+                        <input className='w-16 ml-1 p-1 mr-1 text-right border rounded-sm border-slate-300 focus:border-slate-400 focus:outline-none' type='number' step='0.1' value={pixel}
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
                     </div>
-                    <button className='block mb-2 px-4 py-1 text-lg bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
+                    <button className='block mb-2 px-4 py-1 text-lg bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
+                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
                         enabled:active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2'> 
                       Load
                     </button>
