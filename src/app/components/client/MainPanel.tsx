@@ -1,4 +1,4 @@
-import React, {useState, useRef, forwardRef} from 'react';
+import React, {useState, useRef } from 'react';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, {StaticImageData} from 'next/image';  
@@ -24,7 +24,6 @@ import ptrSrc from '../../../icons/ptr.png';
 import rstSrc from '../../../icons/rst.png';
 import trnSrc from '../../../icons/trn.png';
 import unvSrc from '../../../icons/unv.png';
-import favicon from '../../../icons/pasi_icon.svg';
 
 export const MARK_COLOR0 = '#8877bb';
 export const MARK_COLOR1 = '#b0251a';
@@ -38,20 +37,6 @@ const tailwindColors = {
     'slate-600': '#475569',
     'slate-700': '#4a5568',
     'slate-800': '#2d3748',
-};
-
-
-const customStyles = {  // for overriding the styles of React Bootstrap components
-    '--bs-btn-bg': tailwindColors['slate-400'],
-    '--bs-primary': tailwindColors['slate-400'],
-    '--bs-btn-border-color': tailwindColors['slate-50'],
-    '--bs-btn-active-bg': tailwindColors['slate-400'],
-    //'--bs-btn-bg': tailwindColors['slate-50'],
-    '--bs-nav-tabs-link-active-color': tailwindColors['slate-600'],
-    '--bs-nav-tabs-link-active-bg': tailwindColors['slate-400'],
-    '--bs-link-color': tailwindColors['slate-500'],
-    '--bs-link-hover-color': tailwindColors['slate-600'],
-    '--bs-dropdown-link-active-bg': tailwindColors['slate-400']
 };
 
 class DepItemLabel {   
@@ -102,26 +87,6 @@ type CustomToggleProps = {
     children: React.ReactNode;
     onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
-
-// The forwardRef is important!!
-// Dropdown needs access to the DOM node in order to position the Menu
-const CustomToggle = React.forwardRef<HTMLButtonElement, CustomToggleProps>(({ children, onClick }, ref) => (
-    <button 
-        className='flex justify-between items-center w-full mb-1 px-2 py-1 text-sm bg-slate-50 text-slate-600 font-medium rounded-lg border 
-                    enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:border-transparent transition 
-                    enabled:active:bg-slate-400 focus:outline-none'
-        //href=""
-        ref={ref}
-        onClick={(e) => {
-            e.preventDefault();
-            onClick(e);
-        }}>
-        {children}
-    </button>
-));
-CustomToggle.displayName = 'CustomToggle'; // Add a display name
-
-
 
 const MainPanel = () => {
     const ENODE_ID_PREFIX = 'E';
