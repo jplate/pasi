@@ -283,7 +283,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
         'focus:outline-none focus:ring-1');
 
-    const btnClassName0 = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
+    const btnClassName0 = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
         'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
 
     // The standard button:
@@ -291,10 +291,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     // The delete button gets some special colors:
     const btnClassName2 = clsx(basicButtonClass, 'rounded-xl', 
-        (dark? 'bg-btnbg/85 text-red-700 border-btnborder enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
-            'bg-pink-50/85 text-pink-600 border-pink-600 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
+        (dark? 'bg-btnbg/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
+            'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder', 
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50', 
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
@@ -318,7 +318,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
                 </div>
-                <div id='code-panel' className={`${dark? 'bg-black text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
+                <div id='code-panel' className={`${dark? 'bg-stone-950 text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
                 </div>
             </div>
             <div id='button-panels' style={{flex: 1, minWidth: '300px', maxWidth: '380px', userSelect: 'none'}}>
@@ -448,7 +448,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
                         <input className={clsx('w-16 ml-1 px-2 py-1 mr-1 text-right border rounded-md focus:outline-none', 
-                                (dark? 'bg-black text-amber-600 border-neutral-500':'bg-slate-50 text-slate-800 border-slate-300 focus:border-slate-400'))} 
+                                (dark? 'bg-stone-950 text-amber-600 border-neutral-500':'bg-slate-50 text-slate-800 border-slate-300 focus:border-slate-400'))} 
                             type='number' step='0.1' value={pixel}
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
