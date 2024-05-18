@@ -46,10 +46,6 @@ li {
     margin-bottom: 8px;
 }
 
-.pasi input {
-  background: theme('colors.yellow.700');
-}
-
 
 .light {
   --foreground-rgb: 30, 41, 59; /* slate-800 */
