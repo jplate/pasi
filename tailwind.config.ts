@@ -6,6 +6,7 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       backgroundImage: {
@@ -13,8 +14,21 @@ const config: Config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      colors: {
+        textcolor: "rgba(var(--foreground-rgb))",
+        btnbg: "rgba(var(--btnbg))",
+        btncolor: "rgba(var(--btncolor))",
+        btnborder: "rgba(var(--btnborder))",
+        btnhoverbg: "rgba(var(--btnhoverbg))",
+        btnhovercolor: "rgba(var(--btnhovercolor))",
+        btnactivebg: "rgba(var(--btnactivebg))",
+        btnactivecolor: "rgba(var(--btnactivecolor))",
+        btnfocusring: "rgba(var(--btnfocusring))",
+        tabselected: "rgba(var(--tabselected))",
+      }
     },
   },
   plugins: [],
 };
+
 export default config;

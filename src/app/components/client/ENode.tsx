@@ -1,6 +1,6 @@
 import React from 'react';
 import {DEFAULT_COLOR, DEFAULT_LINEWIDTH} from './Item.ts';
-import { MARK_LINEWIDTH, MARK_COLOR1 } from './MainPanel.tsx';
+import { MARK_LINEWIDTH } from './MainPanel.tsx';
 
 export const DEFAULT_RADIUS = 10;
 export const D0 = 2*Math.PI/100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -11,10 +11,11 @@ export const SWITCH_TOLERANCE = 0.1;
 export const DISTANCE_PENALTY = 4;
 export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9;
 
-type ENodeProps = {
+interface ENodeProps {
     id: string,
     x: number,
     y: number,
+    markColor: string,
     selected: number[],
     onMouseDown: (id: string, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
     focus: boolean,
@@ -23,7 +24,7 @@ type ENodeProps = {
     hidden?: boolean
 }
 
-const ENode = ({id, x, y, selected = [], onMouseDown, focus = false,
+const ENode = ({id, x, y, markColor, selected = [], onMouseDown, focus = false,
         radius = DEFAULT_RADIUS, lineWidth =  DEFAULT_LINEWIDTH, hidden = false}: ENodeProps) => {
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
@@ -39,9 +40,7 @@ const ENode = ({id, x, y, selected = [], onMouseDown, focus = false,
         onMouseDown(id, e);
     }
 
-    const title = selected.map(i => i+1).join(', ');
-
-    console.log(`Rendering ${id}... title=[${title}]`);
+    console.log(`Rendering ${id}...`);
 
     return (
         <div className={focus? 'focused': selected.length>0? 'selected': 'unselected'} 
@@ -56,10 +55,10 @@ const ENode = ({id, x, y, selected = [], onMouseDown, focus = false,
                 <polyline points={`${left+width},${top+height-l} ${left+width-m},${top+height-m} ${left+width-l},${top+height}`} fill='none' />
                 <polyline points={`${left+l},${top+height} ${left+m},${top+height-m} ${left},${top+height-l}`} fill='none' />
             </svg>
-            {selected.length>0 && 
-                <div style={{position: 'absolute', left: '0', top: '0', width: `${width + MARK_LINEWIDTH*2}px`, color: MARK_COLOR1, textAlign: 'center', 
+            {selected.length>0 && // Add a 'title'
+                <div style={{position: 'absolute', left: '0', top: '0', width: `${width + MARK_LINEWIDTH*2}px`, color: markColor, textAlign: 'center', 
                         fontSize: '9px', textWrap: 'nowrap', overflow: 'hidden', userSelect: 'none', pointerEvents: 'none', cursor: 'default'}} >
-                    {title}
+                    {selected.map(i => i+1).join(', ')}
                 </div>}
         </div>
     );

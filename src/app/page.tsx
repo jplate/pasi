@@ -1,6 +1,5 @@
 'use client'
 
-
 import dynamic from "next/dynamic";
 import React, {useState, useEffect} from "react";
 import 'tippy.js/dist/tippy.css';
@@ -9,17 +8,60 @@ import 'tippy.js/dist/tippy.css';
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
 
+function getInitialColorMode() { // Copied from Josh Comeau (https://www.joshwcomeau.com/react/dark-mode/)
+  const persistedColorPreference = window.localStorage.getItem('color-mode');
+  const hasPersistedPreference = typeof persistedColorPreference === 'string';
+  // If the user has explicitly chosen light or dark,
+  // let's use it. Otherwise, this value will be null.
+  if (hasPersistedPreference) {
+    return persistedColorPreference;
+  }
+  // If they haven't been explicit, let's check the media
+  // query
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const hasMediaQueryPreference = typeof mql.matches === 'boolean';
+  if (hasMediaQueryPreference) {
+    return mql.matches ? 'dark' : 'light';
+  }
+  // If they are using a browser/OS that doesn't support
+  // color themes, let's default to 'light'.
+  return 'light';
+}
+
+
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   
   useEffect(() => {
     Object.freeze(Object.prototype); // to prevent prototype pollution
     setIsMobile(matchMedia('(pointer:fine)').matches==false);
+    setIsDarkMode(getInitialColorMode()=='dark');  
   }, []);
 
+  useEffect(() => {
+    document.body.classList.remove(isDarkMode? 'light': 'dark');
+    document.body.classList.add(isDarkMode? 'dark': 'light');
+  }, [isDarkMode]);
 
-  return (
+
+  return (<> {/* We're returning a fragment. */}
+    <div className='sticky top-0 bg-white/20 z-50 px-4 py-2 shadow-md'>
+      <span className='flex items-center justify-between px-6'>
+        <i><strong>pasi</strong></i>
+        <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
+          {isDarkMode ? (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"> {/* sun icon */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+            </svg>):(
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"> {/* moon icon */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+            </svg>
+          )}
+        </button>
+      </span>
+    </div>
     <main className='flex min-h-screen flex-col items-center justify-between p-24'>
       {isMobile? 
         <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
@@ -27,37 +69,40 @@ export default function Home() {
             <p>Please access this web application from a laptop or desktop.</p>
         </div>:
         <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
-          <section>
-            <p className='mb-2'>
-              <strong>&lt;&lt;&lt;UNDER CONSTRUCTION&gt;&gt;&gt;</strong> Suppose you’re writing a paper in LaTeX and want to make a quick diagram to include in your text.
+          <section className='max-w-2xl ml-9'>
+            <p className='text-red-500/50'>
+              <strong>------------------UNDER CONSTRUCTION------------------</strong> 
             </p>
-            <p className='mb-2'>
+            <p>
+              Suppose you’re writing a paper in LaTeX and want to make a quick diagram to include in your text.
+            </p>
+            <p>
               Here you can do that.
             </p>
-            <p className='mb-2'>
+            <p>
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below, and then click either the <strong>Node</strong> or 
               the <strong>Contour</strong> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
               with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the grey area further below. 
-              To use that code in your document, you’ll need Peter Kabal’s <a className='custom' href='https://ctan.org/pkg/texdraw'><code>texdraw</code></a> package.
+              To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw'><code><i>texdraw</i></code></a> package.
               You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
             </p>
           </section>
-          <section>
-            <MainPanel />
-          </section> 
-          <section>
+
+            <MainPanel dark={isDarkMode} />
+
+          <section className='max-w-2xl ml-9'>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>
             <ul className='list-disc translate-x-5'>
-              <li><a className='custom' href='https://sourceforge.net/projects/dia-installer/?source=directory'>Dia</a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
-              <li><a className='custom' href='https://inkscape.org/'>Inkscape</a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
-              <li><a className='custom' href='https://enjoysmath.github.io/quiver-bee/'>Quiver</a>, a powerful web-based editor that specializes on commutative diagrams.</li>
-              <li><a className='custom' href='https://tpx.sourceforge.net/'>TpX</a>, another desktop application, superficially similar to Dia.</li>
+              <li><a href='https://sourceforge.net/projects/dia-installer/?source=directory'><i>Dia</i></a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
+              <li><a href='https://inkscape.org/'><i>Inkscape</i></a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
+              <li><a href='https://enjoysmath.github.io/quiver-bee/'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
+              <li><a href='https://tpx.sourceforge.net/'><i>TpX</i></a>, another desktop application, superficially similar to Dia.</li>
             </ul>
           </section>
         </div>
       }
     </main>
-  );
+  </>);
 }

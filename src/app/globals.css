@@ -2,18 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 205, 210, 220;
-  --background-end-rgb: 255, 255, 255;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 235, 240, 245;
-    --background-start-rgb: 5, 5, 5;
-    --background-end-rgb: 10, 10, 10;
-  }
+a {
+  text-decoration: none; /* Remove the underline */
+  transition: color 0.2s; /* Add a smooth color transition on hover */
+}
+
+.light a:not(.pasi a) {
+  color: theme('colors.pink.700'); /* Set the color of the link */
+}
+
+.light a:hover:not(.pasi a) {
+  color: theme('colors.pink.500'); 
+}
+
+.dark a:not(.pasi a) {
+  color: theme('colors.red.700'); /* Set the color of the link */
+}
+
+.dark a:hover:not(.pasi a) {
+  color: theme('colors.red.500'); /* Set the color of the link */
+}
+
+html { /* We have to insist on a fixed font-size, so as to make sure that there won't be any resizing due to hover effects within the MainPanel */
+  font-size: 16px; 
+}
+
+section { /* We're going with slightly bigger font for the surrounding sections. */
+  font-size: 18px; 
+}
+
+p {
+    margin-bottom: 12px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+.pasi input {
+  background: theme('colors.yellow.700');
+}
+
+
+.light {
+  --foreground-rgb: 30, 41, 59; /* slate-800 */
+  --background-start-rgb: 205, 210, 220;
+  --background-end-rgb: 235, 240, 250;
+
+  --btnbg: 248, 250, 252; /* slate-50 */
+  --btncolor: 71, 85, 105; /* slate-600 */
+  --btnborder: 148, 163, 184; /* slate-400 */
+  --btnhoverbg: 255, 255, 255; /* white */
+  --btnhovercolor: 71, 85, 105; /* slate-600 */
+  --btnactivebg: 148, 163, 184; /* slate-400 */
+  --btnactivecolor: 71, 85, 105; /* slate-600 */
+  --btnfocusring: 148, 163, 184; /* slate-400 */
+  --tabselected: 226, 232, 240; /* slate-200 */
+}
+
+.dark {
+  --foreground-rgb: 168, 162, 158; /* stone-300 */
+  --background-start-rgb: 23, 20, 16; /* stone-900 */
+  --background-end-rgb: 20, 17, 13; /* slightly darker */
+
+  --btnbg: 68, 64, 60; /* stone-700 */
+  --btncolor: 168, 162, 158; /* stone-400 */
+  --btnborder: 87, 83, 78; /* stone-600 */
+  --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
+  --btnhovercolor: 0, 0, 0; /* black */
+  --btnactivebg: 120 53 15; /* amber-800 */
+  --btnactivecolor: 0, 0, 0; /* black */
+  --btnfocusring: 87, 83, 78; /* stone-600 */
+  --tabselected: 28, 25, 23; /* stone-900 */  
 }
 
 body {
@@ -25,20 +92,3 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
-a.custom {
-  color: theme('colors.slate.500'); /* Set the color of the link */
-  text-decoration: none; /* Remove the underline */
-  transition: color 0.2s; /* Add a smooth color transition on hover */
-}
-
-a:hover {
-  color: theme('colors.slate.700'); 
-}
-

@@ -5,6 +5,7 @@ import NextImage, {StaticImageData} from 'next/image';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light.css';
+import clsx from 'clsx/lite';
 
 import Point from './Point.tsx';
 import ENode from './ENode.tsx';
@@ -25,12 +26,15 @@ import rstSrc from '../../../icons/rst.png';
 import trnSrc from '../../../icons/trn.png';
 import unvSrc from '../../../icons/unv.png';
 
-export const MARK_COLOR0 = '#8877bb';
-export const MARK_COLOR1 = '#b0251a';
+export const MARK_COLOR0_LIGHT_MODE = '#8877bb';
+export const MARK_COLOR0_DARK_MODE = '#000000';
+export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
+export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
 
 const tailwindColors = {
     'slate-50': '#f8fafc',
+    'slate-100': '#f1f5f9',
     'slate-200': '#e2e8f0',
     'slate-400': '#cbd5e1',
     'slate-500': '#718096',
@@ -88,7 +92,11 @@ type CustomToggleProps = {
     onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
-const MainPanel = () => {
+interface MainPanelProps {
+    dark: boolean;
+}
+
+const MainPanel = ({dark}: MainPanelProps) => {
     const ENODE_ID_PREFIX = 'E';
     const CANVAS_CLICK_THRESHOLD = 3;
 
@@ -269,54 +277,65 @@ const MainPanel = () => {
 
 
 
-    console.log(`Rendering... focusItem=${focusItem && focusItem.key} selected=[${selectionRef.current.map(item => item.key).join(', ')}]`);
+    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selectionRef.current.map(item => item.key).join(', ')}]`);
 
-    return (
-        <div id='main-panel' className='flex mt-8'>
+    const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
+        'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
+        'focus:outline-none focus:ring-1');
+
+    const btnClassName0 = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
+        'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
+
+    // The standard button:
+    const btnClassName1 = clsx(btnClassName0, 'rounded-xl');
+
+    // The delete button gets some special colors:
+    const btnClassName2 = clsx(basicButtonClass, 'rounded-xl', 
+        (dark? 'bg-btnbg/85 text-red-700 border-btnborder enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
+            'bg-pink-50/85 text-pink-600 border-pink-600 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
+
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder', 
+        'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
+        'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
+
+
+    return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
+        <div id='main-panel' className='pasi flex mt-8 p-6'> 
             <div id='canvas-and-code' className = 'flex-1 mb-3'>
-                <div id='canvas' ref={canvasRef} style={{background: 'white', minWidth: '800px', maxWidth: '1200px', height: '600px', position: 'relative', 
-                            overflow: 'auto', border: 'solid', borderColor: tailwindColors['slate-400']}}
+                <div id='canvas' ref={canvasRef} className={`${dark? 'bg-amber-600 border-black': 'bg-white border-slate-400'} min-w-[800px] max-w-[1200px] h-[600px] relative overflow-auto border`}
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
-                        <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} 
+                        <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                                 selected={getSelectPositions(enode)} focus={focusItem===enode} onMouseDown={itemMouseDown} />)}
                     {points.map(point => 
-                        <Point key={point.key} x={point.x} y={point.y} />)}
+                        <Point key={point.key} x={point.x} y={point.y} markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}/>)}
                     <style> {/* we're using polylines for the 'mark borders' of items */}
                         @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
-                        polyline {'{'} stroke: {MARK_COLOR1}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
+                        polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
                         .focused polyline {'{'} opacity: 1; animation: oscillate 1.5s infinite {'}'}
                         .selected polyline {'{'} opacity: 1; {'}'}
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
                 </div>
-                <div id='code-panel'
-                    style={{background: 'lightgrey', minWidth: '800px', height: '190px', 
-                        margin: '25px 0px 25px'}} className='shadow-inner'>
+                <div id='code-panel' className={`${dark? 'bg-black text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
                 </div>
             </div>
             <div id='button-panels' style={{flex: 1, minWidth: '300px', maxWidth: '380px', userSelect: 'none'}}>
                 <div id='button-panel-1' className='flex flex-col' style={{height: '600px', margin: '0px 25px 0px'}}>
-                    <div id='add-panel' className='grid grid-cols-2 mb-2'>
-                        <button id='node-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
-                                disabled={points.length<1} onClick={addEntityNodes}>  
+                    <div id='add-panel' className='grid grid-cols-2 mb-3'>
+                        <button id='node-button' className={clsx(btnClassName1, 'mr-1.5')} disabled={points.length<1} onClick={addEntityNodes}>  
                             Node
                         </button>
-                        <button id='contour-button' className='block px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
-                                disabled={points.length<1} onClick={addContours}>  
+                        <button id='contour-button' className={btnClassName1} disabled={points.length<1} onClick={addContours}>  
                             Contour
                         </button> 
                     </div>                    
 
-                    <div id='di-panel' className='grid justify-items-stretch border border-slate-300 p-2 mb-2 rounded-lg'>
+                    <div id='di-panel' className='grid justify-items-stretch border border-btnborder p-1.5 mb-3 rounded-xl'>
                         <Menu>
-                            <MenuButton className='inline-flex items-center gap-2 mb-2 rounded-lg bg-slate-50/85 px-4 py-1 text-sm text-slate-600 shadow-inner 
-                                        focus:outline-none data-[hover]:bg-slate-200 data-[open]:bg-slate-200 data-[focus]:outline-1 data-[focus]:outline-white'>
+                            <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
+                                        focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
                                 <div className='flex-none text-left mr-2'>
                                     {depItemLabels[depItemIndex].getImageComp()}
                                 </div>
@@ -324,7 +343,7 @@ const MainPanel = () => {
                                     {depItemLabels[depItemIndex].label}
                                 </div>
                                 <div className='flex-none w-[28px] ml-2 text-right'>
-                                    <ChevronDownIcon className="size-4 fill-slate-600" />                                    
+                                    <ChevronDownIcon className="size-4 fill-btncolor group-hover:fill-btnhovercolor group-data-[open]:fill-btnhovercolor" />                                    
                                 </div> 
                             </MenuButton>
                             <Transition
@@ -336,10 +355,10 @@ const MainPanel = () => {
                                     leaveTo='opacity-0 scale-95'>
                                 <MenuItems
                                         anchor='bottom end'
-                                        className='w-72 origin-top-right rounded-lg border border-slate-300 bg-slate-50/85 p-1 text-sm text-slate-600 [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                        className={`w-72 origin-top-right rounded-md border ${dark? 'border-black': 'border-slate-300'} bg-btnbg/85 p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none`}>
                                     {depItemLabels.map((label, index) => 
                                         <MenuItem key={'di-'+index}>
-                                            <button className="group flex w-full items-center gap-2 rounded-lg px-2 py-1 data-[focus]:bg-slate-200/60" onClick={() => setDepItemIndex(index)}>
+                                            <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
                                                 <div className='inline mr-2'>
                                                     {label.getImageComp()}
                                                 </div>
@@ -350,34 +369,23 @@ const MainPanel = () => {
                                 </MenuItems>
                             </Transition>
                         </Menu>                
-                        <button id='create-button' className='block px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
+                        <button id='create-button' className={clsx(btnClassName0, 'rounded-md')}> 
                             Create
                         </button>
                     </div>
-                    <button id='combi-button' className='block mb-3 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'
-                            disabled={selection.length<1}> 
+                    <button id='combi-button' className={clsx(btnClassName1, 'mb-3')} disabled={selection.length<1}> 
                         Copy Selection
                     </button> 
 
                     <TabGroup className='flex-1'>
                         <TabList className="grid grid-cols-3">
-                            <Tab key='editor-tab'className="rounded-l-lg py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
-                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
-                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                            <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-l-lg')}>
                                 Editor
                             </Tab>
-                            <Tab key='transform-tab' className="py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
-                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
-                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                            <Tab key='transform-tab' className={tabClassName}>
                                 Transform
                             </Tab>
-                            <Tab key='group-tab' className="rounded-r-lg py-1 px-3 text-sm/6 bg-slate-50/85 text-slate-600 border
-                                    focus:outline-none data-[selected]:bg-slate-100/85 data-[selected]:font-semibold data-[hover]:bg-slate-200 data-[hover]:font-semibold transition
-                                    data-[selected]:data-[hover]:bg-slate-100/85 data-[focus]:outline-1 data-[focus]:outline-white">
+                            <Tab key='group-tab' className={clsx(tabClassName, 'rounded-r-lg')}>
                                 Groups
                             </Tab>
                         </TabList>
@@ -402,9 +410,7 @@ const MainPanel = () => {
 
                     <div id='undo-panel' className='grid grid-cols-3'>
                         <Tippy theme='light' delay={[400,0]} arrow={false} content='Undo'>
-                            <button id='undo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                    disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                    enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'>
+                            <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(-45 12 12)">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -414,9 +420,7 @@ const MainPanel = () => {
                             </button>
                         </Tippy>
                         <Tippy theme='light' delay={[400,0]} arrow={false} content='Redo'>
-                            <button id='redo-button' className='block mr-1 px-4 py-1 text-base bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                        enabled:active:bg-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:ring-offset-1'> 
+                            <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')}> 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(45 12 12)">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
@@ -426,10 +430,7 @@ const MainPanel = () => {
                             </button>
                         </Tippy>
                         <Tippy theme='light' delay={[400,0]} arrow={false} content='Delete'>
-                            <button id='del-button' className='block px-4 py-1 text-base bg-pink-50/85 text-pink-600 font-medium rounded-lg border 
-                                        disabled:opacity-50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                                        enabled:active:text-white enabled:active:bg-red-400-400 focus:outline-none focus:ring-1 focus:ring-pink-400 focus:ring-offset-1'
-                                    disabled={selection.length<1} onClick={deleteSelection} > 
+                            <button id='del-button' className={btnClassName2} disabled={selection.length<1} onClick={deleteSelection} > 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                                 </svg>                         
@@ -439,27 +440,25 @@ const MainPanel = () => {
                     </div>
                 </div>
                 <div id='button-panel-2'
-                    className='grid justify-items-stretch'
-                    style={{margin: '25px 25px 25px'}}>
-                   <button className='block mb-2 px-4 py-1 text-lg bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                        enabled:active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2'> 
-                      Generate
+                        className='grid justify-items-stretch'
+                        style={{margin: '25px 25px 25px'}}>
+                    <button className={clsx(btnClassName1, 'mb-1')}> 
+                        Generate
                     </button>
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
-                        <input className='w-16 ml-1 p-1 mr-1 text-right border rounded-sm border-slate-300 focus:border-slate-400 focus:outline-none' type='number' step='0.1' value={pixel}
+                        <input className={clsx('w-16 ml-1 px-2 py-1 mr-1 text-right border rounded-md focus:outline-none', 
+                                (dark? 'bg-black text-amber-600 border-neutral-500':'bg-slate-50 text-slate-800 border-slate-300 focus:border-slate-400'))} 
+                            type='number' step='0.1' value={pixel}
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
                     </div>
-                    <button className='block mb-2 px-4 py-1 text-lg bg-slate-50/85 text-slate-600 font-medium rounded-lg border 
-                        disabled:opacity-50 enabled:hover:text-slate-600 enabled:hover:bg-slate-200 enabled:hover:font-semibold enabled:hover:border-transparent transition 
-                        enabled:active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2'> 
-                      Load
+                    <button className={clsx(btnClassName1, 'mb-1')}> 
+                        Load
                     </button>
                     <div className='px-4 py-1 text-sm'>
                         <input type='checkbox' className='mr-2' checked={replace} onChange={()=>{setReplace(!replace);}}/> 
-                        <a href='#' 
+                        <a className='text-textcolor hover:text-textcolor' href='#' 
                                 onClick={(e) => {
                                     e.preventDefault();
                                     setReplace(!replace);
