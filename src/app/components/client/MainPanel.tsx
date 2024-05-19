@@ -88,26 +88,18 @@ interface MainPanelProps {
 
 const MainPanel = ({dark}: MainPanelProps) => {
     const ENODE_ID_PREFIX = 'E';
-    const CANVAS_CLICK_THRESHOLD = 3;
+    const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel));
     const [pixel, setPixel] = useState(1.0);
     const [replace, setReplace] = useState(true);
-
     const [points, setPoints] = useState<PointRep[]>([]);
-    const pointsRef = useRef<PointRep[]>([]);
-
     const [enodes, setEnodes] = useState<ENodeRep[]>([]);
     const [enodeCounter, setEnodeCounter] = useState(0); // this is used for generating keys
-
-    const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed
-    const selectionRef = useRef<Item[]>([]);
-    
+    const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
-    const focusRef = useRef<Item | null>(null);
-
-    const [tempLimit, setTempLimit] = useState<PointRep | null>(null); // a temporary point marking the bottom-right point of the canvas (which can be adjusted by the user moving stuff there)
+    const [tempLimit, setTempLimit] = useState<PointRep>(new PointRep(0,0)); // a temporary point marking the current bottom-right point of the canvas (which can be adjusted by the user moving items around)
 
 
     const getLimit = (nodes: ENodeRep[]) => { // return the bottom-right-most limit of the nodes 
@@ -120,16 +112,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return new PointRep(right, bottom);
     }
 
-    const clearSelection = () => { 
-        selection.forEach(item => {
-            if(item===focusItem) {
-                setFocusItem(focusRef.current = null);
-            }
-        });
-        setSelection(selectionRef.current = []);
-    }
-
-    const getSelectPositions = (item: Item, array = selectionRef.current) => {
+    const getSelectPositions = (item: Item, array = selection) => {
         let result: number[] = [];
         let index = 0;
         if(item instanceof ENodeRep) {
@@ -149,55 +132,42 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return result;
     }
 
-    const select = (item: Item) => {
-        setSelection(selectionRef.current = [...selectionRef.current, item]);
-    } 
-
-    const selectAll = (items: Item[]) => {
-        setSelection(selectionRef.current = [...selectionRef.current, ...items]);
-    }
-
     const deselect = (item: Item) => {
-        const index = selectionRef.current.lastIndexOf(item);
+        const index = selection.lastIndexOf(item);
         if(index<0) {
             console.log(`Error: Item ${item.key}, to be deselected, is not in selection!`);
         } else {
             console.log(`Deselecting; ${item.key}`);
-            if(focusRef.current===item && index==selectionRef.current.indexOf(item)) {
-                setFocusItem(focusRef.current = null);
+            if(focusItem===item && index==selection.indexOf(item)) {
+                setFocusItem(null);
             }
-            const newSelection = selectionRef.current.slice(0, index).concat(selectionRef.current.slice(index+1));
-            setSelection(selectionRef.current = newSelection);
+            const newSelection = selection.slice(0, index).concat(selection.slice(index+1));
+            setSelection(newSelection);
             return item;
         }
     }
 
-    const focusOn = (item: Item) => {
-        if(!focusRef.current || focusRef.current!==item) {
-            setFocusItem(focusRef.current = item);
-        } 
-    }
     
     const itemMouseDown = (id: string, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
         const item = id.startsWith(ENODE_ID_PREFIX)? enodes.find(element => element.key===id): null;
         if(item) {
-            if(e.ctrlKey && selectionRef.current.includes(item)) {
+            if(e.ctrlKey && selection.includes(item)) {
                 deselect(item);
             } else {
                 console.log(`Selecting: ${item.key}`);
-                if(!e.shiftKey) {
-                    clearSelection();
-                    setPoints([]);
+                let newPoints = points;
+                let newSelection = selection; 
+                if(!e.shiftKey) { // clear the selection and the points
+                    newSelection = [];
+                    newPoints = [];
                 }
-                select(item);
-                focusOn(item);
+                newSelection = [...newSelection, item];
 
                 // Handle dragging:
                 const startX = e.clientX - item.x; 
                 const startY = e.clientY - item.y; 
-                const sel = selectionRef.current;
-                const selectionWithoutDuplicates = sel.filter((item, i) => i===sel.indexOf(item));
+                const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
                 const yMinD = item.y - selectionWithoutDuplicates.reduce((min, it) => it.y<min? it.y: min, item.y); // y-distance to the top-most selected item
                 
@@ -210,7 +180,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         item.x += dx;
                         item.y += dy;
                     });
-                    setPoints([...pointsRef.current]); // We're triggering a re-render with the points array, which should be relatively cheap.
+                    setPoints([...points]); // We're triggering a re-render with the points array, which should be relatively cheap.
                 };            
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
@@ -220,6 +190,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
             
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
+
+                setPoints(newPoints);
+                setSelection(newSelection);
+                setFocusItem(item);
             }           
         } 
     };
@@ -241,7 +215,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
                 if (!e.shiftKey) {
                     setPoints([newPoint]);
-                    clearSelection();
+                    setSelection([]);
+                    setFocusItem(null);
                 } else {
                     let included = points.some(p => newPoint.key==p.key);
                     if (!included) setPoints(prevPoints => [...prevPoints, newPoint]);
@@ -260,8 +235,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setEnodeCounter(counter);
             setEnodes(nodes);
             setPoints([]);
-            selectAll(newNodes);
-            focusOn(newNodes[newNodes.length-1]);
+            setSelection(newNodes);
+            setFocusItem(newNodes[newNodes.length-1]);
             setTempLimit(getLimit(nodes));
         }
     }
@@ -272,17 +247,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     const deleteSelection = () => { // onClick handler for the delete button
         if(selection && selection.length>0) {
-            const newNodes = enodes.filter(item => !selection.includes(item)); 
-            setEnodes(newNodes);
-            setTempLimit(getLimit(newNodes));
-            clearSelection();
+            const nodes = enodes.filter(item => !selection.includes(item)); 
+            setEnodes(nodes);
+            setSelection([]);
             setFocusItem(null);
+            setTempLimit(getLimit(nodes));
         }
     }
 
 
 
-    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selectionRef.current.map(item => item.key).join(', ')}]`);
+    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
 
     const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
         'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
@@ -307,13 +282,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
         <div id='main-panel' className='pasi flex mt-8 p-6'> 
             <div id='canvas-and-code' className = 'flex-1 mb-3 scrollbox'>
-                <div id='canvas' ref={canvasRef} className={`${dark? 'bg-amber-600 border-black': 'bg-white border-slate-400'} min-w-[800px] max-w-[1200px] h-[600px] relative overflow-auto border`}
+                <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder min-w-[800px] max-w-[1200px] h-[600px] relative overflow-auto border'
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
-                        <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
-                                selected={getSelectPositions(enode)} focus={focusItem===enode} onMouseDown={itemMouseDown} />)}
+                        <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} 
+                            markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
+                            selected={getSelectPositions(enode)} 
+                            focus={focusItem===enode} 
+                            onMouseDown={itemMouseDown} />)}
                     {points.map(point => 
-                        <Point key={point.key} x={point.x} y={point.y} markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}/>)}
+                        <Point key={point.key} x={point.x} y={point.y} 
+                            markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
                     <style> {/* we're using polylines for the 'mark borders' of items */}
                         @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
                         polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
@@ -322,9 +301,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
-                    {
-                        tempLimit && <Point key={tempLimit.key} x={tempLimit.x + 20} y={tempLimit.y + 20} markColor='red' visible={false}/>
-                    }
+                    <Point key={tempLimit.key} x={tempLimit.x + 20} y={tempLimit.y + 20} markColor='red' visible={false} />
                 </div>
                 <div id='code-panel' className={`${dark? 'bg-stone-950 text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
                 </div>

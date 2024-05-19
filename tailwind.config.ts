@@ -24,6 +24,8 @@ const config: Config = {
         btnactivebg: "rgba(var(--btnactivebg))",
         btnactivecolor: "rgba(var(--btnactivecolor))",
         btnfocusring: "rgba(var(--btnfocusring))",
+        canvasbg: "rgba(var(--canvasbg))",
+        canvasborder: "rgba(var(--canvasborder))",
         tabselected: "rgba(var(--tabselected))",
       }
     },

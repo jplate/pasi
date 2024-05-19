@@ -40,11 +40,13 @@ li {
   --btnbg: 248, 250, 252; /* slate-50 */
   --btncolor: 71, 85, 105; /* slate-600 */
   --btnborder: 148, 163, 184; /* slate-400 */
-  --btnhoverbg: 255, 255, 255; /* white */
+  --btnhoverbg: 255, 255, 255; 
   --btnhovercolor: 71, 85, 105; /* slate-600 */
   --btnactivebg: 148, 163, 184; /* slate-400 */
   --btnactivecolor: 71, 85, 105; /* slate-600 */
-  --btnfocusring: 148, 163, 184; /* slate-400 */
+  --btnfocusring: 148, 163, 204; /* moderately bluer than slate-400 */
+  --canvasbg: 255, 255, 255; 
+  --canvasborder: 148, 163, 184; /* slate-400 */
   --tabselected: 226, 232, 240; /* slate-200 */
 
   a:not(.pasi a) {
@@ -66,10 +68,12 @@ li {
   --btncolor: 177, 162, 158; /* slightly redder than stone-400 */
   --btnborder: 95, 83, 78; /* slightly redder than stone-600 */
   --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
-  --btnhovercolor: 0, 0, 0; /* black */
+  --btnhovercolor: 0, 0, 0; 
   --btnactivebg: 120 53 15; /* amber-800 */
-  --btnactivecolor: 0, 0, 0; /* black */
-  --btnfocusring: 95, 83, 78; /* slightly redder than stone-600 */
+  --btnactivecolor: 0, 0, 0; 
+  --btnfocusring: 115, 83, 78; /* moderately redder than stone-600 */
+  --canvasbg: 217, 119, 6; /* amber-600 */
+  --canvasborder: 0, 0, 0; 
   --tabselected: 33, 25, 23; /* slightly redder than stone-900 */  
 
   a:not(.pasi a) {
@@ -95,7 +99,7 @@ body {
 
 /* For browsers that support `scrollbar-*` properties */
 @supports (scrollbar-color: auto) {
-  
+
   body.light .scrollbox {
     scrollbar-color: #bbc5d1 #e0e0e4;
   }
