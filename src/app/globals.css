@@ -93,53 +93,71 @@ body {
 }
 
 
-
-body.light, body.light html {
-  ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+/* For browsers that support `scrollbar-*` properties */
+@supports (scrollbar-color: auto) {
+  
+  body.light .scrollbox {
+    scrollbar-color: #bbc5d1 #e0e0e4;
   }
 
-  ::-webkit-scrollbar-track {
-    background: #e0e0e0; 
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #cbd5e1; 
-    border-radius: 10px;
-    border: 2px solid #c0cad8; 
-  }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #d0c019; 
-    }  
-
-  ::-webkit-scrollbar-corner {
-    background: #e0e0e0; 
-  }
+  body.dark .scrollbox {
+    scrollbar-color: #68351f #120a09;
+  } 
 }
 
-body.dark, body.dark html {
-  ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+
+/* Otherwise, use `::-webkit-scrollbar-*` pseudo-elements */
+@supports selector(::-webkit-scrollbar) {
+
+  body.light .scrollbox {
+    ::-webkit-scrollbar {
+      width: 13px;
+      height: 13px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #e0e0e4; 
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1; 
+      border-radius: 10px;
+      border: 1px solid #c0cad8; 
+    }
+
+    ::-webkit-scrollbar-thumb:horizontal:hover {
+      background: #c0cad8; 
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-corner {
+      background: #e0e0e0; 
+    }
   }
 
-  ::-webkit-scrollbar-track {
-    background: #0c0a09
-  }
+  body.dark .scrollbox {
+    ::-webkit-scrollbar {
+      width: 13px;
+      height: 13px;
+    }
 
-  ::-webkit-scrollbar-thumb {
-    background: #68350f; 
-    border-radius: 10px;
-    border: 2px solid #523009; 
-  }
+    ::-webkit-scrollbar-track {
+      background: #120a09
+    }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #d0c019; 
-  }
-
-  ::-webkit-scrollbar-corner {
-    background: #0c0a09; 
+    ::-webkit-scrollbar-thumb {
+      background: #68351f; 
+      border-radius: 10px;
+      border: 1px solid #523009; 
+    }
+    
+    ::-webkit-scrollbar-thumb:horizontal:hover {
+      background: #88551f; 
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-corner {
+      background: #0c0a09; 
+    }
   }
 }

@@ -38,7 +38,6 @@ export default function Home() {
     if (root instanceof HTMLElement) {
       root.style.setProperty('color-scheme', isDarkMode? 'dark': 'light');
     }
-
   }, [isDarkMode]);
 
 

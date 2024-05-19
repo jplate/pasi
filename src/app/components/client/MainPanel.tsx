@@ -46,8 +46,8 @@ class Item {
 }
 
 class PointRep extends Item {
-    constructor(public key: string, public x: number, public y: number) {
-        super(key, x, y);
+    constructor(public x: number, public y: number) {
+        super(`x${x}y${y}`, x, y);
     }
 }
 
@@ -106,6 +106,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
     const focusRef = useRef<Item | null>(null);
+
+    const [tempLimit, setTempLimit] = useState<PointRep | null>(null); // a temporary point marking the bottom-right point of the canvas (which can be adjusted by the user moving stuff there)
+
+
+    const getLimit = (nodes: ENodeRep[]) => { // return the bottom-right-most limit of the nodes 
+        let right = 0;
+        let bottom = 0;
+        nodes.forEach((enode) => {
+            if(enode.x > right) right = enode.x;
+            if(enode.y > bottom) bottom = enode.y;
+        });
+        return new PointRep(right, bottom);
+    }
 
     const clearSelection = () => { 
         selection.forEach(item => {
@@ -202,6 +215,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
+                    setTempLimit(getLimit(enodes)); // set the new bottom-right limit
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -211,23 +225,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
     };
 
     const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. The reason why we have to go through the trouble
-            // of effectively implementing a mouseClick handler is that, after dragging an item over the canvas if scrollbars are present, the mouse
-            // might end up being over the canvas instead of the item. If the mouse button is then released, this would normally cause a mouseClick 
-            // event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
+            // of effectively implementing a mouseClick handler is that, after dragging an item over the canvas, the mouse might end up being over the canvas instead of the item. If the mouse button 
+            // is then released, this would normally cause a mouseClick event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
         const { left, top } = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
         const { scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
         const x = e.clientX - left + scrollLeft;
         const y = e.clientY - top + scrollTop;
-        const newPoint = new PointRep(`x${x}y${y}`, x, y);
+        const newPoint = new PointRep(x, y);
         
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
             const dx = mue.clientX - e.clientX;
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            //console.log(`mouse up, distance: ${dist}px`);
-            if(dist < CANVAS_CLICK_THRESHOLD) {
-                //console.log(`key: x${x}y${y} e.clientX=${e.clientX} left=${left}$ scrollLeft=${scrollLeft}`);    
+            if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
                 if (!e.shiftKey) {
                     setPoints([newPoint]);
                     clearSelection();
@@ -245,11 +256,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if(points.length>0) {
             let counter = enodeCounter;
             const newNodes = points.map((point, i) => new ENodeRep(ENODE_ID_PREFIX+counter++, point.x, point.y));
+            const nodes = [...enodes, ...newNodes];
             setEnodeCounter(counter);
-            setEnodes([...enodes, ...newNodes]);
+            setEnodes(nodes);
             setPoints([]);
             selectAll(newNodes);
             focusOn(newNodes[newNodes.length-1]);
+            setTempLimit(getLimit(nodes));
         }
     }
 
@@ -259,7 +272,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     const deleteSelection = () => { // onClick handler for the delete button
         if(selection && selection.length>0) {
-            setEnodes(enodes.filter(item => !selection.includes(item)));
+            const newNodes = enodes.filter(item => !selection.includes(item)); 
+            setEnodes(newNodes);
+            setTempLimit(getLimit(newNodes));
             clearSelection();
             setFocusItem(null);
         }
@@ -291,7 +306,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
         <div id='main-panel' className='pasi flex mt-8 p-6'> 
-            <div id='canvas-and-code' className = 'flex-1 mb-3'>
+            <div id='canvas-and-code' className = 'flex-1 mb-3 scrollbox'>
                 <div id='canvas' ref={canvasRef} className={`${dark? 'bg-amber-600 border-black': 'bg-white border-slate-400'} min-w-[800px] max-w-[1200px] h-[600px] relative overflow-auto border`}
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
@@ -307,6 +322,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
+                    {
+                        tempLimit && <Point key={tempLimit.key} x={tempLimit.x + 20} y={tempLimit.y + 20} markColor='red' visible={false}/>
+                    }
                 </div>
                 <div id='code-panel' className={`${dark? 'bg-stone-950 text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
                 </div>
@@ -399,7 +417,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </TabGroup>
 
                     <div id='undo-panel' className='grid grid-cols-3'>
-                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Undo'>
+                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Undo'>
                             <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(-45 12 12)">
@@ -409,7 +427,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <span className='sr-only'>Undo</span>
                             </button>
                         </Tippy>
-                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Redo'>
+                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Redo'>
                             <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')}> 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(45 12 12)">
@@ -419,7 +437,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <span className='sr-only'>Redo</span> 
                             </button>
                         </Tippy>
-                        <Tippy theme='light' delay={[400,0]} arrow={false} content='Delete'>
+                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Delete'>
                             <button id='del-button' className={btnClassName2} disabled={selection.length<1} onClick={deleteSelection} > 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
