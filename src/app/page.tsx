@@ -10,6 +10,7 @@ const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ss
 
 function getInitialColorMode() { // Copied from Josh Comeau (https://www.joshwcomeau.com/react/dark-mode/)
   const persistedColorPreference = window.localStorage.getItem('color-mode');
+  
   const hasPersistedPreference = typeof persistedColorPreference === 'string';
   // If the user has explicitly chosen light or dark,
   // let's use it. Otherwise, this value will be null.
@@ -43,6 +44,7 @@ export default function Home() {
   useEffect(() => {
     document.body.classList.remove(isDarkMode? 'light': 'dark');
     document.body.classList.add(isDarkMode? 'dark': 'light');
+    window.localStorage.setItem('color-mode', isDarkMode? 'dark': 'light');
   }, [isDarkMode]);
 
 

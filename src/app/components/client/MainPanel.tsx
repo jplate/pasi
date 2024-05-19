@@ -32,21 +32,11 @@ export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
 export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
 
-const tailwindColors = {
-    'slate-50': '#f8fafc',
-    'slate-100': '#f1f5f9',
-    'slate-200': '#e2e8f0',
-    'slate-400': '#cbd5e1',
-    'slate-500': '#718096',
-    'slate-600': '#475569',
-    'slate-700': '#4a5568',
-    'slate-800': '#2d3748',
-};
 
 class DepItemLabel {   
     constructor(public label: string, public src: StaticImageData, public alt: string) {}
-    getImageComp(): React.ReactNode {
-        return <NextImage src={this.src} alt={this.alt} width={28} className='inline object-contain' />;    
+    getImageComp(dark: boolean): React.ReactNode {
+        return <NextImage src={this.src} alt={this.alt} width={28} className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
     }
 }
 
@@ -337,7 +327,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
                                         focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
                                 <div className='flex-none text-left mr-2'>
-                                    {depItemLabels[depItemIndex].getImageComp()}
+                                    {depItemLabels[depItemIndex].getImageComp(dark)}
                                 </div>
                                 <div className='flex-1'>
                                     {depItemLabels[depItemIndex].label}
@@ -360,7 +350,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         <MenuItem key={'di-'+index}>
                                             <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
                                                 <div className='inline mr-2'>
-                                                    {label.getImageComp()}
+                                                    {label.getImageComp(dark)}
                                                 </div>
                                                 {label.label}
                                             </button>

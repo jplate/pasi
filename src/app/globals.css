@@ -14,22 +14,6 @@ a {
   transition: color 0.2s; /* Add a smooth color transition on hover */
 }
 
-.light a:not(.pasi a) {
-  color: theme('colors.pink.700'); /* Set the color of the link */
-}
-
-.light a:hover:not(.pasi a) {
-  color: theme('colors.pink.500'); 
-}
-
-.dark a:not(.pasi a) {
-  color: theme('colors.red.700'); /* Set the color of the link */
-}
-
-.dark a:hover:not(.pasi a) {
-  color: theme('colors.red.500'); /* Set the color of the link */
-}
-
 html { /* We have to insist on a fixed font-size, so as to make sure that there won't be any resizing due to hover effects within the MainPanel */
   font-size: 16px; 
 }
@@ -61,6 +45,15 @@ li {
   --btnactivecolor: 71, 85, 105; /* slate-600 */
   --btnfocusring: 148, 163, 184; /* slate-400 */
   --tabselected: 226, 232, 240; /* slate-200 */
+
+  a:not(.pasi a) {
+    color: theme('colors.pink.700'); /* Set the color of the link */
+  }
+  
+  a:not(.pasi a):hover {
+    color: theme('colors.pink.500'); 
+  }
+  
 }
 
 .dark {
@@ -77,6 +70,14 @@ li {
   --btnactivecolor: 0, 0, 0; /* black */
   --btnfocusring: 95, 83, 78; /* slightly redder than stone-600 */
   --tabselected: 33, 25, 23; /* slightly redder than stone-900 */  
+
+  a:not(.pasi a) {
+    color: theme('colors.red.700'); /* Set the color of the link */
+  }
+  
+  a:not(.pasi a):hover {
+    color: theme('colors.red.500'); /* Set the color of the link */
+  }
 }
 
 body {
