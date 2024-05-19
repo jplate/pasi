@@ -47,7 +47,12 @@ li {
   --btnfocusring: 148, 163, 204; /* moderately bluer than slate-400 */
   --canvasbg: 255, 255, 255; 
   --canvasborder: 148, 163, 184; /* slate-400 */
+  --codepanelbg: 241, 245, 249; /* slate-100 */
+  --codepanelcolor: 100, 116, 139; /* slate-500 */
+  --menuborder: 203, 213, 225; /* slate-300 */
   --tabselected: 226, 232, 240; /* slate-200 */
+  --textfieldbg: 248, 250, 252; /* slate-50 */
+  --textfieldcolor: 30, 41, 59; /* slate-800 */
 
   a:not(.pasi a) {
     color: theme('colors.pink.700'); /* Set the color of the link */
@@ -72,9 +77,14 @@ li {
   --btnactivebg: 120 53 15; /* amber-800 */
   --btnactivecolor: 0, 0, 0; 
   --btnfocusring: 115, 83, 78; /* moderately redder than stone-600 */
-  --canvasbg: 217, 119, 6; /* amber-600 */
+  --canvasbg: 217, 119, 26; /* moderately less saturated than amber-600 */
   --canvasborder: 0, 0, 0; 
-  --tabselected: 33, 25, 23; /* slightly redder than stone-900 */  
+  --codepanelbg: 12, 10, 9; /* stone-950 */
+  --codepanelcolor: 180, 83, 9; /* amber-700 */
+  --menuborder: 0, 0, 0;
+  --tabselected: 33, 25, 23; /* slightly redder than stone-900 */ 
+  --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
+  --textfieldcolor: 217, 119, 6; /* amber-600 */
 
   a:not(.pasi a) {
     color: theme('colors.red.700'); /* Set the color of the link */

@@ -42,7 +42,7 @@ export default function Home() {
 
 
   return (<> {/* We're returning a fragment. */}
-    <div className='sticky top-0 bg-white/20 z-50 px-4 py-2 shadow-md'>
+    <div className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
       <span className='flex items-center justify-between px-6'>
         <i><strong>pasi</strong></i>
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
@@ -61,7 +61,7 @@ export default function Home() {
       {isMobile? 
         <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
             <p><strong>Mobile device not supported.</strong></p>
-            <p>Please access this web application from a laptop or desktop.</p>
+            <p>Please access this application from a laptop or desktop.</p>
         </div>:
         <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
           <section className='max-w-2xl ml-9'>
@@ -83,7 +83,7 @@ export default function Home() {
             </p>
           </section>
 
-            <MainPanel dark={isDarkMode} />
+          <MainPanel dark={isDarkMode} />
 
           <section className='max-w-2xl ml-9'>
             <p>

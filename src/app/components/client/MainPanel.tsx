@@ -33,14 +33,6 @@ export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
 
 
-class DepItemLabel {   
-    constructor(public label: string, public src: StaticImageData, public alt: string) {}
-    getImageComp(dark: boolean): React.ReactNode {
-        return <NextImage src={this.src} alt={this.alt} width={28} className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
-    }
-}
-
-
 class Item {
     constructor(public key: string, public x: number, public y: number) {}
 }
@@ -57,6 +49,13 @@ class ENodeRep extends Item {
     }
 }
 
+
+class DepItemLabel {   
+    constructor(public label: string, public src: StaticImageData, public alt: string) {}
+    getImageComp(dark: boolean): React.ReactNode {
+        return <NextImage src={this.src} alt={this.alt} width={28} className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
+    }
+}
 
 const labelItemLabel = new DepItemLabel('Label', lblSrc, 'A label attached to a node');
 const depItemLabels = [
@@ -77,10 +76,7 @@ const depItemLabels = [
     new DepItemLabel('Single hook, straight', orpSrc, 'An arrow with a single straight hook'),
 ];
 
-type CustomToggleProps = {
-    children: React.ReactNode;
-    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
-};
+
 
 interface MainPanelProps {
     dark: boolean;
@@ -96,10 +92,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [replace, setReplace] = useState(true);
     const [points, setPoints] = useState<PointRep[]>([]);
     const [enodes, setEnodes] = useState<ENodeRep[]>([]);
-    const [enodeCounter, setEnodeCounter] = useState(0); // this is used for generating keys
+    const [enodeCounter, setEnodeCounter] = useState(0); // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
-    const [tempLimit, setTempLimit] = useState<PointRep>(new PointRep(0,0)); // a temporary point marking the current bottom-right point of the canvas (which can be adjusted by the user moving items around)
+    const [limit, setLimit] = useState<PointRep>(new PointRep(0,0)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
 
 
     const getLimit = (nodes: ENodeRep[]) => { // return the bottom-right-most limit of the nodes 
@@ -185,7 +181,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
-                    setTempLimit(getLimit(enodes)); // set the new bottom-right limit
+                    setLimit(getLimit(enodes)); // set the new bottom-right limit
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -237,7 +233,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPoints([]);
             setSelection(newNodes);
             setFocusItem(newNodes[newNodes.length-1]);
-            setTempLimit(getLimit(nodes));
+            setLimit(getLimit(nodes));
         }
     }
 
@@ -251,7 +247,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setEnodes(nodes);
             setSelection([]);
             setFocusItem(null);
-            setTempLimit(getLimit(nodes));
+            setLimit(getLimit(nodes));
         }
     }
 
@@ -271,7 +267,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     // The delete button gets some special colors:
     const btnClassName2 = clsx(basicButtonClass, 'rounded-xl', 
-        (dark? 'bg-btnbg/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
+        (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
     const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50', 
@@ -301,9 +297,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
-                    <Point key={tempLimit.key} x={tempLimit.x + 20} y={tempLimit.y + 20} markColor='red' visible={false} />
+                    <Point key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} />
                 </div>
-                <div id='code-panel' className={`${dark? 'bg-stone-950 text-amber-700': 'bg-slate-100'} min-w-[800px] h-[190px] my-[25px] shadow-inner`}>
+                <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[800px] h-[190px] my-[25px] shadow-inner'>
                 </div>
             </div>
             <div id='button-panels' style={{flex: 1, minWidth: '300px', maxWidth: '380px', userSelect: 'none'}}>
@@ -340,7 +336,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     leaveTo='opacity-0 scale-95'>
                                 <MenuItems
                                         anchor='bottom end'
-                                        className={`w-72 origin-top-right rounded-md border ${dark? 'border-black': 'border-slate-300'} bg-btnbg/85 p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none`}>
+                                        className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
                                     {depItemLabels.map((label, index) => 
                                         <MenuItem key={'di-'+index}>
                                             <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
@@ -432,8 +428,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </button>
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
-                        <input className={clsx('w-16 ml-1 px-2 py-1 mr-1 text-right border rounded-md focus:outline-none', 
-                                (dark? 'bg-stone-950 text-amber-600 border-neutral-500':'bg-slate-50 text-slate-800 border-slate-300 focus:border-slate-400'))} 
+                        <input className='w-16 ml-1 px-2 py-1 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
                             type='number' step='0.1' value={pixel}
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
@@ -442,7 +437,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         Load
                     </button>
                     <div className='px-4 py-1 text-sm'>
-                        <input type='checkbox' className='mr-2' checked={replace} onChange={()=>{setReplace(!replace);}}/> 
+                        <input type='checkbox' className='mr-2' checked={replace} onChange={()=>{setReplace(!replace);}} /> 
                         <a className='text-textcolor hover:text-textcolor' href='#' 
                                 onClick={(e) => {
                                     e.preventDefault();

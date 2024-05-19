@@ -26,7 +26,12 @@ const config: Config = {
         btnfocusring: "rgba(var(--btnfocusring))",
         canvasbg: "rgba(var(--canvasbg))",
         canvasborder: "rgba(var(--canvasborder))",
+        codepanelbg: "rgba(var(--codepanelbg))",
+        codepanelcolor: "rgba(var(--codepanelcolor))",
+        menuborder: "rgba(var(--menuborder))",
         tabselected: "rgba(var(--tabselected))",
+        textfieldbg: "rgba(var(--textfieldbg))",
+        textfieldcolor: "rgba(var(--textfieldcolor))",
       }
     },
   },
