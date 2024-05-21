@@ -1,30 +1,34 @@
-import React, {useState, useRef } from 'react';
-import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
+import React, {useState, useRef } from 'react'
+import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import NextImage, {StaticImageData} from 'next/image';  
-import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/themes/light.css';
-import clsx from 'clsx/lite';
+import NextImage, {StaticImageData} from 'next/image'
+import Tippy from '@tippyjs/react'
+import 'tippy.js/dist/tippy.css'
+import 'tippy.js/themes/light.css'
+import clsx from 'clsx/lite'
 
-import Point from './Point.tsx';
-import ENode from './ENode.tsx';
+import Item from './Item.tsx'
+import Point from './Point.tsx'
+import CanvasEditor, { CheckBoxField } from './CanvasEditor'
+import ItemEditor from './ItemEditor.tsx'
+import ENodeRep from './ENodeRep.tsx'
+import ENode from './ENode.tsx'
 
-import lblSrc from '../../../icons/lbl.png';
-import adjSrc from '../../../icons/adj.png';
-import cntSrc from '../../../icons/cnt.png';
-import entSrc from '../../../icons/ent.png';
-import exsSrc from '../../../icons/exs.png';
-import idtSrc from '../../../icons/idt.png';
-import incSrc from '../../../icons/inc.png';
-import insSrc from '../../../icons/ins.png';
-import negSrc from '../../../icons/neg.png';
-import orpSrc from '../../../icons/orp.png';
-import prdSrc from '../../../icons/prd.png';
-import ptrSrc from '../../../icons/ptr.png';
-import rstSrc from '../../../icons/rst.png';
-import trnSrc from '../../../icons/trn.png';
-import unvSrc from '../../../icons/unv.png';
+import lblSrc from '../../../icons/lbl.png'
+import adjSrc from '../../../icons/adj.png'
+import cntSrc from '../../../icons/cnt.png'
+import entSrc from '../../../icons/ent.png'
+import exsSrc from '../../../icons/exs.png'
+import idtSrc from '../../../icons/idt.png'
+import incSrc from '../../../icons/inc.png'
+import insSrc from '../../../icons/ins.png'
+import negSrc from '../../../icons/neg.png'
+import orpSrc from '../../../icons/orp.png'
+import prdSrc from '../../../icons/prd.png'
+import ptrSrc from '../../../icons/ptr.png'
+import rstSrc from '../../../icons/rst.png'
+import trnSrc from '../../../icons/trn.png'
+import unvSrc from '../../../icons/unv.png'
 
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb';
 export const MARK_COLOR0_DARK_MODE = '#000000';
@@ -32,20 +36,42 @@ export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
 export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
 
+export const DEFAULT_HGAP: number = 10;
+export const DEFAULT_VGAP: number = 10;
+export const DEFAULT_HSHIFT: number = 0;
+export const DEFAULT_VSHIFT: number = 0;
+export const DEFAULT_HDISPLACEMENT = 20;
+export const DEFAULT_VDISPLACEMENT = 0;
 
-class Item {
-    constructor(public key: string, public x: number, public y: number) {}
+export const CONTOUR_CENTER_SNAP_RADIUS: number = 10;
+export const CONTOUR_NODE_SNAP_RADIUS: number = 15;
+export const H = 638; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
+
+const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
+
+
+export type Grid = {
+    hGap: number,
+    vGap: number,
+    hShift: number,
+    vShift: number,
+    snapToContourCenters: boolean,
+    snapToNodes: boolean
 }
+
+const createGrid = (hGap: number = DEFAULT_HGAP, 
+        vGap: number = DEFAULT_VGAP, 
+        hShift: number = DEFAULT_HSHIFT, 
+        vShift: number = DEFAULT_VSHIFT, 
+        snapToContourCenters: boolean = true, 
+        snapToNodes: boolean = true): Grid => {
+    return {hGap, vGap, hShift, vShift, snapToContourCenters, snapToNodes};
+};
+
 
 class PointRep extends Item {
     constructor(public x: number, public y: number) {
         super(`x${x}y${y}`, x, y);
-    }
-}
-
-class ENodeRep extends Item {
-    constructor(public key: string, public x: number, public y: number) {
-        super(key, x, y);
     }
 }
 
@@ -83,8 +109,6 @@ interface MainPanelProps {
 }
 
 const MainPanel = ({dark}: MainPanelProps) => {
-    const ENODE_ID_PREFIX = 'E';
-    const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel));
@@ -96,6 +120,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
     const [limit, setLimit] = useState<PointRep>(new PointRep(0,0)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+
+    const [grid, setGrid] = useState(createGrid());
+    const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
+    const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
 
 
     const getLimit = (nodes: ENodeRep[]) => { // return the bottom-right-most limit of the nodes 
@@ -144,9 +172,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     
-    const itemMouseDown = (id: string, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
+    const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
-        const item = id.startsWith(ENODE_ID_PREFIX)? enodes.find(element => element.key===id): null;
         if(item) {
             if(e.ctrlKey && selection.includes(item)) {
                 deselect(item);
@@ -162,21 +189,25 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                 // Handle dragging:
                 const startX = e.clientX - item.x; 
-                const startY = e.clientY - item.y; 
+                const startY = e.clientY - (H-item.y); 
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
-                const yMinD = item.y - selectionWithoutDuplicates.reduce((min, it) => it.y<min? it.y: min, item.y); // y-distance to the top-most selected item
+                const yMinD = (H-item.y) - selectionWithoutDuplicates.reduce((min, it) => (H-it.y)<min? it.y: min, H-item.y); // y-distance to the top-most selected item
                 
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
                     // canvas to the left or top (from where they couldn't be recovered):
-                    const dx = Math.max(e.clientX, startX + xMinD) - startX - item.x;
-                    const dy = Math.max(e.clientY, startY + yMinD) - startY - item.y;
+                    const newX = Math.max(e.clientX, startX + xMinD) - startX;
+                    const newY = H-(Math.max(e.clientY, startY + yMinD) - startY);
+                    // Next, we take into account the grid:
+                    const dx = newX + grid.hGap/2 - ((newX + grid.hGap/2 - grid.hShift) % grid.hGap) - item.x;
+                    const dy = newY + grid.vGap/2 - ((newY + grid.vGap/2 - grid.vShift) % grid.vGap) - item.y;
+                    // Finally, we move each item in the selection:
                     selectionWithoutDuplicates.forEach(item => {
                         item.x += dx;
                         item.y += dy;
                     });
-                    setPoints([...points]); // We're triggering a re-render with the points array, which should be relatively cheap.
+                    setPoints(prevPoints => [...prevPoints]); // We're triggering a re-render with the points array, which should be relatively cheap.
                 };            
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
@@ -199,9 +230,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
             // is then released, this would normally cause a mouseClick event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
         const { left, top } = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
         const { scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
-        const x = e.clientX - left + scrollLeft;
-        const y = e.clientY - top + scrollTop;
-        const newPoint = new PointRep(x, y);
         
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
@@ -209,6 +237,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
+                const x = e.clientX - left + scrollLeft;
+                const y = H-(e.clientY - top + scrollTop);
+                const newPoint = new PointRep(
+                    x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
+                    y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap));
                 if (!e.shiftKey) {
                     setPoints([newPoint]);
                     setSelection([]);
@@ -226,7 +259,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const addEntityNodes = () => { // onClick handler for the node button
         if(points.length>0) {
             let counter = enodeCounter;
-            const newNodes = points.map((point, i) => new ENodeRep(ENODE_ID_PREFIX+counter++, point.x, point.y));
+            const newNodes = points.map((point, i) => new ENodeRep('E'+counter++, point.x, point.y));
             const nodes = [...enodes, ...newNodes];
             setEnodeCounter(counter);
             setEnodes(nodes);
@@ -252,18 +285,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
 
-
-    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
-
-    const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
-        'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
-        'focus:outline-none focus:ring-1');
-
-    const btnClassName0 = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
-        'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
-
     // The standard button:
-    const btnClassName1 = clsx(btnClassName0, 'rounded-xl');
+    const btnClassName1 = clsx(basicColoredButtonClass, 'rounded-xl');
 
     // The delete button gets some special colors:
     const btnClassName2 = clsx(basicButtonClass, 'rounded-xl', 
@@ -275,13 +298,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
 
+    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
+
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
-        <div id='main-panel' className='pasi flex mt-8 p-6'> 
-            <div id='canvas-and-code' className = 'flex-1 mb-3 scrollbox'>
-                <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder min-w-[800px] max-w-[1200px] h-[600px] relative overflow-auto border'
+        <div id='main-panel' className='pasi flex my-8 p-6'> 
+            <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
+                <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
-                        <ENode key={enode.key} id={enode.key} x={enode.x} y={enode.y} 
+                        <ENode key={enode.key} id={enode.key} enode={enode}
                             markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                             selected={getSelectPositions(enode)} 
                             focus={focusItem===enode} 
@@ -299,11 +324,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </style>
                     <Point key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} />
                 </div>
-                <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[800px] h-[190px] my-[25px] shadow-inner'>
+                <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
                 </div>
             </div>
-            <div id='button-panels' style={{flex: 1, minWidth: '300px', maxWidth: '380px', userSelect: 'none'}}>
-                <div id='button-panel-1' className='flex flex-col' style={{height: '600px', margin: '0px 25px 0px'}}>
+            <div id='button-panels' className='flex-grow min-w-[300px] max-w-[380px] select-none'>
+                <div id='button-panel-1' className='flex flex-col ml-[25px] h-[638px]'>
                     <div id='add-panel' className='grid grid-cols-2 mb-3'>
                         <button id='node-button' className={clsx(btnClassName1, 'mr-1.5')} disabled={points.length<1} onClick={addEntityNodes}>  
                             Node
@@ -313,7 +338,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </button> 
                     </div>                    
 
-                    <div id='di-panel' className='grid justify-items-stretch border border-btnborder p-1.5 mb-3 rounded-xl'>
+                    <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-1.5 mb-3 rounded-xl'>
                         <Menu>
                             <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
                                         focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
@@ -350,7 +375,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </MenuItems>
                             </Transition>
                         </Menu>                
-                        <button id='create-button' className={clsx(btnClassName0, 'rounded-md')}> 
+                        <button id='create-button' className={clsx(basicColoredButtonClass, 'rounded-md')}> 
                             Create
                         </button>
                     </div>
@@ -360,28 +385,44 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                     <TabGroup className='flex-1'>
                         <TabList className="grid grid-cols-3">
-                            <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-l-lg')}>
+                            <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
                                 Editor
                             </Tab>
                             <Tab key='transform-tab' className={tabClassName}>
                                 Transform
                             </Tab>
-                            <Tab key='group-tab' className={clsx(tabClassName, 'rounded-r-lg')}>
+                            <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')}>
                                 Groups
                             </Tab>
                         </TabList>
-                        <TabPanels className="mt-3 flex-1">
-                            <TabPanel key='editor-panel' className="rounded-xl bg-white/5 p-3 overflow-y-auto">
-                                Editor panel
-                                <ul>
-                                </ul>
+                        <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
+                            <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
+                                {focusItem?
+                                    <ItemEditor item={focusItem} info={focusItem.getInfo()} 
+                                        onChange={(e, i) => {focusItem.handleEditing(e, i); setPoints(prevPoints=>[...prevPoints])}} />
+                                    :
+                                    <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
+                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseInt(e.target.value)}))} 
+                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: parseInt(e.target.value)}))} 
+                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: parseInt(e.target.value)}))} 
+                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: parseInt(e.target.value)}))} 
+                                        onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
+                                        onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
+                                        onHDispChange={(e) => setHDisplacement(parseInt(e.target.value))} 
+                                        onVDispChange={(e) => setVDisplacement(parseInt(e.target.value))} 
+                                        onReset={() => {
+                                            setGrid(createGrid());
+                                            setHDisplacement(DEFAULT_HDISPLACEMENT);
+                                            setVDisplacement(DEFAULT_VDISPLACEMENT);
+                                        }} />
+                                }
                             </TabPanel>
-                            <TabPanel key='transform-panel' className="rounded-xl bg-white/5 p-3">
+                            <TabPanel key='transform-panel' className="rounded-xl p-3">
                                 Transform panel
                                 <ul>
                                 </ul>
                             </TabPanel>
-                            <TabPanel key='groups-panel' className="rounded-xl bg-white/5 p-3">
+                            <TabPanel key='groups-panel' className="rounded-xl p-3">
                                 Groups panel
                                 <ul>
                                 </ul>
@@ -389,7 +430,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </TabPanels>
                     </TabGroup>
 
-                    <div id='undo-panel' className='grid grid-cols-3'>
+                    <div id='undo-panel' className='mt-1 grid grid-cols-3'>
                         <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Undo'>
                             <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
@@ -420,15 +461,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </Tippy>
                     </div>
                 </div>
-                <div id='button-panel-2'
-                        className='grid justify-items-stretch'
-                        style={{margin: '25px 25px 25px'}}>
+                <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                     <button className={clsx(btnClassName1, 'mb-1')}> 
                         Generate
                     </button>
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
-                        <input className='w-16 ml-1 px-2 py-1 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                        <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
                             type='number' step='0.1' value={pixel}
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
@@ -436,16 +475,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <button className={clsx(btnClassName1, 'mb-1')}> 
                         Load
                     </button>
-                    <div className='px-4 py-1 text-sm'>
-                        <input type='checkbox' className='mr-2' checked={replace} onChange={()=>{setReplace(!replace);}} /> 
-                        <a className='text-textcolor hover:text-textcolor' href='#' 
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setReplace(!replace);
-                                }}> 
-                            Replace current diagram 
-                        </a>
-                    </div>
+                    <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                 </div>
             </div>
         </div>
@@ -453,3 +483,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
 };
 
 export default MainPanel;
+
+export const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
+    'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
+    'focus:outline-none focus:ring-1');
+
+export const basicColoredButtonClass = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
+    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
+
+
+

@@ -115,7 +115,7 @@ body {
   }
 
   body.dark .scrollbox {
-    scrollbar-color: #68351f #120a09;
+    scrollbar-color: #4c403c #120a09;
   } 
 }
 
@@ -160,13 +160,13 @@ body {
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #68351f; 
+      background: #4c403c; 
       border-radius: 10px;
-      border: 1px solid #523009; 
+      border: 1px solid #422a29; 
     }
     
     ::-webkit-scrollbar-thumb:horizontal:hover {
-      background: #88551f; 
+      background: #422a29; 
       border-radius: 10px;
     }
     

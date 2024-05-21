@@ -42,7 +42,7 @@ export default function Home() {
 
 
   return (<> {/* We're returning a fragment. */}
-    <div className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
+    <div id='sticky-top' className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
       <span className='flex items-center justify-between px-6'>
         <i><strong>pasi</strong></i>
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
@@ -57,14 +57,14 @@ export default function Home() {
         </button>
       </span>
     </div>
-    <main className='flex min-h-screen flex-col items-center justify-between p-24'>
+    <main className='flex flex-col min-h-screen items-center justify-between p-12'>
       {isMobile? 
         <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
             <p><strong>Mobile device not supported.</strong></p>
             <p>Please access this application from a laptop or desktop.</p>
         </div>:
-        <div style={{minWidth: '1200px', maxWidth: '1500px', marginBottom: '30px'}}>
-          <section className='max-w-2xl ml-9'>
+        <div id='content' className='flex-1 flex flex-col mb-[30px]'>
+          <section className='max-w-3xl ml-9'>
             <p className='text-red-500/50'>
               <strong>------------------UNDER CONSTRUCTION------------------</strong> 
             </p>
@@ -84,8 +84,8 @@ export default function Home() {
           </section>
 
           <MainPanel dark={isDarkMode} />
-
-          <section className='max-w-2xl ml-9'>
+          
+          <section className='max-w-3xl ml-9'>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>

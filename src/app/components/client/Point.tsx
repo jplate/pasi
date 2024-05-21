@@ -1,5 +1,6 @@
-import React from 'react';
-import {DEFAULT_COLOR} from './Item.ts';
+import React from 'react'
+import { DEFAULT_COLOR } from './Item.tsx'
+import { H } from './MainPanel.tsx'
 
 export const POINT_RADIUS = 4;
 
@@ -12,7 +13,7 @@ interface PointProps {
 
 const Point = ({x, y, markColor, visible = true}: PointProps) => {    
     return (
-        <div style={{position: 'absolute', left: `${x-POINT_RADIUS}px`, top: `${y-POINT_RADIUS}px`}}>
+        <div style={{position: 'absolute', left: `${x-POINT_RADIUS}px`, top: `${H-y-POINT_RADIUS}px`}}>
                 <svg width={POINT_RADIUS*2} height={POINT_RADIUS*2}> 
                     <circle cx={POINT_RADIUS} cy={POINT_RADIUS} r={visible? 0.5: 0} fill={DEFAULT_COLOR} />
                 </svg>
