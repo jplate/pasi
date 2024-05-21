@@ -1,6 +1,28 @@
 import clsx from 'clsx/lite'
 
 
+export interface CheckBoxFieldProps {
+    label: string,
+    style?: string,
+    value: boolean,
+    onChange: () => void,
+}
+
+export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, onChange}: CheckBoxFieldProps) => {
+    return (
+        <span className={style}>
+            <input type='checkbox' className='mr-2' checked={value} onChange={()=>{onChange()}} /> 
+            <a className='text-textcolor hover:text-textcolor' href='#' 
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onChange()
+                    }}> 
+                {label}
+            </a>
+        </span>
+    )
+}
+
 export interface GlossFieldProps {
     text: string;
     style?: string;
@@ -27,7 +49,6 @@ export interface InputFieldProps {
 }
 
 export const InputField = ({label, value, type = 'number', min = 0, max = Number.MAX_SAFE_INTEGER, step = 1, onChange}: InputFieldProps) => {
-
     return (
         <span className='flex items-center justify-end px-2 py-1 text-sm'>
             {label} 
@@ -37,27 +58,6 @@ export const InputField = ({label, value, type = 'number', min = 0, max = Number
     )
 }
 
-export interface CheckBoxFieldProps {
-    label: string,
-    style?: string,
-    value: boolean,
-    onChange: () => void,
-}
-
-export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, onChange}: CheckBoxFieldProps) => {
-    return (
-        <span className={style}>
-            <input type='checkbox' className='mr-2' checked={value} onChange={()=>{onChange()}} /> 
-            <a className='text-textcolor hover:text-textcolor' href='#' 
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onChange()
-                    }}> 
-                {label}
-            </a>
-        </span>
-    )
-}
 
 
 export interface LabelFieldProps {

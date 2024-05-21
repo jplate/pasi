@@ -1,19 +1,18 @@
 import React, {useState, useRef } from 'react'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import NextImage, {StaticImageData} from 'next/image'
+import NextImage, { StaticImageData } from 'next/image'
 import Tippy from '@tippyjs/react'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 import clsx from 'clsx/lite'
 
 import Item from './Item.tsx'
-import Point from './Point.tsx'
 import { CheckBoxField } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
-import ENodeRep from './ENodeRep.tsx'
-import ENode from './ENode.tsx'
+import ENode, { ENodeComp } from './ENode.tsx'
+import Point, { PointComp } from './Point.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -53,7 +52,6 @@ const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
 
 
-
 export type Grid = {
     hGap: number,
     vGap: number,
@@ -73,17 +71,13 @@ const createGrid = (hGap: number = DEFAULT_HGAP,
 };
 
 
-class PointRep extends Item {
-    constructor(public x: number, public y: number) {
-        super(`x${x}y${y}`, x, y);
-    }
-}
-
-
 class DepItemLabel {   
+    
     constructor(public label: string, public src: StaticImageData, public alt: string) {}
+    
     getImageComp(dark: boolean): React.ReactNode {
-        return <NextImage src={this.src} alt={this.alt} width={28} className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
+        return <NextImage src={this.src} alt={this.alt} width={28} 
+            className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
     }
 }
 
@@ -118,37 +112,37 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel));
     const [pixel, setPixel] = useState(1.0);
     const [replace, setReplace] = useState(true);
-    const [points, setPoints] = useState<PointRep[]>([]);
-    const [enodes, setEnodes] = useState<ENodeRep[]>([]);
+    const [points, setPoints] = useState<Point[]>([]);
+    const [enodes, setEnodes] = useState<ENode[]>([]);
     const [enodeCounter, setEnodeCounter] = useState(0); // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
-    const [limit, setLimit] = useState<PointRep>(new PointRep(0,0)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+    const [limit, setLimit] = useState<Point>(new Point(0,0)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
 
     const [grid, setGrid] = useState(createGrid());
     const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
     const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
 
 
-    const getLimit = (nodes: ENodeRep[]) => { // return the bottom-right-most limit of the nodes 
+    const getLimit = (nodes: ENode[]) => { // return the bottom-right-most limit of the nodes 
         let right = 0;
         let bottom = 0;
         nodes.forEach((enode) => {
             if(enode.x > right) right = enode.x;
             if(enode.y > bottom) bottom = enode.y;
         });
-        return new PointRep(right, bottom);
+        return new Point(right, bottom);
     }
 
     const getSelectPositions = (item: Item, array = selection) => {
         let result: number[] = [];
         let index = 0;
-        if(item instanceof ENodeRep) {
+        if(item instanceof ENode) {
             array.forEach(element => {
                 if(element===item) {
                     result = [...result, index];
                 }
-                if(element instanceof ENodeRep) { // if the element isn't an ENode, we're not counting it.
+                if(element instanceof ENode) { // if the element isn't an ENode, we're not counting it.
                     index++;
                 }
             });
@@ -243,7 +237,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
                 const x = e.clientX - left + scrollLeft;
                 const y = H-(e.clientY - top + scrollTop);
-                const newPoint = new PointRep(
+                const newPoint = new Point(
                     x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
                     y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap));
                 if (!e.shiftKey) {
@@ -263,7 +257,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const addEntityNodes = () => { // onClick handler for the node button
         if(points.length>0) {
             let counter = enodeCounter;
-            const newNodes = points.map((point, i) => new ENodeRep('E'+counter++, point.x, point.y));
+            const newNodes = points.map((point, i) => new ENode('E'+counter++, point.x, point.y));
             setEnodeCounter(counter);
             setEnodes(prevEnodes => {
                 const nodes = [...prevEnodes, ...newNodes];
@@ -311,13 +305,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
-                        <ENode key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
+                        <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
                             markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                             selected={getSelectPositions(enode)} 
                             focus={focusItem===enode} 
                             onMouseDown={itemMouseDown} />)}
                     {points.map(point => 
-                        <Point key={point.key} x={point.x} y={point.y} 
+                        <PointComp key={point.key} x={point.x} y={point.y} 
                             markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
                     <style> {/* we're using polylines for the 'mark borders' of items */}
                         @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
@@ -327,7 +321,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
-                    <Point key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} />
+                    <PointComp key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} />
                 </div>
                 <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
                 </div>
@@ -403,24 +397,24 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
                             <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                 {focusItem?
-                                    <ItemEditor item={focusItem} info={focusItem.getInfo(focusItem instanceof ENodeRep? enodes: [])} 
+                                    <ItemEditor item={focusItem} info={focusItem.getInfo(focusItem instanceof ENode? enodes: [])} 
                                         onChange={(e, i) => {
-                                            const [fun, applyToAll] = focusItem.handleEditing(e, i);
+                                            const [edit, applyToAll] = focusItem.handleEditing(e, i);
                                             setEnodes(prevEnodes => applyToAll? 
-                                                selection.reduce((nodes, item) => fun(item, nodes) as ENodeRep[], prevEnodes):
-                                                fun(focusItem, prevEnodes) as ENodeRep[]); 
+                                                selection.reduce((nodes, item) => edit(item, nodes) as ENode[], prevEnodes):
+                                                edit(focusItem, prevEnodes) as ENode[]); 
                                             setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes has been left unchanged                                   
                                         }} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
-                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseInt(e.target.value)}))} 
-                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: parseInt(e.target.value)}))} 
-                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: parseInt(e.target.value)}))} 
-                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: parseInt(e.target.value)}))} 
+                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseFloat(e.target.value)}))} 
+                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: parseFloat(e.target.value)}))} 
+                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: parseFloat(e.target.value)}))} 
+                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: parseFloat(e.target.value)}))} 
                                         onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
                                         onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
-                                        onHDispChange={(e) => setHDisplacement(parseInt(e.target.value))} 
-                                        onVDispChange={(e) => setVDisplacement(parseInt(e.target.value))} 
+                                        onHDispChange={(e) => setHDisplacement(parseFloat(e.target.value))} 
+                                        onVDispChange={(e) => setVDisplacement(parseFloat(e.target.value))} 
                                         onReset={() => {
                                             setGrid(createGrid());
                                             setHDisplacement(DEFAULT_HDISPLACEMENT);
