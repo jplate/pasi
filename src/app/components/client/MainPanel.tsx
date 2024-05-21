@@ -48,6 +48,9 @@ export const CONTOUR_NODE_SNAP_RADIUS: number = 15;
 export const H = 638; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 
 const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
+const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
+const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
+
 
 
 export type Grid = {
@@ -306,7 +309,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
-                        <ENode key={enode.key} id={enode.key} enode={enode}
+                        <ENode key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
                             markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                             selected={getSelectPositions(enode)} 
                             focus={focusItem===enode} 

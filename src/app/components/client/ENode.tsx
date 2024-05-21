@@ -4,10 +4,16 @@ import { H, MARK_LINEWIDTH } from './MainPanel.tsx'
 import ENodeRep, { DEFAULT_RADIUS } from './ENodeRep.tsx'
 
 
+export interface HSL {
+    hue: number,
+    sat: number,
+    lgt: number,
+}
 
 interface ENodeProps {
     id: string,
     enode: ENodeRep,
+    bg: HSL,
     markColor: string,
     selected: number[],
     onMouseDown: (enode: ENodeRep, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
@@ -15,7 +21,7 @@ interface ENodeProps {
     hidden?: boolean
 }
 
-const ENode = ({id, enode, markColor, selected = [], onMouseDown, focus = false,
+const ENode = ({id, enode, bg, markColor, selected = [], onMouseDown, focus = false,
         hidden = false}: ENodeProps) => {
 
     const x = enode.x;
@@ -40,7 +46,7 @@ const ENode = ({id, enode, markColor, selected = [], onMouseDown, focus = false,
     }
 
     console.log(`Rendering ${id}...`);
-
+    
     return (
         <div className={focus? 'focused': selected.length>0? 'selected': 'unselected'} 
                 onClick={(e) => e.stopPropagation()}
@@ -51,7 +57,7 @@ const ENode = ({id, enode, markColor, selected = [], onMouseDown, focus = false,
             <svg width={width + MARK_LINEWIDTH*2 + lineWidth} height={height + MARK_LINEWIDTH*2 + lineWidth}> 
                 <circle cx={radius + MARK_LINEWIDTH + lineWidth/2} 
                     cy={radius + MARK_LINEWIDTH + lineWidth/2} r={radius} 
-                    fill={`rgba(0,0,0,${enode.shading})`}
+                    fill={shading==0? 'hsla(0,0%,0%,0)': `hsla(${bg.hue},${bg.sat - Math.floor(bg.sat*shading)}%,${bg.lgt - Math.floor(bg.lgt*shading)}%,1)`}
                     stroke={DEFAULT_COLOR} 
                     strokeWidth={lineWidth} 
                     strokeDasharray={enode.dash} />
