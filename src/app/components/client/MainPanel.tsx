@@ -263,13 +263,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if(points.length>0) {
             let counter = enodeCounter;
             const newNodes = points.map((point, i) => new ENodeRep('E'+counter++, point.x, point.y));
-            const nodes = [...enodes, ...newNodes];
             setEnodeCounter(counter);
-            setEnodes(nodes);
+            setEnodes(prevEnodes => {
+                const nodes = [...prevEnodes, ...newNodes];
+                setLimit(getLimit(nodes));                
+                return nodes});
             setPoints([]);
             setSelection(newNodes);
             setFocusItem(newNodes[newNodes.length-1]);
-            setLimit(getLimit(nodes));
         }
     }
 
@@ -301,7 +302,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
 
-    console.log(`Rendering... darMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
+    console.log(`Rendering... darkMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
         <div id='main-panel' className='pasi flex my-8 p-6'> 
@@ -310,7 +311,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         onMouseDown= {canvasMouseDown}>
                     {enodes.map((enode, i) => 
                         <ENode key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
-                            markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
+                            markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                             selected={getSelectPositions(enode)} 
                             focus={focusItem===enode} 
                             onMouseDown={itemMouseDown} />)}
@@ -386,7 +387,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         Copy Selection
                     </button> 
 
-                    <TabGroup className='flex-1'>
+                    <TabGroup className='flex-1 w-[275px]'>
                         <TabList className="grid grid-cols-3">
                             <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
                                 Editor
@@ -401,11 +402,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
                             <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                 {focusItem?
-                                    <ItemEditor item={focusItem} info={focusItem.getInfo()} 
+                                    <ItemEditor item={focusItem} info={focusItem.getInfo(focusItem instanceof ENodeRep? enodes: [])} 
                                         onChange={(e, i) => {
-                                            const fun = focusItem.handleEditing(e, i); 
-                                            selection.forEach(fun);
-                                            setPoints(prevPoints=>[...prevPoints])}} />
+                                            const [fun, applyToAll] = focusItem.handleEditing(e, i);
+                                            setEnodes(prevEnodes => applyToAll? 
+                                                selection.reduce((nodes, item) => fun(item, nodes) as ENodeRep[], prevEnodes):
+                                                fun(focusItem, prevEnodes) as ENodeRep[]); 
+                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes has been left unchanged                                   
+                                        }} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
                                         onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseInt(e.target.value)}))} 

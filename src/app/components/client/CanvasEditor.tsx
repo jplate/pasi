@@ -60,7 +60,7 @@ export interface LabelFieldProps {
     style?: string;
 }
 
-export const LabelField = ({label, style='py-1'}: LabelFieldProps) => {
+export const LabelField = ({label, style=''}: LabelFieldProps) => {
     return (
         <div className={clsx('block px-2 py-1 text-center tracking-wider', style)}>
             {label}

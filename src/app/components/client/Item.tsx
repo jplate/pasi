@@ -34,12 +34,14 @@ export default class Item {
         public dash: string = DEFAULT_DASH) {
     }
 
-    public getInfo(): Entry[] {
+    public getInfo(array: Item[]): Entry[] {
         return []
     }
 
-    public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): (item: Item) => void {
-        return (item: Item) => {}
+    public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
+        // The array is supposed to be an array of Items relevant for this specific Item's class. The function returned by handleEditing
+        // should take an Item and such an array, modify that Item if desired, and return a (possibly) modified version of the array.
+        return [(item: Item, array) => array, false]
     }
 }
 

@@ -23,7 +23,7 @@ section { /* We're going with slightly bigger font for the surrounding sections.
   font-size: 18px; 
 }
 
-p {
+p:not(.pasi p) {
     margin-bottom: 12px;
 }
 

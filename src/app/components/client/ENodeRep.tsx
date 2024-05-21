@@ -1,4 +1,5 @@
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Item.tsx'
+import clsx from 'clsx/lite'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_VALUE } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 
 export const DEFAULT_RADIUS = 10;
@@ -23,35 +24,52 @@ export default class ENodeRep extends Item {
         super(key, x, y);
     }
 
-    public override getInfo(): Entry[] {
+    public override getInfo(array: Item[]): Entry[] {
         return [
-            {type: 'number', label: 'X', value: this.x, min: 0, max: MAX_X, step: 0.1},
-            {type: 'number', label: 'Y', value: this.y, min: -MAX_Y, max: MAX_Y, step: 0.1},
-            {type: 'number', label: 'Radius', value: this.radius, min: 0, max: MAX_RADIUS, step: 1},
-            {type: 'number', label: 'Line width', value: this.lineWidth, min: 0, max: MAX_LINEWIDTH, step: 0.1},
-            {type: 'string', label: 'Line pattern', value: this.dash},
-            {type: 'number', label: 'Shading', value: this.shading, min: 0, max: 1, step: 0.1},
-            {type: 'label', label: '', style: 'flex-1'}, // a filler
-            {type: 'button', label: 'Defaults'}
+            /* 0 */{type: 'number input', text: 'X-coordinate', value: this.x, min: 0, max: MAX_X, step: 0.1},
+            /* 1 */{type: 'number input', text: 'Y-coordinate', value: this.y, min: -MAX_Y, max: MAX_Y, step: 0.1},
+            /* 2 */{type: 'number input', text: 'Radius', value: this.radius, min: 0, max: MAX_RADIUS, step: 1},
+            /* 3 */{type: 'number input', text: 'Line width', value: this.lineWidth, min: 0, max: MAX_LINEWIDTH, step: 0.1},
+            /* 4 */{type: 'string input', text: 'Stroke pattern', value: this.dash},
+            /* 5 */{type: 'number input', text: 'Shading', value: this.shading, min: 0, max: 1, step: 0.1},
+            /* 6 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque.)'},
+            /* 7 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), min: 0, max: MAX_VALUE, step: 1},
+            /* 8 */{type: 'label', text: '', style: 'flex-1'}, // a filler
+            /* 9 */{type: 'button', text: 'Defaults'}
         ]
     }
 
-    public override handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): (item: Item) => void {
+    public override handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
         switch(index) {
-            case 0: if(e) return (item) => {item.x = parseFloat(e.target.value)}; 
-            case 1: if(e) return (item) => {item.y = parseFloat(e.target.value)};
-            case 2: if(e) return (item) => {if(item instanceof ENodeRep) item.radius = parseFloat(e.target.value)}; 
-            case 3: if(e) return (item) => {item.lineWidth = parseFloat(e.target.value)};
-            case 4: if(e) return (item) => {item.dash = e.target.value};
-            case 5: if(e) return (item) => {item.shading = parseFloat(e.target.value)};
-            case 7: if(index==7) return (item) => {if(item instanceof ENodeRep) {
-                    this.radius = DEFAULT_RADIUS;
-                    this.lineWidth = DEFAULT_LINEWIDTH;
-                    this.dash = DEFAULT_DASH;
-                    this.shading = DEFAULT_SHADING;}};
+            case 0: if(e) return [(item, array) => {item.x = parseFloat(e.target.value); return array}, true]; 
+            case 1: if(e) return [(item, array) => {item.y = parseFloat(e.target.value); return array}, true];
+            case 2: if(e) return [(item, array) => {if(item instanceof ENodeRep) item.radius = parseFloat(e.target.value); return array}, true]; 
+            case 3: if(e) return [(item, array) => {item.lineWidth = parseFloat(e.target.value); return array}, true];
+            case 4: if(e) return [(item, array) => {item.dash = e.target.value; return array}, true];
+            case 5: if(e) return [(item, array) => {item.shading = parseFloat(e.target.value); return array}, true];
+            case 7: if(e) return [(item, array) => {
+                        const currentPos = array.indexOf(item);
+                        const newPos = parseInt(e.target.value);
+                        let result = array;
+                        if(newPos>currentPos && currentPos+1<array.length) { // move the item up in the Z-order (i.e., towards the end of the array), but only by one
+                            [result[currentPos], result[currentPos+1]] = [result[currentPos+1], result[currentPos]];
+                        } 
+                        else if(newPos<currentPos && currentPos>0) { // move the item down in the Z-order, but only by one
+                            [result[currentPos], result[currentPos-1]] = [result[currentPos-1], result[currentPos]];
+                        }
+                        return result;
+                    }, false];
+            case 9: if(index==9) return [(item, array) => {
+                        if(item instanceof ENodeRep) {
+                            this.radius = DEFAULT_RADIUS;
+                            this.lineWidth = DEFAULT_LINEWIDTH;
+                            this.dash = DEFAULT_DASH;
+                            this.shading = DEFAULT_SHADING;
+                        }
+                        return array}, true];
             default: 
                 console.log('Input element is null!  Index: '+index);
-                return (item) => {};        
+                return [(item, array) => array, false]        
        }
     }
 }

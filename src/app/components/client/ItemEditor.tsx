@@ -1,15 +1,15 @@
 import React from 'react'
-import clsx from 'clsx'
+import clsx from 'clsx/lite'
 import { basicColoredButtonClass } from './MainPanel.tsx'
 import { CheckBoxField, InputField, LabelField } from './CanvasEditor.tsx'
 import Item from './Item.tsx'
 
 
-export type Type = 'label' | 'boolean' | 'number' | 'string' | 'button';
+export type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button';
 
 export type Entry = {
     type: Type,
-    label: string,
+    text: string,
     value?: any,
     step?: number,
     min?: number,
@@ -18,7 +18,23 @@ export type Entry = {
 }
 
 
-interface ItemEditorProps {
+export interface GlossFieldProps {
+    text: string;
+    style?: string;
+}
+
+export const GlossField = ({text, style=''}: GlossFieldProps) => {
+    return (
+        <div className={clsx('block px-2 py-1 text-left text-sm', style)}>
+            <p>
+                {text}
+            </p>
+        </div>
+    )
+}
+
+
+export interface ItemEditorProps {
     item: Item,
     info: Entry[],
     onChange?: (e: React.ChangeEvent<HTMLInputElement> | null, index: number) => void,
@@ -34,20 +50,22 @@ const ItemEditor = ({item, info, onChange}: ItemEditorProps) => {
         <div className='flex flex-col h-full'>
             {info.map((entry, i)  => {
                return entry.type==='label'? (
-                        <LabelField key={i} label={entry.label} style={entry.style} />): 
-                    entry.type==='boolean'? (
-                        <CheckBoxField key={i} label={entry.label} style={entry.style} value={entry.value} 
+                        <LabelField key={i} label={entry.text} style={entry.style} />): 
+                    entry.type==='gloss'? (
+                        <GlossField key={i} text={entry.text} style={entry.style} />):
+                    entry.type==='checkbox'? (
+                        <CheckBoxField key={i} label={entry.text} style={entry.style} value={entry.value} 
                             onChange={() => handleChange(null, i)} />):
-                    entry.type==='number'? (
-                        <InputField key={i} label={entry.label} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
+                    entry.type==='number input'? (
+                        <InputField key={i} label={entry.text} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
                             onChange={(e) => handleChange(e, i)} />):
-                    entry.type==='string'? (
-                        <InputField key={i} type='string' label={entry.label} value={entry.value} 
+                    entry.type==='string input'? (
+                        <InputField key={i} type='string' label={entry.text} value={entry.value} 
                             onChange={(e) => handleChange(e, i)} />):
                     entry.type==='button'? (
                         <button key={i} className={clsx(basicColoredButtonClass, 'mx-1 rounded-lg', entry.style)} 
                                 onClick={() => handleChange(null, i)}>
-                            {entry.label}
+                            {entry.text}
                         </button>): ''})
             }
         </div>
