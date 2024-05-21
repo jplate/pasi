@@ -39,8 +39,8 @@ export default class Item {
     }
 
     public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
-        // The array is supposed to be an array of Items relevant for this specific Item's class. The function returned by handleEditing
-        // should take an Item and such an array, modify that Item if desired, and return a (possibly) modified version of the array.
+        // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
+        // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
         return [(item: Item, array) => array, false]
     }
 }

@@ -1,11 +1,11 @@
 import React from 'react'
 import clsx from 'clsx/lite'
 import { basicColoredButtonClass } from './MainPanel.tsx'
-import { CheckBoxField, InputField, LabelField } from './CanvasEditor.tsx'
+import { LabelField, GlossField, CheckBoxField, InputField } from './EditorComponents.tsx'
 import Item from './Item.tsx'
 
 
-export type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button';
+type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button';
 
 export type Entry = {
     type: Type,
@@ -17,24 +17,7 @@ export type Entry = {
     style?: string
 }
 
-
-export interface GlossFieldProps {
-    text: string;
-    style?: string;
-}
-
-export const GlossField = ({text, style=''}: GlossFieldProps) => {
-    return (
-        <div className={clsx('block px-2 py-1 text-left text-sm', style)}>
-            <p>
-                {text}
-            </p>
-        </div>
-    )
-}
-
-
-export interface ItemEditorProps {
+interface ItemEditorProps {
     item: Item,
     info: Entry[],
     onChange?: (e: React.ChangeEvent<HTMLInputElement> | null, index: number) => void,
