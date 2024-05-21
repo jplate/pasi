@@ -36,29 +36,22 @@ export default class ENodeRep extends Item {
         ]
     }
 
-    public override handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): void {
+    public override handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): (item: Item) => void {
         switch(index) {
-            case 0: if(e) {this.x = parseFloat(e.target.value); 
-                    break;}
-            case 1: if(e) {this.y = parseFloat(e.target.value);
-                    break;}
-            case 2: if(e) {this.radius = parseFloat(e.target.value); 
-                    break;}
-            case 3: if(e) {this.lineWidth = parseFloat(e.target.value);
-                    break;}
-            case 4: if(e) {this.dash = e.target.value;
-                    break;}
-            case 5: if(e) {this.shading = parseFloat(e.target.value);
-                    break;}
-            case 7: if(index==7) {
+            case 0: if(e) return (item) => {item.x = parseFloat(e.target.value)}; 
+            case 1: if(e) return (item) => {item.y = parseFloat(e.target.value)};
+            case 2: if(e) return (item) => {if(item instanceof ENodeRep) item.radius = parseFloat(e.target.value)}; 
+            case 3: if(e) return (item) => {item.lineWidth = parseFloat(e.target.value)};
+            case 4: if(e) return (item) => {item.dash = e.target.value};
+            case 5: if(e) return (item) => {item.shading = parseFloat(e.target.value)};
+            case 7: if(index==7) return (item) => {if(item instanceof ENodeRep) {
                     this.radius = DEFAULT_RADIUS;
                     this.lineWidth = DEFAULT_LINEWIDTH;
                     this.dash = DEFAULT_DASH;
-                    this.shading = DEFAULT_SHADING;
-                    break;}
+                    this.shading = DEFAULT_SHADING;}};
             default: 
                 console.log('Input element is null!  Index: '+index);
-        
+                return (item) => {};        
        }
     }
 }

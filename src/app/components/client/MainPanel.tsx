@@ -402,7 +402,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                 {focusItem?
                                     <ItemEditor item={focusItem} info={focusItem.getInfo()} 
-                                        onChange={(e, i) => {focusItem.handleEditing(e, i); setPoints(prevPoints=>[...prevPoints])}} />
+                                        onChange={(e, i) => {
+                                            const fun = focusItem.handleEditing(e, i); 
+                                            selection.forEach(fun);
+                                            setPoints(prevPoints=>[...prevPoints])}} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
                                         onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseInt(e.target.value)}))} 

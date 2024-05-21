@@ -38,7 +38,8 @@ export default class Item {
         return []
     }
 
-    public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): void {
+    public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): (item: Item) => void {
+        return (item: Item) => {}
     }
 }
 
