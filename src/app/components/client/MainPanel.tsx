@@ -278,7 +278,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newSelection = e.shiftKey? [...selection, ...pres]: pres;
                 }
                 setSelection(prevSelection => newSelection);
-                if(newSelection.length>0 && (!focusItem || !newSelection.includes(focusItem))) {
+                if(newSelection.length>0 && (!focusItem || !newSelection.includes(focusItem) || !e.shiftKey)) {
                     setFocusItem(newSelection[newSelection.length-1]);
                 } else if(newSelection.length==0) {
                     setFocusItem(null);
