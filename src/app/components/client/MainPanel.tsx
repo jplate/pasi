@@ -35,6 +35,9 @@ export const MARK_COLOR0_DARK_MODE = '#000000';
 export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
 export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
+export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)';
+export const LASSO_COLOR_DARK_MODE = 'rgba(0, 0, 0, 200)';
+export const LASSO_DASH = '2';
 
 export const DEFAULT_HGAP: number = 10;
 export const DEFAULT_VGAP: number = 10;
@@ -50,9 +53,11 @@ export const H = 638; // the height of the canvas; needed to convert screen coor
 const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
+const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)';
+const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)';
 
 
-export type Grid = {
+type Grid = {
     hGap: number,
     vGap: number,
     hShift: number,
@@ -60,7 +65,6 @@ export type Grid = {
     snapToContourCenters: boolean,
     snapToNodes: boolean
 }
-
 const createGrid = (hGap: number = DEFAULT_HGAP, 
         vGap: number = DEFAULT_VGAP, 
         hShift: number = DEFAULT_HSHIFT, 
@@ -70,11 +74,18 @@ const createGrid = (hGap: number = DEFAULT_HGAP,
     return {hGap, vGap, hShift, vShift, snapToContourCenters, snapToNodes};
 };
 
+class Lasso {
+    constructor(public x0: number, public y0: number, public x1: number, public y1: number, public deselect: boolean) {
+    }
+    contains(item: Item): boolean {
+        return item.getLeft() >= Math.min(this.x0, this.x1) && item.getLeft()+item.getWidth() <= Math.max(this.x0, this.x1) && 
+            H-item.getBottom() <= Math.max(this.y0, this.y1) && H-(item.getBottom()+item.getHeight()) >= Math.min(this.y0, this.y1);  
+    }
+}
 
-class DepItemLabel {   
-    
-    constructor(public label: string, public src: StaticImageData, public alt: string) {}
-    
+class DepItemLabel {       
+    constructor(public label: string, public src: StaticImageData, public alt: string) {
+    }    
     getImageComp(dark: boolean): React.ReactNode {
         return <NextImage src={this.src} alt={this.alt} width={28} 
             className={clsx('inline object-contain', (dark? 'filter invert sepia': ''))} />;    
@@ -123,6 +134,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
     const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
 
+    const [lasso, setLasso] = useState<Lasso | null>(null);
+    const lassoRef = useRef<Lasso | null>(null);
+    lassoRef.current = lasso;
+    const [preselection, setPreselection] = useState<Item[]>([]);
+    const preselectionRef = useRef<Item[]>([]);
+    preselectionRef.current = preselection;
+
 
     const getLimit = (nodes: ENode[]) => { // return the bottom-right-most limit of the nodes 
         let right = 0;
@@ -160,15 +178,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             console.log(`Error: Item ${item.key}, to be deselected, is not in selection!`);
         } else {
             console.log(`Deselecting; ${item.key}`);
-            if(focusItem===item && index==selection.indexOf(item)) {
+            const newSelection = selection.slice(0, index).concat(selection.slice(index+1));
+            if(focusItem && !newSelection.includes(focusItem)) {
                 setFocusItem(null);
             }
-            const newSelection = selection.slice(0, index).concat(selection.slice(index+1));
             setSelection(newSelection);
             return item;
         }
     }
-
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
@@ -223,23 +240,26 @@ const MainPanel = ({dark}: MainPanelProps) => {
         } 
     };
 
-    const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. The reason why we have to go through the trouble
+    const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. One reason why we have to go through the trouble
             // of effectively implementing a mouseClick handler is that, after dragging an item over the canvas, the mouse might end up being over the canvas instead of the item. If the mouse button 
             // is then released, this would normally cause a mouseClick event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
-        const { left, top } = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
-        const { scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
-        
+            // The other reason is that we need to add a mouseMoveListener to take care of 'lassoing'.
+        const {left, top} = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
+        const {scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
+        const x = e.clientX - left + scrollLeft;
+        const y = e.clientY - top + scrollTop;
+
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
+            canvasRef.current?.removeEventListener('mousemove', handleMouseMove);
+
             const dx = mue.clientX - e.clientX;
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
-                const x = e.clientX - left + scrollLeft;
-                const y = H-(e.clientY - top + scrollTop);
                 const newPoint = new Point(
                     x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
-                    y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap));
+                    H - y + grid.vGap/2 - ((H - y + grid.vGap/2 - grid.vShift) % grid.vGap));
                 if (!e.shiftKey) {
                     setPoints([newPoint]);
                     setSelection([]);
@@ -248,9 +268,52 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     let included = points.some(p => newPoint.key==p.key);
                     if (!included) setPoints(prevPoints => [...prevPoints, newPoint]);
                 }
+            } else { // in this case, we need to take care of the lasso, and either select or deselect items
+                let newSelection: Item[];
+                const pres = preselectionRef.current;
+                if(lassoRef.current?.deselect) {
+                    const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
+                    newSelection = selection.filter((item, index) => !toDeselect.includes(index));
+                } else {
+                    newSelection = e.shiftKey? [...selection, ...pres]: pres;
+                }
+                setSelection(prevSelection => newSelection);
+                if(newSelection.length>0 && (!focusItem || !newSelection.includes(focusItem))) {
+                    setFocusItem(newSelection[newSelection.length-1]);
+                } else if(newSelection.length==0) {
+                    setFocusItem(null);
+                }
             }
+
+            setPreselection([]);
+            setLasso(null);
         };
+
+        const handleMouseMove = (mme: MouseEvent) => {
+            const dx = mme.clientX - e.clientX;
+            const dy = mme.clientY - e.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if(dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
+                setPoints([]);
+                const lasso = new Lasso(x, y, x+dx, y+dy, e.ctrlKey);
+                let newPreselection = preselectionRef.current;
+                enodes.forEach((item: Item) => {
+                    if(lasso.contains(item) && !newPreselection.includes(item) && (!lasso.deselect || selection.includes(item))) {
+                        newPreselection = [...newPreselection, item];
+                    }
+                });
+                newPreselection.forEach(item => {
+                    const index = newPreselection.indexOf(item);
+                    if(!lasso.contains(item) && index>=0) {
+                        newPreselection = newPreselection.slice(0, index).concat(newPreselection.slice(index+1));               
+                    }                    
+                });
+                setPreselection(prevPreselection => newPreselection);
+                setLasso(prevLasso => lasso);
+            }
+        }
     
+        canvasRef.current?.addEventListener('mousemove', handleMouseMove);
         canvasRef.current?.addEventListener('mouseup', handleMouseUp);
     };
 
@@ -298,6 +361,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
 
     console.log(`Rendering... darkMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
+    //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
         <div id='main-panel' className='pasi flex my-8 p-6'> 
@@ -307,8 +371,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     {enodes.map((enode, i) => 
                         <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
                             markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
-                            selected={getSelectPositions(enode)} 
                             focus={focusItem===enode} 
+                            selected={getSelectPositions(enode)} 
+                            preselected={preselection.includes(enode)}
                             onMouseDown={itemMouseDown} />)}
                     {points.map(point => 
                         <PointComp key={point.key} x={point.x} y={point.y} 
@@ -318,10 +383,21 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
                         .focused polyline {'{'} opacity: 1; animation: oscillate 1.5s infinite {'}'}
                         .selected polyline {'{'} opacity: 1; {'}'}
+                        .preselected polyline {'{'} opacity: 0.65; {'}'}
                         .unselected polyline {'{'} opacity: 0; {'}'}
                         .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
-                    <PointComp key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} />
+                    {lasso && 
+                        <svg width={Math.abs(lasso.x1 - lasso.x0) + MARK_LINEWIDTH * 2} height={Math.abs(lasso.y1 - lasso.y0) + MARK_LINEWIDTH * 2} 
+                                style={{position: 'absolute', 
+                                    left: Math.min(lasso.x0, lasso.x1) - MARK_LINEWIDTH, 
+                                    top: Math.min(lasso.y0, lasso.y1) - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
+                            <rect x='1' y='1' width={Math.abs(lasso.x1 - lasso.x0)} height={Math.abs(lasso.y1 - lasso.y0)} 
+                                fill={lasso.deselect? (dark? lassoDeselectDark: lassoDeselectLight): 'none'}
+                                stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
+                        </svg>
+                    }
+                    <PointComp key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} /> {/* The limiting point, needed to block automatic adjustment of canvas scrollbars during dragging */}
                 </div>
                 <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
                 </div>

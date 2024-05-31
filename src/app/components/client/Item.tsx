@@ -27,7 +27,8 @@ export const DEFAULT_DIRECTION = COUNTERCLOCKWISE;
 
 export default class Item {
     constructor(public key: string, 
-        public x: number, public y: number,   // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
+        public x: number, // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
+        public y: number,   
         public lineWidth: number = DEFAULT_LINEWIDTH, 
         public altLineWidth: number = DEFAULT_ALT_LINEWIDTH,
         public shading: number = DEFAULT_SHADING,
@@ -42,6 +43,22 @@ export default class Item {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
         return [(item: Item, array) => array, false]
+    }
+
+    public getWidth() {
+        return 0;
+    }
+
+    public getHeight() {
+        return 0;
+    }
+
+    public getLeft() {
+        return this.x;
+    }
+    
+    public getBottom() {
+        return this.y;
     }
 }
 

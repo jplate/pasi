@@ -25,6 +25,22 @@ export default class ENode extends Item {
         super(key, x, y);
     }
 
+    public override getWidth() {
+        return this.radius * 2;
+    }
+
+    public override getHeight() {
+        return this.radius * 2;
+    }
+
+    public override getLeft() {
+        return this.x - this.radius;
+    }
+
+    public override getBottom() {
+        return this.y - this.radius;
+    }
+
     public override getInfo(array: Item[]): Entry[] {
         return [
             /* 0 */{type: 'number input', text: 'X-coordinate', value: this.x, min: 0, max: MAX_X, step: 0.1},
@@ -77,9 +93,9 @@ export default class ENode extends Item {
 
 
 export interface HSL {
-    hue: number;
-    sat: number;
-    lgt: number;
+    hue: number
+    sat: number
+    lgt: number
 }
 
 export interface ENodeProps {
@@ -87,13 +103,14 @@ export interface ENodeProps {
     enode: ENode
     bg: HSL
     markColor: string
-    selected: number[]
-    onMouseDown: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     focus: boolean
+    selected: number[]
+    preselected: boolean
+    onMouseDown: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, bg, markColor, selected = [], onMouseDown, focus = false, hidden = false }: ENodeProps) => {
+export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = [], preselected = false, onMouseDown, hidden = false }: ENodeProps) => {
 
     const x = enode.x
     const y = enode.y
@@ -119,7 +136,7 @@ export const ENodeComp = ({ id, enode, bg, markColor, selected = [], onMouseDown
     console.log(`Rendering ${id}...`)
 
     return (
-        <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : 'unselected'}
+        <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={handleMouseDown}
             style={{
