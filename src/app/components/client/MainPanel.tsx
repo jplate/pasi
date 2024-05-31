@@ -57,7 +57,7 @@ const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)';
 const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)';
 
 
-type Grid = {
+export type Grid = {
     hGap: number,
     vGap: number,
     hShift: number,
