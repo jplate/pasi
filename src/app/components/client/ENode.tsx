@@ -107,10 +107,12 @@ export interface ENodeProps {
     selected: number[]
     preselected: boolean
     onMouseDown: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseEnter: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseLeave: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = [], preselected = false, onMouseDown, hidden = false }: ENodeProps) => {
+export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = [], preselected = false, onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeProps) => {
 
     const x = enode.x
     const y = enode.y
@@ -129,16 +131,14 @@ export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = 
     const l = Math.min(Math.max(5, mW / 5), 25)
     const m = hidden ? 0.9 * l : 0
 
-    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-        onMouseDown(enode, e)
-    }
-
     console.log(`Rendering ${id}...`)
 
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
             onClick={(e) => e.stopPropagation()}
-            onMouseDown={handleMouseDown}
+            onMouseDown={(e) => onMouseDown(enode, e)}
+            onMouseEnter={(e) => onMouseEnter(enode, e)}
+            onMouseLeave={(e) => onMouseLeave(enode, e)}
             style={{
                 position: 'absolute',
                 left: `${x - radius - MARK_LINEWIDTH - lineWidth / 2}px`,

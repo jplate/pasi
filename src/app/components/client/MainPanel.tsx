@@ -78,8 +78,8 @@ class Lasso {
     constructor(public x0: number, public y0: number, public x1: number, public y1: number, public deselect: boolean) {
     }
     contains(item: Item): boolean {
-        return item.getLeft() >= Math.min(this.x0, this.x1) && item.getLeft()+item.getWidth() <= Math.max(this.x0, this.x1) && 
-            H-item.getBottom() <= Math.max(this.y0, this.y1) && H-(item.getBottom()+item.getHeight()) >= Math.min(this.y0, this.y1);  
+        return item.getLeft() >= this.x0 && item.getLeft()+item.getWidth() <= this.x1 && 
+            H-item.getBottom() <= this.y1 && H-(item.getBottom()+item.getHeight()) >= this.y0;  
     }
 }
 
@@ -135,8 +135,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
 
     const [lasso, setLasso] = useState<Lasso | null>(null);
-    const lassoRef = useRef<Lasso | null>(null);
-    lassoRef.current = lasso;
     const [preselection, setPreselection] = useState<Item[]>([]);
     const preselectionRef = useRef<Item[]>([]);
     preselectionRef.current = preselection;
@@ -173,18 +171,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     const deselect = (item: Item) => {
-        const index = selection.lastIndexOf(item);
-        if(index<0) {
-            console.log(`Error: Item ${item.key}, to be deselected, is not in selection!`);
-        } else {
-            console.log(`Deselecting; ${item.key}`);
-            const newSelection = selection.slice(0, index).concat(selection.slice(index+1));
+        setSelection(prev => {
+            const newSelection = prev.filter(it => it!==item);
             if(focusItem && !newSelection.includes(focusItem)) {
                 setFocusItem(null);
             }
-            setSelection(newSelection);
-            return item;
-        }
+            return newSelection
+        });
+        return item;
     }
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
@@ -240,6 +234,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
         } 
     };
 
+    const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
+        setPreselection(prev => prev.includes(item)? prev: [...prev, item]);
+    }
+
+    const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
+        setPreselection(prev => prev.filter(it => it!==item));
+    }
+
     const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. One reason why we have to go through the trouble
             // of effectively implementing a mouseClick handler is that, after dragging an item over the canvas, the mouse might end up being over the canvas instead of the item. If the mouse button 
             // is then released, this would normally cause a mouseClick event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
@@ -265,22 +267,23 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     setSelection([]);
                     setFocusItem(null);
                 } else {
-                    let included = points.some(p => newPoint.key==p.key);
+                    const included = points.some(p => newPoint.key==p.key);
                     if (!included) setPoints(prevPoints => [...prevPoints, newPoint]);
                 }
             } else { // in this case, we need to take care of the lasso, and either select or deselect items
                 let newSelection: Item[];
                 const pres = preselectionRef.current;
-                if(lassoRef.current?.deselect) {
+                const deselect = e.ctrlKey;
+                if(deselect) {
                     const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
                     newSelection = selection.filter((item, index) => !toDeselect.includes(index));
                 } else {
                     newSelection = e.shiftKey? [...selection, ...pres]: pres;
                 }
-                setSelection(prevSelection => newSelection);
-                if(newSelection.length>0 && (!focusItem || !newSelection.includes(focusItem) || !e.shiftKey)) {
+                setSelection(prev => newSelection);
+                if(newSelection.length>0 && (!focusItem || (!e.shiftKey && !deselect))) {
                     setFocusItem(newSelection[newSelection.length-1]);
-                } else if(newSelection.length==0) {
+                } else if(newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
                     setFocusItem(null);
                 }
             }
@@ -295,20 +298,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
                 setPoints([]);
-                const lasso = new Lasso(x, y, x+dx, y+dy, e.ctrlKey);
-                let newPreselection = preselectionRef.current;
-                enodes.forEach((item: Item) => {
-                    if(lasso.contains(item) && !newPreselection.includes(item) && (!lasso.deselect || selection.includes(item))) {
-                        newPreselection = [...newPreselection, item];
-                    }
-                });
-                newPreselection.forEach(item => {
-                    const index = newPreselection.indexOf(item);
-                    if(!lasso.contains(item) && index>=0) {
-                        newPreselection = newPreselection.slice(0, index).concat(newPreselection.slice(index+1));               
-                    }                    
-                });
-                setPreselection(prevPreselection => newPreselection);
+                const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), e.ctrlKey);
+                setPreselection(prev => [
+                    ...prev.filter(item => lasso.contains(item)),
+                    ...enodes.filter(item => 
+                        lasso.contains(item) && !prev.includes(item) && (!lasso.deselect || selection.includes(item)))]);
                 setLasso(prevLasso => lasso);
             }
         }
@@ -374,25 +368,26 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             focus={focusItem===enode} 
                             selected={getSelectPositions(enode)} 
                             preselected={preselection.includes(enode)}
-                            onMouseDown={itemMouseDown} />)}
+                            onMouseDown={itemMouseDown}
+                            onMouseEnter={itemMouseEnter} 
+                            onMouseLeave={itemMouseLeave} />)}
                     {points.map(point => 
                         <PointComp key={point.key} x={point.x} y={point.y} 
                             markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
                     <style> {/* we're using polylines for the 'mark borders' of items */}
                         @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
                         polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
-                        .focused polyline {'{'} opacity: 1; animation: oscillate 1.5s infinite {'}'}
+                        .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
                         .selected polyline {'{'} opacity: 1; {'}'}
-                        .preselected polyline {'{'} opacity: 0.65; {'}'}
+                        .preselected polyline {'{'} opacity: 0.65; transition: 0.15s; {'}'}
                         .unselected polyline {'{'} opacity: 0; {'}'}
-                        .unselected:hover polyline {'{'} opacity: 0.65; transition: 0.3s; {'}'}
                     </style>
                     {lasso && 
-                        <svg width={Math.abs(lasso.x1 - lasso.x0) + MARK_LINEWIDTH * 2} height={Math.abs(lasso.y1 - lasso.y0) + MARK_LINEWIDTH * 2} 
+                        <svg width={lasso.x1 - lasso.x0 + MARK_LINEWIDTH * 2} height={lasso.y1 - lasso.y0 + MARK_LINEWIDTH * 2} 
                                 style={{position: 'absolute', 
-                                    left: Math.min(lasso.x0, lasso.x1) - MARK_LINEWIDTH, 
-                                    top: Math.min(lasso.y0, lasso.y1) - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
-                            <rect x='1' y='1' width={Math.abs(lasso.x1 - lasso.x0)} height={Math.abs(lasso.y1 - lasso.y0)} 
+                                    left: lasso.x0 - MARK_LINEWIDTH, 
+                                    top: lasso.y0 - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
+                            <rect x='1' y='1' width={lasso.x1 - lasso.x0} height={lasso.y1 - lasso.y0} 
                                 fill={lasso.deselect? (dark? lassoDeselectDark: lassoDeselectLight): 'none'}
                                 stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
                         </svg>
