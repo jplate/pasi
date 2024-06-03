@@ -36,38 +36,39 @@ export const H = 638; // the height of the canvas; needed to convert screen coor
 export const MAX_X = 9999 // the highest possible TeX coordinate for an Item
 export const MIN_Y = H-9999 // the lowest possible TeX coordinate for an Item 
 
-export const MARK_COLOR0_LIGHT_MODE = '#8877bb';
-export const MARK_COLOR0_DARK_MODE = '#000000';
-export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
-export const MARK_COLOR1_DARK_MODE = '#000000';
-export const MARK_LINEWIDTH = 1.0;
-export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)';
-export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)';
-export const LASSO_DASH = '2';
+export const MARK_COLOR0_LIGHT_MODE = '#8877bb'
+export const MARK_COLOR0_DARK_MODE = '#000000'
+export const MARK_COLOR1_LIGHT_MODE = '#b0251a'
+export const MARK_COLOR1_DARK_MODE = '#000000'
+export const MARK_LINEWIDTH = 1.0
+export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)'
+export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)'
+export const LASSO_DASH = '2'
+export const LIMIT_POINT_OFFSET = 20
 
-export const DEFAULT_HGAP = 10;
-export const DEFAULT_VGAP = 10;
-export const MIN_GAP = 1;
-export const MAX_GAP = 255;
-export const DEFAULT_HSHIFT = 0;
-export const DEFAULT_VSHIFT = 0;
-export const MIN_SHIFT = 0;
-export const MAX_SHIFT = 255;
-export const DEFAULT_HDISPLACEMENT = 20;
-export const DEFAULT_VDISPLACEMENT = 0;
-export const MIN_DISPLACEMENT = 0;
-export const MAX_DISPLACEMENT = 255;
+export const DEFAULT_HGAP = 10
+export const DEFAULT_VGAP = 10
+export const MIN_GAP = 1
+export const MAX_GAP = 255
+export const DEFAULT_HSHIFT = 0
+export const DEFAULT_VSHIFT = 0
+export const MIN_SHIFT = 0
+export const MAX_SHIFT = 255
+export const DEFAULT_HDISPLACEMENT = 20
+export const DEFAULT_VDISPLACEMENT = 0
+export const MIN_DISPLACEMENT = 0
+export const MAX_DISPLACEMENT = 255
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 
-export const CONTOUR_CENTER_SNAP_RADIUS = 10;
-export const CONTOUR_NODE_SNAP_RADIUS = 15;
+export const CONTOUR_CENTER_SNAP_RADIUS = 10
+export const CONTOUR_NODE_SNAP_RADIUS = 15
 
-const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
+const CANVAS_CLICK_THRESHOLD = 3 // For determining when a mouseUp is a mouseClick
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
-const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)';
-const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)';
+const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)'
+const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)'
 
 export const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
     'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
@@ -147,7 +148,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [enodeCounter, setEnodeCounter] = useState(0); // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
-    const [limit, setLimit] = useState<Point>(new Point(0,0)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+    const [limit, setLimit] = useState<Point>(new Point(0,H)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
 
     const [grid, setGrid] = useState(createGrid());
     const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
@@ -162,11 +163,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [rotation, setRotation] = useState(0);
     const [scaling, setScaling] = useState(100); // default is 100%
     const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
+    const [hFlipPossible, setHFlipPossible] = useState(true); 
+    const [vFlipPossible, setVFlipPossible] = useState(true); 
     const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT});
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
 
 
-    useEffect(() => { // record the origin, and reset the transformations if necessary
+    useEffect(() => { // record the origin, and reset the transformations if necessary. Also update hFlipPossible and vFlipPossible.
         const {x, y} = points.length>0? points[points.length-1]: 
             focusItem?? selection.length>0? selection[selection.length-1]: {x: 0, y: 0};
         if(x!==origin.x || y!==origin.y) {
@@ -174,6 +177,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
             origin.y = y;
             if(rotation!==0 || scaling!==100) resetTransform();
         }
+        const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
+        setHFlipPossible(prev => !deduplicatedSelection.some(item => {
+            const x = 2*origin.x - item.x; // simulate hFlip on item
+            return x<0 || x>MAX_X
+        }));
+        setVFlipPossible(prev => !deduplicatedSelection.some(item => {
+            const y = 2*origin.y - item.y; // simulate vFlip on item
+            return y<MIN_Y || y>H
+        }));
     }, [points, focusItem, selection]);
 
     const resetTransform = () => {
@@ -188,15 +200,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
         });
     }
 
-    const getLimit = (nodes: ENode[]) => { // return the bottom-right-most limit of the nodes 
+    const adjustLimit = (nodes: ENode[] = enodes) => {
         let right = 0;
-        let bottom = 0;
+        let bottom = H;
         nodes.forEach((enode) => {
             if(enode.x > right) right = enode.x;
-            if(enode.y > bottom) bottom = enode.y;
+            if(enode.y < bottom) bottom = enode.y;
         });
-        return new Point(right, bottom);
+        const newLimit = new Point(right, bottom);
+        if(limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
     }
+
 
     const getSelectPositions = (item: Item, array = selection) => {
         let result: number[] = [];
@@ -249,7 +263,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const startY = e.clientY - (H-item.y); 
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
-                const yMinD = (H-item.y) - selectionWithoutDuplicates.reduce((min, it) => (H-it.y)<min? it.y: min, H-item.y); // y-distance to the top-most selected item
+                const yMinD = (H-item.y) - selectionWithoutDuplicates.reduce((min, it) => (H-it.y)<min? (H-it.y): min, H-item.y); // y-distance to the top-most selected item
                 
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
@@ -268,8 +282,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
-                    const newLimit = getLimit(enodes);
-                    if(limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
+                    adjustLimit(enodes);
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -366,7 +379,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setEnodeCounter(counter);
             setEnodes(prevEnodes => {
                 const nodes = [...prevEnodes, ...newNodes];
-                setLimit(getLimit(nodes));                
+                adjustLimit(nodes);  
                 return nodes});
             setPoints([]);
             setSelection(newNodes);
@@ -384,7 +397,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setEnodes(nodes);
             setSelection([]);
             setFocusItem(null);
-            setLimit(getLimit(nodes));
+            adjustLimit(nodes);
         }
     }
 
@@ -496,7 +509,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
                         </svg>
                     }
-                    <PointComp key={limit.key} x={limit.x + 20} y={limit.y + 20} markColor='red' visible={false} /> {/* The limiting point, needed to block automatic adjustment of canvas scrollbars during dragging */}
+                    {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
+                    <PointComp key={limit.key} x={limit.x + LIMIT_POINT_OFFSET} y={limit.y - LIMIT_POINT_OFFSET} markColor='red' visible={false} /> 
                 </div>
                 <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
                 </div>
@@ -582,7 +596,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             setEnodes(prevEnodes => applyToAll? 
                                                 deduplicatedSelection.reduce((nodes, item) => edit(item, nodes) as ENode[], prevEnodes):
                                                 edit(focusItem, prevEnodes) as ENode[]); 
-                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes has been left unchanged                                   
+                                            adjustLimit();
+                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes and limit have been left unchanged                                   
                                         }} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
@@ -602,7 +617,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 }
                             </TabPanel>
                             <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
-                                <TransformTab rotation={rotation} scaling={scaling} logIncrements={logIncrements} transformFlags={transformFlags}
+                                <TransformTab rotation={rotation} scaling={scaling} hFlipPossible={hFlipPossible} vFlipPossible={vFlipPossible} 
+                                    logIncrements={logIncrements} transformFlags={transformFlags}
                                     testRotation={(increment, newValue) => {
                                         const angle = -increment; // clockwise rotation
                                         for(const item of deduplicatedSelection) {
@@ -618,6 +634,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
                                             ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
                                         });
+                                        adjustLimit();
                                         setRotation(newValue);
                                     }}
                                     testScaling={val => {
@@ -648,35 +665,24 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
                                             if(transformFlags.scaleLinewidths) item.lineWidth = item.lineWidth100 * newValue/100;
                                             if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
-                                        });  
+                                        }); 
+                                        adjustLimit();
                                         setScaling(newValue);
-                                    }}
-                                    testHFlip={() => {
-                                        for(const item of deduplicatedSelection) {
-                                            const x = 2*origin.x - item.x;
-                                            if(x<0 || x>MAX_X) return false
-                                        }
-                                        return true;
                                     }}
                                     hFlip={() => {
                                         deduplicatedSelection.forEach(item => {
                                             item.x = 2*origin.x - item.x;
                                             item.x100 = 2*origin.x - item.x100;
                                         });
+                                        adjustLimit();
                                         setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                   
-                                    }}
-                                    testVFlip={() => {
-                                        for(const item of deduplicatedSelection) {
-                                            const y = 2*origin.y - item.y;
-                                            if(y<MIN_Y || y>H) return false
-                                        }
-                                        return true;
                                     }}
                                     vFlip={() => {
                                         deduplicatedSelection.forEach(item => {
                                             item.y = 2*origin.y - item.y;
                                             item.y100 = 2*origin.y - item.y100;
                                         });
+                                        adjustLimit();
                                         setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                  
                                     }} />
                             </TabPanel>

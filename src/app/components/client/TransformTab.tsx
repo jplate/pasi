@@ -25,6 +25,8 @@ const getNewValue = (prev: number, input: number, logIncrement: number) => {
 interface TransformTabProps {
     rotation: number
     scaling: number
+    hFlipPossible: boolean
+    vFlipPossible: boolean
     transformFlags: {
         scaleArrowheads: boolean
         scaleENodes: boolean
@@ -40,14 +42,12 @@ interface TransformTabProps {
     rotate: (increment: number, newAngle: number) => void // ...new value to be shown in the input field.        
     testScaling: (newScaling: number) => boolean
     scale: (newScaling: number) => void 
-    testHFlip: () => boolean
     hFlip: () => void
-    testVFlip: () => boolean
     vFlip: () => void
 }
 
-const TransformTab = ({rotation, scaling, logIncrements, transformFlags,
-        testRotation, rotate, testScaling, scale, testHFlip, hFlip, testVFlip, vFlip}: TransformTabProps) => {  
+const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncrements, transformFlags,
+        testRotation, rotate, testScaling, scale, hFlip, vFlip}: TransformTabProps) => {  
             
     const [, setRotationIncrement] = useState(logIncrements.rotate);
     const [, setScalingIncrement] = useState(logIncrements.scale);
@@ -100,10 +100,10 @@ const TransformTab = ({rotation, scaling, logIncrements, transformFlags,
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 
                     setScalingIncrement(prev => logIncrements.scale = validInt(e.target.value, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT))
             } />
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-3 rounded-lg')} disabled={!testHFlip()} onClick={hFlip}>
+            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-3 rounded-lg')} disabled={!hFlipPossible} onClick={hFlip}>
                 Horizontal Flip
             </button>
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-2 mb-3 rounded-lg')} disabled={!testVFlip} onClick={vFlip}>
+            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-2 mb-3 rounded-lg')} disabled={!vFlipPossible} onClick={vFlip}>
                 Vertical Flip
             </button>
             <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={() => 
