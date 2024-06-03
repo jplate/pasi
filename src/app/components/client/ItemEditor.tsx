@@ -1,7 +1,7 @@
 import React from 'react'
 import clsx from 'clsx/lite'
 import { basicColoredButtonClass } from './MainPanel.tsx'
-import { LabelField, GlossField, CheckBoxField, InputField } from './EditorComponents.tsx'
+import { LabelField, GlossField, CheckBoxField, InputField, Width } from './EditorComponents.tsx'
 import Item from './Item.tsx'
 
 
@@ -14,7 +14,8 @@ export type Entry = {
     step?: number,
     min?: number,
     max?: number,
-    style?: string
+    style?: string,
+    width?: Width,
 }
 
 interface ItemEditorProps {
@@ -40,13 +41,13 @@ const ItemEditor = ({item, info, onChange}: ItemEditorProps) => {
                         <CheckBoxField key={i} label={entry.text} style={entry.style} value={entry.value} 
                             onChange={() => handleChange(null, i)} />):
                     entry.type==='number input'? (
-                        <InputField key={i} label={entry.text} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
+                        <InputField key={i} label={entry.text} width={entry.width} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
                             onChange={(e) => handleChange(e, i)} />):
                     entry.type==='string input'? (
-                        <InputField key={i} type='string' label={entry.text} value={entry.value} 
+                        <InputField key={i} type='string' label={entry.text} width={entry.width} value={entry.value} 
                             onChange={(e) => handleChange(e, i)} />):
                     entry.type==='button'? (
-                        <button key={i} className={clsx(basicColoredButtonClass, 'mx-1 rounded-lg', entry.style)} 
+                        <button key={i} className={clsx(basicColoredButtonClass, 'mx-2 rounded-lg', entry.style)} 
                                 onClick={() => handleChange(null, i)}>
                             {entry.text}
                         </button>): ''})

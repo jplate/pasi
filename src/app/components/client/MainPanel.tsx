@@ -1,17 +1,19 @@
-import React, {useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, { StaticImageData } from 'next/image'
 import Tippy from '@tippyjs/react'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
+import 'tippy.js/themes/translucent.css'
 import clsx from 'clsx/lite'
 
-import Item from './Item.tsx'
-import { CheckBoxField } from './EditorComponents.tsx'
+import Item, { MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './Item.tsx'
+import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
-import ENode, { ENodeComp } from './ENode.tsx'
+import TransformTab from './TransformTab.tsx'
+import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
@@ -30,25 +32,36 @@ import rstSrc from '../../../icons/rst.png'
 import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
+export const H = 638; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
+export const MAX_X = 9999 // the highest possible TeX coordinate for an Item
+export const MIN_Y = H-9999 // the lowest possible TeX coordinate for an Item 
+
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb';
 export const MARK_COLOR0_DARK_MODE = '#000000';
 export const MARK_COLOR1_LIGHT_MODE = '#b0251a';
 export const MARK_COLOR1_DARK_MODE = '#000000';
 export const MARK_LINEWIDTH = 1.0;
 export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)';
-export const LASSO_COLOR_DARK_MODE = 'rgba(0, 0, 0, 200)';
+export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)';
 export const LASSO_DASH = '2';
 
-export const DEFAULT_HGAP: number = 10;
-export const DEFAULT_VGAP: number = 10;
-export const DEFAULT_HSHIFT: number = 0;
-export const DEFAULT_VSHIFT: number = 0;
+export const DEFAULT_HGAP = 10;
+export const DEFAULT_VGAP = 10;
+export const MIN_GAP = 1;
+export const MAX_GAP = 255;
+export const DEFAULT_HSHIFT = 0;
+export const DEFAULT_VSHIFT = 0;
+export const MIN_SHIFT = 0;
+export const MAX_SHIFT = 255;
 export const DEFAULT_HDISPLACEMENT = 20;
 export const DEFAULT_VDISPLACEMENT = 0;
+export const MIN_DISPLACEMENT = 0;
+export const MAX_DISPLACEMENT = 255;
+const DEFAULT_ROTATION_LOG_INCREMENT = 1
+const DEFAULT_SCALING_LOG_INCREMENT = 1
 
-export const CONTOUR_CENTER_SNAP_RADIUS: number = 10;
-export const CONTOUR_NODE_SNAP_RADIUS: number = 15;
-export const H = 638; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
+export const CONTOUR_CENTER_SNAP_RADIUS = 10;
+export const CONTOUR_NODE_SNAP_RADIUS = 15;
 
 const CANVAS_CLICK_THRESHOLD = 3; // For determining when a mouseUp is a mouseClick
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
@@ -56,6 +69,12 @@ const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65}
 const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)';
 const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)';
 
+export const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
+    'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
+    'focus:outline-none focus:ring-1');
+
+export const basicColoredButtonClass = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
+    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
 
 export type Grid = {
     hGap: number,
@@ -139,6 +158,35 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const preselectionRef = useRef<Item[]>([]);
     preselectionRef.current = preselection;
 
+    const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0); // canvas editor is default
+    const [rotation, setRotation] = useState(0);
+    const [scaling, setScaling] = useState(100); // default is 100%
+    const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
+    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT});
+    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
+
+
+    useEffect(() => { // record the origin, and reset the transformations if necessary
+        const {x, y} = points.length>0? points[points.length-1]: 
+            focusItem?? selection.length>0? selection[selection.length-1]: {x: 0, y: 0};
+        if(x!==origin.x || y!==origin.y) {
+            origin.x = x;
+            origin.y = y;
+            if(rotation!==0 || scaling!==100) resetTransform();
+        }
+    }, [points, focusItem, selection]);
+
+    const resetTransform = () => {
+        setRotation(0);
+        setScaling(100);
+        enodes.forEach(item => { // resetting the items for new scaling (if it should come to that)
+            item.x100 = item.x;
+            item.y100 = item.y;
+            item.radius100 = item.radius;
+            item.lineWidth100 = item.lineWidth;
+            item.dash100 = item.dash;
+        });
+    }
 
     const getLimit = (nodes: ENode[]) => { // return the bottom-right-most limit of the nodes 
         let right = 0;
@@ -212,16 +260,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const dx = newX + grid.hGap/2 - ((newX + grid.hGap/2 - grid.hShift) % grid.hGap) - item.x;
                     const dy = newY + grid.vGap/2 - ((newY + grid.vGap/2 - grid.vShift) % grid.vGap) - item.y;
                     // Finally, we move each item in the selection:
-                    selectionWithoutDuplicates.forEach(item => {
-                        item.x += dx;
-                        item.y += dy;
-                    });
-                    setPoints(prevPoints => [...prevPoints]); // We're triggering a re-render with the points array, which should be relatively cheap.
+                    if(dx!==0 || dy!==0) {
+                        selectionWithoutDuplicates.forEach(item => item.move(dx, dy));
+                        setPoints(prevPoints => [...prevPoints]); // We're triggering a re-render with the points array, which should be relatively cheap.
+                    }
                 };            
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
-                    setLimit(getLimit(enodes)); // set the new bottom-right limit
+                    const newLimit = getLimit(enodes);
+                    if(limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -281,7 +329,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newSelection = e.shiftKey? [...selection, ...pres]: pres;
                 }
                 setSelection(prev => newSelection);
-                if(newSelection.length>0 && (!focusItem || (!e.shiftKey && !deselect))) {
+                if(newSelection.length>0 && (!focusItem || !deselect)) {
                     setFocusItem(newSelection[newSelection.length-1]);
                 } else if(newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
                     setFocusItem(null);
@@ -340,6 +388,62 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
+    /**
+     * Rotates a point around another point by a given angle.
+     * 
+     * @param px - The x-coordinate of the point to rotate.
+     * @param py - The y-coordinate of the point to rotate.
+     * @param cx - The x-coordinate of the center of rotation.
+     * @param cy - The y-coordinate of the center of rotation.
+     * @param angle - The rotation angle in degrees.
+     * @returns The new coordinates {x, y} of the rotated point.
+     */
+    const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number): { x: number, y: number } => {
+        // Convert angle from degrees to radians
+        const radians: number = angle * Math.PI / 180;
+
+        // Translate point to origin
+        const translatedX: number = px - cx;
+        const translatedY: number = py - cy;
+
+        // Rotate point
+        const rotatedX: number = translatedX * Math.cos(radians) - translatedY * Math.sin(radians);
+        const rotatedY: number = translatedX * Math.sin(radians) + translatedY * Math.cos(radians);
+
+        // Translate point back
+        const finalX: number = rotatedX + cx;
+        const finalY: number = rotatedY + cy;
+
+        return { x: finalX, y: finalY };
+    }
+    
+    /**
+     * Scales a point around a specified origin by a given scale factor.
+     * 
+     * @param px - The x-coordinate of the point to scale.
+     * @param py - The y-coordinate of the point to scale.
+     * @param ox - The x-coordinate of the origin point.
+     * @param oy - The y-coordinate of the origin point.
+     * @param scaleFactor - The factor by which to scale the point.
+     * @returns The new coordinates {x, y} of the scaled point.
+     */
+    const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number, y: number } => {
+        // Translate point to the origin
+        const translatedX = px - ox;
+        const translatedY = py - oy;
+
+        // Scale the point
+        const scaledX = translatedX * scaleFactor;
+        const scaledY = translatedY * scaleFactor;
+
+        // Translate point back
+        const finalX = scaledX + ox;
+        const finalY = scaledY + oy;
+
+        return { x: finalX, y: finalY };
+    }
+
+    const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
     // The standard button:
     const btnClassName1 = clsx(basicColoredButtonClass, 'rounded-xl');
@@ -349,7 +453,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50', 
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 disabled:opacity-50', 
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
@@ -453,17 +557,21 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         Copy Selection
                     </button> 
 
-                    <TabGroup className='flex-1 w-[275px]'>
+                    <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
                         <TabList className="grid grid-cols-3">
                             <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
                                 Editor
                             </Tab>
-                            <Tab key='transform-tab' className={tabClassName}>
-                                Transform
-                            </Tab>
-                            <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')}>
-                                Groups
-                            </Tab>
+                            <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Transform selection'>
+                                <Tab key='transform-tab' className={tabClassName} disabled={!focusItem}>
+                                    Transform
+                                </Tab>
+                            </Tippy>
+                            <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Manage groups'>
+                                <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')} disabled={!focusItem}>
+                                    Groups
+                                </Tab>
+                            </Tippy>
                         </TabList>
                         <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
                             <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
@@ -472,20 +580,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         onChange={(e, i) => {
                                             const [edit, applyToAll] = focusItem.handleEditing(e, i);
                                             setEnodes(prevEnodes => applyToAll? 
-                                                selection.reduce((nodes, item) => edit(item, nodes) as ENode[], prevEnodes):
+                                                deduplicatedSelection.reduce((nodes, item) => edit(item, nodes) as ENode[], prevEnodes):
                                                 edit(focusItem, prevEnodes) as ENode[]); 
                                             setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes has been left unchanged                                   
                                         }} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
-                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: parseFloat(e.target.value)}))} 
-                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: parseFloat(e.target.value)}))} 
-                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: parseFloat(e.target.value)}))} 
-                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: parseFloat(e.target.value)}))} 
+                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
+                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
                                         onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
                                         onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
-                                        onHDispChange={(e) => setHDisplacement(parseFloat(e.target.value))} 
-                                        onVDispChange={(e) => setVDisplacement(parseFloat(e.target.value))} 
+                                        onHDispChange={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                        onVDispChange={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
                                         onReset={() => {
                                             setGrid(createGrid());
                                             setHDisplacement(DEFAULT_HDISPLACEMENT);
@@ -493,10 +601,70 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         }} />
                                 }
                             </TabPanel>
-                            <TabPanel key='transform-panel' className="rounded-xl p-3">
-                                Transform panel
-                                <ul>
-                                </ul>
+                            <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
+                                <TransformTab rotation={rotation} scaling={scaling} logIncrements={logIncrements} transformFlags={transformFlags}
+                                    testRotation={(increment, newValue) => {
+                                        const angle = -increment; // clockwise rotation
+                                        for(const item of deduplicatedSelection) {
+                                            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
+                                            if(x && (x<0 || x>MAX_X)) return false
+                                            if(y && (y<MIN_Y || y>H)) return false
+                                        }
+                                        return true
+                                    }}
+                                    rotate={(increment, newValue) => {
+                                        const angle = -increment; // clockwise rotation
+                                        deduplicatedSelection.forEach(item => {
+                                            ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
+                                            ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
+                                        });
+                                        setRotation(newValue);
+                                    }}
+                                    testScaling={val => {
+                                        for(const item of deduplicatedSelection) {
+                                            const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
+                                            if(x && (x<0 || x>MAX_X)) return false
+                                            if(y && (y<MIN_Y || y>H)) return false
+                                            if(transformFlags.scaleENodes && item instanceof ENode) {
+                                                const v = item.radius100 * val/100
+                                                if(v<0 || v>MAX_RADIUS) return false
+                                            }
+                                            if(transformFlags.scaleLinewidths) {
+                                                const v = item.lineWidth100 * val/100
+                                                if(v<0 || v>MAX_LINEWIDTH) return false
+                                            }
+                                            if(transformFlags.scaleDash) {
+                                                if(item.dash100.some(l => {
+                                                        const v = l * val/100
+                                                        return v<0 || v>MAX_DASH_VALUE
+                                                })) return false
+                                            }
+                                        }
+                                        return true
+                                    }}
+                                    scale={newValue => {
+                                        deduplicatedSelection.forEach(item => {
+                                            ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
+                                            if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
+                                            if(transformFlags.scaleLinewidths) item.lineWidth = item.lineWidth100 * newValue/100;
+                                            if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
+                                        });  
+                                        setScaling(newValue);
+                                    }} 
+                                    onHFlip={() => {
+                                        deduplicatedSelection.forEach(item => {
+                                            item.x = 2*origin.x - item.x;
+                                            item.x100 = 2*origin.x - item.x100;
+                                        });
+                                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                   
+                                    }}
+                                    onVFlip={() => {
+                                        deduplicatedSelection.forEach(item => {
+                                            item.y = 2*origin.y - item.y;
+                                            item.y100 = 2*origin.y - item.y100;
+                                        });
+                                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                  
+                                    }} />
                             </TabPanel>
                             <TabPanel key='groups-panel' className="rounded-xl p-3">
                                 Groups panel
@@ -507,7 +675,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </TabGroup>
 
                     <div id='undo-panel' className='mt-1 grid grid-cols-3'>
-                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Undo'>
+                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Undo'>
                             <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(-45 12 12)">
@@ -517,7 +685,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <span className='sr-only'>Undo</span>
                             </button>
                         </Tippy>
-                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Redo'>
+                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Redo'>
                             <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')}> 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(45 12 12)">
@@ -527,7 +695,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <span className='sr-only'>Redo</span> 
                             </button>
                         </Tippy>
-                        <Tippy theme={dark? 'dark': 'light'} delay={[400,0]} arrow={false} content='Delete'>
+                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Delete'>
                             <button id='del-button' className={btnClassName2} disabled={selection.length<1} onClick={deleteSelection} > 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -538,7 +706,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                 </div>
                 <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                    <button className={clsx(btnClassName1, 'mb-1')}> 
+                    <button className={clsx(btnClassName1, 'mb-1 py-2')}> 
                         Generate
                     </button>
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
@@ -548,7 +716,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
                     </div>
-                    <button className={clsx(btnClassName1, 'mb-1')}> 
+                    <button className={clsx(btnClassName1, 'mb-1 py-2')}> 
                         Load
                     </button>
                     <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
@@ -559,13 +727,3 @@ const MainPanel = ({dark}: MainPanelProps) => {
 };
 
 export default MainPanel;
-
-export const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
-    'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
-    'focus:outline-none focus:ring-1');
-
-export const basicColoredButtonClass = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
-    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
-
-
-

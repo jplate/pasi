@@ -1,5 +1,6 @@
 import clsx from 'clsx/lite'
 
+export type Width = 'short' | 'medium' | 'long'
 
 export interface CheckBoxFieldProps {
     label: string,
@@ -45,20 +46,23 @@ export interface InputFieldProps {
     step?: number,
     min?: number,
     max?: number,
+    width?: Width,
+    lowTopMargin?: boolean,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
 }
 
-export const InputField = ({label, value, type = 'number', min = 0, max = Number.MAX_SAFE_INTEGER, step = 1, onChange}: InputFieldProps) => {
+export const InputField = ({label, value, type = 'number', min = 0, 
+            max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', lowTopMargin = false, onChange}: InputFieldProps) => {
+    const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-20 w-20';
     return (
-        <span className='flex items-center justify-end px-2 py-1 text-sm'>
+        <span className={`flex items-center justify-end px-2 py-1 text-sm ${lowTopMargin? 'mt-[-4px]': ''}`}>
             {label} 
-            <input className={`w-16 px-2 py-0.5 ml-2 ${type==='number'? 'text-right': ''} border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor`}
-                value={value} type={type} step={step} min={min} max={max} onChange={onChange} />
+            <input className={clsx(w, type==='number'? 'text-right': '',
+                    'ml-2 pl-2 border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor')}
+                value={value} type={type} step={step==0? 'any': step} min={min} max={max} onChange={onChange} />
         </span>
     )
 }
-
-
 
 export interface LabelFieldProps {
     label: string;
@@ -71,4 +75,14 @@ export const LabelField = ({label, style=''}: LabelFieldProps) => {
             {label}
         </div>
     )
+}
+
+export const validInt = (s: string, min: number, max: number, dflt: number = min) => {
+    const val = parseInt(s);
+    return isNaN(val)? dflt: Math.min(Math.max(min, val), max)
+}
+
+export const validFloat = (s: string, min: number, max: number, dflt: number = min) => {
+    const val = parseFloat(s);
+    return isNaN(val)? dflt: Math.min(Math.max(min, val), max)
 }

@@ -3,13 +3,6 @@ import clsx from 'clsx/lite'
 import { Grid, basicColoredButtonClass } from './MainPanel.tsx'
 import { LabelField, InputField, CheckBoxField } from './EditorComponents.tsx'
 
-const MAX_VGAP: number = 999;
-const MAX_HGAP: number = 999;
-const MAX_HSHIFT: number = 999;
-const MAX_VSHIFT: number = 999;
-export const MAX_VDISPLACEMENT = 999;
-export const MAX_HDISPLACEMENT = 999;
-
 
 interface CanvasEditorProps {
     grid: Grid,
@@ -33,20 +26,20 @@ const CanvasEditor = ({grid, hDisp, vDisp, onHGapChange, onVGapChange, onHShiftC
         <div className='flex flex-col h-full'>
             <div className='grid grid-cols-2'>
                 <LabelField label='Grid width' style='col-span-2' />
-                <InputField label='Horiz.' value={grid.hGap} min={1} max={MAX_HGAP} onChange={onHGapChange} /> 
-                <InputField label='Vert.' value={grid.vGap} min={1} max={MAX_VGAP} onChange={onVGapChange} /> 
+                <InputField label='Horiz.' value={grid.hGap} onChange={onHGapChange} /> 
+                <InputField label='Vert.' value={grid.vGap} onChange={onVGapChange} /> 
                 <LabelField label='Grid offset' style='col-span-2 mt-1' />
-                <InputField label='Horiz.' value={grid.hShift} min={-MAX_HSHIFT} max={MAX_HSHIFT} onChange={onHShiftChange} /> 
-                <InputField label='Vert.' value={grid.vShift} min={-MAX_VSHIFT} max={MAX_VSHIFT} onChange={onVShiftChange} /> 
+                <InputField label='Horiz.' value={grid.hShift} onChange={onHShiftChange} /> 
+                <InputField label='Vert.' value={grid.vShift}onChange={onVShiftChange} /> 
                 <CheckBoxField label='Snap to contour nodes' style='col-span-2 mt-2 px-4 py-2 text-base' value={grid.snapToNodes} onChange={onSnapToNodeChange} />
                 <CheckBoxField label='Snap to contour centers' style='col-span-2 mt-1 mb-2 px-4 py-2 text-base' value={grid.snapToContourCenters} onChange={onSnapToCCChange} />
                 <LabelField label='Copy displacement' style='col-span-2 mb-0.5'/>
-                <InputField label='Horiz.' value={hDisp} min={-MAX_HDISPLACEMENT} max={MAX_HDISPLACEMENT} onChange={onHDispChange} />
-                <InputField label='Vert.' value={vDisp} min={-MAX_VDISPLACEMENT} max={MAX_VDISPLACEMENT} onChange={onVDispChange} />
+                <InputField label='Horiz.' value={hDisp} onChange={onHDispChange} />
+                <InputField label='Vert.' value={vDisp} onChange={onVDispChange} />
             </div>
             <div className='flex-1'> {/* some filler to push the button to the bottom */}
             </div>
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-1 col-span-2 rounded-lg')} onClick={onReset}>
+            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 col-span-2 rounded-lg')} onClick={onReset}>
                 Defaults
             </button>
         </div>

@@ -11,12 +11,13 @@ export const MAX_VALUE = 16384;
  * The lowest value that item parameters should be allowed to take (to prevent crashes).
  */
 export const MIN_VALUE = -MAX_VALUE; 
-export const DASH_STRING_LIMIT = 128;
-export const MAX_LINEWIDTH = 99;
+export const MAX_LINEWIDTH = 999;
+export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
+export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 
 export const DEFAULT_LINEWIDTH = 1.0;
 export const DEFAULT_ALT_LINEWIDTH = .7;
-export const DEFAULT_DASH = '';
+export const DEFAULT_DASH = [];
 export const DEFAULT_SHADING = 0.0; // 0=white (transparent), 1=black
 
 export const DEFAULT_COLOR = '#323232';
@@ -28,11 +29,15 @@ export const DEFAULT_DIRECTION = COUNTERCLOCKWISE;
 export default class Item {
     constructor(public key: string, 
         public x: number, // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
-        public y: number,   
+        public y: number,
+        public x100: number = x, // These coordinates represent the item's location at 100% scaling.
+        public y100: number = y,
         public lineWidth: number = DEFAULT_LINEWIDTH, 
+        public lineWidth100: number = DEFAULT_LINEWIDTH,
         public altLineWidth: number = DEFAULT_ALT_LINEWIDTH,
         public shading: number = DEFAULT_SHADING,
-        public dash: string = DEFAULT_DASH) {
+        public dash: number[] = DEFAULT_DASH,
+        public dash100: number[] = DEFAULT_DASH) {
     }
 
     public getInfo(array: Item[]): Entry[] {
@@ -59,6 +64,13 @@ export default class Item {
     
     public getBottom() {
         return this.y;
+    }
+
+    public move(dx: number, dy: number) {
+        this.x += dx;
+        this.y += dy;
+        this.x100 += dx;
+        this.y100 += dy;
     }
 }
 
