@@ -40,12 +40,14 @@ interface TransformTabProps {
     rotate: (increment: number, newAngle: number) => void // ...new value to be shown in the input field.        
     testScaling: (newScaling: number) => boolean
     scale: (newScaling: number) => void 
-    onHFlip: () => void
-    onVFlip: () => void
+    testHFlip: () => boolean
+    hFlip: () => void
+    testVFlip: () => boolean
+    vFlip: () => void
 }
 
 const TransformTab = ({rotation, scaling, logIncrements, transformFlags,
-        testRotation, rotate, testScaling, scale, onHFlip, onVFlip}: TransformTabProps) => {  
+        testRotation, rotate, testScaling, scale, testHFlip, hFlip, testVFlip, vFlip}: TransformTabProps) => {  
             
     const [, setRotationIncrement] = useState(logIncrements.rotate);
     const [, setScalingIncrement] = useState(logIncrements.scale);
@@ -98,10 +100,10 @@ const TransformTab = ({rotation, scaling, logIncrements, transformFlags,
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 
                     setScalingIncrement(prev => logIncrements.scale = validInt(e.target.value, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT))
             } />
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-3 rounded-lg')} onClick={onHFlip}>
+            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-3 rounded-lg')} disabled={!testHFlip()} onClick={hFlip}>
                 Horizontal Flip
             </button>
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-2 mb-3 rounded-lg')} onClick={onVFlip}>
+            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-2 mb-3 rounded-lg')} disabled={!testVFlip} onClick={vFlip}>
                 Vertical Flip
             </button>
             <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={() => 

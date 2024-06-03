@@ -607,8 +607,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         const angle = -increment; // clockwise rotation
                                         for(const item of deduplicatedSelection) {
                                             const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
-                                            if(x && (x<0 || x>MAX_X)) return false
-                                            if(y && (y<MIN_Y || y>H)) return false
+                                            if(x<0 || x>MAX_X) return false
+                                            if(y<MIN_Y || y>H) return false
                                         }
                                         return true
                                     }}
@@ -623,8 +623,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     testScaling={val => {
                                         for(const item of deduplicatedSelection) {
                                             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
-                                            if(x && (x<0 || x>MAX_X)) return false
-                                            if(y && (y<MIN_Y || y>H)) return false
+                                            if(x<0 || x>MAX_X) return false
+                                            if(y<MIN_Y || y>H) return false
                                             if(transformFlags.scaleENodes && item instanceof ENode) {
                                                 const v = item.radius100 * val/100
                                                 if(v<0 || v>MAX_RADIUS) return false
@@ -650,15 +650,29 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                         });  
                                         setScaling(newValue);
-                                    }} 
-                                    onHFlip={() => {
+                                    }}
+                                    testHFlip={() => {
+                                        for(const item of deduplicatedSelection) {
+                                            const x = 2*origin.x - item.x;
+                                            if(x<0 || x>MAX_X) return false
+                                        }
+                                        return true;
+                                    }}
+                                    hFlip={() => {
                                         deduplicatedSelection.forEach(item => {
                                             item.x = 2*origin.x - item.x;
                                             item.x100 = 2*origin.x - item.x100;
                                         });
                                         setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                   
                                     }}
-                                    onVFlip={() => {
+                                    testVFlip={() => {
+                                        for(const item of deduplicatedSelection) {
+                                            const y = 2*origin.y - item.y;
+                                            if(y<MIN_Y || y>H) return false
+                                        }
+                                        return true;
+                                    }}
+                                    vFlip={() => {
                                         deduplicatedSelection.forEach(item => {
                                             item.y = 2*origin.y - item.y;
                                             item.y100 = 2*origin.y - item.y100;
