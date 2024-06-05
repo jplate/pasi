@@ -66,10 +66,31 @@ export default class ENode extends Item {
                     },
             /*  3 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
             /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.lineWidth, step: 0.1},
-            /*  5 */{type: 'string input', text: 'Stroke pattern', width: 'long', 
-                        value: this.dash.map((n, i) => {
+            /*  5 */(() => {
+                        if(this.info[5] && this.info[5].inputRef?.current && this.match) {
+                            const element = this.info[5].inputRef.current as HTMLInputElement;
+                            const {selectionEnd: caret} = element;
+                            if(caret) {
+                                const upto = this.dash.slice(0, this.dottedIndex).join(' ');
+                                const uptoNext = this.dash.slice(0, this.dottedIndex+1).join(' ');
+                                const strayedLeft = caret<upto.length+2;
+                                const strayedRight = caret>uptoNext.length+this.match.length;
+                                // console.log(`sel: ${caret} sL: ${strayedLeft} sR: ${strayedRight} upto: ${upto} (${upto.length}) uptoNext: ${uptoNext} (${uptoNext.length})`);
+                                if(strayedLeft || strayedRight) {
+                                    const deleted = strayedRight? this.match.length: 0;
+                                    this.match = '';
+                                    setTimeout(() => {                                        
+                                        element.setSelectionRange(caret - deleted, caret - deleted);
+                                    }, 0);
+                                }
+                            }
+                        }
+                        const dash = this.dash.map((n, i) => {        
                             return i==this.dottedIndex? n+this.match: n
-                        }).join(' ')+(this.trailingSpace? ' ': '')},
+                        }).join(' ')+(this.trailingSpace? ' ': '');
+                        return {
+                            type: 'string input', text: 'Stroke pattern', width: 'long', value: dash
+                        }})(),
             /*  6 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
             /*  7 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
             /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), step: 1},
@@ -108,7 +129,7 @@ export default class ENode extends Item {
                     const split = e.target.value.split(/[^0-9.]+/);
                     this.dottedIndex = split.findIndex(s => {
                         const m0 = s.match(/^\d*\.\d*$/); // we're looking for representations of floating point numbers...
-                        const m1 = s.match(/\.0*$/); // ... that end with a dot followed by zero or more zeros
+                        const m1 = s.match(/\.0*$|0+$/); // ... that end either with a dot followed by zero or more zeros or with one or more zeros
                         if(m0 && m1) {
                             this.match = m1[0];
                         }
@@ -117,6 +138,7 @@ export default class ENode extends Item {
                     this.trailingSpace = split[split.length-1]===''; // the last element of split will be '' iff the user entered a comma or space (or some combination thereof) at the end
                     
                     const slice = split.filter(s => s!=='').slice(0, MAX_DASH_LENGTH); // shorten the array if too long
+                    
                     // Now we just have to translate the string array into numbers:
                     let substituteZero = false, 
                         eliminateZero = false;
