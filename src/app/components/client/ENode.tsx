@@ -66,31 +66,11 @@ export default class ENode extends Item {
                     },
             /*  3 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
             /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.lineWidth, step: 0.1},
-            /*  5 */(() => {
-                        if(this.info[5] && this.info[5].inputRef?.current && this.match) {
-                            const element = this.info[5].inputRef.current as HTMLInputElement;
-                            const {selectionEnd: caret} = element;
-                            if(caret) {
-                                const upto = this.dash.slice(0, this.dottedIndex).join(' ');
-                                const uptoNext = this.dash.slice(0, this.dottedIndex+1).join(' ');
-                                const strayedLeft = caret<upto.length+2;
-                                const strayedRight = caret>uptoNext.length+this.match.length;
-                                // console.log(`sel: ${caret} sL: ${strayedLeft} sR: ${strayedRight} upto: ${upto} (${upto.length}) uptoNext: ${uptoNext} (${uptoNext.length})`);
-                                if(strayedLeft || strayedRight) {
-                                    const deleted = strayedRight? this.match.length: 0;
-                                    this.match = '';
-                                    setTimeout(() => {                                        
-                                        element.setSelectionRange(caret - deleted, caret - deleted);
-                                    }, 0);
-                                }
-                            }
-                        }
-                        const dash = this.dash.map((n, i) => {        
+            /*  5 */{type: 'string input', text: 'Stroke pattern', width: 'long', 
+                        value: this.dash.map((n, i) => {        
                             return i==this.dottedIndex? n+this.match: n
-                        }).join(' ')+(this.trailingSpace? ' ': '');
-                        return {
-                            type: 'string input', text: 'Stroke pattern', width: 'long', value: dash
-                        }})(),
+                        }).join(' ')+(this.trailingSpace? ' ': '')
+                    },
             /*  6 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
             /*  7 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
             /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), step: 1},
@@ -127,34 +107,45 @@ export default class ENode extends Item {
             case 4: if(e) return [(item, array) => {item.lineWidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
             case 5: if(e) return [(item, array) => {
                     const split = e.target.value.split(/[^0-9.]+/);
-                    this.dottedIndex = split.findIndex(s => {
-                        const m0 = s.match(/^\d*\.\d*$/); // we're looking for representations of floating point numbers...
-                        const m1 = s.match(/\.0*$|0+$/); // ... that end either with a dot followed by zero or more zeros or with one or more zeros
-                        if(m0 && m1) {
-                            this.match = m1[0];
-                        }
-                        return m0 && m1;
-                    });
-                    this.trailingSpace = split[split.length-1]===''; // the last element of split will be '' iff the user entered a comma or space (or some combination thereof) at the end
-                    
-                    const slice = split.filter(s => s!=='').slice(0, MAX_DASH_LENGTH); // shorten the array if too long
-                    
-                    // Now we just have to translate the string array into numbers:
-                    let substituteZero = false, 
-                        eliminateZero = false;
-                    item.dash = item.dash100 = slice.map(s => {
-                        const match = s.match(/^[^.]*\.[^.]*/); // If there is a second dot in s, then match[0] will only include the material up to that second dot (exclusive).
-                        const trimmed = match? match[0]: s; // This may still be just a dot, in which case it should be interpreted as a zero.
-                        if(!substituteZero) substituteZero = trimmed.startsWith('.');
-                        if(!eliminateZero) eliminateZero = trimmed.match(/^0\d/)!==null;
-                        return Math.min(trimmed=='.'? 0: Number(trimmed), MAX_DASH_VALUE);
-                    }).filter(n => !isNaN(n));
                     if(this.info[5].inputRef?.current) {
                         const element = this.info[5].inputRef.current as HTMLInputElement;
-                        const {selectionStart, selectionEnd} = element;
-                        if(selectionStart && selectionEnd) setTimeout(() => {
+                        const {selectionEnd: caret} = element;
+                        console.log(`caret: ${caret}`);
+                    
+                        let found = -1,
+                            uptoNext = 0,
+                            deleted = 0;
+                        for(let i = 0; i<split.length && caret; i++) {
+                            uptoNext += split[i].length + 1;
+                            const m0 = split[i].match(/^\d*\.\d*$/); // we're looking for representations of floating point numbers...
+                            const m1 = split[i].match(/\.0*$|0+$/); // ... that end either with a dot followed by zero or more zeros or with one or more zeros
+                            if(m0 && m1) {
+                                if(caret<uptoNext) {
+                                    this.match = m1[0];
+                                    found = i;
+                                    break;
+                                }
+                                else deleted += m1[0].length;
+                            }
+                            if(caret<uptoNext) break;
+                        }
+                        this.dottedIndex = found;
+                        this.trailingSpace = split[split.length-1]===''; // the last element of split will be '' iff the user entered a comma or space (or some combination thereof) at the end
+                        const slice = split.filter(s => s!=='').slice(0, MAX_DASH_LENGTH); // shorten the array if too long
+                        
+                        // Now we just have to translate the string array into numbers:
+                        let substituteZero = false, 
+                            eliminateZero = false;
+                        item.dash = item.dash100 = slice.map(s => {
+                            const match = s.match(/^[^.]*\.[^.]*/); // If there is a second dot in s, then match[0] will only include the material up to that second dot (exclusive).
+                            const trimmed = match? match[0]: s; // This may still be just a dot, in which case it should be interpreted as a zero.
+                            if(!substituteZero) substituteZero = trimmed.startsWith('.');
+                            if(!eliminateZero) eliminateZero = trimmed.match(/^0\d/)!==null;
+                            return Math.min(trimmed=='.'? 0: Number(trimmed), MAX_DASH_VALUE);
+                        }).filter(n => !isNaN(n));
+                        if(caret) setTimeout(() => {
                             const extra = eliminateZero? -1: substituteZero? 1: 0;
-                            element.setSelectionRange(selectionStart + extra, selectionEnd + extra);
+                            element.setSelectionRange(caret + extra - deleted, caret + extra - deleted);
                         }, 0);
                     }
                     return array
