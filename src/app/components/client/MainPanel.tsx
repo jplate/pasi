@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, } from 'react'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, { StaticImageData } from 'next/image'
@@ -11,7 +11,7 @@ import clsx from 'clsx/lite'
 import Item, { MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './Item.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
-import ItemEditor from './ItemEditor.tsx'
+import ItemEditor, { Config } from './ItemEditor.tsx'
 import TransformTab from './TransformTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
@@ -58,6 +58,9 @@ export const DEFAULT_HDISPLACEMENT = 20
 export const DEFAULT_VDISPLACEMENT = 0
 export const MIN_DISPLACEMENT = 0
 export const MAX_DISPLACEMENT = 255
+export const MIN_TRANSLATION_LOG_INCREMENT = -2
+export const MAX_TRANSLATION_LOG_INCREMENT = 2
+const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 
@@ -160,6 +163,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     preselectionRef.current = preselection;
 
     const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0); // canvas editor is default
+    const [itemEditorConfig, ] = useState<Config>({logTranslationIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT});
     const [rotation, setRotation] = useState(0);
     const [scaling, setScaling] = useState(100); // default is 100%
     const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
@@ -169,36 +173,45 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
 
 
-    useEffect(() => { // record the origin, and reset the transformations if necessary. Also update hFlipPossible and vFlipPossible.
-        const {x, y} = points.length>0? points[points.length-1]: 
-            focusItem?? selection.length>0? selection[selection.length-1]: {x: 0, y: 0};
-        if(x!==origin.x || y!==origin.y) {
-            origin.x = x;
-            origin.y = y;
-            if(rotation!==0 || scaling!==100) resetTransform();
+    // Sets the origin point for transformations, and performs checkFlip().
+    // This function should be called whenever we've changed the points, the selection, or the focusItem.
+    // The first parameter indicates whether the transformation should be reset, provided (unless the second parameter is true) that the origin has changed.
+    const setOrigin = (resetTransform: boolean, unconditional: boolean = false, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection) => {
+        
+        // Compute new origin:
+        const {x, y} = pts.length>0? pts[pts.length-1]: 
+            focus?? sel.length>0? sel[sel.length-1]: {x: 0, y: 0};
+        
+        const originChanged = origin.x!==x || origin.y!==y;
+        origin.x = x;
+        origin.y = y;
+
+        if(resetTransform && (unconditional || originChanged)) {
+            setRotation(0);
+            setScaling(100);
+            enodes.forEach(item => { // resetting the items for new scaling 
+                item.x100 = item.x;
+                item.y100 = item.y;
+                item.radius100 = item.radius;
+                item.lineWidth100 = item.lineWidth;
+                item.dash100 = item.dash;
+            });
         }
-        const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
-        setHFlipPossible(prev => !deduplicatedSelection.some(item => {
+
+        checkFlip(sel);
+    }
+
+    const checkFlip = (sel: Item[] = selection) => {
+        setHFlipPossible(prev => !sel.some(item => {
             const x = 2*origin.x - item.x; // simulate hFlip on item
             return x<0 || x>MAX_X
         }));
-        setVFlipPossible(prev => !deduplicatedSelection.some(item => {
+        setVFlipPossible(prev => !sel.some(item => {
             const y = 2*origin.y - item.y; // simulate vFlip on item
             return y<MIN_Y || y>H
         }));
-    }, [points, focusItem, selection]);
-
-    const resetTransform = () => {
-        setRotation(0);
-        setScaling(100);
-        enodes.forEach(item => { // resetting the items for new scaling (if it should come to that)
-            item.x100 = item.x;
-            item.y100 = item.y;
-            item.radius100 = item.radius;
-            item.lineWidth100 = item.lineWidth;
-            item.dash100 = item.dash;
-        });
     }
+
 
     const adjustLimit = (nodes: ENode[] = enodes) => {
         let right = 0;
@@ -224,7 +237,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     index++;
                 }
             });
-        } else { // Items that aren't ENodes don't need that much detail; just give them a [0] if they're included in the selection.
+        } 
+        else { // Items that aren't ENodes don't need that much detail; just give them a [0] if they're included in the selection.
             if(array.includes(item)) {
                 result = [0];
             }
@@ -240,7 +254,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
             return newSelection
         });
+        setOrigin(true);
         return item;
+    }
+
+    const nearestGridPoint = (x: number, y: number) => {
+        return [x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
+                y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap)]
     }
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
@@ -248,7 +268,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if(item) {
             if(e.ctrlKey && selection.includes(item)) {
                 deselect(item);
-            } else {
+            } 
+            else {
                 console.log(`Selecting: ${item.key}`);
                 let newPoints = points;
                 let newSelection = selection; 
@@ -263,7 +284,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const startY = e.clientY - (H-item.y); 
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
-                const yMinD = (H-item.y) - selectionWithoutDuplicates.reduce((min, it) => (H-it.y)<min? (H-it.y): min, H-item.y); // y-distance to the top-most selected item
+                const yMinD = selectionWithoutDuplicates.reduce((max, it) => it.y>max? it.y: max, item.y) - item.y; // y-distance to the top-most selected item
                 
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
@@ -271,18 +292,22 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const newX = Math.max(e.clientX, startX + xMinD) - startX;
                     const newY = H-(Math.max(e.clientY, startY + yMinD) - startY);
                     // Next, we take into account the grid:
-                    const dx = newX + grid.hGap/2 - ((newX + grid.hGap/2 - grid.hShift) % grid.hGap) - item.x;
-                    const dy = newY + grid.vGap/2 - ((newY + grid.vGap/2 - grid.vShift) % grid.vGap) - item.y;
+                    const [x, y] = nearestGridPoint(newX, newY);
+                    const dx = x - item.x;
+                    const dy = y - item.y;
                     // Finally, we move each item in the selection:
                     if(dx!==0 || dy!==0) {
                         selectionWithoutDuplicates.forEach(item => item.move(dx, dy));
-                        setPoints(prevPoints => [...prevPoints]); // We're triggering a re-render with the points array, which should be relatively cheap.
+                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
                     }
                 };            
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
-                    adjustLimit(enodes);
+                    adjustLimit();
+                    setOrigin(item!==focusItem || newPoints.length>0, newPoints.length>0, newPoints, item, newSelection);
+                    // if the focusItem is still the same, then don't reset the transform (even if the origin has changed), UNLESS points is non-empty, because in that case
+                    // the origin is given by the last element of points, and dragging the item around that can have unexpected effects when a transform is carried out.
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -311,46 +336,60 @@ const MainPanel = ({dark}: MainPanelProps) => {
         const {scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
         const x = e.clientX - left + scrollLeft;
         const y = e.clientY - top + scrollTop;
+        let newPoints = e.shiftKey? points: [];
 
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
             canvasRef.current?.removeEventListener('mousemove', handleMouseMove);
+            let newFocus = focusItem;
+            let newSelection = selection;
 
             const dx = mue.clientX - e.clientX;
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
-                const newPoint = new Point(
-                    x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
-                    H - y + grid.vGap/2 - ((H - y + grid.vGap/2 - grid.vShift) % grid.vGap));
+                const [gx, gy] = nearestGridPoint(x, H-y);
+                const newPoint = new Point(gx, gy);
                 if (!e.shiftKey) {
-                    setPoints([newPoint]);
-                    setSelection([]);
-                    setFocusItem(null);
-                } else {
+                    newPoints = [newPoint];
+                    newSelection = [];
+                    newFocus = null;
+                } 
+                else {
                     const included = points.some(p => newPoint.key==p.key);
-                    if (!included) setPoints(prevPoints => [...prevPoints, newPoint]);
+                    if (!included) newPoints = [...points, newPoint];
                 }
-            } else { // in this case, we need to take care of the lasso, and either select or deselect items
-                let newSelection: Item[];
+            } 
+            else { // in this case, we need to take care of the lasso, and either select or deselect items
                 const pres = preselectionRef.current;
                 const deselect = e.ctrlKey;
                 if(deselect) {
                     const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
                     newSelection = selection.filter((item, index) => !toDeselect.includes(index));
-                } else {
-                    newSelection = e.shiftKey? [...selection, ...pres]: pres;
+                } 
+                else if(e.shiftKey) { // increase selection                    
+                    newSelection = [...selection, ...pres];
+                    pres.forEach(item => { // 'renormalize' the items to be added to the selection:
+                        item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
+                        item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
+                    });
                 }
-                setSelection(prev => newSelection);
+                else {
+                    newSelection = pres;
+                }
                 if(newSelection.length>0 && (!focusItem || !deselect)) {
-                    setFocusItem(newSelection[newSelection.length-1]);
-                } else if(newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
-                    setFocusItem(null);
+                    newFocus = newSelection[newSelection.length-1]
+                } 
+                else if(newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
+                    newFocus = null;
                 }
             }
-
-            setPreselection([]);
+            setFocusItem(newFocus);
             setLasso(null);
+            setOrigin(true, false, newPoints, newFocus, newSelection);
+            setPoints(newPoints);
+            setPreselection([]);
+            setSelection(newSelection);
         };
 
         const handleMouseMove = (mme: MouseEvent) => {
@@ -358,7 +397,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dy = mme.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
-                setPoints([]);
+                setPoints(newPoints);
                 const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), e.ctrlKey);
                 setPreselection(prev => [
                     ...prev.filter(item => lasso.contains(item)),
@@ -384,11 +423,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPoints([]);
             setSelection(newNodes);
             setFocusItem(newNodes[newNodes.length-1]);
+            setOrigin(true);
         }
     }
 
     const addContours = () => { // onClick handler for the contour button
         setPoints([]);
+        setOrigin(true);
     }
     
     const deleteSelection = () => { // onClick handler for the delete button
@@ -398,6 +439,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection([]);
             setFocusItem(null);
             adjustLimit(nodes);
+            setOrigin(true);
         }
     }
 
@@ -590,14 +632,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
                             <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                 {focusItem?
-                                    <ItemEditor item={focusItem} info={focusItem.getInfo(focusItem instanceof ENode? enodes: [])} 
+                                    <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
                                         onChange={(e, i) => {
-                                            const [edit, applyToAll] = focusItem.handleEditing(e, i);
-                                            setEnodes(prevEnodes => applyToAll? 
-                                                deduplicatedSelection.reduce((nodes, item) => edit(item, nodes) as ENode[], prevEnodes):
-                                                edit(focusItem, prevEnodes) as ENode[]); 
+                                            const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, i);
+                                            const nodes = applyToAll? 
+                                                deduplicatedSelection.reduce((acc: ENode[], item: Item) => {
+                                                        //console.log(`Editing item ${item.key}`);
+                                                        return edit(item, acc) as ENode[]
+                                                }, enodes):
+                                                edit(focusItem, enodes);
+                                            setEnodes(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
                                             adjustLimit();
-                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render in case enodes and limit have been left unchanged                                   
+                                            setOrigin(false);                                        
+                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
                                         }} />
                                     :
                                     <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
@@ -635,6 +682,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
                                         });
                                         adjustLimit();
+                                        checkFlip(); 
                                         setRotation(newValue);
                                     }}
                                     testScaling={val => {
@@ -667,6 +715,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                         }); 
                                         adjustLimit();
+                                        checkFlip();
                                         setScaling(newValue);
                                     }}
                                     hFlip={() => {

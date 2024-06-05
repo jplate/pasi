@@ -1,4 +1,4 @@
-import type { Entry } from './ItemEditor.tsx'
+import type { Config, Entry } from './ItemEditor.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -40,14 +40,18 @@ export default class Item {
         public dash100: number[] = DEFAULT_DASH) {
     }
 
-    public getInfo(array: Item[]): Entry[] {
+    public getInfo(items: Item[], editorConfig: Object): Entry[] {
         return []
     }
 
-    public handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
+    public handleEditing(
+            e: React.ChangeEvent<HTMLInputElement> | null, 
+            config: Config, 
+            selection: Item[],
+            index: number): [(item: Item, items: Item[]) => Item[], applyToAll: boolean] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
-        return [(item: Item, array) => array, false]
+        return [(item: Item, items) => items, false]
     }
 
     public getWidth() {

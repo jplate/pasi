@@ -1,8 +1,9 @@
 import React from 'react';
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MIN_Y, MARK_LINEWIDTH } from './MainPanel.tsx'
-import { validFloat } from './EditorComponents.tsx'
+import { H, MAX_X, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
+import { Config } from './ItemEditor.tsx'
 
 export const DEFAULT_RADIUS = 10
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -17,11 +18,12 @@ export const MAX_RADIUS = 9999
 export const MIN_RADIUS_FOR_INNER_TITLE = 5
 export const TITLE_FONTSIZE = 9
 
-
 export default class ENode extends Item {
 
     public radius: number = DEFAULT_RADIUS;
     public radius100: number = DEFAULT_RADIUS;
+
+    public info: Entry[] = []; // current info array, allows access to input refs
 
     private trailingSpace = false; // keeps track of whether a space should be added to the stroke pattern in editing
     private trailingDot = false; // keeps track of whether a dot should be added to the stroke pattern in editing
@@ -46,42 +48,82 @@ export default class ENode extends Item {
         return this.y - this.radius;
     }
 
-    public override getInfo(array: Item[]): Entry[] {
-        return [
-            /* 0 */{type: 'number input', text: 'X-coordinate', width: 'long', value: this.x, step: 0.1},
-            /* 1 */{type: 'number input', text: 'Y-coordinate', width: 'long', value: this.y, step: 0.1},
-            /* 2 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
-            /* 3 */{type: 'number input', text: 'Line width', width: 'long', value: this.lineWidth, step: 0.1},
-            /* 4 */{type: 'string input', text: 'Stroke pattern', width: 'long', value: this.dash.join(' ')+(this.trailingSpace? ' ': this.trailingDot? '.': '')},
-            /* 5 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
-            /* 6 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)'},
-            /* 7 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), step: 1},
-            /* 8 */{type: 'label', text: '', style: 'flex-1'}, // a filler
-            /* 9 */{type: 'button', text: 'Defaults'}
+    public override getInfo(array: Item[], config: Config): Entry[] {
+
+        return this.info = [
+            /*  0 */{type: 'number input', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
+            /*  1 */{type: 'number input', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
+            /*  2 */{type: 'number input', text: 'log Increment', width: 'short', value: config.logTranslationIncrement, step: 1, 
+                        extraBottomMargin: true,
+                        onChange: (e) => {
+                            if(e) {
+                                const val = validInt(e.target.value, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT)
+                                config.logTranslationIncrement = val
+                            }
+                        }
+                    },
+            /*  3 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
+            /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.lineWidth, step: 0.1},
+            /*  5 */{type: 'string input', text: 'Stroke pattern', width: 'long', value: this.dash.join(' ')+(this.trailingSpace? ' ': this.trailingDot? '.': '')},
+            /*  6 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
+            /*  7 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
+            /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), step: 1},
+            /*  9 */{type: 'label', text: '', style: 'flex-1'}, // a filler
+            /* 10 */{type: 'button', text: 'Defaults'}
         ]
     }
 
-    public override handleEditing(e: React.ChangeEvent<HTMLInputElement> | null, index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
+    public override handleEditing(
+            e: React.ChangeEvent<HTMLInputElement> | null, 
+            config: Config, 
+            selection: Item[],
+            index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
         switch(index) {
-            case 0: if(e) return [(item, array) => {item.x = item.x100 = validFloat(e.target.value, 0, MAX_X, 0); return array}, true]
-            case 1: if(e) return [(item, array) => {item.y = item.y100 = validFloat(e.target.value, MIN_Y, H, 0); return array}, true]
-            case 2: if(e) return [(item, array) => {if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); return array}, true]
-            case 3: if(e) return [(item, array) => {item.lineWidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
-            case 4: if(e) return [(item, array) => {
+            case 0: if(e) {
+                    const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
+                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
+                    const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
+                    return [(item, array) => {
+                        item.move(dx, 0);                            
+                        return array
+                    }, true]
+                }
+            case 1:  if(e) {
+                    const dmin = H - selection.reduce((max, item) => max>item.y? max: item.y, this.y); // least distance from the top of the canvas
+                    const delta = parseInputValue(e.target.value, MIN_Y, H, this.y, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
+                    const dy = delta<dmin? delta: 0; // this is to avoid items from being moved beyond the top border of the canvas
+                    return [(item, array) => {
+                        item.move(0, dy);                            
+                        return array
+                    }, true]
+                }
+        	case 3: if(e) return [(item, array) => {if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); return array}, true]
+            case 4: if(e) return [(item, array) => {item.lineWidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
+            case 5: if(e) return [(item, array) => {
                     const split = e.target.value.split(/[^0-9.]+/);
                     this.trailingDot = split[split.length-1].endsWith('.');
                     this.trailingSpace = split[split.length-1]===''; // the last element of split will be '' iff the user entered a comma or space (or some combination thereof) at the end
                     const slice = split.filter(s => s!=='').slice(0, MAX_DASH_LENGTH); // shorten the array if too long
                     // Now we just have to translate the string array into numbers:
+                    let substituteZero = false;
                     item.dash = item.dash100 = slice.map(s => {
                         const match = s.match(/^[^.]*\.[^.]*/); // If there is a second dot in s, then match[0] will only include the material up to that second dot (exclusive).
                         const trimmed = match? match[0]: s; // This may still be just a dot, in which case it should be interpreted as a zero.
-                        return Math.min(trimmed==='.'? 0: Number(trimmed), MAX_DASH_VALUE);
-                    }).filter(n => !isNaN(n)); 
+                        substituteZero = trimmed=='.';
+                        return Math.min(substituteZero? 0: Number(trimmed), MAX_DASH_VALUE);
+                    }).filter(n => !isNaN(n));
+                    if(this.info[5].inputRef?.current) {
+                        const element = this.info[5].inputRef.current as HTMLInputElement;
+                        const {selectionStart, selectionEnd} = element;
+                        if(selectionStart && selectionEnd) setTimeout(() => {
+                            const extra = substituteZero? 1: 0;
+                            element.setSelectionRange(selectionStart + extra, selectionEnd + extra);
+                        }, 0);
+                    }
                     return array
                 }, true]
-            case 5: if(e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
-            case 7: if(e) return [(item, array) => {
+            case 6: if(e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
+            case 8: if(e) return [(item, array) => {
                     const currentPos = array.indexOf(item);
                     const newPos = parseInt(e.target.value);
                     let result = array;
@@ -93,7 +135,7 @@ export default class ENode extends Item {
                     }
                     return result
                 }, false]
-            case 9: if(index==9) return [(item, array) => {
+            case 10: if(index==10) return [(item, array) => {
                     if(item instanceof ENode) {
                         item.radius = item.radius100 = DEFAULT_RADIUS;
                         item.lineWidth = item.lineWidth100 = DEFAULT_LINEWIDTH;
@@ -102,7 +144,6 @@ export default class ENode extends Item {
                     }
                     return array}, true]
             default: 
-                console.log('Input element is null!  Index: '+index);
                 return [(item, array) => array, false]        
        }
     }
