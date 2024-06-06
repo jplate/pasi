@@ -27,7 +27,7 @@ interface TransformTabProps {
         rotate: number, 
         scale: number
     }
-    testRotation: (increment: number, newAngle: number) => boolean // The increment is how much the selection needs to be rotated by; the newAngle is the...
+    testRotation: (increment: number) => boolean // The increment is how much the selection needs to be rotated by; the newAngle is the...
     rotate: (increment: number, newAngle: number) => void // ...new value to be shown in the input field.        
     testScaling: (newScaling: number) => boolean
     scale: (newScaling: number) => void 
@@ -52,7 +52,7 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 min={-MAX_ROTATION_INPUT} max={MAX_ROTATION_INPUT} 
                 step={0} width={'long'} onChange={(e) => {
                     const [val, delta] = parseCyclicInputValue(e.target.value, MIN_ROTATION, 360, rotation, logIncrements.rotate, Math.max(0, -MIN_ROTATION_LOG_INCREMENT));
-                    if(!isNaN(val) && val!==rotation && testRotation(delta, val)) rotate(delta, val)
+                    if(!isNaN(val) && val!==rotation && testRotation(delta)) rotate(delta, val)
                 }} />
             <InputField label='log Increment' value={logIncrements.rotate} min={MIN_ROTATION_LOG_INCREMENT} max={MAX_ROTATION_LOG_INCREMENT} 
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 

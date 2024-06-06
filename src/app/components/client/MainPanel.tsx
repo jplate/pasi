@@ -1,4 +1,5 @@
 import React, { useState, useRef, } from 'react'
+import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, { StaticImageData } from 'next/image'
@@ -171,12 +172,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [vFlipPossible, setVFlipPossible] = useState(true); 
     const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT});
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
+    const [modalMsg, setModalMsg] = useState('');
 
 
     // Sets the origin point for transformations, and performs checkFlip().
     // This function should be called whenever we've changed the points, the selection, or the focusItem.
-    // The first parameter indicates whether the transformation should be reset, provided (unless the second parameter is true) that the origin has changed.
-    const setOrigin = (resetTransform: boolean, unconditional: boolean = false, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection) => {
+    // The first parameter indicates whether the transformation should be reset.
+    const setOrigin = (resetTransform: boolean, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection) => {
         
         // Compute new origin:
         const {x, y} = pts.length>0? pts[pts.length-1]: 
@@ -186,7 +188,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         origin.x = x;
         origin.y = y;
 
-        if(resetTransform && (unconditional || originChanged)) {
+        if(resetTransform && originChanged) {
             setRotation(0);
             setScaling(100);
             enodes.forEach(item => { // resetting the items for new scaling 
@@ -247,8 +249,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     const deselect = (item: Item) => {
+        const index = selection.lastIndexOf(item);
         setSelection(prev => {
-            const newSelection = prev.filter(it => it!==item);
+            const newSelection = prev.filter((it, i) => i!==index);
             if(focusItem && !newSelection.includes(focusItem)) {
                 setFocusItem(null);
             }
@@ -305,9 +308,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
                     adjustLimit();
-                    setOrigin(item!==focusItem || newPoints.length>0, newPoints.length>0, newPoints, item, newSelection);
-                    // if the focusItem is still the same, then don't reset the transform (even if the origin has changed), UNLESS points is non-empty, because in that case
-                    // the origin is given by the last element of points, and dragging the item around that can have unexpected effects when a transform is carried out.
+                    setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
+                    // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
+                    // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
+                    if(newPoints.length>0) newSelection.forEach(item => { 
+                        item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
+                        item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
+                    });
                 };
             
                 window.addEventListener('mousemove', handleMouseMove);
@@ -386,7 +393,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
             setFocusItem(newFocus);
             setLasso(null);
-            setOrigin(true, false, newPoints, newFocus, newSelection);
+            setOrigin(true, newPoints, newFocus, newSelection);
             setPoints(newPoints);
             setPreselection([]);
             setSelection(newSelection);
@@ -445,12 +452,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     /**
      * Rotates a point around another point by a given angle.
-     * 
-     * @param px - The x-coordinate of the point to rotate.
-     * @param py - The y-coordinate of the point to rotate.
-     * @param cx - The x-coordinate of the center of rotation.
-     * @param cy - The y-coordinate of the center of rotation.
-     * @param angle - The rotation angle in degrees.
      * @returns The new coordinates {x, y} of the rotated point.
      */
     const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number): { x: number, y: number } => {
@@ -474,12 +475,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     /**
      * Scales a point around a specified origin by a given scale factor.
-     * 
-     * @param px - The x-coordinate of the point to scale.
-     * @param py - The y-coordinate of the point to scale.
-     * @param ox - The x-coordinate of the origin point.
-     * @param oy - The y-coordinate of the origin point.
-     * @param scaleFactor - The factor by which to scale the point.
      * @returns The new coordinates {x, y} of the scaled point.
      */
     const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number, y: number } => {
@@ -512,6 +507,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
+    const sorry = () => setModalMsg("Sorry, this feature has not yet been implemented!");
 
     console.log(`Rendering... darkMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
     //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
@@ -563,7 +559,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <button id='node-button' className={clsx(btnClassName1, 'mr-1.5')} disabled={points.length<1} onClick={addEntityNodes}>  
                             Node
                         </button>
-                        <button id='contour-button' className={btnClassName1} disabled={points.length<1} onClick={addContours}>  
+                        <button id='contour-button' className={btnClassName1} disabled={points.length<1} onClick={sorry}>  
                             Contour
                         </button> 
                     </div>                    
@@ -605,11 +601,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </MenuItems>
                             </Transition>
                         </Menu>                
-                        <button id='create-button' className={clsx(basicColoredButtonClass, 'rounded-md')}> 
+                        <button id='create-button' className={clsx(basicColoredButtonClass, 'rounded-md')} onClick={sorry}> 
                             Create
                         </button>
                     </div>
-                    <button id='combi-button' className={clsx(btnClassName1, 'mb-3')} disabled={selection.length<1}> 
+                    <button id='combi-button' className={clsx(btnClassName1, 'mb-3')} disabled={selection.length<1} onClick={sorry}> 
                         Copy Selection
                     </button> 
 
@@ -666,8 +662,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
                                 <TransformTab rotation={rotation} scaling={scaling} hFlipPossible={hFlipPossible} vFlipPossible={vFlipPossible} 
                                     logIncrements={logIncrements} transformFlags={transformFlags}
-                                    testRotation={(increment, newValue) => {
-                                        const angle = -increment; // clockwise rotation
+                                    testRotation={angle => {
                                         for(const item of deduplicatedSelection) {
                                             const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
                                             if(x<0 || x>MAX_X) return false
@@ -675,8 +670,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         }
                                         return true
                                     }}
-                                    rotate={(increment, newValue) => {
-                                        const angle = -increment; // clockwise rotation
+                                    rotate={(angle, newValue) => {
                                         deduplicatedSelection.forEach(item => {
                                             ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
                                             ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
@@ -688,6 +682,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     testScaling={val => {
                                         for(const item of deduplicatedSelection) {
                                             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
+                                            if(!isFinite(x) || !isFinite(y)) {
+                                                setModalMsg(`Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity.`)
+                                            }
                                             if(x<0 || x>MAX_X) return false
                                             if(y<MIN_Y || y>H) return false
                                             if(transformFlags.scaleENodes && item instanceof ENode) {
@@ -745,7 +742,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                     <div id='undo-panel' className='mt-1 grid grid-cols-3'>
                         <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Undo'>
-                            <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')}>
+                            <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')} onClick={sorry}>
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(-45 12 12)">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -755,7 +752,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </button>
                         </Tippy>
                         <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Redo'>
-                            <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')}> 
+                            <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')} onClick={sorry}> 
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(45 12 12)">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
@@ -775,7 +772,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                 </div>
                 <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                    <button className={clsx(btnClassName1, 'mb-1 py-2')}> 
+                    <button className={clsx(btnClassName1, 'mb-1 py-2')} onClick={sorry}> 
                         Generate
                     </button>
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
@@ -785,11 +782,24 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
                     </div>
-                    <button className={clsx(btnClassName1, 'mb-1 py-2')}> 
+                    <button className={clsx(btnClassName1, 'mb-1 py-2')} onClick={sorry}> 
                         Load
                     </button>
                     <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                 </div>
+                <Modal isOpen={modalMsg!==''} 
+                        className='fixed inset-0 flex items-center justify-center z-50'
+                        overlayClassName='fixed inset-0 bg-gray-900 bg-opacity-50' 
+                        onRequestClose={() => setModalMsg('')}>
+                    <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
+                        <h2>
+                            {modalMsg}
+                        </h2>
+                        <button id='close-button' className={clsx(btnClassName1, 'w-20 mt-4')} onClick={() => setModalMsg('')}>
+                            OK
+                        </button>
+                    </div>
+                </Modal>
             </div>
         </div>
     );

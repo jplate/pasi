@@ -15,7 +15,7 @@ const config: Config = {
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
       colors: {
-        textcolor: "rgba(var(--foreground-rgb))",
+        modalbg: "rgba(var(--background-start-rgb))",       
         btnbg: "rgba(var(--btnbg))",
         btncolor: "rgba(var(--btncolor))",
         btnborder: "rgba(var(--btnborder))",
@@ -29,6 +29,7 @@ const config: Config = {
         codepanelbg: "rgba(var(--codepanelbg))",
         codepanelcolor: "rgba(var(--codepanelcolor))",
         menuborder: "rgba(var(--menuborder))",
+        textcolor: "rgba(var(--foreground-rgb))",
         tabselected: "rgba(var(--tabselected))",
         textfieldbg: "rgba(var(--textfieldbg))",
         textfieldcolor: "rgba(var(--textfieldcolor))",

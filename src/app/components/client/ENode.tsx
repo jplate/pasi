@@ -108,9 +108,8 @@ export default class ENode extends Item {
             case 5: if(e) return [(item, array) => {
                     const split = e.target.value.split(/[^0-9.]+/);
                     if(this.info[5].inputRef?.current) {
-                        const element = this.info[5].inputRef.current as HTMLInputElement;
+                        const element = this.info[5].inputRef.current;
                         const {selectionEnd: caret} = element;
-                        console.log(`caret: ${caret}`);
                     
                         let found = -1,
                             uptoNext = 0,

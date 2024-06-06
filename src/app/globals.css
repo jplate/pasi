@@ -55,7 +55,7 @@ li {
   --textfieldcolor: 30, 41, 59; /* slate-800 */
 
   a:not(.pasi a) {
-    color: theme('colors.pink.700'); /* Set the color of the link */
+    color: theme('colors.pink.700'); 
   }
   
   a:not(.pasi a):hover {
@@ -87,16 +87,17 @@ li {
   --textfieldcolor: 217, 119, 6; /* amber-600 */
 
   a:not(.pasi a) {
-    color: theme('colors.red.700'); /* Set the color of the link */
+    color: theme('colors.red.700'); 
   }
   
   a:not(.pasi a):hover {
-    color: theme('colors.red.500'); /* Set the color of the link */
+    color: theme('colors.red.500'); 
   }
 
 }
 
 body {
+  font-feature-settings: 'liga', 'dlig';
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
