@@ -9,4 +9,4 @@ const bundleAnalyzer = withBundleAnalyzer({
 });
 
 
-export default bundleAnalyzer(nextConfig);
+export default nextConfig; //bundleAnalyzer(nextConfig);
