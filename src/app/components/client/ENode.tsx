@@ -116,8 +116,8 @@ export default class ENode extends Item {
                             deleted = 0;
                         for(let i = 0; i<split.length && caret; i++) {
                             uptoNext += split[i].length + 1;
-                            const m0 = split[i].match(/^\d*\.\d*$/); // we're looking for representations of floating point numbers...
-                            const m1 = split[i].match(/\.0*$|0+$/); // ... that end either with a dot followed by zero or more zeros or with one or more zeros
+                            const m0 = split[i].match(/^\d*\.\d*$/); // We're looking for representations of floating point numbers...
+                            const m1 = split[i].match(/\.0*$|0+$/); // ... that end EITHER with a dot followed by zero or more zeros OR with one or more zeros. 
                             if(m0 && m1) {
                                 if(caret<uptoNext) {
                                     this.match = m1[0];
@@ -125,7 +125,14 @@ export default class ENode extends Item {
                                     break;
                                 }
                                 else deleted += m1[0].length;
+                            } 
+                            else { // In this case, split[i] contains either no dot or two dots (unless the pattern has been pasted in, in which case split[i] may contain more than
+                                // two dots -- but we can safely ignore this possibility). So, if split[i] ends in a dot, that will be the SECOND dot, and it will be deleted below, when 
+                                // we're computing item.dash, along with any preceding zeros and possibly the first dot. We'll add their number to deleted.
+                                const m2 = split[i].match(/\.0*\.$|0*\.$/);
+                                if(m2) deleted += m2[0].length;
                             }
+                            
                             if(caret<uptoNext) break;
                         }
                         this.dottedIndex = found;

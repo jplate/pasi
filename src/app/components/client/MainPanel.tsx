@@ -1,4 +1,4 @@
-import React, { useState, useRef, } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
@@ -143,37 +143,42 @@ interface MainPanelProps {
 
 const MainPanel = ({dark}: MainPanelProps) => {
 
-    const canvasRef = useRef<HTMLDivElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel));
-    const [pixel, setPixel] = useState(1.0);
-    const [replace, setReplace] = useState(true);
-    const [points, setPoints] = useState<Point[]>([]);
-    const [enodes, setEnodes] = useState<ENode[]>([]);
-    const [enodeCounter, setEnodeCounter] = useState(0); // used for generating keys
-    const [selection, setSelection] = useState<Item[]>([]); // list of selected items; multiple occurrences are allowed    
-    const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
-    const [limit, setLimit] = useState<Point>(new Point(0,H)); // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+    const canvasRef = useRef<HTMLDivElement>(null)
+    const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel))
+    const [pixel, setPixel] = useState(1.0)
+    const [replace, setReplace] = useState(true)
+    const [points, setPoints] = useState<Point[]>([])
+    const [enodes, setEnodes] = useState<ENode[]>([])
+    const [enodeCounter, setEnodeCounter] = useState(0) // used for generating keys
+    const [selection, setSelection] = useState<Item[]>([]);// list of selected items; multiple occurrences are allowed    
+    const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
+    const [limit, setLimit] = useState<Point>(new Point(0,H)) // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
 
-    const [grid, setGrid] = useState(createGrid());
-    const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
-    const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
+    const [grid, setGrid] = useState(createGrid())
+    const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT)
+    const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT)
 
-    const [lasso, setLasso] = useState<Lasso | null>(null);
-    const [preselection, setPreselection] = useState<Item[]>([]);
-    const preselectionRef = useRef<Item[]>([]);
-    preselectionRef.current = preselection;
+    const [lasso, setLasso] = useState<Lasso | null>(null)
+    const [preselection, setPreselection] = useState<Item[]>([])
+    const preselectionRef = useRef<Item[]>([])
+    preselectionRef.current = preselection
 
-    const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0); // canvas editor is default
-    const [itemEditorConfig, ] = useState<Config>({logTranslationIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT});
-    const [rotation, setRotation] = useState(0);
-    const [scaling, setScaling] = useState(100); // default is 100%
-    const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
-    const [hFlipPossible, setHFlipPossible] = useState(true); 
-    const [vFlipPossible, setVFlipPossible] = useState(true); 
-    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT});
-    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
-    const [modalMsg, setModalMsg] = useState('');
+    const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0) // canvas editor is default
+    const [itemEditorConfig, ] = useState<Config>({logTranslationIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT})
+    const [rotation, setRotation] = useState(0)
+    const [scaling, setScaling] = useState(100) // default is 100%
+    const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
+    const [hFlipPossible, setHFlipPossible] = useState(true)
+    const [vFlipPossible, setVFlipPossible] = useState(true)
+    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT})
+    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
+    const [showModal, setShowModal] = useState(false)
+    const [modalMsg, setModalMsg] = useState('')
 
+    useEffect(() => {
+        const element = document.getElementById('content');
+        if(element) Modal.setAppElement(element)
+    }, []);
 
     // Sets the origin point for transformations, and performs checkFlip().
     // This function should be called whenever we've changed the points, the selection, or the focusItem.
@@ -507,7 +512,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
-    const sorry = () => setModalMsg("Sorry, this feature has not yet been implemented!");
+    const sorry = () => {setModalMsg("Sorry, this feature has not yet been implemented!"); setShowModal(true);}
 
     console.log(`Rendering... darkMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
     //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
@@ -684,6 +689,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
                                             if(!isFinite(x) || !isFinite(y)) {
                                                 setModalMsg(`Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity.`)
+                                                setShowModal(true)
                                             }
                                             if(x<0 || x>MAX_X) return false
                                             if(y<MIN_Y || y>H) return false
@@ -787,15 +793,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </button>
                     <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                 </div>
-                <Modal isOpen={modalMsg!==''} 
+                <Modal isOpen={showModal} closeTimeoutMS={1000}
                         className='fixed inset-0 flex items-center justify-center z-50'
-                        overlayClassName='fixed inset-0 bg-gray-900 bg-opacity-50' 
-                        onRequestClose={() => setModalMsg('')}>
+                        overlayClassName='fixed inset-0 bg-gray-900/70' 
+                        onRequestClose={() => setShowModal(false)}>
                     <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
                         <h2>
                             {modalMsg}
                         </h2>
-                        <button id='close-button' className={clsx(btnClassName1, 'w-20 mt-4')} onClick={() => setModalMsg('')}>
+                        <button id='close-button' className={clsx(btnClassName1, 'w-20 mt-4')} onClick={() => setShowModal(false)}>
                             OK
                         </button>
                     </div>
