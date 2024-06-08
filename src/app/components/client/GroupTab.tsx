@@ -35,7 +35,7 @@ const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, dissolve
                     'elements from their current lowest inactive groups.'}
                 tooltipPlacement='left' />
             <div className='text-center mt-2'>
-                Group level: {groups[1]+1} / {groups[0].length}
+                Group level:&nbsp;&nbsp;{groups[1]+1} / {groups[0].length}
             </div>
             <BasicColoredButton id='leave-button' label='Leave group' style='px-2 mx-2 mt-2 rounded-lg' disabled={!canLeave} onClick={leave} 
                 tooltip='Deactives the membership the currently focused node (or the membership of its second-highest active group, where applicable) in its highest active group.'
