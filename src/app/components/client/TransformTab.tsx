@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import clsx from 'clsx/lite'
 import { InputField, CheckBoxField, parseInputValue, parseCyclicInputValue, validInt } from './EditorComponents.tsx'
-import { basicColoredButtonClass } from './MainPanel.tsx'
+import { BasicColoredButton } from './Button.tsx'
 
 const MIN_ROTATION_LOG_INCREMENT = -3
 const MAX_ROTATION_LOG_INCREMENT = 2
@@ -68,12 +68,8 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 
                     setScalingIncrement(prev => logIncrements.scale = validInt(e.target.value, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT))
             } />
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-3 rounded-lg')} disabled={!hFlipPossible} onClick={hFlip}>
-                Horizontal Flip
-            </button>
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 mt-2 mb-3 rounded-lg')} disabled={!vFlipPossible} onClick={vFlip}>
-                Vertical Flip
-            </button>
+            <BasicColoredButton id='hflip-button' label='Horizontal flip' style='px-2 mx-2 mt-3 rounded-lg' disabled={!hFlipPossible} onClick={hFlip} />
+            <BasicColoredButton id='vflip-button' label='Vertical flip' style='px-2 mx-2 mt-2 mb-3 rounded-lg' disabled={!vFlipPossible} onClick={vFlip} />
             <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={() => 
                 setScaleArrowheads(prev => transformFlags.scaleArrowheads = !prev)
             } />

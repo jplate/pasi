@@ -30,8 +30,8 @@ export default class ENode extends Item {
     private match = ''; // the 'match' just mentioned
     private trailingSpace = false; // keeps track of whether a space should be added to the stroke pattern in editing
     
-    constructor(key: string, x: number, y: number) {
-        super(key, x, y);
+    constructor(i: number, x: number, y: number) {
+        super(`E${i}`, x, y);
     }
 
     public override getWidth() {
@@ -65,7 +65,7 @@ export default class ENode extends Item {
                         }
                     },
             /*  3 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
-            /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.lineWidth, step: 0.1},
+            /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.linewidth, step: 0.1},
             /*  5 */{type: 'string input', text: 'Stroke pattern', width: 'long', 
                         value: this.dash.map((n, i) => {        
                             return i==this.dottedIndex? n+this.match: n
@@ -104,7 +104,7 @@ export default class ENode extends Item {
                     }, true]
                 }
         	case 3: if(e) return [(item, array) => {if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); return array}, true]
-            case 4: if(e) return [(item, array) => {item.lineWidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
+            case 4: if(e) return [(item, array) => {item.linewidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
             case 5: if(e) return [(item, array) => {
                     const split = e.target.value.split(/[^0-9.]+/);
                     if(this.info[5].inputRef?.current) {
@@ -127,8 +127,9 @@ export default class ENode extends Item {
                                 else deleted += m1[0].length;
                             } 
                             else { // In this case, split[i] contains either no dot or two dots (unless the pattern has been pasted in, in which case split[i] may contain more than
-                                // two dots -- but we can safely ignore this possibility). So, if split[i] ends in a dot, that will be the SECOND dot, and it will be deleted below, when 
-                                // we're computing item.dash, along with any preceding zeros and possibly the first dot. We'll add their number to deleted.
+                                // two dots -- but we can safely ignore this possibility). So, if split[i] ends in a dot, that will be the SECOND dot, and it will effectively be deleted below, 
+                                // when we're computing item.dash, along with any preceding zeros and possibly the first dot ('effectively' because the deletion is partially due to how  
+                                // string representation of numbers works). We'll add their number to deleted.
                                 const m2 = split[i].match(/\.0*\.$|0*\.$/);
                                 if(m2) deleted += m2[0].length;
                             }
@@ -172,7 +173,7 @@ export default class ENode extends Item {
             case 10: if(index==10) return [(item, array) => {
                     if(item instanceof ENode) {
                         item.radius = item.radius100 = DEFAULT_RADIUS;
-                        item.lineWidth = item.lineWidth100 = DEFAULT_LINEWIDTH;
+                        item.linewidth = item.lineWidth100 = DEFAULT_LINEWIDTH;
                         item.dash = item.dash100 = DEFAULT_DASH;
                         item.shading = DEFAULT_SHADING;
                     }
@@ -210,7 +211,7 @@ export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = 
     const x = enode.x
     const y = enode.y
     const radius = enode.radius
-    const lineWidth = enode.lineWidth
+    const lineWidth = enode.linewidth
     const shading = enode.shading
 
     const width = radius * 2

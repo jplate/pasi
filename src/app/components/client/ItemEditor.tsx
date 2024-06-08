@@ -1,6 +1,6 @@
 import React, { useRef } from 'react'
 import clsx from 'clsx/lite'
-import { basicColoredButtonClass } from './MainPanel.tsx'
+import { BasicColoredButton } from './Button.tsx'
 import { LabelField, GlossField, CheckBoxField, InputField, Width } from './EditorComponents.tsx'
 import Item from './Item.tsx'
 
@@ -58,10 +58,10 @@ const ItemEditor = ({info, onChange}: ItemEditorProps) => {
                             extraBottomMargin={entry.extraBottomMargin}
                             onChange={(e) => handleChange(e, i, entry)} />):
                     entry.type==='button'? (
-                        <button key={i} className={clsx(basicColoredButtonClass, 'mx-2 rounded-lg', entry.style)} 
-                                onClick={() => handleChange(null, i, entry)}>
-                            {entry.text}
-                        </button>): ''})
+                        <BasicColoredButton key={i} id={`${i}`} label={entry.text} style={clsx('mx-2 rounded-lg', entry.style)} 
+                                disabled={false}
+                                onClick={() => handleChange(null, i, entry)} />):
+                    null})
             }
         </div>
     );

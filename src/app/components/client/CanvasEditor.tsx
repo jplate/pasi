@@ -1,6 +1,7 @@
 import React from 'react'
 import clsx from 'clsx/lite'
-import { Grid, basicColoredButtonClass } from './MainPanel.tsx'
+import { Grid } from './MainPanel.tsx'
+import { BasicColoredButton } from './Button.tsx'
 import { LabelField, InputField, CheckBoxField } from './EditorComponents.tsx'
 
 
@@ -39,9 +40,7 @@ const CanvasEditor = ({grid, hDisp, vDisp, onHGapChange, onVGapChange, onHShiftC
             </div>
             <div className='flex-1'> {/* some filler to push the button to the bottom */}
             </div>
-            <button className={clsx(basicColoredButtonClass, 'px-2 mx-2 col-span-2 rounded-lg')} onClick={onReset}>
-                Defaults
-            </button>
+            <BasicColoredButton id='reset-button' label='Defaults' style='px-2 mx-2 col-span-2 rounded-lg' disabled={false} onClick={onReset} />
         </div>
     )
 }

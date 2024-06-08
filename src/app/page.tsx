@@ -1,11 +1,13 @@
 'use client'
 
 import dynamic from "next/dynamic";
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, createContext} from "react";
 import 'tippy.js/dist/tippy.css';
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
+
+export const DarkModeContext = createContext(false);
 
 const getInitialColorScheme = () => {
   const storedMode = localStorage.getItem('color-scheme');
@@ -83,8 +85,10 @@ export default function Home() {
             </p>
           </section>
 
-          <MainPanel dark={isDarkMode} />
-          
+          <DarkModeContext.Provider value={isDarkMode}>
+            <MainPanel />
+          </DarkModeContext.Provider>
+
           <section className='max-w-3xl ml-9'>
             <p>
               The following are a few other editors that also export LaTeX code:

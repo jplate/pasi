@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useContext } from 'react'
 import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
@@ -9,13 +9,17 @@ import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
 import clsx from 'clsx/lite'
 
-import Item, { MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './Item.tsx'
+import { DarkModeContext } from '../../page.tsx'
+import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE } from './Item.tsx'
+import { BasicButton, BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor, { Config } from './ItemEditor.tsx'
 import TransformTab from './TransformTab.tsx'
+import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
+import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, isGroup, isGroupMember } from './Group.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -68,18 +72,12 @@ const DEFAULT_SCALING_LOG_INCREMENT = 1
 export const CONTOUR_CENTER_SNAP_RADIUS = 10
 export const CONTOUR_NODE_SNAP_RADIUS = 15
 
-const CANVAS_CLICK_THRESHOLD = 3 // For determining when a mouseUp is a mouseClick
+const CANVAS_CLICK_THRESHOLD = 4 // For determining when a mouseUp is a mouseClick
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
 const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)'
 const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)'
 
-export const basicButtonClass = clsx('block px-2 py-1 text-base font-medium border', 
-    'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
-    'focus:outline-none focus:ring-1');
-
-export const basicColoredButtonClass = clsx(basicButtonClass, 'bg-btnbg/85 text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg',
-    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring');
 
 export type Grid = {
     hGap: number,
@@ -141,7 +139,8 @@ interface MainPanelProps {
     dark: boolean;
 }
 
-const MainPanel = ({dark}: MainPanelProps) => {
+const MainPanel = () => {
+    const dark = useContext(DarkModeContext);
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel))
@@ -159,9 +158,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT)
 
     const [lasso, setLasso] = useState<Lasso | null>(null)
-    const [preselection, setPreselection] = useState<Item[]>([])
-    const preselectionRef = useRef<Item[]>([])
-    preselectionRef.current = preselection
+    const [preselection1, setPreselection1] = useState<Item[]>([])
+    const preselection1Ref = useRef<Item[]>([])
+    preselection1Ref.current = preselection1
+    const [preselection2, setPreselection2] = useState<Item[]>([])
+    const preselection2Ref = useRef<Item[]>([])
+    preselection2Ref.current = preselection2
 
     const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0) // canvas editor is default
     const [itemEditorConfig, ] = useState<Config>({logTranslationIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT})
@@ -172,8 +174,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [vFlipPossible, setVFlipPossible] = useState(true)
     const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT})
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
+
+    const [adding, setAdding] = useState(false)
+    const [dissolveAdding, setDissolveAdding] = useState(false)
+
+
     const [showModal, setShowModal] = useState(false)
-    const [modalMsg, setModalMsg] = useState('')
+    const [modalMsg, setModalMsg] = useState<[string, string]>(['', '']) // the first element is the content label, the second the message.
 
     useEffect(() => {
         const element = document.getElementById('content');
@@ -184,10 +191,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     // This function should be called whenever we've changed the points, the selection, or the focusItem.
     // The first parameter indicates whether the transformation should be reset.
     const setOrigin = (resetTransform: boolean, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection) => {
-        
         // Compute new origin:
-        const {x, y} = pts.length>0? pts[pts.length-1]: 
-            focus?? sel.length>0? sel[sel.length-1]: {x: 0, y: 0};
+        const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus ?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
         
         const originChanged = origin.x!==x || origin.y!==y;
         origin.x = x;
@@ -200,7 +205,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 item.x100 = item.x;
                 item.y100 = item.y;
                 item.radius100 = item.radius;
-                item.lineWidth100 = item.lineWidth;
+                item.lineWidth100 = item.linewidth;
                 item.dash100 = item.dash;
             });
         }
@@ -211,11 +216,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const checkFlip = (sel: Item[] = selection) => {
         setHFlipPossible(prev => !sel.some(item => {
             const x = 2*origin.x - item.x; // simulate hFlip on item
-            return x<0 || x>MAX_X
+            return x<0 || x>MAX_X;
         }));
         setVFlipPossible(prev => !sel.some(item => {
             const y = 2*origin.y - item.y; // simulate vFlip on item
-            return y<MIN_Y || y>H
+            return y<MIN_Y || y>H;
         }));
     }
 
@@ -224,11 +229,33 @@ const MainPanel = ({dark}: MainPanelProps) => {
         let right = 0;
         let bottom = H;
         nodes.forEach((enode) => {
-            if(enode.x > right) right = enode.x;
-            if(enode.y < bottom) bottom = enode.y;
+            if(enode.x > right) {
+                right = enode.x
+            }
+            if(enode.y < bottom) {
+                bottom = enode.y
+            }
         });
         const newLimit = new Point(right, bottom);
         if(limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
+    }
+
+
+    const updateSecondaryPreselection = (prim: Item[] = preselection1) => {
+        const lm = new Set<GroupMember>();
+        for (let item of prim) {
+            const ha = highestActive(item);
+            if (ha instanceof Item) {
+                lm.add(ha);
+            }
+            else { 
+                const halm = getLeafMembers(ha, true)
+                for (let it of halm) {
+                    lm.add(it);
+                }
+            }
+        }
+        setPreselection2(prev => [...prim, ...enodes.filter(it => !prim.includes(it) && lm.has(it))]);
     }
 
 
@@ -253,6 +280,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return result;
     }
 
+
     const deselect = (item: Item) => {
         const index = selection.lastIndexOf(item);
         setSelection(prev => {
@@ -260,11 +288,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if(focusItem && !newSelection.includes(focusItem)) {
                 setFocusItem(null);
             }
-            return newSelection
+            return newSelection;
         });
         setOrigin(true);
         return item;
     }
+
 
     const nearestGridPoint = (x: number, y: number) => {
         return [x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
@@ -278,18 +307,50 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 deselect(item);
             } 
             else {
-                console.log(`Selecting: ${item.key}`);
-                let newPoints = points;
-                let newSelection = selection; 
-                if(!e.shiftKey) { // clear the selection and the points
-                    newSelection = [];
-                    newPoints = [];
-                }
-                newSelection = [...newSelection, item];
+                let newPoints = points,
+                    newSelection = selection;
 
+                if (focusItem && (adding || dissolveAdding)) {
+                    newPoints = [];
+                    const itemToAdd = e.ctrlKey? item: highestActive(item);
+                    const oldGroup = itemToAdd.group;
+                    const group = highestActive(focusItem);
+                    if (isGroup(group, isGroupMember) && group!==itemToAdd && !group.members.includes(itemToAdd)) {
+                        if (itemToAdd instanceof Item) {
+                            newSelection=[...selection, itemToAdd];
+                        }
+                        else {
+                            const lm = getLeafMembers(itemToAdd);
+                            newSelection=[...selection, item, ...enodes.filter(it => it!==item && !selection.includes(it) && lm.has(it))];
+                        }
+                        if (oldGroup) {
+                            oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
+                        }
+                        if (adding || (itemToAdd instanceof Item)) {
+                            group.members.push(itemToAdd);
+                            itemToAdd.group = group;
+                            itemToAdd.isActiveMember = true;
+                        }
+                        else { // dissolve adding
+                            group.members.push(...itemToAdd.members);
+                            itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
+                            itemToAdd.members = [];
+                        }
+                    }
+                }
+                else {
+                    const pres = preselection2Ref.current;
+                    if (e.shiftKey) { // increase selection                    
+                        newSelection = [...selection, ...pres];
+                    }
+                    else {
+                        newPoints = [];
+                        newSelection = pres;
+                    }
+                }
                 // Handle dragging:
-                const startX = e.clientX - item.x; 
-                const startY = e.clientY - (H-item.y); 
+                const startX = e.clientX - item.x;
+                const startY = e.clientY - (H-item.y);
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
                 const yMinD = selectionWithoutDuplicates.reduce((max, it) => it.y>max? it.y: max, item.y) - item.y; // y-distance to the top-most selected item
@@ -319,25 +380,34 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     if(newPoints.length>0) newSelection.forEach(item => { 
                         item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
                         item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
-                    });
-                };
+                    })
+                }
             
                 window.addEventListener('mousemove', handleMouseMove);
                 window.addEventListener('mouseup', handleMouseUp);
 
+                setFocusItem(item);
                 setPoints(newPoints);
                 setSelection(newSelection);
-                setFocusItem(item);
             }           
         } 
-    };
+    }
 
     const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
-        setPreselection(prev => prev.includes(item)? prev: [...prev, item]);
+        const newPres = preselection1.includes(item)? preselection1: [...preselection1, item];
+        setPreselection1(prev => newPres);
+        if (e.ctrlKey) {
+            setPreselection2(prev => prev.includes(item)? prev: [...prev, item]) // if Ctrl is pressed, only add item by itself
+        }
+        else {
+            updateSecondaryPreselection(newPres) // otherwise add all the leaf members of its highest active group
+        }
     }
 
     const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
-        setPreselection(prev => prev.filter(it => it!==item));
+        const newPres = preselection1.filter(it => it!==item)
+        setPreselection1(newPres);
+        updateSecondaryPreselection(newPres)
     }
 
     const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. One reason why we have to go through the trouble
@@ -373,13 +443,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
             } 
             else { // in this case, we need to take care of the lasso, and either select or deselect items
-                const pres = preselectionRef.current;
+                const pres = preselection2Ref.current;
                 const deselect = e.ctrlKey;
-                if(deselect) {
+                if (deselect) {
                     const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
                     newSelection = selection.filter((item, index) => !toDeselect.includes(index));
                 } 
-                else if(e.shiftKey) { // increase selection                    
+                else if (e.shiftKey) { // increase selection                    
                     newSelection = [...selection, ...pres];
                     pres.forEach(item => { // 'renormalize' the items to be added to the selection:
                         item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
@@ -389,18 +459,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 else {
                     newSelection = pres;
                 }
-                if(newSelection.length>0 && (!focusItem || !deselect)) {
+                if (newSelection.length>0 && (!focusItem || !deselect)) {
                     newFocus = newSelection[newSelection.length-1]
                 } 
-                else if(newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
+                else if (newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
                     newFocus = null;
                 }
-            }
+            }            
             setFocusItem(newFocus);
             setLasso(null);
             setOrigin(true, newPoints, newFocus, newSelection);
             setPoints(newPoints);
-            setPreselection([]);
+            setPreselection1([]);
+            setPreselection2([]);
             setSelection(newSelection);
         };
 
@@ -408,29 +479,40 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dx = mme.clientX - e.clientX;
             const dy = mme.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if(dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
+            if (dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
                 setPoints(newPoints);
                 const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), e.ctrlKey);
-                setPreselection(prev => [
-                    ...prev.filter(item => lasso.contains(item)),
+                const pres1 = preselection1Ref.current;
+                const newPres1 = [
+                    ...pres1.filter(item => lasso.contains(item)),
                     ...enodes.filter(item => 
-                        lasso.contains(item) && !prev.includes(item) && (!lasso.deselect || selection.includes(item)))]);
-                setLasso(prevLasso => lasso);
+                        lasso.contains(item) && !pres1.includes(item) && (!lasso.deselect || selection.includes(item)))];
+                setPreselection1(prev => newPres1);
+                if (mme.ctrlKey) {
+                    setPreselection2(newPres1);
+                }
+                else {
+                    updateSecondaryPreselection(newPres1);
+                }
+                setLasso(prevLasso => lasso);;
             }
         }
     
         canvasRef.current?.addEventListener('mousemove', handleMouseMove);
         canvasRef.current?.addEventListener('mouseup', handleMouseUp);
+
+        setAdding(false);
+        setDissolveAdding(false);
     };
 
     const addEntityNodes = () => { // onClick handler for the node button
-        if(points.length>0) {
+        if (points.length>0) {
             let counter = enodeCounter;
-            const newNodes = points.map((point, i) => new ENode('E'+counter++, point.x, point.y));
+            const newNodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
             setEnodeCounter(counter);
             setEnodes(prevEnodes => {
                 const nodes = [...prevEnodes, ...newNodes];
-                adjustLimit(nodes);  
+                adjustLimit(nodes); 
                 return nodes});
             setPoints([]);
             setSelection(newNodes);
@@ -445,7 +527,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
     
     const deleteSelection = () => { // onClick handler for the delete button
-        if(selection && selection.length>0) {
+        if (selection && selection.length>0) {
             const nodes = enodes.filter(item => !selection.includes(item)); 
             setEnodes(nodes);
             setSelection([]);
@@ -498,13 +580,30 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return { x: finalX, y: finalY };
     }
 
+
+    const highestActive = (item: Item): Item | Group<any> => {
+        const groups = getGroups(item)
+        return groups[1]>-1? groups[0][groups[1]]: item
+    }
+
+
+    const adjustSelection = (item: Item) => {
+        const ha = highestActive(item);
+        if (ha instanceof Item) {
+            setSelection([ha]);
+        }
+        else {
+            const lm = getLeafMembers(ha, true);
+            setSelection([item, ...enodes.filter(it => it!==focusItem && lm.has(it))]);
+        }
+    }
+
+
     const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
-    // The standard button:
-    const btnClassName1 = clsx(basicColoredButtonClass, 'rounded-xl');
 
     // The delete button gets some special colors:
-    const btnClassName2 = clsx(basicButtonClass, 'rounded-xl', 
+    const deleteButtonStyle = clsx('rounded-xl', 
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
@@ -512,9 +611,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
-    const sorry = () => {setModalMsg("Sorry, this feature has not yet been implemented!"); setShowModal(true);}
+    const sorry = () => {setModalMsg(['Apology', 'Sorry, this feature has not yet been implemented!']); setShowModal(true);}
 
-    console.log(`Rendering... darkMode=${dark} focusItem=${focusItem && focusItem.key} selected=[${selection.map(item => item.key).join(', ')}]`);
+    console.log(`Rendering... focusItem=${focusItem && focusItem.key} haGroup=${focusItem && highestActive(focusItem).getString()}]`);
     //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
@@ -527,7 +626,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                             focus={focusItem===enode} 
                             selected={getSelectPositions(enode)} 
-                            preselected={preselection.includes(enode)}
+                            preselected={preselection2.includes(enode)}
                             onMouseDown={itemMouseDown}
                             onMouseEnter={itemMouseEnter} 
                             onMouseLeave={itemMouseLeave} />)}
@@ -561,12 +660,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             <div id='button-panels' className='flex-grow min-w-[300px] max-w-[380px] select-none'>
                 <div id='button-panel-1' className='flex flex-col ml-[25px] h-[638px]'>
                     <div id='add-panel' className='grid grid-cols-2 mb-3'>
-                        <button id='node-button' className={clsx(btnClassName1, 'mr-1.5')} disabled={points.length<1} onClick={addEntityNodes}>  
-                            Node
-                        </button>
-                        <button id='contour-button' className={btnClassName1} disabled={points.length<1} onClick={sorry}>  
-                            Contour
-                        </button> 
+                        <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' disabled={points.length<1} onClick={addEntityNodes} />
+                        <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' disabled={points.length<1} onClick={sorry} />  
                     </div>                    
 
                     <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-1.5 mb-3 rounded-xl'>
@@ -606,13 +701,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </MenuItems>
                             </Transition>
                         </Menu>                
-                        <button id='create-button' className={clsx(basicColoredButtonClass, 'rounded-md')} onClick={sorry}> 
-                            Create
-                        </button>
+                        <BasicColoredButton id='create-button' label='Create' style='rounded-md' disabled={false} onClick={sorry} /> 
                     </div>
-                    <button id='combi-button' className={clsx(btnClassName1, 'mb-3')} disabled={selection.length<1} onClick={sorry}> 
-                        Copy Selection
-                    </button> 
+                    <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-3' disabled={selection.length<1} onClick={sorry} /> 
 
                     <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
                         <TabList className="grid grid-cols-3">
@@ -620,7 +711,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 Editor
                             </Tab>
                             <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Transform selection'>
-                                <Tab key='transform-tab' className={tabClassName} disabled={!focusItem}>
+                                <Tab key='transform-tab' className={tabClassName} disabled={selection.length==0}>
                                     Transform
                                 </Tab>
                             </Tippy>
@@ -688,7 +779,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         for(const item of deduplicatedSelection) {
                                             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
                                             if(!isFinite(x) || !isFinite(y)) {
-                                                setModalMsg(`Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity.`)
+                                                setModalMsg(['Buzz Lightyear alert', `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`])
                                                 setShowModal(true)
                                             }
                                             if(x<0 || x>MAX_X) return false
@@ -714,7 +805,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         deduplicatedSelection.forEach(item => {
                                             ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
                                             if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
-                                            if(transformFlags.scaleLinewidths) item.lineWidth = item.lineWidth100 * newValue/100;
+                                            if(transformFlags.scaleLinewidths) item.linewidth = item.lineWidth100 * newValue/100;
                                             if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                         }); 
                                         adjustLimit();
@@ -739,48 +830,91 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     }} />
                             </TabPanel>
                             <TabPanel key='groups-panel' className="rounded-xl p-3">
-                                Groups panel
-                                <ul>
-                                </ul>
+                                {focusItem &&
+                                    <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
+                                        create={() => {
+                                            const members = deduplicatedSelection.map(highestActive).filter((m, i, array) => i===array.indexOf(m));
+                                            const group = new StandardGroup<Item | Group<any>>(members);
+                                            members.forEach(member => {
+                                                const oldGroup = member.group;
+                                                if(oldGroup) oldGroup.members = oldGroup.members.filter(m => m!==member);
+                                                member.group = group;
+                                                member.isActiveMember = true;
+                                            })
+                                            adjustSelection(focusItem);                                 
+                                        }} 
+                                        leave={() => {
+                                            const groups = getGroups(focusItem);
+                                            const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
+                                            member.isActiveMember = false;
+                                            adjustSelection(focusItem);                                 
+                                        }}
+                                        rejoin={() => {
+                                            const member = highestActive(focusItem);
+                                            if(member.group) member.isActiveMember = true;
+                                            adjustSelection(focusItem);                                 
+                                        }}
+                                        dissolve={() => {
+                                            const group = highestActive(focusItem);
+                                            if (!(group instanceof Item)) {
+                                                const { members } = group;
+                                                members.forEach(m => m.isActiveMember = false);
+                                            }
+                                            adjustSelection(focusItem);
+                                        }}
+                                        restore={() => {
+                                            const ha = highestActive(focusItem);
+                                            if (!(ha instanceof Item)) {
+                                                ha.members.forEach(m => m.isActiveMember=true);
+                                            }
+                                            adjustSelection(focusItem);                                 
+                                        }}
+                                        changeAdding={() => {
+                                            const add = !adding;
+                                            setAdding(add);
+                                            if (add) setDissolveAdding(!add);
+                                        }}
+                                        changeDissolveAdding={() => {
+                                            const add = !dissolveAdding;
+                                            setDissolveAdding(add);
+                                            if (add) setAdding(!add);
+                                        }}
+                                        />
+                                }
                             </TabPanel>
                         </TabPanels>
                     </TabGroup>
 
                     <div id='undo-panel' className='mt-1 grid grid-cols-3'>
-                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Undo'>
-                            <button id='undo-button' className={clsx(btnClassName1, 'mr-1.5')} onClick={sorry}>
+                        <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
+                            disabled={false}
+                            onClick={sorry} 
+                            icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(-45 12 12)">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
                                     </g>
-                                </svg>
-                                <span className='sr-only'>Undo</span>
-                            </button>
-                        </Tippy>
-                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Redo'>
-                            <button id='redo-button' className={clsx(btnClassName1, 'mr-1.5')} onClick={sorry}> 
+                                </svg>} />
+                        <BasicColoredButton id='redo-button' label='Redo' style='rounded-xl mr-1.5' tooltip='Redo'
+                            disabled={false}
+                            onClick={sorry} 
+                            icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <g transform="rotate(45 12 12)">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
                                     </g>
-                                </svg>
-                                <span className='sr-only'>Redo</span> 
-                            </button>
-                        </Tippy>
-                        <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Delete'>
-                            <button id='del-button' className={btnClassName2} disabled={selection.length<1} onClick={deleteSelection} > 
+                                </svg>} />
+                        <BasicButton id='del-button' label='Delete' style={deleteButtonStyle} tooltip='Delete'
+                            disabled={selection.length<1} 
+                            onClick={deleteSelection} 
+                            icon={
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>                         
-                                <span className='sr-only'>Delete</span> 
-                            </button>
-                        </Tippy>
+                                </svg>} />
                     </div>
                 </div>
                 <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                    <button className={clsx(btnClassName1, 'mb-1 py-2')} onClick={sorry}> 
-                        Generate
-                    </button>
+                    <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} />
                     <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                         1 pixel = 
                         <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
@@ -788,22 +922,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                         pt
                     </div>
-                    <button className={clsx(btnClassName1, 'mb-1 py-2')} onClick={sorry}> 
-                        Load
-                    </button>
+                    <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} /> 
                     <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                 </div>
                 <Modal isOpen={showModal} closeTimeoutMS={1000}
                         className='fixed inset-0 flex items-center justify-center z-50'
                         overlayClassName='fixed inset-0 bg-gray-900/70' 
+                        contentLabel={modalMsg[0]}
                         onRequestClose={() => setShowModal(false)}>
                     <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
                         <h2>
-                            {modalMsg}
+                            {modalMsg[1]}
                         </h2>
-                        <button id='close-button' className={clsx(btnClassName1, 'w-20 mt-4')} onClick={() => setShowModal(false)}>
-                            OK
-                        </button>
+                        <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4' disabled={false} onClick={() => setShowModal(false)} />
                     </div>
                 </Modal>
             </div>

@@ -1,4 +1,5 @@
 import type { Config, Entry } from './ItemEditor.tsx'
+import Group, { GroupMember } from './Group.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -25,19 +26,31 @@ export const DEFAULT_COLOR = '#323232';
 export const DEFAULT_DIRECTION = COUNTERCLOCKWISE;
 
 
+/**
+ * This class corresponds to the class IndependentItem from the 2007 applet.
+ */
+export default class Item implements GroupMember {
+    key: string
+    x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
+    y: number
+    x100: number // These coordinates represent the item's location at 100% scaling.
+    y100: number
+    linewidth: number = DEFAULT_LINEWIDTH
+    lineWidth100: number
+    altLineWidth: number = DEFAULT_ALT_LINEWIDTH
+    shading: number = DEFAULT_SHADING
+    dash: number[] = DEFAULT_DASH
+    dash100: number[] = DEFAULT_DASH
+    group: Group<Item | Group<any>> | null = null
+    isActiveMember: boolean = false
 
-export default class Item {
-    constructor(public key: string, 
-        public x: number, // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
-        public y: number,
-        public x100: number = x, // These coordinates represent the item's location at 100% scaling.
-        public y100: number = y,
-        public lineWidth: number = DEFAULT_LINEWIDTH, 
-        public lineWidth100: number = DEFAULT_LINEWIDTH,
-        public altLineWidth: number = DEFAULT_ALT_LINEWIDTH,
-        public shading: number = DEFAULT_SHADING,
-        public dash: number[] = DEFAULT_DASH,
-        public dash100: number[] = DEFAULT_DASH) {
+    constructor(key: string, x: number, y: number) {
+        this.key = key
+        this.x = x
+        this.y = y
+        this.x100 = x
+        this.y100 = y
+        this.lineWidth100 = this.linewidth
     }
 
     public getInfo(items: Item[], editorConfig: Object): Entry[] {
@@ -75,6 +88,10 @@ export default class Item {
         this.y += dy;
         this.x100 += dx;
         this.y100 += dy;
+    }
+
+    public getString() {
+        return this.key
     }
 }
 
