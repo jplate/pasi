@@ -6,7 +6,7 @@ import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
 
-import { DarkModeContext } from '../../page.tsx'
+import { DarkModeContext } from './MainPanel.tsx'
 
 
 interface ButtonProps {

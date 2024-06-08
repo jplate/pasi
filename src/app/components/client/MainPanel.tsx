@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from 'react'
+import React, { useState, useRef, useEffect, createContext } from 'react'
 import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
@@ -9,7 +9,6 @@ import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
 import clsx from 'clsx/lite'
 
-import { DarkModeContext } from '../../page.tsx'
 import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE } from './Item.tsx'
 import { BasicButton, BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
@@ -135,12 +134,13 @@ const depItemLabels = [
 
 
 
+export const DarkModeContext = createContext(false);
+
 interface MainPanelProps {
     dark: boolean;
 }
 
-const MainPanel = () => {
-    const dark = useContext(DarkModeContext);
+const MainPanel = ({dark}: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel))
@@ -617,328 +617,330 @@ const MainPanel = () => {
     //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
-        <div id='main-panel' className='pasi flex my-8 p-6'> 
-            <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
-                <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
-                        onMouseDown= {canvasMouseDown}>
-                    {enodes.map((enode, i) => 
-                        <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
-                            markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
-                            focus={focusItem===enode} 
-                            selected={getSelectPositions(enode)} 
-                            preselected={preselection2.includes(enode)}
-                            onMouseDown={itemMouseDown}
-                            onMouseEnter={itemMouseEnter} 
-                            onMouseLeave={itemMouseLeave} />)}
-                    {points.map(point => 
-                        <PointComp key={point.key} x={point.x} y={point.y} 
-                            markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
-                    <style> {/* we're using polylines for the 'mark borders' of items */}
-                        @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
-                        polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
-                        .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
-                        .selected polyline {'{'} opacity: 1; {'}'}
-                        .preselected polyline {'{'} opacity: 0.65; transition: 0.15s; {'}'}
-                        .unselected polyline {'{'} opacity: 0; {'}'}
-                    </style>
-                    {lasso && 
-                        <svg width={lasso.x1 - lasso.x0 + MARK_LINEWIDTH * 2} height={lasso.y1 - lasso.y0 + MARK_LINEWIDTH * 2} 
-                                style={{position: 'absolute', 
-                                    left: lasso.x0 - MARK_LINEWIDTH, 
-                                    top: lasso.y0 - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
-                            <rect x='1' y='1' width={lasso.x1 - lasso.x0} height={lasso.y1 - lasso.y0} 
-                                fill={lasso.deselect? (dark? lassoDeselectDark: lassoDeselectLight): 'none'}
-                                stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
-                        </svg>
-                    }
-                    {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
-                    <PointComp key={limit.key} x={limit.x + LIMIT_POINT_OFFSET} y={limit.y - LIMIT_POINT_OFFSET} markColor='red' visible={false} /> 
-                </div>
-                <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
-                </div>
-            </div>
-            <div id='button-panels' className='flex-grow min-w-[300px] max-w-[380px] select-none'>
-                <div id='button-panel-1' className='flex flex-col ml-[25px] h-[638px]'>
-                    <div id='add-panel' className='grid grid-cols-2 mb-3'>
-                        <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' disabled={points.length<1} onClick={addEntityNodes} />
-                        <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' disabled={points.length<1} onClick={sorry} />  
-                    </div>                    
-
-                    <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-1.5 mb-3 rounded-xl'>
-                        <Menu>
-                            <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
-                                        focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
-                                <div className='flex-none text-left mr-2'>
-                                    {depItemLabels[depItemIndex].getImageComp(dark)}
-                                </div>
-                                <div className='flex-1'>
-                                    {depItemLabels[depItemIndex].label}
-                                </div>
-                                <div className='flex-none w-[28px] ml-2 text-right'>
-                                    <ChevronDownIcon className="size-4 fill-btncolor group-hover:fill-btnhovercolor group-data-[open]:fill-btnhovercolor" />                                    
-                                </div> 
-                            </MenuButton>
-                            <Transition
-                                    enter='transition ease-out duration-75'
-                                    enterFrom='opacity-0 scale-95'
-                                    enterTo='opacity-100 scale-100'
-                                    leave='transition ease-in duration-100'
-                                    leaveFrom='opacity-100 scale-100'
-                                    leaveTo='opacity-0 scale-95'>
-                                <MenuItems
-                                        anchor='bottom end'
-                                        className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
-                                    {depItemLabels.map((label, index) => 
-                                        <MenuItem key={'di-'+index}>
-                                            <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
-                                                <div className='inline mr-2'>
-                                                    {label.getImageComp(dark)}
-                                                </div>
-                                                {label.label}
-                                            </button>
-                                        </MenuItem>
-                                    )}
-                                </MenuItems>
-                            </Transition>
-                        </Menu>                
-                        <BasicColoredButton id='create-button' label='Create' style='rounded-md' disabled={false} onClick={sorry} /> 
+        <DarkModeContext.Provider value={dark}>
+            <div id='main-panel' className='pasi flex my-8 p-6'> 
+                <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
+                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
+                            onMouseDown= {canvasMouseDown}>
+                        {enodes.map((enode, i) => 
+                            <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
+                                markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
+                                focus={focusItem===enode} 
+                                selected={getSelectPositions(enode)} 
+                                preselected={preselection2.includes(enode)}
+                                onMouseDown={itemMouseDown}
+                                onMouseEnter={itemMouseEnter} 
+                                onMouseLeave={itemMouseLeave} />)}
+                        {points.map(point => 
+                            <PointComp key={point.key} x={point.x} y={point.y} 
+                                markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
+                        <style> {/* we're using polylines for the 'mark borders' of items */}
+                            @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
+                            polyline {'{'} stroke: {dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}; stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
+                            .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
+                            .selected polyline {'{'} opacity: 1; {'}'}
+                            .preselected polyline {'{'} opacity: 0.65; transition: 0.15s; {'}'}
+                            .unselected polyline {'{'} opacity: 0; {'}'}
+                        </style>
+                        {lasso && 
+                            <svg width={lasso.x1 - lasso.x0 + MARK_LINEWIDTH * 2} height={lasso.y1 - lasso.y0 + MARK_LINEWIDTH * 2} 
+                                    style={{position: 'absolute', 
+                                        left: lasso.x0 - MARK_LINEWIDTH, 
+                                        top: lasso.y0 - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
+                                <rect x='1' y='1' width={lasso.x1 - lasso.x0} height={lasso.y1 - lasso.y0} 
+                                    fill={lasso.deselect? (dark? lassoDeselectDark: lassoDeselectLight): 'none'}
+                                    stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
+                            </svg>
+                        }
+                        {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
+                        <PointComp key={limit.key} x={limit.x + LIMIT_POINT_OFFSET} y={limit.y - LIMIT_POINT_OFFSET} markColor='red' visible={false} /> 
                     </div>
-                    <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-3' disabled={selection.length<1} onClick={sorry} /> 
+                    <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
+                    </div>
+                </div>
+                <div id='button-panels' className='flex-grow min-w-[300px] max-w-[380px] select-none'>
+                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[638px]'>
+                        <div id='add-panel' className='grid grid-cols-2 mb-3'>
+                            <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' disabled={points.length<1} onClick={addEntityNodes} />
+                            <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' disabled={points.length<1} onClick={sorry} />  
+                        </div>                    
 
-                    <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
-                        <TabList className="grid grid-cols-3">
-                            <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
-                                Editor
-                            </Tab>
-                            <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Transform selection'>
-                                <Tab key='transform-tab' className={tabClassName} disabled={selection.length==0}>
-                                    Transform
+                        <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-1.5 mb-3 rounded-xl'>
+                            <Menu>
+                                <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
+                                            focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
+                                    <div className='flex-none text-left mr-2'>
+                                        {depItemLabels[depItemIndex].getImageComp(dark)}
+                                    </div>
+                                    <div className='flex-1'>
+                                        {depItemLabels[depItemIndex].label}
+                                    </div>
+                                    <div className='flex-none w-[28px] ml-2 text-right'>
+                                        <ChevronDownIcon className="size-4 fill-btncolor group-hover:fill-btnhovercolor group-data-[open]:fill-btnhovercolor" />                                    
+                                    </div> 
+                                </MenuButton>
+                                <Transition
+                                        enter='transition ease-out duration-75'
+                                        enterFrom='opacity-0 scale-95'
+                                        enterTo='opacity-100 scale-100'
+                                        leave='transition ease-in duration-100'
+                                        leaveFrom='opacity-100 scale-100'
+                                        leaveTo='opacity-0 scale-95'>
+                                    <MenuItems
+                                            anchor='bottom end'
+                                            className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                        {depItemLabels.map((label, index) => 
+                                            <MenuItem key={'di-'+index}>
+                                                <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
+                                                    <div className='inline mr-2'>
+                                                        {label.getImageComp(dark)}
+                                                    </div>
+                                                    {label.label}
+                                                </button>
+                                            </MenuItem>
+                                        )}
+                                    </MenuItems>
+                                </Transition>
+                            </Menu>                
+                            <BasicColoredButton id='create-button' label='Create' style='rounded-md' disabled={false} onClick={sorry} /> 
+                        </div>
+                        <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-3' disabled={selection.length<1} onClick={sorry} /> 
+
+                        <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
+                            <TabList className="grid grid-cols-3">
+                                <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
+                                    Editor
                                 </Tab>
-                            </Tippy>
-                            <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Manage groups'>
-                                <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')} disabled={!focusItem}>
-                                    Groups
-                                </Tab>
-                            </Tippy>
-                        </TabList>
-                        <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
-                            <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
-                                {focusItem?
-                                    <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
-                                        onChange={(e, i) => {
-                                            const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, i);
-                                            const nodes = applyToAll? 
-                                                deduplicatedSelection.reduce((acc: ENode[], item: Item) => {
-                                                        //console.log(`Editing item ${item.key}`);
-                                                        return edit(item, acc) as ENode[]
-                                                }, enodes):
-                                                edit(focusItem, enodes);
-                                            setEnodes(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
+                                <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Transform selection'>
+                                    <Tab key='transform-tab' className={tabClassName} disabled={selection.length==0}>
+                                        Transform
+                                    </Tab>
+                                </Tippy>
+                                <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Manage groups'>
+                                    <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')} disabled={!focusItem}>
+                                        Groups
+                                    </Tab>
+                                </Tippy>
+                            </TabList>
+                            <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
+                                    {focusItem?
+                                        <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
+                                            onChange={(e, i) => {
+                                                const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, i);
+                                                const nodes = applyToAll? 
+                                                    deduplicatedSelection.reduce((acc: ENode[], item: Item) => {
+                                                            //console.log(`Editing item ${item.key}`);
+                                                            return edit(item, acc) as ENode[]
+                                                    }, enodes):
+                                                    edit(focusItem, enodes);
+                                                setEnodes(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
+                                                adjustLimit();
+                                                setOrigin(false);                                        
+                                                setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
+                                            }} />
+                                        :
+                                        <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
+                                            onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                            onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                            onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
+                                            onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
+                                            onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
+                                            onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
+                                            onHDispChange={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                            onVDispChange={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                            onReset={() => {
+                                                setGrid(createGrid());
+                                                setHDisplacement(DEFAULT_HDISPLACEMENT);
+                                                setVDisplacement(DEFAULT_VDISPLACEMENT);
+                                            }} />
+                                    }
+                                </TabPanel>
+                                <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
+                                    <TransformTab rotation={rotation} scaling={scaling} hFlipPossible={hFlipPossible} vFlipPossible={vFlipPossible} 
+                                        logIncrements={logIncrements} transformFlags={transformFlags}
+                                        testRotation={angle => {
+                                            for(const item of deduplicatedSelection) {
+                                                const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
+                                                if(x<0 || x>MAX_X) return false
+                                                if(y<MIN_Y || y>H) return false
+                                            }
+                                            return true
+                                        }}
+                                        rotate={(angle, newValue) => {
+                                            deduplicatedSelection.forEach(item => {
+                                                ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
+                                                ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
+                                            });
                                             adjustLimit();
-                                            setOrigin(false);                                        
-                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
+                                            checkFlip(); 
+                                            setRotation(newValue);
+                                        }}
+                                        testScaling={val => {
+                                            for(const item of deduplicatedSelection) {
+                                                const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
+                                                if(!isFinite(x) || !isFinite(y)) {
+                                                    setModalMsg(['Buzz Lightyear alert', `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`])
+                                                    setShowModal(true)
+                                                }
+                                                if(x<0 || x>MAX_X) return false
+                                                if(y<MIN_Y || y>H) return false
+                                                if(transformFlags.scaleENodes && item instanceof ENode) {
+                                                    const v = item.radius100 * val/100
+                                                    if(v<0 || v>MAX_RADIUS) return false
+                                                }
+                                                if(transformFlags.scaleLinewidths) {
+                                                    const v = item.lineWidth100 * val/100
+                                                    if(v<0 || v>MAX_LINEWIDTH) return false
+                                                }
+                                                if(transformFlags.scaleDash) {
+                                                    if(item.dash100.some(l => {
+                                                            const v = l * val/100
+                                                            return v<0 || v>MAX_DASH_VALUE
+                                                    })) return false
+                                                }
+                                            }
+                                            return true
+                                        }}
+                                        scale={newValue => {
+                                            deduplicatedSelection.forEach(item => {
+                                                ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
+                                                if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
+                                                if(transformFlags.scaleLinewidths) item.linewidth = item.lineWidth100 * newValue/100;
+                                                if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
+                                            }); 
+                                            adjustLimit();
+                                            checkFlip();
+                                            setScaling(newValue);
+                                        }}
+                                        hFlip={() => {
+                                            deduplicatedSelection.forEach(item => {
+                                                item.x = 2*origin.x - item.x;
+                                                item.x100 = 2*origin.x - item.x100;
+                                            });
+                                            adjustLimit();
+                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                   
+                                        }}
+                                        vFlip={() => {
+                                            deduplicatedSelection.forEach(item => {
+                                                item.y = 2*origin.y - item.y;
+                                                item.y100 = 2*origin.y - item.y100;
+                                            });
+                                            adjustLimit();
+                                            setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                  
                                         }} />
-                                    :
-                                    <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
-                                        onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
-                                        onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
-                                        onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
-                                        onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
-                                        onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
-                                        onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
-                                        onHDispChange={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
-                                        onVDispChange={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
-                                        onReset={() => {
-                                            setGrid(createGrid());
-                                            setHDisplacement(DEFAULT_HDISPLACEMENT);
-                                            setVDisplacement(DEFAULT_VDISPLACEMENT);
-                                        }} />
-                                }
-                            </TabPanel>
-                            <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
-                                <TransformTab rotation={rotation} scaling={scaling} hFlipPossible={hFlipPossible} vFlipPossible={vFlipPossible} 
-                                    logIncrements={logIncrements} transformFlags={transformFlags}
-                                    testRotation={angle => {
-                                        for(const item of deduplicatedSelection) {
-                                            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
-                                            if(x<0 || x>MAX_X) return false
-                                            if(y<MIN_Y || y>H) return false
-                                        }
-                                        return true
-                                    }}
-                                    rotate={(angle, newValue) => {
-                                        deduplicatedSelection.forEach(item => {
-                                            ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
-                                            ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
-                                        });
-                                        adjustLimit();
-                                        checkFlip(); 
-                                        setRotation(newValue);
-                                    }}
-                                    testScaling={val => {
-                                        for(const item of deduplicatedSelection) {
-                                            const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
-                                            if(!isFinite(x) || !isFinite(y)) {
-                                                setModalMsg(['Buzz Lightyear alert', `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`])
-                                                setShowModal(true)
-                                            }
-                                            if(x<0 || x>MAX_X) return false
-                                            if(y<MIN_Y || y>H) return false
-                                            if(transformFlags.scaleENodes && item instanceof ENode) {
-                                                const v = item.radius100 * val/100
-                                                if(v<0 || v>MAX_RADIUS) return false
-                                            }
-                                            if(transformFlags.scaleLinewidths) {
-                                                const v = item.lineWidth100 * val/100
-                                                if(v<0 || v>MAX_LINEWIDTH) return false
-                                            }
-                                            if(transformFlags.scaleDash) {
-                                                if(item.dash100.some(l => {
-                                                        const v = l * val/100
-                                                        return v<0 || v>MAX_DASH_VALUE
-                                                })) return false
-                                            }
-                                        }
-                                        return true
-                                    }}
-                                    scale={newValue => {
-                                        deduplicatedSelection.forEach(item => {
-                                            ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
-                                            if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
-                                            if(transformFlags.scaleLinewidths) item.linewidth = item.lineWidth100 * newValue/100;
-                                            if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
-                                        }); 
-                                        adjustLimit();
-                                        checkFlip();
-                                        setScaling(newValue);
-                                    }}
-                                    hFlip={() => {
-                                        deduplicatedSelection.forEach(item => {
-                                            item.x = 2*origin.x - item.x;
-                                            item.x100 = 2*origin.x - item.x100;
-                                        });
-                                        adjustLimit();
-                                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                   
-                                    }}
-                                    vFlip={() => {
-                                        deduplicatedSelection.forEach(item => {
-                                            item.y = 2*origin.y - item.y;
-                                            item.y100 = 2*origin.y - item.y100;
-                                        });
-                                        adjustLimit();
-                                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                                  
-                                    }} />
-                            </TabPanel>
-                            <TabPanel key='groups-panel' className="rounded-xl p-3">
-                                {focusItem &&
-                                    <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
-                                        create={() => {
-                                            const members = deduplicatedSelection.map(highestActive).filter((m, i, array) => i===array.indexOf(m));
-                                            const group = new StandardGroup<Item | Group<any>>(members);
-                                            members.forEach(member => {
-                                                const oldGroup = member.group;
-                                                if(oldGroup) oldGroup.members = oldGroup.members.filter(m => m!==member);
-                                                member.group = group;
-                                                member.isActiveMember = true;
-                                            })
-                                            adjustSelection(focusItem);                                 
-                                        }} 
-                                        leave={() => {
-                                            const groups = getGroups(focusItem);
-                                            const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
-                                            member.isActiveMember = false;
-                                            adjustSelection(focusItem);                                 
-                                        }}
-                                        rejoin={() => {
-                                            const member = highestActive(focusItem);
-                                            if(member.group) member.isActiveMember = true;
-                                            adjustSelection(focusItem);                                 
-                                        }}
-                                        dissolve={() => {
-                                            const group = highestActive(focusItem);
-                                            if (!(group instanceof Item)) {
-                                                const { members } = group;
-                                                members.forEach(m => m.isActiveMember = false);
-                                            }
-                                            adjustSelection(focusItem);
-                                        }}
-                                        restore={() => {
-                                            const ha = highestActive(focusItem);
-                                            if (!(ha instanceof Item)) {
-                                                ha.members.forEach(m => m.isActiveMember=true);
-                                            }
-                                            adjustSelection(focusItem);                                 
-                                        }}
-                                        changeAdding={() => {
-                                            const add = !adding;
-                                            setAdding(add);
-                                            if (add) setDissolveAdding(!add);
-                                        }}
-                                        changeDissolveAdding={() => {
-                                            const add = !dissolveAdding;
-                                            setDissolveAdding(add);
-                                            if (add) setAdding(!add);
-                                        }}
-                                        />
-                                }
-                            </TabPanel>
-                        </TabPanels>
-                    </TabGroup>
+                                </TabPanel>
+                                <TabPanel key='groups-panel' className="rounded-xl p-3">
+                                    {focusItem &&
+                                        <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
+                                            create={() => {
+                                                const members = deduplicatedSelection.map(highestActive).filter((m, i, array) => i===array.indexOf(m));
+                                                const group = new StandardGroup<Item | Group<any>>(members);
+                                                members.forEach(member => {
+                                                    const oldGroup = member.group;
+                                                    if(oldGroup) oldGroup.members = oldGroup.members.filter(m => m!==member);
+                                                    member.group = group;
+                                                    member.isActiveMember = true;
+                                                })
+                                                adjustSelection(focusItem);                                 
+                                            }} 
+                                            leave={() => {
+                                                const groups = getGroups(focusItem);
+                                                const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
+                                                member.isActiveMember = false;
+                                                adjustSelection(focusItem);                                 
+                                            }}
+                                            rejoin={() => {
+                                                const member = highestActive(focusItem);
+                                                if(member.group) member.isActiveMember = true;
+                                                adjustSelection(focusItem);                                 
+                                            }}
+                                            dissolve={() => {
+                                                const group = highestActive(focusItem);
+                                                if (!(group instanceof Item)) {
+                                                    const { members } = group;
+                                                    members.forEach(m => m.isActiveMember = false);
+                                                }
+                                                adjustSelection(focusItem);
+                                            }}
+                                            restore={() => {
+                                                const ha = highestActive(focusItem);
+                                                if (!(ha instanceof Item)) {
+                                                    ha.members.forEach(m => m.isActiveMember=true);
+                                                }
+                                                adjustSelection(focusItem);                                 
+                                            }}
+                                            changeAdding={() => {
+                                                const add = !adding;
+                                                setAdding(add);
+                                                if (add) setDissolveAdding(!add);
+                                            }}
+                                            changeDissolveAdding={() => {
+                                                const add = !dissolveAdding;
+                                                setDissolveAdding(add);
+                                                if (add) setAdding(!add);
+                                            }}
+                                            />
+                                    }
+                                </TabPanel>
+                            </TabPanels>
+                        </TabGroup>
 
-                    <div id='undo-panel' className='mt-1 grid grid-cols-3'>
-                        <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
-                            disabled={false}
-                            onClick={sorry} 
-                            icon={
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
-                                    <g transform="rotate(-45 12 12)">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                                    </g>
-                                </svg>} />
-                        <BasicColoredButton id='redo-button' label='Redo' style='rounded-xl mr-1.5' tooltip='Redo'
-                            disabled={false}
-                            onClick={sorry} 
-                            icon={
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
-                                    <g transform="rotate(45 12 12)">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
-                                    </g>
-                                </svg>} />
-                        <BasicButton id='del-button' label='Delete' style={deleteButtonStyle} tooltip='Delete'
-                            disabled={selection.length<1} 
-                            onClick={deleteSelection} 
-                            icon={
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>} />
+                        <div id='undo-panel' className='mt-1 grid grid-cols-3'>
+                            <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
+                                disabled={false}
+                                onClick={sorry} 
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                        <g transform="rotate(-45 12 12)">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                        </g>
+                                    </svg>} />
+                            <BasicColoredButton id='redo-button' label='Redo' style='rounded-xl mr-1.5' tooltip='Redo'
+                                disabled={false}
+                                onClick={sorry} 
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                        <g transform="rotate(45 12 12)">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
+                                        </g>
+                                    </svg>} />
+                            <BasicButton id='del-button' label='Delete' style={deleteButtonStyle} tooltip='Delete'
+                                disabled={selection.length<1} 
+                                onClick={deleteSelection} 
+                                icon={
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>} />
+                        </div>
                     </div>
+                    <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
+                        <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} />
+                        <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
+                            1 pixel = 
+                            <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                                type='number' step='0.1' value={pixel}
+                                onChange={(e) => setPixel(parseFloat(e.target.value))}/>
+                            pt
+                        </div>
+                        <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} /> 
+                        <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
+                    </div>
+                    <Modal isOpen={showModal} closeTimeoutMS={1000}
+                            className='fixed inset-0 flex items-center justify-center z-50'
+                            overlayClassName='fixed inset-0 bg-gray-900/70' 
+                            contentLabel={modalMsg[0]}
+                            onRequestClose={() => setShowModal(false)}>
+                        <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
+                            <h2>
+                                {modalMsg[1]}
+                            </h2>
+                            <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4' disabled={false} onClick={() => setShowModal(false)} />
+                        </div>
+                    </Modal>
                 </div>
-                <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                    <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} />
-                    <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
-                        1 pixel = 
-                        <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                            type='number' step='0.1' value={pixel}
-                            onChange={(e) => setPixel(parseFloat(e.target.value))}/>
-                        pt
-                    </div>
-                    <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} /> 
-                    <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
-                </div>
-                <Modal isOpen={showModal} closeTimeoutMS={1000}
-                        className='fixed inset-0 flex items-center justify-center z-50'
-                        overlayClassName='fixed inset-0 bg-gray-900/70' 
-                        contentLabel={modalMsg[0]}
-                        onRequestClose={() => setShowModal(false)}>
-                    <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
-                        <h2>
-                            {modalMsg[1]}
-                        </h2>
-                        <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4' disabled={false} onClick={() => setShowModal(false)} />
-                    </div>
-                </Modal>
             </div>
-        </div>
+        </DarkModeContext.Provider>
     );
 };
 

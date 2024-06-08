@@ -1,13 +1,12 @@
 'use client'
 
 import dynamic from "next/dynamic";
-import React, {useState, useEffect, createContext} from "react";
+import React, { useState, useEffect } from "react";
 import 'tippy.js/dist/tippy.css';
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
 
-export const DarkModeContext = createContext(false);
 
 const getInitialColorScheme = () => {
   const storedMode = localStorage.getItem('color-scheme');
@@ -85,9 +84,7 @@ export default function Home() {
             </p>
           </section>
 
-          <DarkModeContext.Provider value={isDarkMode}>
-            <MainPanel />
-          </DarkModeContext.Provider>
+          <MainPanel dark={isDarkMode} />
 
           <section className='max-w-3xl ml-9'>
             <p>
