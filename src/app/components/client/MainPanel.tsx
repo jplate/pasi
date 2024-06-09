@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, createContext } from 'react'
 import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import NextImage, { StaticImageData } from 'next/image'
 import Tippy from '@tippyjs/react'
 import 'tippy.js/dist/tippy.css'
@@ -36,9 +35,11 @@ import rstSrc from '../../../icons/rst.png'
 import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
-export const H = 638; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
+export const H = 640; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 export const MAX_X = 9999 // the highest possible TeX coordinate for an Item
 export const MIN_Y = H-9999 // the lowest possible TeX coordinate for an Item 
+
+const MAX_NUMBER_OF_ENODES = 1024
 
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb'
 export const MARK_COLOR0_DARK_MODE = '#000000'
@@ -68,8 +69,8 @@ const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 
-export const CONTOUR_CENTER_SNAP_RADIUS = 10
-export const CONTOUR_NODE_SNAP_RADIUS = 15
+const CONTOUR_CENTER_SNAP_RADIUS = 10
+const CONTOUR_NODE_SNAP_RADIUS = 15
 
 const CANVAS_CLICK_THRESHOLD = 4 // For determining when a mouseUp is a mouseClick
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
@@ -158,6 +159,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT)
 
     const [lasso, setLasso] = useState<Lasso | null>(null)
+    const [dragging, setDragging] = useState(false)
     const [preselection1, setPreselection1] = useState<Item[]>([])
     const preselection1Ref = useRef<Item[]>([])
     preselection1Ref.current = preselection1
@@ -205,7 +207,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 item.x100 = item.x;
                 item.y100 = item.y;
                 item.radius100 = item.radius;
-                item.lineWidth100 = item.linewidth;
+                item.linewidth100 = item.linewidth;
                 item.dash100 = item.dash;
             });
         }
@@ -303,7 +305,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
         if(item) {
-            if(e.ctrlKey && selection.includes(item)) {
+            if(e.ctrlKey && !e.shiftKey && selection.includes(item)) {
                 deselect(item);
             } 
             else {
@@ -349,6 +351,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }
                 }
                 // Handle dragging:
+                setDragging(true);
                 const startX = e.clientX - item.x;
                 const startY = e.clientY - (H-item.y);
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
@@ -373,6 +376,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
+                    setDragging(false);
                     adjustLimit();
                     setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
                     // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
@@ -394,31 +398,34 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
-        const newPres = preselection1.includes(item)? preselection1: [...preselection1, item];
-        setPreselection1(prev => newPres);
-        if (e.ctrlKey) {
-            setPreselection2(prev => prev.includes(item)? prev: [...prev, item]) // if Ctrl is pressed, only add item by itself
-        }
-        else {
-            updateSecondaryPreselection(newPres) // otherwise add all the leaf members of its highest active group
+        if(!dragging) {
+            const newPres = preselection1.includes(item)? preselection1: [...preselection1, item];
+            setPreselection1(prev => newPres);
+            if (e.ctrlKey) {
+                setPreselection2(prev => prev.includes(item)? prev: [...prev, item]) // if Ctrl is pressed, only add item by itself
+            }
+            else {
+                updateSecondaryPreselection(newPres) // otherwise add all the leaf members of its highest active group
+            }
         }
     }
 
     const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
-        const newPres = preselection1.filter(it => it!==item)
-        setPreselection1(newPres);
-        updateSecondaryPreselection(newPres)
+        if(!dragging) {
+            const newPres = preselection1.filter(it => it!==item)
+            setPreselection1(newPres);
+            updateSecondaryPreselection(newPres)
+        }
     }
 
-    const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. One reason why we have to go through the trouble
-            // of effectively implementing a mouseClick handler is that, after dragging an item over the canvas, the mouse might end up being over the canvas instead of the item. If the mouse button 
-            // is then released, this would normally cause a mouseClick event. To prevent that, we have to make sure that we don't count these events unless the mouse was originally pressed over the canvas.
-            // The other reason is that we need to add a mouseMoveListener to take care of 'lassoing'.
+    const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. 
         const {left, top} = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
         const {scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
         const x = e.clientX - left + scrollLeft;
         const y = e.clientY - top + scrollTop;
+        const deselect = e.ctrlKey && !e.shiftKey && selection.length>0;
         let newPoints = e.shiftKey? points: [];
+
 
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
@@ -442,9 +449,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     if (!included) newPoints = [...points, newPoint];
                 }
             } 
-            else { // in this case, we need to take care of the lasso, and either select or deselect items
+            else { // In this case, we need to take care of the lasso, and either select or deselect items.
                 const pres = preselection2Ref.current;
-                const deselect = e.ctrlKey;
                 if (deselect) {
                     const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
                     newSelection = selection.filter((item, index) => !toDeselect.includes(index));
@@ -473,7 +479,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPreselection1([]);
             setPreselection2([]);
             setSelection(newSelection);
-        };
+        }
 
         const handleMouseMove = (mme: MouseEvent) => {
             const dx = mme.clientX - e.clientX;
@@ -481,14 +487,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
                 setPoints(newPoints);
-                const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), e.ctrlKey);
+                const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), deselect);
                 const pres1 = preselection1Ref.current;
                 const newPres1 = [
                     ...pres1.filter(item => lasso.contains(item)),
                     ...enodes.filter(item => 
-                        lasso.contains(item) && !pres1.includes(item) && (!lasso.deselect || selection.includes(item)))];
+                        lasso.contains(item) && !pres1.includes(item) && (!deselect || selection.includes(item)))];
                 setPreselection1(prev => newPres1);
-                if (mme.ctrlKey) {
+                if (mme.ctrlKey) { // Pressing the Ctrl key leads to group membership being ignored.
                     setPreselection2(newPres1);
                 }
                 else {
@@ -503,7 +509,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
         setAdding(false);
         setDissolveAdding(false);
-    };
+    }
 
     const addEntityNodes = () => { // onClick handler for the node button
         if (points.length>0) {
@@ -527,8 +533,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
     
     const deleteSelection = () => { // onClick handler for the delete button
-        if (selection && selection.length>0) {
+        if (selection.length>0) {
+            const whitelist = new Set<Group<Item | Group<any>>>();
             const nodes = enodes.filter(item => !selection.includes(item)); 
+            nodes.forEach(item => { // Whitelist each group that contains (directly or indirectly) a not-to-be-deleted node.
+                getGroups(item)[0].forEach(g => whitelist.add(g));
+            });
+            whitelist.forEach(g => { // For each of those groups, filter out all the members that are either to-be-deleted nodes or non-whitelisted groups.
+                g.members = g.members.filter(m => ((m instanceof ENode) && nodes.includes(m)) || 
+                        (!(m instanceof Item) && whitelist.has(m)));
+            });
             setEnodes(nodes);
             setSelection([]);
             setFocusItem(null);
@@ -594,7 +608,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
         else {
             const lm = getLeafMembers(ha, true);
-            setSelection([item, ...enodes.filter(it => it!==focusItem && lm.has(it))]);
+            setSelection([item, ...enodes.filter(it => it!==item && lm.has(it))]);
         }
     }
 
@@ -620,7 +634,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'> 
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
-                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[638px] relative overflow-auto border'
+                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[640px] relative overflow-auto border'
                             onMouseDown= {canvasMouseDown}>
                         {enodes.map((enode, i) => 
                             <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
@@ -659,9 +673,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                 </div>
                 <div id='button-panels' className='flex-grow min-w-[300px] max-w-[380px] select-none'>
-                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[638px]'>
+                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[640px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
-                            <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' disabled={points.length<1} onClick={addEntityNodes} />
+                            <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' 
+                                disabled={points.length<1 || enodes.length>=MAX_NUMBER_OF_ENODES} onClick={addEntityNodes} />
                             <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' disabled={points.length<1} onClick={sorry} />  
                         </div>                    
 
@@ -675,8 +690,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     <div className='flex-1'>
                                         {depItemLabels[depItemIndex].label}
                                     </div>
-                                    <div className='flex-none w-[28px] ml-2 text-right'>
-                                        <ChevronDownIcon className="size-4 fill-btncolor group-hover:fill-btnhovercolor group-data-[open]:fill-btnhovercolor" />                                    
+                                    <div className='flex-none w-[28px] ml-2 text-right'> 
+                                        <svg className='size-4' // source: https://heroicons.com/
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                        </svg>                             
                                     </div> 
                                 </MenuButton>
                                 <Transition
@@ -722,8 +740,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     </Tab>
                                 </Tippy>
                             </TabList>
-                            <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[368px] rounded-b-xl overflow-auto scrollbox'>
-                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
+                            <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[372px] rounded-b-xl overflow-auto scrollbox'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 pt-2 pb-3 h-full'>
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
                                             onChange={(e, i) => {
@@ -741,15 +759,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             }} />
                                         :
                                         <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
-                                            onHGapChange={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
-                                            onVGapChange={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
-                                            onHShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
-                                            onVShiftChange={(e) => setGrid(prevGrid => ({...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
-                                            onSnapToNodeChange={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
-                                            onSnapToCCChange={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
-                                            onHDispChange={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
-                                            onVDispChange={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
-                                            onReset={() => {
+                                            changeHGap={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                            changeVGap={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
+                                            changeHShift={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
+                                            changeVShift={(e) => setGrid(prevGrid => ({...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
+                                            changeSnapToNode={() => setGrid(prevGrid => ({...prevGrid, snapToNodes: !prevGrid.snapToNodes}))} 
+                                            changeSnapToCC={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
+                                            changeHDisp={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                            changeVDisp={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                            reset={() => {
                                                 setGrid(createGrid());
                                                 setHDisplacement(DEFAULT_HDISPLACEMENT);
                                                 setVDisplacement(DEFAULT_VDISPLACEMENT);
@@ -762,8 +780,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         testRotation={angle => {
                                             for(const item of deduplicatedSelection) {
                                                 const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
-                                                if(x<0 || x>MAX_X) return false
-                                                if(y<MIN_Y || y>H) return false
+                                                if (x<0 || x>MAX_X) return false;
+                                                if (y<MIN_Y || y>H) return false;
                                             }
                                             return true
                                         }}
@@ -777,27 +795,28 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             setRotation(newValue);
                                         }}
                                         testScaling={val => {
-                                            for(const item of deduplicatedSelection) {
+                                            for (const item of deduplicatedSelection) {
                                                 const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
-                                                if(!isFinite(x) || !isFinite(y)) {
-                                                    setModalMsg(['Buzz Lightyear alert', `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`])
-                                                    setShowModal(true)
+                                                if (!isFinite(x) || !isFinite(y)) {
+                                                    setModalMsg(['Buzz Lightyear alert', 
+                                                        `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`]);
+                                                    setShowModal(true);
                                                 }
-                                                if(x<0 || x>MAX_X) return false
-                                                if(y<MIN_Y || y>H) return false
-                                                if(transformFlags.scaleENodes && item instanceof ENode) {
-                                                    const v = item.radius100 * val/100
-                                                    if(v<0 || v>MAX_RADIUS) return false
+                                                if (x<0 || x>MAX_X) return false;
+                                                if (y<MIN_Y || y>H) return false;
+                                                if (transformFlags.scaleENodes && item instanceof ENode) {
+                                                    const v = item.radius100 * val/100;
+                                                    if(v<0 || v>MAX_RADIUS) return false;
                                                 }
-                                                if(transformFlags.scaleLinewidths) {
-                                                    const v = item.lineWidth100 * val/100
-                                                    if(v<0 || v>MAX_LINEWIDTH) return false
+                                                if (transformFlags.scaleLinewidths) {
+                                                    const v = item.linewidth100 * val/100;
+                                                    if(v<0 || v>MAX_LINEWIDTH) return false;
                                                 }
-                                                if(transformFlags.scaleDash) {
+                                                if (transformFlags.scaleDash) {
                                                     if(item.dash100.some(l => {
-                                                            const v = l * val/100
-                                                            return v<0 || v>MAX_DASH_VALUE
-                                                    })) return false
+                                                            const v = l * val/100;
+                                                            return v<0 || v>MAX_DASH_VALUE;
+                                                    })) return false;
                                                 }
                                             }
                                             return true
@@ -806,7 +825,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             deduplicatedSelection.forEach(item => {
                                                 ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
                                                 if(transformFlags.scaleENodes && item instanceof ENode) item.radius = item.radius100 * newValue/100;
-                                                if(transformFlags.scaleLinewidths) item.linewidth = item.lineWidth100 * newValue/100;
+                                                if(transformFlags.scaleLinewidths) item.linewidth = item.linewidth100 * newValue/100;
                                                 if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                             }); 
                                             adjustLimit();
@@ -890,7 +909,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
                                 disabled={false}
                                 onClick={sorry} 
-                                icon={
+                                icon={ // source: https://heroicons.com/
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <g transform="rotate(-45 12 12)">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -899,7 +918,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <BasicColoredButton id='redo-button' label='Redo' style='rounded-xl mr-1.5' tooltip='Redo'
                                 disabled={false}
                                 onClick={sorry} 
-                                icon={
+                                icon={ // source: https://heroicons.com/
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <g transform="rotate(45 12 12)">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
@@ -908,7 +927,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <BasicButton id='del-button' label='Delete' style={deleteButtonStyle} tooltip='Delete'
                                 disabled={selection.length<1} 
                                 onClick={deleteSelection} 
-                                icon={
+                                icon={ // source: https://heroicons.com/
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                                     </svg>} />

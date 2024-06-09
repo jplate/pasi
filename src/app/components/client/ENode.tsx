@@ -104,7 +104,7 @@ export default class ENode extends Item {
                     }, true]
                 }
         	case 3: if(e) return [(item, array) => {if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); return array}, true]
-            case 4: if(e) return [(item, array) => {item.linewidth = item.lineWidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
+            case 4: if(e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
             case 5: if(e) return [(item, array) => {
                     const split = e.target.value.split(/[^0-9.]+/);
                     if(this.info[5].inputRef?.current) {
@@ -173,7 +173,7 @@ export default class ENode extends Item {
             case 10: if(index==10) return [(item, array) => {
                     if(item instanceof ENode) {
                         item.radius = item.radius100 = DEFAULT_RADIUS;
-                        item.linewidth = item.lineWidth100 = DEFAULT_LINEWIDTH;
+                        item.linewidth = item.linewidth100 = DEFAULT_LINEWIDTH;
                         item.dash = item.dash100 = DEFAULT_DASH;
                         item.shading = DEFAULT_SHADING;
                     }

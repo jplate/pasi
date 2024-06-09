@@ -40,17 +40,15 @@ export const getGroups = (member: GroupMember): [g: Group<any>[], index: number]
     let { group } = member,
         groups: Group<any>[] = [],
         i = -1, 
-        highestActiveGroupReached = false;
+        highestActiveReached = false;
 
     if (group) while (true) {
         groups = [...groups, group]
 
-        if(!highestActiveGroupReached && member.isActiveMember) i++
-        else highestActiveGroupReached = true
+        if (!highestActiveReached && member.isActiveMember) i++;
+        else highestActiveReached = true;
         
-        if (!group.group) {
-            break;
-        }
+        if (!group.group) break;
         member = group;
         group = group.group;
     }
@@ -64,7 +62,7 @@ export const getLeafMembers = (group: Group<any>, onlyActiveMembers: boolean = f
     for (let m of members) {
         if(m.isActiveMember || !onlyActiveMembers) {
             if (isGroup(m, isGroupMember)) {
-                let leaves = getLeafMembers(m, onlyActiveMembers)
+                let leaves = getLeafMembers(m, onlyActiveMembers);
                 for (let l of leaves) {
                     result.add(l);
                 }

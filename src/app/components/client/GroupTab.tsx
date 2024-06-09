@@ -21,16 +21,16 @@ export interface GroupTabProps {
 const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, dissolve, restore, 
         changeAdding, changeDissolveAdding}: GroupTabProps) => {
 
-    const groups = getGroups(item)
-    const canLeave = item.group!==null && item.isActiveMember
-    const highestActive = groups[1]>-1? groups[0][groups[1]]: item
-    const canRejoin = highestActive.group!==null && !highestActive.isActiveMember
+    const groups = getGroups(item);
+    const highestActive = groups[1]>-1? groups[0][groups[1]]: item;
+    const canLeave = item.group!==null && item.isActiveMember;
+    const canRejoin = highestActive.group!==null && !highestActive.isActiveMember;
     const canRestore = !(highestActive instanceof Item) && highestActive.members.some(m => !m.isActiveMember);
-    const canAdd = highestActive!==item
+    const canAdd = !(highestActive instanceof Item);
 
     return (
         <div className='flex flex-col h-full'>
-            <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 rounded-lg' disabled={groups[1]+1>=MAX_GROUP_LEVEL} onClick={create} 
+            <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 mt-1 rounded-lg' disabled={groups[1]+1>=MAX_GROUP_LEVEL} onClick={create} 
                 tooltip={'Creates a new group that has all elements of the current selection (or their highest active groups, where applicable) as members, and removes these '+
                     'elements from their current lowest inactive groups.'}
                 tooltipPlacement='left' />
