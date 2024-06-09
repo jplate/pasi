@@ -36,8 +36,7 @@ export default class Item implements GroupMember {
     x100: number // These coordinates represent the item's location at 100% scaling.
     y100: number
     linewidth: number = DEFAULT_LINEWIDTH
-    linewidth100: number
-    altLinewidth: number = DEFAULT_ALT_LINEWIDTH
+    linewidth100: number = DEFAULT_LINEWIDTH
     shading: number = DEFAULT_SHADING
     dash: number[] = DEFAULT_DASH
     dash100: number[] = DEFAULT_DASH
@@ -50,7 +49,6 @@ export default class Item implements GroupMember {
         this.y = y
         this.x100 = x
         this.y100 = y
-        this.linewidth100 = this.linewidth
     }
 
     public getInfo(items: Item[], editorConfig: Object): Entry[] {

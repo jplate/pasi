@@ -1,7 +1,7 @@
 import React from 'react';
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, W, MAX_X, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
 
@@ -90,7 +90,7 @@ export default class ENode extends Item {
                     const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
                     const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
                     return [(item, array) => {
-                        item.move(dx, 0);                            
+                        item.move(dx, 0);                         
                         return array
                     }, true]
                 }

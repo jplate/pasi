@@ -41,7 +41,7 @@ li {
   --btncolor: 71, 85, 105; /* slate-600 */
   --btnborder: 148, 163, 184; /* slate-400 */
   --btnhoverbg: 255, 255, 255; 
-  --btnhovercolor: 71, 85, 105; /* slate-600 */
+  --btnhovercolor: 105, 115, 136; /* slightly desaturated version of slate-500 */
   --btnactivebg: 148, 163, 184; /* slate-400 */
   --btnactivecolor: 71, 85, 105; /* slate-600 */
   --btnfocusring: 148, 163, 204; /* moderately bluer than slate-400 */

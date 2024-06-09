@@ -33,20 +33,23 @@ export const isGroup = <T extends GroupMember>(obj: any, memberGuard: (m: any, g
 
 
 /**
- * Returns an array whose first element is an array representing the hierarchy of the groups of which the first argument is a direct or indirect member, and
- * whose second element indicates the 'highest active group'.
+ * Returns an array whose first element is an array representing the list of groups of which the first argument is a direct or indirect member, and
+ * whose second element indicates the first group (in ascending order) whose member that is either the first argument or a member of the list satisfies the supplied test condition.
  */
-export const getGroups = (member: GroupMember): [g: Group<any>[], index: number] => {
+export const getGroups = (
+        member: GroupMember, 
+        test: (m: GroupMember) => boolean = m => !m.isActiveMember
+    ): [g: Group<any>[], index: number] => {
     let { group } = member,
         groups: Group<any>[] = [],
         i = -1, 
-        highestActiveReached = false;
+        reached = false;
 
     if (group) while (true) {
         groups = [...groups, group]
 
-        if (!highestActiveReached && member.isActiveMember) i++;
-        else highestActiveReached = true;
+        if (!reached && !test(member)) i++;
+        else reached = true;
         
         if (!group.group) break;
         member = group;

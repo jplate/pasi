@@ -36,8 +36,9 @@ import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
 export const H = 640; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
-export const MAX_X = 9999 // the highest possible TeX coordinate for an Item
-export const MIN_Y = H-9999 // the lowest possible TeX coordinate for an Item 
+export const W = 900; // the width of the canvas
+export const MAX_X = 16*W // the highest possible TeX coordinate for an Item
+export const MIN_Y = -15*H // the lowest possible TeX coordinate for an Item 
 
 const MAX_NUMBER_OF_ENODES = 1024
 
@@ -49,7 +50,6 @@ export const MARK_LINEWIDTH = 1.0
 export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)'
 export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)'
 export const LASSO_DASH = '2'
-export const LIMIT_POINT_OFFSET = 20
 
 export const DEFAULT_HGAP = 10
 export const DEFAULT_VGAP = 10
@@ -61,8 +61,8 @@ export const MIN_SHIFT = 0
 export const MAX_SHIFT = 255
 export const DEFAULT_HDISPLACEMENT = 20
 export const DEFAULT_VDISPLACEMENT = 0
-export const MIN_DISPLACEMENT = 0
-export const MAX_DISPLACEMENT = 255
+export const MIN_DISPLACEMENT = -9999
+export const MAX_DISPLACEMENT = 9999
 export const MIN_TRANSLATION_LOG_INCREMENT = -2
 export const MAX_TRANSLATION_LOG_INCREMENT = 2
 const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
@@ -172,8 +172,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [rotation, setRotation] = useState(0)
     const [scaling, setScaling] = useState(100) // default is 100%
     const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
-    const [hFlipPossible, setHFlipPossible] = useState(true)
-    const [vFlipPossible, setVFlipPossible] = useState(true)
     const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT})
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
 
@@ -194,7 +192,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     // The first parameter indicates whether the transformation should be reset.
     const setOrigin = (resetTransform: boolean, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection) => {
         // Compute new origin:
-        const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus ?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
+        const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
         
         const originChanged = origin.x!==x || origin.y!==y;
         origin.x = x;
@@ -211,21 +209,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 item.dash100 = item.dash;
             });
         }
-
-        checkFlip(sel);
     }
-
-    const checkFlip = (sel: Item[] = selection) => {
-        setHFlipPossible(prev => !sel.some(item => {
-            const x = 2*origin.x - item.x; // simulate hFlip on item
-            return x<0 || x>MAX_X;
-        }));
-        setVFlipPossible(prev => !sel.some(item => {
-            const y = 2*origin.y - item.y; // simulate vFlip on item
-            return y<MIN_Y || y>H;
-        }));
-    }
-
 
     const adjustLimit = (nodes: ENode[] = enodes) => {
         let right = 0;
@@ -342,12 +326,22 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
                 else {
                     const pres = preselection2Ref.current;
-                    if (e.shiftKey) { // increase selection                    
-                        newSelection = [...selection, ...pres];
+                    if (e.shiftKey) { // increase selection
+                        if (e.ctrlKey) {
+                            newSelection = [...selection, item];
+                        }
+                        else {               
+                            newSelection = [...selection, ...pres];
+                        }
                     }
-                    else {
+                    else { // replace selection
+                        if (e.ctrlKey) {
+                            newSelection = [item];
+                        }
+                        else {
+                            newSelection = pres;
+                        }
                         newPoints = [];
-                        newSelection = pres;
                     }
                 }
                 // Handle dragging:
@@ -361,8 +355,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
                     // canvas to the left or top (from where they couldn't be recovered):
-                    const newX = Math.max(e.clientX, startX + xMinD) - startX;
-                    const newY = H-(Math.max(e.clientY, startY + yMinD) - startY);
+                    const newX = Math.min(Math.max(e.clientX, startX + xMinD) - startX, MAX_X);
+                    const newY = Math.max(H-(Math.max(e.clientY, startY + yMinD) - startY), MIN_Y);
                     // Next, we take into account the grid:
                     const [x, y] = nearestGridPoint(newX, newY);
                     const dx = x - item.x;
@@ -392,6 +386,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                 setFocusItem(item);
                 setPoints(newPoints);
+                setPreselection1([]);
+                setPreselection2([]);
                 setSelection(newSelection);
             }           
         } 
@@ -399,22 +395,26 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
         if(!dragging) {
-            const newPres = preselection1.includes(item)? preselection1: [...preselection1, item];
-            setPreselection1(prev => newPres);
-            if (e.ctrlKey) {
-                setPreselection2(prev => prev.includes(item)? prev: [...prev, item]) // if Ctrl is pressed, only add item by itself
-            }
-            else {
-                updateSecondaryPreselection(newPres) // otherwise add all the leaf members of its highest active group
-            }
+            setPreselection1(pre1 => {
+                const newPres = pre1.includes(item)? pre1: [...pre1, item];
+                if (e.ctrlKey) {
+                    setPreselection2(pre2 => pre2.includes(item)? pre2: [...pre2, item]) // if Ctrl is pressed, only add item by itself
+                }
+                else {
+                    updateSecondaryPreselection(newPres) // otherwise add all the leaf members of its highest active group
+                }
+                return newPres
+            });
         }
     }
 
     const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
         if(!dragging) {
-            const newPres = preselection1.filter(it => it!==item)
-            setPreselection1(newPres);
-            updateSecondaryPreselection(newPres)
+            setPreselection1(pre1 => {
+                const newPres = pre1.filter(it => it!==item);
+                updateSecondaryPreselection(newPres);
+                return newPres
+            });
         }
     }
 
@@ -532,6 +532,118 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setOrigin(true);
     }
     
+
+    const copySelection = () => {
+        if (selection.length>0) {
+            const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
+            const ntbc = enodes.filter(item => !selection.includes(item)); // not-to-be-copied nodes
+            const topTbc: (Item | Group<any>)[] = []; // top-level to-be-copied groups or items
+            const copies: Record<string, ENode> = {}; // This will store the keys of the copied nodes, mapped to their respective copies.
+            const visitedGroups = new Set<Group<any>>(); // already-visited groups
+            deduplicatedSelection.forEach(item => {
+                const groups = getGroups(item)[0];
+                let j = -1, // The index of that group, if some such group exists; -1 otherwise.
+                    visited = false;
+                for (let i = 0; i<groups.length; i++) { // We are looking for the lowest group that has both item and a not-to-be-copied node among its leaf members.
+                    if (visitedGroups.has(groups[i])) {
+                        visited = true;
+                        break;
+                    }
+                    visitedGroups.add(groups[i]);
+                    const ml = getLeafMembers(groups[i]);
+                    if (ntbc.some(item => ml.has(item))) {
+                        j = i;
+                        break;
+                    }
+                }
+                if (!visited) {
+                    topTbc.push((j<0 && groups.length>0)? groups[groups.length-1]: // item is in a group, and no group in its hierarchy contains not-to-be-copied nodes
+                        j<1? item: // either item is not in any group (j==-1), or the group that it is a direct member of also contains a not-to-be-copied node
+                        groups[j-1]);
+                }
+            });
+            let counter = enodeCounter;
+            topTbc.forEach(m => {
+                if (m instanceof ENode) {
+                    const node = copyENode(m, counter++, hDisplacement, vDisplacement);
+                    if (node.group) {
+                        node.group.members.push(node);
+                    }
+                    copies[m.key] = node;
+                }
+                else if(!(m instanceof Item)) { // In this case, we have to copy a group:
+                    const [group, newCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, counter, hDisplacement, vDisplacement, copies);
+                    if (group.group) {
+                        group.group.members.push(group);
+                    }
+                    counter = newCounter;
+                }
+            });
+            const copiedNodes = enodes.reduce((acc: ENode[], node) => { // an array that holds the copied nodes in the same 
+                // order as enodes holds the nodes that they're copies of
+                if (node.key in copies) {
+                    acc.push(copies[node.key]);
+                }
+                return acc;
+            }, []);
+            const newSelection = selection.map(node => copies[node.key]);
+            const oldFocus = focusItem;
+            const newNodes = [...enodes, ...copiedNodes];
+            const newFocus = focusItem && copies[focusItem.key];
+            adjustLimit(newNodes);
+            setEnodeCounter(counter);
+            setEnodes(newNodes);
+            setFocusItem(prev => newFocus);
+            setOrigin(true, points, newFocus, newSelection); 
+            setSelection(newSelection);
+            if (oldFocus && newFocus) {
+                setTimeout(() => {
+                    canvasRef.current?.scrollBy({left: newFocus.x-oldFocus.x, top: oldFocus.y-newFocus.y, behavior: 'smooth'});
+                }, 0);
+            }
+        }
+    }
+
+    const copyENode = (node: ENode, i: number, dx: number, dy: number): ENode => {
+        const copy = new ENode(i, node.x+dx, node.y+dy);
+        copy.radius = node.radius;
+        copy.radius100 = node.radius100;
+        copy.linewidth = node.linewidth;
+        copy.linewidth100 = node.linewidth100;
+        copy.shading = node.shading;
+        copy.dash = node.dash;
+        copy.dash100 = node.dash100;
+        copy.isActiveMember = node.isActiveMember;
+        copy.group = node.group;
+        return copy;
+    }
+
+    const copyStandardGroup = (
+            group: StandardGroup<Item | Group<any>>, 
+            i: number, dx: number, dy: number, 
+            copiedNodes: Record<string, ENode>): [StandardGroup<Item | Group<any>>, newCounter: number] => {
+        const copiedGroup = new StandardGroup<Item | Group<any>>([]);
+        const members: (Item | Group<any>)[] = group.members.map(m => {
+            let copy;
+            if (m instanceof ENode) {                
+                copy = copyENode(m, i++, dx, dy);
+                copiedNodes[m.key] = copy;
+            }
+            else if (m instanceof StandardGroup) { 
+                const [c, newCounter] = copyStandardGroup(m, i, dx, dy, copiedNodes);
+                copy = c;
+                i = newCounter;
+            }
+            else return new StandardGroup([]);
+            copy.group = copiedGroup;
+            return copy;
+        });
+        copiedGroup.members = members;
+        copiedGroup.group = group.group;
+        copiedGroup.isActiveMember = group.isActiveMember;
+        return [copiedGroup, i];
+    }
+
     const deleteSelection = () => { // onClick handler for the delete button
         if (selection.length>0) {
             const whitelist = new Set<Group<Item | Group<any>>>();
@@ -545,6 +657,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             });
             setEnodes(nodes);
             setSelection([]);
+            setPreselection1([]);
+            setPreselection2([]);
             setFocusItem(null);
             adjustLimit(nodes);
             setOrigin(true);
@@ -621,7 +735,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 disabled:opacity-50', 
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 disabled:opacity-50 tracking-wider', 
         'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
         'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
@@ -667,7 +781,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </svg>
                         }
                         {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
-                        <PointComp key={limit.key} x={limit.x + LIMIT_POINT_OFFSET} y={limit.y - LIMIT_POINT_OFFSET} markColor='red' visible={false} /> 
+                        {(limit.x>W || limit.y<0) &&
+                            <PointComp key={limit.key} 
+                                x={Math.ceil(limit.x/W)*W + (limit.x>W? 10: -40)}  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+                                y={Math.floor(limit.y/H)*H + (limit.y<0? -10: 40)} // Ditto.
+                                markColor='red' visible={false} /> 
+                        }
                     </div>
                     <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
                     </div>
@@ -722,7 +841,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </Menu>                
                             <BasicColoredButton id='create-button' label='Create' style='rounded-md' disabled={false} onClick={sorry} /> 
                         </div>
-                        <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-3' disabled={selection.length<1} onClick={sorry} /> 
+                        <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-3' 
+                            disabled={
+                                selection.length<1 || 
+                                enodes.length + selection.length >= MAX_NUMBER_OF_ENODES ||
+                                (hDisplacement<0 && selection.reduce((min, item) => (min<item.x)? min: item.x, Infinity) + hDisplacement < 0) ||
+                                (vDisplacement>0 && selection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > H) ||
+                                (hDisplacement>0 && selection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity) + hDisplacement > MAX_X) ||
+                                (vDisplacement<0 && selection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
+                            } onClick={copySelection} /> 
 
                         <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-3">
@@ -754,7 +881,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                     edit(focusItem, enodes);
                                                 setEnodes(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
                                                 adjustLimit();
-                                                setOrigin(false);                                        
+                                                setOrigin(false);
+                                                const canvas = canvasRef.current;
+                                                if (canvas) {
+                                                    const dx = focusItem.x - canvas.scrollLeft;
+                                                    const scrollRight = Math.floor(dx/W) * W;
+                                                    const dy = canvas.scrollTop + focusItem.y;
+                                                    const scrollDown = -Math.floor(dy/H) * H;
+                                                    setTimeout(() => {
+                                                        canvas.scrollBy(scrollRight, scrollDown);
+                                                    }, 0);
+                                                }
                                                 setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
                                             }} />
                                         :
@@ -775,7 +912,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     }
                                 </TabPanel>
                                 <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
-                                    <TransformTab rotation={rotation} scaling={scaling} hFlipPossible={hFlipPossible} vFlipPossible={vFlipPossible} 
+                                    <TransformTab rotation={rotation} scaling={scaling} 
+                                        hFlipPossible={!selection.some(item => {
+                                            const x = 2*origin.x - item.x; // simulate hFlip on item
+                                            return x<0 || x>MAX_X;
+                                        })} 
+                                        vFlipPossible={!selection.some(item => {
+                                            const y = 2*origin.y - item.y; // simulate vFlip on item
+                                            return y<MIN_Y || y>H;
+                                        })} 
                                         logIncrements={logIncrements} transformFlags={transformFlags}
                                         testRotation={angle => {
                                             for(const item of deduplicatedSelection) {
@@ -791,7 +936,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
                                             });
                                             adjustLimit();
-                                            checkFlip(); 
                                             setRotation(newValue);
                                         }}
                                         testScaling={val => {
@@ -829,7 +973,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 if(transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                             }); 
                                             adjustLimit();
-                                            checkFlip();
                                             setScaling(newValue);
                                         }}
                                         hFlip={() => {
@@ -954,7 +1097,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <h2>
                                 {modalMsg[1]}
                             </h2>
-                            <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4' disabled={false} onClick={() => setShowModal(false)} />
+                            <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4 rounded-xl' disabled={false} onClick={() => setShowModal(false)} />
                         </div>
                     </Modal>
                 </div>
