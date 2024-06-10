@@ -37,8 +37,8 @@ import unvSrc from '../../../icons/unv.png'
 
 export const H = 640; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 export const W = 900; // the width of the canvas
-export const MAX_X = 16*W // the highest possible TeX coordinate for an Item
-export const MIN_Y = -15*H // the lowest possible TeX coordinate for an Item 
+export const MAX_X = 16*W-1 // the highest possible TeX coordinate for an Item
+export const MIN_Y = -15*H+1 // the lowest possible TeX coordinate for an Item 
 
 const MAX_NUMBER_OF_ENODES = 1024
 
@@ -73,11 +73,14 @@ const CONTOUR_CENTER_SNAP_RADIUS = 10
 const CONTOUR_NODE_SNAP_RADIUS = 15
 
 const CANVAS_CLICK_THRESHOLD = 4 // For determining when a mouseUp is a mouseClick
+const SCROLL_X_OFFSET = 20 // How close to the left edge of the viewport the limit point may be before we resize the canvas
+const SCROLL_Y_OFFSET = 20 // How close to the top edge of the viewport the limit point may be before we resize the canvas
 const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
 const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)'
 const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)'
 
+export const DarkModeContext = createContext(false);
 
 export type Grid = {
     hGap: number,
@@ -87,6 +90,7 @@ export type Grid = {
     snapToContourCenters: boolean,
     snapToNodes: boolean
 }
+
 const createGrid = (hGap: number = DEFAULT_HGAP, 
         vGap: number = DEFAULT_VGAP, 
         hShift: number = DEFAULT_HSHIFT, 
@@ -95,6 +99,12 @@ const createGrid = (hGap: number = DEFAULT_HGAP,
         snapToNodes: boolean = true): Grid => {
     return {hGap, vGap, hShift, vShift, snapToContourCenters, snapToNodes};
 };
+
+const nearestGridPoint = (x: number, y: number, grid: Grid) => {
+    return [x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
+            y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap)]
+}
+
 
 class Lasso {
     constructor(public x0: number, public y0: number, public x1: number, public y1: number, public deselect: boolean) {
@@ -133,9 +143,109 @@ const depItemLabels = [
     new DepItemLabel('Single hook, straight', orpSrc, 'An arrow with a single straight hook'),
 ];
 
+/**
+ * Rotates a point around another point by a given angle.
+ * @returns The new coordinates {x, y} of the rotated point.
+ */
+const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number): { x: number, y: number } => {
+    // Convert angle from degrees to radians
+    const radians: number = angle * Math.PI / 180;
+
+    // Translate point to origin
+    const translatedX: number = px - cx;
+    const translatedY: number = py - cy;
+
+    // Rotate point
+    const rotatedX: number = translatedX * Math.cos(radians) - translatedY * Math.sin(radians);
+    const rotatedY: number = translatedX * Math.sin(radians) + translatedY * Math.cos(radians);
+
+    // Translate point back
+    const finalX: number = rotatedX + cx;
+    const finalY: number = rotatedY + cy;
+
+    return { x: finalX, y: finalY };
+}
+
+/**
+ * Scales a point around a specified origin by a given scale factor.
+ * @returns The new coordinates {x, y} of the scaled point.
+ */
+const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number, y: number } => {
+    // Translate point to the origin
+    const translatedX = px - ox;
+    const translatedY = py - oy;
+
+    // Scale the point
+    const scaledX = translatedX * scaleFactor;
+    const scaledY = translatedY * scaleFactor;
+
+    // Translate point back
+    const finalX = scaledX + ox;
+    const finalY = scaledY + oy;
+
+    return { x: finalX, y: finalY };
+}
 
 
-export const DarkModeContext = createContext(false);
+const highestActive = (item: Item): Item | Group<any> => {
+    const groups = getGroups(item)
+    return groups[1]>-1? groups[0][groups[1]]: item
+}
+
+
+const getSelectPositions = (item: Item, selection: Item[]) => {
+    let result: number[] = [];
+    let index = 0;
+    if(item instanceof ENode) {
+        selection.forEach(element => {
+            if(element===item) {
+                result = [...result, index];
+            }
+            if(element instanceof ENode) { // if the element isn't an ENode, we're not counting it.
+                index++;
+            }
+        });
+    } 
+    else { // Items that aren't ENodes don't need that much detail; just give them a [0] if they're included in the selection.
+        if(selection.includes(item)) {
+            result = [0];
+        }
+    }  
+    return result;
+}
+
+/**
+ * Used for computing the X coordinate of the limit component.
+ */
+const limitCompX = (limitX: number, canvas: HTMLDivElement | null) => {
+    if (canvas) {
+        const { scrollLeft } = canvas;
+        const x = Math.ceil(limitX/W)*W;
+        return x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft+W) + 
+            (limitX>=W? 10: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+    } 
+    else {
+        return 0;
+    }
+}
+
+/**
+ * Used for computing the Y coordinate of the limit component.
+ */
+const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
+    if (canvas) {
+        const { scrollTop } = canvas;
+        const y = Math.floor(limitY/H)*H;
+        return y>H-scrollTop-SCROLL_Y_OFFSET? y: Math.min(y, -scrollTop) + 
+            (limitY<=0? -10: 40) // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+    } 
+    else {
+        return 0;
+    }
+}
+
+
+
 
 interface MainPanelProps {
     dark: boolean;
@@ -245,28 +355,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
 
-    const getSelectPositions = (item: Item, array = selection) => {
-        let result: number[] = [];
-        let index = 0;
-        if(item instanceof ENode) {
-            array.forEach(element => {
-                if(element===item) {
-                    result = [...result, index];
-                }
-                if(element instanceof ENode) { // if the element isn't an ENode, we're not counting it.
-                    index++;
-                }
-            });
-        } 
-        else { // Items that aren't ENodes don't need that much detail; just give them a [0] if they're included in the selection.
-            if(array.includes(item)) {
-                result = [0];
-            }
-        }  
-        return result;
-    }
-
-
     const deselect = (item: Item) => {
         const index = selection.lastIndexOf(item);
         setSelection(prev => {
@@ -280,11 +368,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return item;
     }
 
-
-    const nearestGridPoint = (x: number, y: number) => {
-        return [x + grid.hGap/2 - ((x + grid.hGap/2 - grid.hShift) % grid.hGap), 
-                y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap)]
-    }
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
@@ -325,9 +408,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }
                 }
                 else {
-                    const pres = preselection2Ref.current;
+                    const pres = preselection2Ref.current; // This may be empty if we've just selected the same item.
                     if (e.shiftKey) { // increase selection
-                        if (e.ctrlKey) {
+                        if (e.ctrlKey || pres.length===0) {
                             newSelection = [...selection, item];
                         }
                         else {               
@@ -335,7 +418,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         }
                     }
                     else { // replace selection
-                        if (e.ctrlKey) {
+                        if (e.ctrlKey || pres.length===0) {
                             newSelection = [item];
                         }
                         else {
@@ -358,7 +441,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const newX = Math.min(Math.max(e.clientX, startX + xMinD) - startX, MAX_X);
                     const newY = Math.max(H-(Math.max(e.clientY, startY + yMinD) - startY), MIN_Y);
                     // Next, we take into account the grid:
-                    const [x, y] = nearestGridPoint(newX, newY);
+                    const [x, y] = nearestGridPoint(newX, newY, grid);
                     const dx = x - item.x;
                     const dy = y - item.y;
                     // Finally, we move each item in the selection:
@@ -367,6 +450,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
                     }
                 };            
+
                 const handleMouseUp = () => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
@@ -420,16 +504,55 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. 
         const {left, top} = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
-        const {scrollLeft, scrollTop} = canvasRef.current?? {scrollLeft: 0, scrollTop:0};
+        const {scrollLeft, scrollTop, clientWidth, clientHeight} = canvasRef.current?? {scrollLeft: 0, scrollTop:0, clientWidth: 0, clientHeight: 0};
+
+        if (e.clientX - left >= clientWidth || e.clientY - top > clientHeight) { // ignore interactions with the scrollbars
+            return;
+        }
+
+        setDragging(true);
         const x = e.clientX - left + scrollLeft;
         const y = e.clientY - top + scrollTop;
         const deselect = e.ctrlKey && !e.shiftKey && selection.length>0;
         let newPoints = e.shiftKey? points: [];
 
+        const handleMouseMove = (mme: MouseEvent) => {
+            const dx = mme.clientX - e.clientX;
+            const dy = mme.clientY - e.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
+                setPoints(newPoints);
+                const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), deselect);
+                const pres1 = preselection1Ref.current;
+                let changed = false;
+                const newPres1 = [
+                    ...pres1.filter(item => {
+                        const result = lasso.contains(item);
+                        changed = changed || !result;
+                        return result
+                    }),
+                    ...enodes.filter(item => {
+                        const result = lasso.contains(item) && !pres1.includes(item) && (!deselect || selection.includes(item));
+                        changed = changed || result;
+                        return result
+                    })];
+                if (changed) {
+                    setPreselection1(prev => newPres1);
+                    if (mme.ctrlKey) { // Pressing the Ctrl key leads to group membership being ignored.
+                        setPreselection2(newPres1);
+                    }
+                    else {
+                        updateSecondaryPreselection(newPres1);
+                    }
+                }
+                setLasso(prevLasso => lasso);;
+            }
+        }
 
         const handleMouseUp = (mue: MouseEvent) => {
             canvasRef.current?.removeEventListener('mouseup', handleMouseUp);
             canvasRef.current?.removeEventListener('mousemove', handleMouseMove);
+            setDragging(false)
             let newFocus = focusItem;
             let newSelection = selection;
 
@@ -437,7 +560,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
-                const [gx, gy] = nearestGridPoint(x, H-y);
+                const [gx, gy] = nearestGridPoint(x, H-y, grid);
                 const newPoint = new Point(gx, gy);
                 if (!e.shiftKey) {
                     newPoints = [newPoint];
@@ -480,29 +603,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPreselection2([]);
             setSelection(newSelection);
         }
-
-        const handleMouseMove = (mme: MouseEvent) => {
-            const dx = mme.clientX - e.clientX;
-            const dy = mme.clientY - e.clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
-                setPoints(newPoints);
-                const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), deselect);
-                const pres1 = preselection1Ref.current;
-                const newPres1 = [
-                    ...pres1.filter(item => lasso.contains(item)),
-                    ...enodes.filter(item => 
-                        lasso.contains(item) && !pres1.includes(item) && (!deselect || selection.includes(item)))];
-                setPreselection1(prev => newPres1);
-                if (mme.ctrlKey) { // Pressing the Ctrl key leads to group membership being ignored.
-                    setPreselection2(newPres1);
-                }
-                else {
-                    updateSecondaryPreselection(newPres1);
-                }
-                setLasso(prevLasso => lasso);;
-            }
-        }
     
         canvasRef.current?.addEventListener('mousemove', handleMouseMove);
         canvasRef.current?.addEventListener('mouseup', handleMouseUp);
@@ -531,11 +631,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setPoints([]);
         setOrigin(true);
     }
-    
+
+    const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
     const copySelection = () => {
         if (selection.length>0) {
-            const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
             const ntbc = enodes.filter(item => !selection.includes(item)); // not-to-be-copied nodes
             const topTbc: (Item | Group<any>)[] = []; // top-level to-be-copied groups or items
             const copies: Record<string, ENode> = {}; // This will store the keys of the copied nodes, mapped to their respective copies.
@@ -644,6 +744,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return [copiedGroup, i];
     }
 
+
     const deleteSelection = () => { // onClick handler for the delete button
         if (selection.length>0) {
             const whitelist = new Set<Group<Item | Group<any>>>();
@@ -665,56 +766,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
-    /**
-     * Rotates a point around another point by a given angle.
-     * @returns The new coordinates {x, y} of the rotated point.
-     */
-    const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number): { x: number, y: number } => {
-        // Convert angle from degrees to radians
-        const radians: number = angle * Math.PI / 180;
-
-        // Translate point to origin
-        const translatedX: number = px - cx;
-        const translatedY: number = py - cy;
-
-        // Rotate point
-        const rotatedX: number = translatedX * Math.cos(radians) - translatedY * Math.sin(radians);
-        const rotatedY: number = translatedX * Math.sin(radians) + translatedY * Math.cos(radians);
-
-        // Translate point back
-        const finalX: number = rotatedX + cx;
-        const finalY: number = rotatedY + cy;
-
-        return { x: finalX, y: finalY };
-    }
-    
-    /**
-     * Scales a point around a specified origin by a given scale factor.
-     * @returns The new coordinates {x, y} of the scaled point.
-     */
-    const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number, y: number } => {
-        // Translate point to the origin
-        const translatedX = px - ox;
-        const translatedY = py - oy;
-
-        // Scale the point
-        const scaledX = translatedX * scaleFactor;
-        const scaledY = translatedY * scaleFactor;
-
-        // Translate point back
-        const finalX = scaledX + ox;
-        const finalY = scaledY + oy;
-
-        return { x: finalX, y: finalY };
-    }
-
-
-    const highestActive = (item: Item): Item | Group<any> => {
-        const groups = getGroups(item)
-        return groups[1]>-1? groups[0][groups[1]]: item
-    }
-
-
     const adjustSelection = (item: Item) => {
         const ha = highestActive(item);
         if (ha instanceof Item) {
@@ -725,9 +776,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection([item, ...enodes.filter(it => it!==item && lm.has(it))]);
         }
     }
-
-
-    const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
 
     // The delete button gets some special colors:
@@ -754,7 +802,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
                                 markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                                 focus={focusItem===enode} 
-                                selected={getSelectPositions(enode)} 
+                                selected={getSelectPositions(enode, selection)} 
                                 preselected={preselection2.includes(enode)}
                                 onMouseDown={itemMouseDown}
                                 onMouseEnter={itemMouseEnter} 
@@ -781,11 +829,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </svg>
                         }
                         {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
-                        {(limit.x>W || limit.y<0) &&
-                            <PointComp key={limit.key} 
-                                x={Math.ceil(limit.x/W)*W + (limit.x>W? 10: -40)}  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
-                                y={Math.floor(limit.y/H)*H + (limit.y<0? -10: 40)} // Ditto.
-                                markColor='red' visible={false} /> 
+                        {(limit.x>=W || limit.y<=0) &&
+                            <PointComp key={limit.key} x={limitCompX(limit.x, canvasRef.current)} y={limitCompY(limit.y, canvasRef.current)} markColor='red' visible={false} /> 
                         }
                     </div>
                     <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
@@ -885,9 +930,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 const canvas = canvasRef.current;
                                                 if (canvas) {
                                                     const dx = focusItem.x - canvas.scrollLeft;
-                                                    const scrollRight = Math.floor(dx/W) * W;
+                                                    const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
                                                     const dy = canvas.scrollTop + focusItem.y;
-                                                    const scrollDown = -Math.floor(dy/H) * H;
+                                                    const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
                                                     setTimeout(() => {
                                                         canvas.scrollBy(scrollRight, scrollDown);
                                                     }, 0);
