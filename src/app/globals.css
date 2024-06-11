@@ -65,12 +65,12 @@ li {
 }
 
 .dark {
-  --foreground-rgb: 177, 162, 158; /* slightly redder than stone-400 */
+  --foreground-rgb: 190, 169, 158; /* slightly redder than stone-400 */
   --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
   --background-end-rgb: 20, 17, 13; /* slightly darker */
 
   --btnbg: 76, 64, 60; /* slightly redder than stone-700 */
-  --btncolor: 177, 162, 158; /* slightly redder than stone-400 */
+  --btncolor: 190, 169, 158; /* slightly redder than stone-400 */
   --btnborder: 95, 83, 78; /* slightly redder than stone-600 */
   --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
   --btnhovercolor: 0, 0, 0; 
@@ -82,7 +82,7 @@ li {
   --codepanelbg: 12, 10, 9; /* stone-950 */
   --codepanelcolor: 180, 83, 9; /* amber-700 */
   --menuborder: 0, 0, 0;
-  --tabselected: 33, 25, 23; /* slightly redder than stone-900 */ 
+  --tabselected: 240, 232, 226; /* a slightly orange beige */ 
   --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
   --textfieldcolor: 217, 119, 6; /* amber-600 */
 

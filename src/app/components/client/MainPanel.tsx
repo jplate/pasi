@@ -704,6 +704,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
+    /**
+     * Returns a copy of the supplied ENode.
+     */
     const copyENode = (node: ENode, i: number, dx: number, dy: number): ENode => {
         const copy = new ENode(i, node.x+dx, node.y+dy);
         copy.radius = node.radius;
@@ -718,6 +721,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return copy;
     }
 
+    /**
+     * Returns a copy of the supplied StandardGroup together with an updated ENode-counter that is used for the creation of the copied group's leaf members (at least those
+     * that are ENodes). 
+     */
     const copyStandardGroup = (
             group: StandardGroup<Item | Group<any>>, 
             i: number, dx: number, dy: number, 
@@ -778,16 +785,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
 
+
     // The delete button gets some special colors:
     const deleteButtonStyle = clsx('rounded-xl', 
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 disabled:opacity-50 tracking-wider', 
-        'focus:outline-none data-[selected]:bg-tabselected/85 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold transition',
-        'data-[selected]:data-[hover]:bg-tabselected/85 data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
+        'focus:outline-none data-[selected]:bg-btnbg/5 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
+        'data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
     const sorry = () => {setModalMsg(['Apology', 'Sorry, this feature has not yet been implemented!']); setShowModal(true);}
+
+    const tabIndex = selection.length==0? 0: userSelectedTabIndex;
 
     console.log(`Rendering... focusItem=${focusItem && focusItem.key} haGroup=${focusItem && highestActive(focusItem).getString()}]`);
     //console.log(`Rendering... preselected=[${preselection.map(item => item.key).join(', ')}]`);
@@ -896,23 +906,28 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 (vDisplacement<0 && selection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px]' selectedIndex={selection.length==0? 0: userSelectedTabIndex} onChange={setUserSelectedTabIndex}>
+                        <TabGroup className='flex-1 w-[275px] bg-btnbg/5' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-3">
-                                <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl')}>
+                                <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl data-[selected]:border-r-0', 
+                                        tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
                                     Editor
                                 </Tab>
                                 <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Transform selection'>
-                                    <Tab key='transform-tab' className={tabClassName} disabled={selection.length==0}>
+                                    <Tab key='transform-tab' className={clsx(tabClassName, 'data-[selected]:border-x-0', 
+                                                tabIndex===0 && 'border-l-[1px] rounded-bl-xl border-l-0', tabIndex==2 && 'border-r-[1px] rounded-br-xl border-r-0')} 
+                                            disabled={selection.length==0}>
                                         Transform
                                     </Tab>
                                 </Tippy>
                                 <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Manage groups'>
-                                    <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl')} disabled={!focusItem}>
+                                    <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl data-[selected]:border-l-0', 
+                                                tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
+                                            disabled={!focusItem}>
                                         Groups
                                     </Tab>
                                 </Tippy>
                             </TabList>
-                            <TabPanels className='mb-2 flex-1 bg-white/5 border border-btnborder/50 h-[372px] rounded-b-xl overflow-auto scrollbox'>
+                            <TabPanels className='mb-2 flex-1 bg-btnbg/5 border border-btnborder/50 border-t-0 h-[372px] rounded-b-xl overflow-auto scrollbox'>
                                 <TabPanel key='editor-panel' className='rounded-xl px-2 pt-2 pb-3 h-full'>
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
@@ -958,11 +973,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </TabPanel>
                                 <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
                                     <TransformTab rotation={rotation} scaling={scaling} 
-                                        hFlipPossible={!selection.some(item => {
+                                        hFlipPossible={!deduplicatedSelection.some(item => {
                                             const x = 2*origin.x - item.x; // simulate hFlip on item
                                             return x<0 || x>MAX_X;
                                         })} 
-                                        vFlipPossible={!selection.some(item => {
+                                        vFlipPossible={!deduplicatedSelection.some(item => {
                                             const y = 2*origin.y - item.y; // simulate vFlip on item
                                             return y<MIN_Y || y>H;
                                         })} 

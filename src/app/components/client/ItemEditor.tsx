@@ -2,7 +2,6 @@ import React, { useRef } from 'react'
 import clsx from 'clsx/lite'
 import { BasicColoredButton } from './Button.tsx'
 import { LabelField, GlossField, CheckBoxField, InputField, Width } from './EditorComponents.tsx'
-import Item from './Item.tsx'
 
 
 export type Config = {
@@ -65,6 +64,6 @@ const ItemEditor = ({info, onChange}: ItemEditorProps) => {
             }
         </div>
     );
-};
+}
 
 export default ItemEditor;
