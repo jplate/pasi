@@ -33,7 +33,7 @@ const config: Config = {
         tabselected: "rgba(var(--tabselected))",
         textfieldbg: "rgba(var(--textfieldbg))",
         textfieldcolor: "rgba(var(--textfieldcolor))",
-      }
+      },
     },
   },
   plugins: [],

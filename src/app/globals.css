@@ -36,7 +36,7 @@ li {
   --foreground-rgb: 30, 41, 59; /* slate-800 */
   --background-start-rgb: 205, 210, 220;
   --background-end-rgb: 235, 240, 250;
-
+  
   --btnbg: 248, 250, 252; /* slate-50 */
   --btncolor: 71, 85, 105; /* slate-600 */
   --btnborder: 148, 163, 184; /* slate-400 */
@@ -68,6 +68,8 @@ li {
   --foreground-rgb: 190, 169, 158; /* slightly redder than stone-400 */
   --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
   --background-end-rgb: 20, 17, 13; /* slightly darker */
+  --shadowdelete1: 217, 119, 6, 0.25;
+  --shadowdelete2: 217, 119, 6, 0.25;
 
   --btnbg: 76, 64, 60; /* slightly redder than stone-700 */
   --btncolor: 190, 169, 158; /* slightly redder than stone-400 */

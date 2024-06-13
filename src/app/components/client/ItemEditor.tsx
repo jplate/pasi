@@ -57,7 +57,7 @@ const ItemEditor = ({info, onChange}: ItemEditorProps) => {
                             extraBottomMargin={entry.extraBottomMargin}
                             onChange={(e) => handleChange(e, i, entry)} />):
                     entry.type==='button'? (
-                        <BasicColoredButton key={i} id={`${i}`} label={entry.text} style={clsx('mx-2 rounded-lg', entry.style)} 
+                        <BasicColoredButton key={i} id={`${i}`} label={entry.text} style={clsx('mx-2 mb-2 rounded-lg', entry.style)} 
                                 disabled={false}
                                 onClick={() => handleChange(null, i, entry)} />):
                     null})

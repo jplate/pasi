@@ -39,6 +39,8 @@ export const H = 640; // the height of the canvas; needed to convert screen coor
 export const W = 900; // the width of the canvas
 export const MAX_X = 16*W-1 // the highest possible TeX coordinate for an Item
 export const MIN_Y = -15*H+1 // the lowest possible TeX coordinate for an Item 
+export const MAX_Y = 15*H-1 // the highest possible TeX coordinate for an Item 
+export const MARGIN = 0; // the width of the 'margin' at right and bottom edges of the canvas
 
 const MAX_NUMBER_OF_ENODES = 1024
 
@@ -109,9 +111,9 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
 class Lasso {
     constructor(public x0: number, public y0: number, public x1: number, public y1: number, public deselect: boolean) {
     }
-    contains(item: Item): boolean {
+    contains(item: Item, yOffset: number): boolean {
         return item.getLeft() >= this.x0 && item.getLeft()+item.getWidth() <= this.x1 && 
-            H-item.getBottom() <= this.y1 && H-(item.getBottom()+item.getHeight()) >= this.y0;  
+            H+yOffset-item.getBottom() <= this.y1 && H+yOffset-(item.getBottom()+item.getHeight()) >= this.y0;  
     }
 }
 
@@ -220,9 +222,9 @@ const getSelectPositions = (item: Item, selection: Item[]) => {
 const limitCompX = (limitX: number, canvas: HTMLDivElement | null) => {
     if (canvas) {
         const { scrollLeft } = canvas;
-        const x = Math.ceil(limitX/W)*W;
+        const x = Math.min(Math.ceil(limitX/W)*W, MAX_X);
         return x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft+W) + 
-            (limitX>=W? 10: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+            (limitX>W? MARGIN: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } 
     else {
         return 0;
@@ -235,9 +237,9 @@ const limitCompX = (limitX: number, canvas: HTMLDivElement | null) => {
 const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     if (canvas) {
         const { scrollTop } = canvas;
-        const y = Math.floor(limitY/H)*H;
+        const y = Math.max(Math.floor(limitY/H)*H, MIN_Y);
         return y>H-scrollTop-SCROLL_Y_OFFSET? y: Math.min(y, -scrollTop) + 
-            (limitY<=0? -10: 40) // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+            (limitY<0? -MARGIN: 40) // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } 
     else {
         return 0;
@@ -262,6 +264,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [enodeCounter, setEnodeCounter] = useState(0) // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]);// list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
+    const [yOffset, setYOffset] = useState(0);
     const [limit, setLimit] = useState<Point>(new Point(0,H)) // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
 
     const [grid, setGrid] = useState(createGrid())
@@ -322,18 +325,34 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     const adjustLimit = (nodes: ENode[] = enodes) => {
-        let right = 0;
-        let bottom = H;
+        let top = 0,
+            right = 0,
+            bottom = H;
         nodes.forEach((enode) => {
+            if(enode.y > top) {
+                top = enode.y;
+            }
             if(enode.x > right) {
-                right = enode.x
+                right = enode.x;
             }
             if(enode.y < bottom) {
-                bottom = enode.y
+                bottom = enode.y;
             }
         });
+        const canvas = canvasRef.current;
+        if (canvas) {
+            const { scrollTop } = canvas;
+            const delta = Math.max(0, top - H) - yOffset;
+            const adjust = Math.ceil((delta%H===0? delta-1: delta) / H) * H;
+            if (adjust !== 0) {
+                setYOffset(yOffset + adjust);
+                setTimeout(() => {
+                    canvas.scrollBy(0, adjust);
+                }, 0);
+            }
+        }
         const newLimit = new Point(right, bottom);
-        if(limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
+        if (limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
     }
 
 
@@ -430,16 +449,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 // Handle dragging:
                 setDragging(true);
                 const startX = e.clientX - item.x;
-                const startY = e.clientY - (H-item.y);
+                const startY = e.clientY - (H + yOffset - item.y);
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
-                const yMinD = selectionWithoutDuplicates.reduce((max, it) => it.y>max? it.y: max, item.y) - item.y; // y-distance to the top-most selected item
                 
                 const handleMouseMove = (e: MouseEvent) => {
-                    // We have to prevent the enode, as well as the left-most and top-most selected item, from being dragged outside the 
-                    // canvas to the left or top (from where they couldn't be recovered):
-                    const newX = Math.min(Math.max(e.clientX, startX + xMinD) - startX, MAX_X);
-                    const newY = Math.max(H-(Math.max(e.clientY, startY + yMinD) - startY), MIN_Y);
+                    // We have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
+                    // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
+                    const newX = Math.min(Math.max(e.clientX - startX, xMinD), MAX_X);
+                    const newY = Math.min(Math.max(H + yOffset - e.clientY + startY, MIN_Y), MAX_Y);
                     // Next, we take into account the grid:
                     const [x, y] = nearestGridPoint(newX, newY, grid);
                     const dx = x - item.x;
@@ -527,12 +545,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 let changed = false;
                 const newPres1 = [
                     ...pres1.filter(item => {
-                        const result = lasso.contains(item);
+                        const result = lasso.contains(item, yOffset);
                         changed = changed || !result;
                         return result
                     }),
                     ...enodes.filter(item => {
-                        const result = lasso.contains(item) && !pres1.includes(item) && (!deselect || selection.includes(item));
+                        const result = lasso.contains(item, yOffset) && !pres1.includes(item) && (!deselect || selection.includes(item));
                         changed = changed || result;
                         return result
                     })];
@@ -560,7 +578,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const dy = mue.clientY - e.clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if(dist < CANVAS_CLICK_THRESHOLD) { // Only in this case, the mouseUp event should be interpreted as a click event.
-                const [gx, gy] = nearestGridPoint(x, H-y, grid);
+                const [gx, gy] = nearestGridPoint(x, H + yOffset - y, grid);
                 const newPoint = new Point(gx, gy);
                 if (!e.shiftKey) {
                     newPoints = [newPoint];
@@ -791,7 +809,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
         'focus:outline-none data-[selected]:bg-btnbg/5 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
 
@@ -809,7 +827,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[640px] relative overflow-auto border'
                             onMouseDown= {canvasMouseDown}>
                         {enodes.map((enode, i) => 
-                            <ENodeComp key={enode.key} id={enode.key} enode={enode} bg={dark? canvasHSLDark: canvasHSLLight}
+                            <ENodeComp key={enode.key} id={enode.key} enode={enode} yOffset={yOffset} bg={dark? canvasHSLDark: canvasHSLLight}
                                 markColor={dark && enode.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                                 focus={focusItem===enode} 
                                 selected={getSelectPositions(enode, selection)} 
@@ -818,7 +836,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onMouseEnter={itemMouseEnter} 
                                 onMouseLeave={itemMouseLeave} />)}
                         {points.map(point => 
-                            <PointComp key={point.key} x={point.x} y={point.y} 
+                            <PointComp key={point.key} x={point.x} y={point.y - yOffset} 
                                 markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
                         <style> {/* we're using polylines for the 'mark borders' of items */}
                             @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
@@ -839,8 +857,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </svg>
                         }
                         {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
-                        {(limit.x>=W || limit.y<=0) &&
-                            <PointComp key={limit.key} x={limitCompX(limit.x, canvasRef.current)} y={limitCompY(limit.y, canvasRef.current)} markColor='red' visible={false} /> 
+                        {(yOffset!==0 || limit.x>=W || limit.y<=0) &&
+                            <PointComp key={limit.key} 
+                                x={limitCompX(limit.x, canvasRef.current)} 
+                                y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)} 
+                                markColor='red' visible={false} /> 
                         }
                     </div>
                     <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
@@ -854,7 +875,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' disabled={points.length<1} onClick={sorry} />  
                         </div>                    
 
-                        <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-1.5 mb-3 rounded-xl'>
+                        <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'>
                             <Menu>
                                 <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1 text-sm text-btncolor shadow-inner 
                                             focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
@@ -901,14 +922,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 selection.length<1 || 
                                 enodes.length + selection.length >= MAX_NUMBER_OF_ENODES ||
                                 (hDisplacement<0 && selection.reduce((min, item) => (min<item.x)? min: item.x, Infinity) + hDisplacement < 0) ||
-                                (vDisplacement>0 && selection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > H) ||
+                                (vDisplacement>0 && selection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > MAX_Y) ||
                                 (hDisplacement>0 && selection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity) + hDisplacement > MAX_X) ||
                                 (vDisplacement<0 && selection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px] bg-btnbg/5' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
+                        <TabGroup className='flex-1 w-[275px] h-[372px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-3">
-                                <Tab key='editor-tab'className={clsx(tabClassName, 'rounded-tl-xl data-[selected]:border-r-0', 
+                                <Tab key='editor-tab'className={clsx(tabClassName, 'border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
                                     Editor
                                 </Tab>
@@ -920,15 +941,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     </Tab>
                                 </Tippy>
                                 <Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} content='Manage groups'>
-                                    <Tab key='group-tab' className={clsx(tabClassName, 'rounded-tr-xl data-[selected]:border-l-0', 
+                                    <Tab key='group-tab' className={clsx(tabClassName, 'border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
                                                 tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
                                             disabled={!focusItem}>
                                         Groups
                                     </Tab>
                                 </Tippy>
                             </TabList>
-                            <TabPanels className='mb-2 flex-1 bg-btnbg/5 border border-btnborder/50 border-t-0 h-[372px] rounded-b-xl overflow-auto scrollbox'>
-                                <TabPanel key='editor-panel' className='rounded-xl px-2 pt-2 pb-3 h-full'>
+                            <TabPanels className='mb-2 flex-1 h-[364px] bg-btnbg/5 overflow-auto scrollbox'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 pt-2 h-full'>
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(focusItem instanceof ENode? enodes: [], itemEditorConfig)} 
                                             onChange={(e, i) => {
@@ -943,10 +964,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 adjustLimit();
                                                 setOrigin(false);
                                                 const canvas = canvasRef.current;
-                                                if (canvas) {
+                                                if (canvas) { // scroll to the position of focusItem, if there has been a change in position
                                                     const dx = focusItem.x - canvas.scrollLeft;
                                                     const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
-                                                    const dy = canvas.scrollTop + focusItem.y;
+                                                    const dy = canvas.scrollTop + focusItem.y - yOffset;
                                                     const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
                                                     setTimeout(() => {
                                                         canvas.scrollBy(scrollRight, scrollDown);
@@ -979,14 +1000,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         })} 
                                         vFlipPossible={!deduplicatedSelection.some(item => {
                                             const y = 2*origin.y - item.y; // simulate vFlip on item
-                                            return y<MIN_Y || y>H;
+                                            return y<MIN_Y || y>MAX_Y;
                                         })} 
                                         logIncrements={logIncrements} transformFlags={transformFlags}
                                         testRotation={angle => {
                                             for(const item of deduplicatedSelection) {
                                                 const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
                                                 if (x<0 || x>MAX_X) return false;
-                                                if (y<MIN_Y || y>H) return false;
+                                                if (y<MIN_Y || y>MAX_Y) return false;
                                             }
                                             return true
                                         }}
@@ -1007,7 +1028,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                     setShowModal(true);
                                                 }
                                                 if (x<0 || x>MAX_X) return false;
-                                                if (y<MIN_Y || y>H) return false;
+                                                if (y<MIN_Y || y>MAX_Y) return false;
                                                 if (transformFlags.scaleENodes && item instanceof ENode) {
                                                     const v = item.radius100 * val/100;
                                                     if(v<0 || v>MAX_RADIUS) return false;
@@ -1108,7 +1129,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </TabPanels>
                         </TabGroup>
 
-                        <div id='undo-panel' className='mt-1 grid grid-cols-3'>
+                        <div id='undo-panel' className='grid grid-cols-3'>
                             <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
                                 disabled={false}
                                 onClick={sorry} 

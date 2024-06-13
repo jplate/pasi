@@ -24,7 +24,7 @@ interface ButtonProps {
 export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipPlacement, onClick}: ButtonProps) => {
     const dark = useContext(DarkModeContext)
 
-    const button = (<button id={id} className={clsx('block px-2 py-1 text-base font-medium border', 
+    const button = (<button id={id} className={clsx('block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none', 
                 'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
                 'focus:outline-none focus:ring-1', style)}
                 disabled={disabled}

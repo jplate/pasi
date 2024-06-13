@@ -1,7 +1,7 @@
 import React from 'react';
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, W, MAX_X, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
 
@@ -95,9 +95,7 @@ export default class ENode extends Item {
                     }, true]
                 }
             case 1:  if(e) {
-                    const dmin = H - selection.reduce((max, item) => max>item.y? max: item.y, this.y); // least distance from the top of the canvas
-                    const delta = parseInputValue(e.target.value, MIN_Y, H, this.y, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
-                    const dy = delta<dmin? delta: 0; // this is to avoid items from being moved beyond the top border of the canvas
+                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
                         item.move(0, dy);                            
                         return array
@@ -194,6 +192,7 @@ export interface HSL {
 export interface ENodeProps {
     id: string
     enode: ENode
+    yOffset: number
     bg: HSL
     markColor: string
     focus: boolean
@@ -205,28 +204,28 @@ export interface ENodeProps {
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = [], preselected = false, 
+export const ENodeComp = ({ id, enode, yOffset, bg, markColor, focus = false, selected = [], preselected = false, 
         onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeProps) => {
 
-    const x = enode.x
-    const y = enode.y
-    const radius = enode.radius
-    const lineWidth = enode.linewidth
-    const shading = enode.shading
+    const x = enode.x;
+    const y = enode.y;
+    const radius = enode.radius;
+    const lineWidth = enode.linewidth;
+    const shading = enode.shading;
 
-    const width = radius * 2
-    const height = radius * 2
-    const extraHeight = radius<MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0
+    const width = radius * 2;
+    const height = radius * 2;
+    const extraHeight = radius<MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
-    const top = MARK_LINEWIDTH + extraHeight
-    const left = MARK_LINEWIDTH
-    const mW = width + lineWidth // width and...
-    const mH = height + lineWidth // ...height relevant for drawing the 'mark border'
-    const l = Math.min(Math.max(5, mW / 5), 25)
-    const m = hidden ? 0.9 * l : 0
+    const top = MARK_LINEWIDTH + extraHeight;
+    const left = MARK_LINEWIDTH;
+    const mW = width + lineWidth; // width and...
+    const mH = height + lineWidth; // ...height relevant for drawing the 'mark border'
+    const l = Math.min(Math.max(5, mW / 5), 25);
+    const m = hidden ? 0.9 * l : 0;
 
-    console.log(`Rendering ${id}... x= ${x}  y=${y}`)
+    console.log(`Rendering ${id}... x= ${x}  y=${y}`);
 
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
@@ -237,7 +236,7 @@ export const ENodeComp = ({ id, enode, bg, markColor, focus = false, selected = 
             style={{
                 position: 'absolute',
                 left: `${x - radius - MARK_LINEWIDTH - lineWidth / 2}px`,
-                top: `${H - y - radius - MARK_LINEWIDTH - lineWidth / 2 - extraHeight}px`
+                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - lineWidth / 2 - extraHeight}px`
             }}>
             <svg width={width + MARK_LINEWIDTH * 2 + lineWidth} height={height + MARK_LINEWIDTH * 2 + lineWidth + extraHeight}>
                 <circle cx={radius + MARK_LINEWIDTH + lineWidth / 2}

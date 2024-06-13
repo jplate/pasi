@@ -40,7 +40,7 @@ const CanvasEditor = ({grid, hDisp, vDisp, changeHGap, changeVGap, changeHShift,
             </div>
             <div className='flex-1'> {/* some filler to push the button to the bottom */}
             </div>
-            <BasicColoredButton id='reset-button' label='Defaults' style='px-2 mx-2 col-span-2 rounded-lg' disabled={false} onClick={reset} />
+            <BasicColoredButton id='reset-button' label='Defaults' style='px-2 mx-2 mb-2 col-span-2 rounded-lg' disabled={false} onClick={reset} />
         </div>
     )
 }

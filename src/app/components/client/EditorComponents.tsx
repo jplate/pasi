@@ -105,9 +105,9 @@ export const validFloat = (s: string, min: number, max: number, dflt: number = m
 }
 
 
-/*
-    Computes the new value of an input number field with step 'any', whose stepping controls only increase the value by 1 or -1. The 'intended' increase or decrease is given
-    by 10 ** logIncrement.
+/**
+ *  Computes the new value of an input number field with step 'any', whose stepping controls only increase the value by 1 or -1. The 'intended' increase or decrease is given
+ *  by 10 ** logIncrement.
 */
 const getRawValue = (prev: number, input: number, logIncrement: number) => {
     const delta = 10 ** logIncrement;
@@ -115,12 +115,12 @@ const getRawValue = (prev: number, input: number, logIncrement: number) => {
     return stepper? prev + (input>prev? 1: -1) * delta: input
 }
 
-/*
-    Computes and validates the new value of an input number field with step 'any', whose stepping controls only increase the value by 1 or -1. The 'intended' increase or 
-    decrease is given by 10 ** logIncrement.
-
-    CAUTION: Since this creates a temporary mismatch between the value coming from the input field and the property it represents, care has to be taken that this function
-    be called ONLY ONCE per change event.
+/**
+ * Computes and validates the new value of an input number field with step 'any', whose stepping controls only increase the value by 1 or -1. The 'intended' increase or 
+ *  decrease is given by 10 ** logIncrement.
+ * 
+ * CAUTION: Since this creates a temporary mismatch between the value coming from the input field and the property it represents, care has to be taken that this function
+ *  be called ONLY ONCE per change event.
 */
 export const parseInputValue = (input: string, min: number, max: number, oldValue: number, logIncrement: number, roundingDigits: number) => {
     const val = parseFloat(input);
