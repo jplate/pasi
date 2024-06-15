@@ -1,5 +1,7 @@
 import type { Config, Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
+import ENode from './ENode.tsx'
+import { NodeGroup } from './CNode.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -17,7 +19,6 @@ export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
 export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 
 export const DEFAULT_LINEWIDTH = 1.0;
-export const DEFAULT_ALT_LINEWIDTH = .7;
 export const DEFAULT_DASH = [];
 export const DEFAULT_SHADING = 0.0; // 0=white (transparent), 1=black
 
@@ -25,12 +26,17 @@ export const DEFAULT_COLOR = '#323232';
 
 export const DEFAULT_DIRECTION = COUNTERCLOCKWISE;
 
+export interface HSL {
+    hue: number
+    sat: number
+    lgt: number
+}
 
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
  */
 export default class Item implements GroupMember {
-    key: string
+    public readonly id: string
     x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number
     x100: number // These coordinates represent the item's location at 100% scaling.
@@ -44,14 +50,14 @@ export default class Item implements GroupMember {
     isActiveMember: boolean = false
 
     constructor(key: string, x: number, y: number) {
-        this.key = key
-        this.x = x
-        this.y = y
-        this.x100 = x
-        this.y100 = y
+        this.id = key;
+        this.x = x;
+        this.y = y;
+        this.x100 = x;
+        this.y100 = y;
     }
 
-    public getInfo(items: Item[], editorConfig: Object): Entry[] {
+    public getInfo(list: (ENode | NodeGroup)[], editorConfig: Object): Entry[] {
         return []
     }
 
@@ -59,7 +65,7 @@ export default class Item implements GroupMember {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             config: Config, 
             selection: Item[],
-            index: number): [(item: Item, items: Item[]) => Item[], applyToAll: boolean] {
+            index: number): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
         return [(item: Item, items) => items, false]
@@ -89,7 +95,7 @@ export default class Item implements GroupMember {
     }
 
     public getString() {
-        return this.key
+        return this.id
     }
 }
 

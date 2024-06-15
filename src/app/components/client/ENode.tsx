@@ -1,9 +1,10 @@
 import React from 'react';
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR } from './Item.tsx'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR, HSL } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
+import { NodeGroup } from './CNode.tsx'
 
 export const DEFAULT_RADIUS = 10
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -50,7 +51,7 @@ export default class ENode extends Item {
         return this.y - this.radius;
     }
 
-    public override getInfo(array: Item[], config: Config): Entry[] {
+    public override getInfo(list: (ENode | NodeGroup)[], config: Config): Entry[] {
 
         return this.info = [
             /*  0 */{type: 'number input', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
@@ -73,7 +74,7 @@ export default class ENode extends Item {
                     },
             /*  6 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
             /*  7 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
-            /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: array.indexOf(this), step: 1},
+            /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
             /*  9 */{type: 'label', text: '', style: 'flex-1'}, // a filler
             /* 10 */{type: 'button', text: 'Defaults'}
         ]
@@ -83,7 +84,7 @@ export default class ENode extends Item {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             config: Config, 
             selection: Item[],
-            index: number): [(item: Item, array: Item[]) => Item[], applyToAll: boolean] {
+            index: number): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
         switch(index) {
             case 0: if(e) {
                     const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
@@ -94,7 +95,7 @@ export default class ENode extends Item {
                         return array
                     }, true]
                 }
-            case 1:  if(e) {
+            case 1: if(e) {
                     const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
                         item.move(0, dy);                            
@@ -157,16 +158,19 @@ export default class ENode extends Item {
                 }, true]
             case 6: if(e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
             case 8: if(e) return [(item, array) => {
-                    const currentPos = array.indexOf(item);
-                    const newPos = parseInt(e.target.value);
-                    let result = array;
-                    if(newPos>currentPos && currentPos+1<array.length) { // move the item up in the Z-order (i.e., towards the end of the array), but only by one
-                        [result[currentPos], result[currentPos+1]] = [result[currentPos+1], result[currentPos]];
-                    } 
-                    else if(newPos<currentPos && currentPos>0) { // move the item down in the Z-order, but only by one
-                        [result[currentPos], result[currentPos-1]] = [result[currentPos-1], result[currentPos]];
+                    if (item instanceof ENode) {
+                        const currentPos = array.indexOf(item);
+                        const newPos = parseInt(e.target.value);
+                        let result = array;
+                        if(newPos>currentPos && currentPos+1<array.length) { // move the item up in the Z-order (i.e., towards the end of the array), but only by one
+                            [result[currentPos], result[currentPos+1]] = [result[currentPos+1], result[currentPos]];
+                        } 
+                        else if(newPos<currentPos && currentPos>0) { // move the item down in the Z-order, but only by one
+                            [result[currentPos], result[currentPos-1]] = [result[currentPos-1], result[currentPos]];
+                        }
+                        return result
                     }
-                    return result
+                    else return array
                 }, false]
             case 10: if(index==10) return [(item, array) => {
                     if(item instanceof ENode) {
@@ -183,11 +187,6 @@ export default class ENode extends Item {
 }
 
 
-export interface HSL {
-    hue: number
-    sat: number
-    lgt: number
-}
 
 export interface ENodeProps {
     id: string
@@ -195,22 +194,23 @@ export interface ENodeProps {
     yOffset: number
     bg: HSL
     markColor: string
+    titleColor: string
     focus: boolean
     selected: number[]
     preselected: boolean
-    onMouseDown: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseEnter: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseLeave: (enode: ENode, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, yOffset, bg, markColor, focus = false, selected = [], preselected = false, 
+export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus = false, selected = [], preselected = false, 
         onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeProps) => {
 
     const x = enode.x;
     const y = enode.y;
     const radius = enode.radius;
-    const lineWidth = enode.linewidth;
+    const linewidth = enode.linewidth;
     const shading = enode.shading;
 
     const width = radius * 2;
@@ -220,12 +220,12 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, focus = false, se
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
     const top = MARK_LINEWIDTH + extraHeight;
     const left = MARK_LINEWIDTH;
-    const mW = width + lineWidth; // width and...
-    const mH = height + lineWidth; // ...height relevant for drawing the 'mark border'
+    const mW = width + linewidth; // width and...
+    const mH = height + linewidth; // ...height relevant for drawing the 'mark border'
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = hidden ? 0.9 * l : 0;
 
-    console.log(`Rendering ${id}... x= ${x}  y=${y}`);
+    console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
@@ -235,24 +235,24 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, focus = false, se
             onMouseLeave={(e) => onMouseLeave(enode, e)}
             style={{
                 position: 'absolute',
-                left: `${x - radius - MARK_LINEWIDTH - lineWidth / 2}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - lineWidth / 2 - extraHeight}px`
+                left: `${x - radius - MARK_LINEWIDTH - linewidth / 2}px`,
+                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`
             }}>
-            <svg width={width + MARK_LINEWIDTH * 2 + lineWidth} height={height + MARK_LINEWIDTH * 2 + lineWidth + extraHeight}>
-                <circle cx={radius + MARK_LINEWIDTH + lineWidth / 2}
-                    cy={radius + MARK_LINEWIDTH + lineWidth / 2 + extraHeight} r={radius}
+            <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight}>
+                <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
+                    cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
                     fill={shading == 0 ? 'hsla(0,0%,0%,0)' : `hsla(${bg.hue},${bg.sat - Math.floor(bg.sat * shading)}%,${bg.lgt - Math.floor(bg.lgt * shading)}%,1)`}
                     stroke={DEFAULT_COLOR}
-                    strokeWidth={lineWidth}
+                    strokeWidth={linewidth}
                     strokeDasharray={enode.dash.join(' ')} />
-                <polyline points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
-                <polyline points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-                <polyline points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-                <polyline points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+                <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
+                <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
+                <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
+                <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
             </svg>
             {selected.length > 0 && // Add a 'title'
                 <div style={{
-                    position: 'absolute', left: '0', top: '0', width: `${mW + MARK_LINEWIDTH * 2}px`, color: markColor, textAlign: 'center',
+                    position: 'absolute', left: '0', top: '0', width: `${mW + MARK_LINEWIDTH * 2}px`, color: titleColor, textAlign: 'center',
                     fontSize: `${TITLE_FONTSIZE}px`, textWrap: 'nowrap', overflow: 'hidden', userSelect: 'none', pointerEvents: 'none', cursor: 'default'
                 }}>
                     {selected.map(i => i + 1).join(', ')}

@@ -5,6 +5,7 @@ import { Placement } from 'tippy.js'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
+import 'tippy.js/animations/shift-toward.css'
 
 import { DarkModeContext } from './MainPanel.tsx'
 
@@ -36,7 +37,7 @@ export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipP
 
 
     return tooltip? 
-        (<Tippy theme={dark? 'translucent': 'light'} delay={[400,0]} arrow={false} placement={tooltipPlacement} content={tooltip}>
+        (<Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={tooltipPlacement} animation='shift-toward' content={tooltip}>
             {button}
         </Tippy>): button
 }

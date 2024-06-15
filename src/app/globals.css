@@ -68,8 +68,6 @@ li {
   --foreground-rgb: 190, 169, 158; /* slightly redder than stone-400 */
   --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
   --background-end-rgb: 20, 17, 13; /* slightly darker */
-  --shadowdelete1: 217, 119, 6, 0.25;
-  --shadowdelete2: 217, 119, 6, 0.25;
 
   --btnbg: 76, 64, 60; /* slightly redder than stone-700 */
   --btncolor: 190, 169, 158; /* slightly redder than stone-400 */
@@ -78,7 +76,7 @@ li {
   --btnhovercolor: 0, 0, 0; 
   --btnactivebg: 120 53 15; /* amber-800 */
   --btnactivecolor: 0, 0, 0; 
-  --btnfocusring: 115, 83, 78; /* moderately redder than stone-600 */
+  --btnfocusring: 70, 45, 12; /* moderately redder than stone-600 */
   --canvasbg: 217, 119, 26; /* moderately less saturated than amber-600 */
   --canvasborder: 0, 0, 0; 
   --codepanelbg: 12, 10, 9; /* stone-950 */
