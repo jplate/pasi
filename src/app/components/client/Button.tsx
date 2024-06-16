@@ -15,7 +15,7 @@ interface ButtonProps {
     label?: string
     icon?: JSX.Element
     style?: string
-    tooltip?: string
+    tooltip?: react.ReactNode
     tooltipPlacement?: Placement
     pressed?: boolean // for toggle functionality
     disabled: boolean

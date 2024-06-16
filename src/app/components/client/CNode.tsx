@@ -10,6 +10,8 @@ const STANDARD_CONTOUR_CORNER_RADIUS = 16
 const CNODE_RADIUS = 7
 
 export const DEFAULT_DISTANCE = 10;
+export const MAX_NODEGROUP_SIZE = 1000;
+
 
 export default class CNode extends Item {
 
@@ -45,11 +47,11 @@ export class NodeGroup implements Group<CNode> {
     
     public readonly id: string;
     
-    constructor(i: number, x: number, y: number, standard: boolean) {
+    constructor(i: number, x?: number, y?: number) {
         this.id = `NG${i}`;
         this.group = null;
         this.isActiveMember = false;
-        if (standard) {
+        if (x!==undefined && y!==undefined) {
             const w = STANDARD_CONTOUR_WIDTH,
                 h = STANDARD_CONTOUR_HEIGHT,
                 r = STANDARD_CONTOUR_CORNER_RADIUS;
@@ -68,9 +70,20 @@ export class NodeGroup implements Group<CNode> {
         }
     }
 
-    public getLines = () => {
+    public getLines = (): CubicLine[] => {
         const l = this.members.length;
         return this.members.map((node, i) => getLine(node, this.members[i+1<l? i+1: 0]));
+    }
+
+    public getCenter = (): [x: number, y: number] => {
+        let maxX = -Infinity, minX = Infinity, maxY = -Infinity, minY = Infinity;
+        for (const node of this.members) {
+            maxX = maxX>node.x? maxX: node.x;
+            minX = minX<node.x? minX: node.x;
+            maxY = maxY>node.y? maxY: node.y;
+            minY = minY<node.y? minY: node.y;
+        }
+        return [minX + (maxX-minX)/2, minY + (maxY-minY)/2]
     }
 
     public getString = () => `NG[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
@@ -146,7 +159,8 @@ export const Contour = ({id, group, yOffset, bg}: ContourProps) => {
             <div id={id} style={{
                 position: 'absolute',
                 left: `${minX - lwc}px`,
-                top: `${H + yOffset - maxY - lwc}px`
+                top: `${H + yOffset - maxY - lwc}px`,
+                pointerEvents: 'none'
             }}>
                 <svg width={maxX-minX+2*linewidth} height={maxY-minY+2*linewidth} >
                     <path d={d}  
@@ -189,7 +203,7 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = 0.9 * l;
 
-    console.log(`Rendering ${id}... x=${x}  y=${y}`);
+    //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
     return (
         <div className={focus ? 'focused' : selected ? 'selected' : preselected? 'preselected': 'unselected'}

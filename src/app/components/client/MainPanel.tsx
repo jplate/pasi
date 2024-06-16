@@ -18,8 +18,8 @@ import TransformTab from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
-import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, isGroup, isGroupMember } from './Group.tsx'
-import CNode, { NodeGroup, Contour, CNodeComp, DEFAULT_DISTANCE } from './CNode.tsx'
+import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
+import CNode, { NodeGroup, Contour, CNodeComp, DEFAULT_DISTANCE, MAX_NODEGROUP_SIZE } from './CNode.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -73,8 +73,8 @@ const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 
-const CONTOUR_CENTER_SNAP_RADIUS = 10
-const CONTOUR_NODE_SNAP_RADIUS = 15
+const CONTOUR_CENTER_SNAP_RADIUS = 10 // radius around contour centers where snapping ignores grid points
+const CONTOUR_NODE_SNAP_RADIUS = 15 // radius around contour nodes where snapping ignores grid points
 
 const CANVAS_CLICK_THRESHOLD = 4 // For determining when a mouseUp is a mouseClick
 const SCROLL_X_OFFSET = 20 // How close to the left edge of the viewport the limit point may be before we resize the canvas
@@ -109,6 +109,44 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
             y + grid.vGap/2 - ((y + grid.vGap/2 - grid.vShift) % grid.vGap)]
 }
 
+/**
+ * Returns the point to 'snap' to from the supplied coordinates, given the supplied grid, list, and selection. Since this is called from within a mouseMove handler while
+ * dragging, elements of the selection (which is being dragged) have to be ignored. Same for the centers of NodeGroups containing elements of the selection.
+ */
+const getSnapPoint = (x: number, y: number, grid: Grid, list: (ENode | NodeGroup)[], selection: Item[]) => {
+    let [rx, ry] = nearestGridPoint(x, y, grid),
+        d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
+        snappingToGrid = true;
+    if (grid.snapToContourCenters || grid.snapToNodes) {
+        for (const it of list) {
+            if (it instanceof NodeGroup) {
+                const overlap = it.members.filter(m => selection.includes(m));
+                if (grid.snapToContourCenters && overlap.length==0) {
+                    const [cx, cy] = it.getCenter();
+                    const dc = Math.sqrt(Math.pow(x-cx, 2) + Math.pow(y-cy, 2));
+                    if (dc<d || (snappingToGrid && dc<CONTOUR_CENTER_SNAP_RADIUS)) {
+                        snappingToGrid = false;
+                        rx = cx;
+                        ry = cy;
+                        d = dc;
+                    }
+                }
+                if (grid.snapToNodes) {
+                    for (const node of it.members) {
+                        const dn = Math.sqrt(Math.pow(x-node.x, 2) + Math.pow(y-node.y, 2));
+                        if (!overlap.includes(node) && (dn<d || (snappingToGrid && dn<CONTOUR_NODE_SNAP_RADIUS))) {
+                            snappingToGrid = false;
+                            rx = node.x;
+                            ry = node.y;
+                            d = dn;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return [rx, ry]
+}
 
 class Lasso {
     constructor(public x0: number, public y0: number, public x1: number, public y1: number, public deselect: boolean) {
@@ -415,6 +453,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return item;
     }
 
+
+    const purge = (group: Group<any>, list: (ENode | NodeGroup)[]): (ENode | NodeGroup)[] => {
+        let newList = list;
+        if (group instanceof NodeGroup) {
+            // If group is a NodeGroup, we delete it from the list:
+            newList = list.filter(it => it!==group);
+        }
+        if (group.group) {
+            // An empty group is just useless baggage, so we also delete it from its own group:
+            group.group.members = group.group.members.filter(m => m!==group);  
+        }
+        return newList;
+    }
+
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
@@ -424,14 +476,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             } 
             else {
                 let newPoints = points,
+                    newList = list,
                     newSelection = selection;
 
                 if (focusItem && (adding || dissolveAdding)) {
                     newPoints = [];
                     const itemToAdd = e.ctrlKey? item: highestActive(item);
-                    const oldGroup = itemToAdd.group;
                     const group = highestActive(focusItem);
-                    if (isGroup(group, isGroupMember) && group!==itemToAdd && !group.members.includes(itemToAdd)) {
+                    if (!(group instanceof Item) && group!==itemToAdd && !group.members.includes(itemToAdd)) {
                         if (itemToAdd instanceof Item) {
                             newSelection=[...selection, itemToAdd];
                         }
@@ -439,12 +491,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             const lm = getLeafMembers(itemToAdd);
                             newSelection=[...selection, item, ...getNodes(list, it => it!==item && !selection.includes(it) && lm.has(it))];
                         }
-                        if (oldGroup) {
-                            oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
-                        }
                         if (adding || itemToAdd instanceof Item) {
                             if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
                                 setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                setShowModal(true);
+                                return;
+                            }
+                            else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
+                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
                                 setShowModal(true);
                                 return;
                             }
@@ -454,14 +508,30 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 return;
                             }
                             else {
-                                group.members.push(itemToAdd);
+                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    const i = group.members.indexOf(focusItem);
+                                    group.members.splice(i+1, 0, itemToAdd as CNode);
+                                }
+                                else {
+                                    group.members.push(itemToAdd);
+                                }
+                                const oldGroup = itemToAdd.group;
                                 itemToAdd.group = group;
                                 itemToAdd.isActiveMember = true;
+                                if (oldGroup) {
+                                    oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
+                                    if (oldGroup.members.length==0) newList = purge(oldGroup, newList);
+                                }
                             }
                         }
                         else { // dissolve adding
                             if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
                                 setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                setShowModal(true);
+                                return;
+                            }
+                            else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
+                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
                                 setShowModal(true);
                                 return;
                             }
@@ -471,9 +541,24 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 return;
                             }
                             else {
-                                group.members.push(...itemToAdd.members);
+                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    const i = group.members.indexOf(focusItem); // the index after which to insert
+                                    const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
+                                    const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
+                                    group.members.splice(i+1, 0, ...nodes);
+                                }
+                                else {
+                                    group.members.push(...itemToAdd.members);
+                                }
                                 itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
                                 itemToAdd.members = [];
+                                if (itemToAdd instanceof NodeGroup) {
+                                    // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
+                                    setList(prev => prev.filter(it => it!==itemToAdd));
+                                }
+                                if (itemToAdd.group) {
+                                    itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
+                                }
                             }
                         }
                     }
@@ -513,7 +598,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const newX = Math.min(Math.max(e.clientX - startX, xMinD), MAX_X);
                     const newY = Math.min(Math.max(H + yOffset - e.clientY + startY, MIN_Y), MAX_Y);
                     // Next, we take into account the grid:
-                    const [x, y] = nearestGridPoint(newX, newY, grid);
+                    const [x, y] = getSnapPoint(newX, newY, grid, newList, selectionWithoutDuplicates);
                     const dx = x - item.x;
                     const dy = y - item.y;
                     // Finally, we move each item in the selection:
@@ -541,6 +626,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 window.addEventListener('mouseup', handleMouseUp);
 
                 setFocusItem(item);
+                setList(newList);
                 setPoints(newPoints);
                 setPreselection1([]);
                 setPreselection2([]);
@@ -699,9 +785,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const addContours = () => { // onClick handler for the contour button
         if (points.length>0) {
-            let counter = nodeGroupCounter;
-            const newNodeGroups = points.map((point, i) => new NodeGroup(counter++, point.x, point.y, true));
-            setNodeGroupCounter(counter);
+            const newNodeGroups = points.map((point, i) => new NodeGroup(nodeGroupCounter, point.x, point.y));
+            setNodeGroupCounter(prev => prev+1);
             setList(list => {
                 const newList = [...list, ...newNodeGroups];
                 adjustLimit(newList); 
@@ -716,6 +801,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }
 
     const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
+
+    const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
+        .map(node => node.group)
+        .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; // A deduplicated array of those NodeGroups that have members included in selection.
 
     const copySelection = () => {
         if (selection.length>0) {
@@ -863,7 +952,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             group: NodeGroup, 
             i: number, dx: number, dy: number, 
             cNodeCopies: Record<string, CNode>): NodeGroup => {
-        const copiedGroup = new NodeGroup(i, 0, 0, false);
+        const copiedGroup = new NodeGroup(i);
         const members = group.members.map((m: CNode, j: number) => {
             const copy = copyCNode(m, dx, dy, i, j);
             copy.group = copiedGroup;
@@ -923,7 +1012,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 if (it instanceof ENode) {
                     if (!selection.includes(it)) newList.push(it);
                 }
-                else { // Here we're dealing with a NodeGroup:
+                else if (it instanceof NodeGroup) {
                     const newMembers = it.members.filter(node => !selection.includes(node));
                     if (newMembers.length>0) {
                         it.members = newMembers;
@@ -959,6 +1048,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection([item, ...getNodes(list, it => it!==item && lm.has(it))]);
         }
     }
+
+    /** 
+     * We create a (deduplicated) array of 'new group members' for the purposes of creating a new group if the user presses the appropriate button in the GroupTab.
+     * This array contains the members of the current selection, except where the latter contains ALL leaf members of a given member's highest active group, in which case
+     * the array contains that group instead.
+     */
+    const newGroupMembers = deduplicatedSelection.map(it => {
+        const ha = highestActive(it);
+        return !(ha instanceof Item) && ([...getLeafMembers(ha)] as Item[]).every(m => deduplicatedSelection.includes(m))? ha: it
+    }).filter((m, i, array) => i===array.indexOf(m));
+    //console.log(`ngm: ${newGroupMembers.map(m => m.getString()).join(', ')}`);
 
 
 
@@ -1094,12 +1194,21 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </div>
                         <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-4' 
                             disabled={
-                                selection.length<1 || 
-                                list.length + selection.length >= MAX_LIST_SIZE ||
-                                (hDisplacement<0 && selection.reduce((min, item) => (min<item.x)? min: item.x, Infinity) + hDisplacement < 0) ||
-                                (vDisplacement>0 && selection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > MAX_Y) ||
-                                (hDisplacement>0 && selection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity) + hDisplacement > MAX_X) ||
-                                (vDisplacement<0 && selection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
+                                deduplicatedSelection.length<1 || 
+                                (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
+                                    list.length + 
+                                        deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
+                                        affectedNodeGroups.reduce((acc, g) => g.members.every(node => deduplicatedSelection.includes(node))? acc+1: acc, 0) > MAX_LIST_SIZE
+                                ) ||
+                                affectedNodeGroups.some(g => {
+                                    const n = g.members.reduce((acc, node) => deduplicatedSelection.includes(node)? acc+1: acc, 0);
+                                    return n<g.members.length // If n>=g.members.length, then all members of g are selected, which means that g would be copied as a whole.
+                                        && n+g.members.length>MAX_NODEGROUP_SIZE 
+                                }) ||
+                                (hDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.x)? min: item.x, Infinity) + hDisplacement < 0) ||
+                                (vDisplacement>0 && deduplicatedSelection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > MAX_Y) ||
+                                (hDisplacement>0 && deduplicatedSelection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity) + hDisplacement > MAX_X) ||
+                                (vDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
                         <TabGroup className='flex-1 w-[275px] h-[372px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
@@ -1234,15 +1343,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                     if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                                 }
                                             }); 
-                                            (deduplicatedSelection.filter(it => it instanceof CNode)
-                                                .map(node => node.group)
-                                                .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[])
-                                                .forEach(group => {
-                                                    if (group) {
-                                                        if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
-                                                        if (transformFlags.scaleDash) group.dash = group.dash100.map(l => l * newValue/100);
-                                                    }
-                                                });
+                                            affectedNodeGroups.forEach(group => {
+                                                if (group) {
+                                                    if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
+                                                    if (transformFlags.scaleDash) group.dash = group.dash100.map(l => l * newValue/100);
+                                                }
+                                            });
                                             adjustLimit();
                                             setScaling(newValue);
                                         }}
@@ -1274,15 +1380,37 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <TabPanel key='groups-panel' className="rounded-xl px-3 pt-3 pb-1">
                                     {focusItem &&
                                         <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
+                                            canCreate={
+                                                (newGroupMembers.every(m => m instanceof CNode) && newGroupMembers.length<=MAX_NODEGROUP_SIZE) ||
+                                                (newGroupMembers.every(m => !(m instanceof CNode)) &&
+                                                    newGroupMembers.reduce((acc, it) => {
+                                                        const d = depth(it);
+                                                        return acc>d? acc: d;
+                                                    }, 0) < MAX_GROUP_LEVEL
+                                                )
+                                            }
                                             create={() => {
-                                                const members = deduplicatedSelection.map(highestActive).filter((m, i, array) => i===array.indexOf(m));
-                                                const group = new StandardGroup<Item | Group<any>>(members);
-                                                members.forEach(member => {
-                                                    const oldGroup = member.group;
-                                                    if(oldGroup) oldGroup.members = oldGroup.members.filter(m => m!==member);
+                                                let group: Group<any>;
+                                                if (newGroupMembers.every(m => m instanceof CNode)) {
+                                                    group = new NodeGroup(nodeGroupCounter);
+                                                    group.members = newGroupMembers;
+                                                    setNodeGroupCounter(prev => prev+1);
+                                                    setList(prev => [...prev, group as NodeGroup]);
+                                                }                                                
+                                                else {
+                                                    group = new StandardGroup<Item | Group<any>>(newGroupMembers);
+                                                }
+                                                const oldGroups = newGroupMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
+                                                oldGroups.forEach(g => {
+                                                    if (g) {
+                                                        g.members = g.members.filter(m => !newGroupMembers.includes(m));
+                                                        if (g.members.length==0) setList(prev => purge(g, prev));
+                                                    }
+                                                });
+                                                newGroupMembers.forEach(member => {
                                                     member.group = group;
                                                     member.isActiveMember = true;
-                                                })
+                                                });
                                                 adjustSelection(focusItem);                                 
                                             }} 
                                             leave={() => {

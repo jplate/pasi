@@ -225,7 +225,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = hidden ? 0.9 * l : 0;
 
-    console.log(`Rendering ${id}... x=${x}  y=${y}`);
+    //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}

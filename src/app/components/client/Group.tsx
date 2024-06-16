@@ -1,3 +1,5 @@
+import Item from './Item.tsx'
+
 export const MAX_GROUP_LEVEL = 255
 
 export interface GroupMember {
@@ -11,26 +13,36 @@ export const isGroupMember = (obj: any, g: any): obj is GroupMember => {
         typeof obj === 'object' && 
         obj !== null &&
         typeof obj.group === 'object' && // this includes the case where obj.group===null
-        ((g===undefined && isGroup(obj.group, isGroupMember)) || obj.group === g) && // If g is undefined (i.e., no second parameter has been specified), we 
+        ((g===undefined && isGroup(obj.group)) || obj.group === g) && // If g is undefined (i.e., no second parameter has been specified), we 
             // go and check whether obj.group is a Group. Otherwise, we assume that g is supposed to be the Group of obj.
         typeof obj.isActiveMember === 'boolean' &&
         typeof obj.getString === 'function'
     );
-  }
+}
 
 export default interface Group<T extends GroupMember> extends GroupMember {
     members: T[]
 }
 
-export const isGroup = <T extends GroupMember>(obj: any, memberGuard: (m: any, g: any) => m is T): obj is Group<T> => {
+export const isGroup = <T extends GroupMember>(obj: any): obj is Group<T> => {
     const g = obj.group;
     return (
         isGroupMember(obj, g) &&
         Array.isArray((obj as Group<T>).members) &&
-        (obj as Group<T>).members.every(m => memberGuard(m, obj))
+        (obj as Group<T>).members.every(m => isGroupMember(m, obj))
     );
 }
 
+/**
+ * Returns the depth (measured in levels of group-membership) of a group or other object.
+ */
+export const depth = (x: any, d: number = 0): number => {
+    return !isGroup(x)? d: 
+        x.members.reduce((acc, m) => {
+            const dm = depth(m, d+1);
+            return acc>dm? acc: dm
+        }, 0);
+}
 
 /**
  * Returns an array whose first element is an array representing the list of groups of which the first argument is a direct or indirect member, and
@@ -64,7 +76,7 @@ export const getLeafMembers = (group: Group<any>, onlyActiveMembers: boolean = f
         result = new Set<GroupMember>();
     for (let m of members) {
         if(m.isActiveMember || !onlyActiveMembers) {
-            if (isGroup(m, isGroupMember)) {
+            if (isGroup(m)) {
                 let leaves = getLeafMembers(m, onlyActiveMembers);
                 for (let l of leaves) {
                     result.add(l);

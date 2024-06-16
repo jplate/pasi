@@ -9,6 +9,7 @@ export interface GroupTabProps {
     item: Item
     adding: boolean
     dissolveAdding: boolean
+    canCreate: boolean
     create: () => void
     leave: () => void
     rejoin: () => void
@@ -18,7 +19,7 @@ export interface GroupTabProps {
     changeDissolveAdding: () => void
 }
 
-const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, dissolve, restore, 
+const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoin, dissolve, restore, 
         changeAdding, changeDissolveAdding}: GroupTabProps) => {
 
     const groups = getGroups(item);
@@ -30,7 +31,7 @@ const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, dissolve
 
     return (
         <div className='flex flex-col h-full'>
-            <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 mt-1 rounded-lg' disabled={groups[1]+1>=MAX_GROUP_LEVEL} onClick={create} 
+            <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 mt-1 rounded-lg' disabled={!canCreate} onClick={create} 
                 tooltip={'Creates a new group that has all elements of the current selection (or their highest active groups, where applicable) as members, and removes these '+
                     'elements from their current lowest inactive groups.'}
                 tooltipPlacement='left' />
@@ -50,10 +51,10 @@ const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, dissolve
                 tooltip='Reactivates the membership of each member of the currently focused node’s highest active group.'
                 tooltipPlacement='left' />
             <BasicColoredButton id='restore-button' label='Add...' style='px-2 mx-2 mt-3.5 rounded-lg' pressed={adding} disabled={!canAdd} onClick={changeAdding} 
-                tooltip='Selecting nodes (while not holding CTRL pressed) adds their highest active groups to the present group. Selecting nodes while holding CTRL pressed adds only the individual nodes.'
+                tooltip={<>Selecting nodes (while not holding <kbd>Ctrl</kbd> pressed) adds their highest active groups to the present group. Selecting nodes while holding <kbd>Ctrl</kbd> pressed adds only the individual nodes.</>}
                 tooltipPlacement='left' />
             <BasicColoredButton id='restore-button' label='Dissolve-add...' style='px-2 mx-2 mt-2 rounded-lg' pressed={dissolveAdding} disabled={!canAdd} onClick={changeDissolveAdding} 
-                tooltip='Selecting nodes adds either the members of their highest active groups (where applicable) or the nodes themselves to the present group. Selecting nodes while holding CTRL pressed adds only the individual nodes.'
+                tooltip={<>Selecting nodes adds either the members of their highest active groups (where applicable) or the nodes themselves to the present group. Selecting nodes while holding <kbd>Ctrl</kbd> pressed adds only the individual nodes.</>}
                 tooltipPlacement='left' />
         </div>
     )
