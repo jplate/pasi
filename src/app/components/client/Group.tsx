@@ -36,17 +36,18 @@ export const isGroup = <T extends GroupMember>(obj: any): obj is Group<T> => {
 /**
  * Returns the depth (measured in levels of group-membership) of a group or other object.
  */
-export const depth = (x: any, d: number = 0): number => {
-    return !isGroup(x)? d: 
-        x.members.reduce((acc, m) => {
-            const dm = depth(m, d+1);
-            return acc>dm? acc: dm
-        }, 0);
-}
+export const depth = (x: any, d: number = 0): number => 
+    !isGroup(x)? d: 
+    x.members.reduce((acc, m) => {
+        const dm = depth(m, d+1);
+        return acc>dm? acc: dm
+    }, 0);
 
 /**
  * Returns an array whose first element is an array representing the list of groups of which the first argument is a direct or indirect member, and
- * whose second element indicates the first group (in ascending order) whose member that is either the first argument or a member of the list satisfies the supplied test condition.
+ * whose second element indicates the first group whose predecessor (which, in the case of the first element of the list, is the first argument)
+ * satisfies the supplied test condition.
+ * The default test condition is (m => !m.isActiveMember). Hence, in the default case, the returned index indicates the 'highest active' group of the first argument.
  */
 export const getGroups = (
         member: GroupMember, 
@@ -71,7 +72,7 @@ export const getGroups = (
     return [groups, i];
 }
 
-export const getLeafMembers = (group: Group<any>, onlyActiveMembers: boolean = false):Set<GroupMember> => {
+export const getLeafMembers = (group: Group<any>, onlyActiveMembers: boolean = false): Set<GroupMember> => {
     let members = group.members,
         result = new Set<GroupMember>();
     for (let m of members) {

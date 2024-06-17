@@ -37,7 +37,7 @@ import rstSrc from '../../../icons/rst.png'
 import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
-export const H = 640; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
+export const H = 650; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 export const W = 900; // the width of the canvas
 export const MAX_X = 32*W-1 // the highest possible TeX coordinate for an Item
 export const MIN_Y = -16*H+1 // the lowest possible TeX coordinate for an Item 
@@ -299,16 +299,58 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     }
 }
 
-const getNodes = (list: (ENode | NodeGroup)[], test: (item: Item) => boolean = it => true): Item[] => {
-    return list.flatMap((it: ENode | NodeGroup) => {
-        if (it instanceof ENode) {
-          return test(it)? [it] : [];
-        } 
-        else {
-          return (it.members as Item[]).filter(test);
+const getNodes = (list: (ENode | NodeGroup)[], test: (item: Item) => boolean = it => true): Item[] => 
+    list.flatMap((it: ENode | NodeGroup) => 
+        it instanceof ENode? (test(it)? [it] : []): 
+        (it.members as Item[]).filter(test));
+
+/** 
+ * Returns an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection and array of
+ * not-to-be-copied Items.
+ */
+const getTopToBeCopied = (selection: Item[], ntbc: Item[]) => {
+    const result: (Item | Group<any>)[] = [];
+    const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied nodes
+    const nonNtbcContaining = new Set<Group<any>>(); // already-visited groups that do NOT contain any not-to-be-copied nodes
+    selection.forEach(item => {
+        const [groups, actIndex] = getGroups(item);
+        let j = -1, // The index of that group, if some such group exists; -1 otherwise.
+            visited = false;
+        for (let i = 0; i<=actIndex; i++) { // We are looking for the lowest active group that has both item and a not-to-be-copied node among its leaf members.
+            if (ntbcContaining.has(groups[i]) || nonNtbcContaining.has(groups[i])) {
+                visited = true;
+                break;
+            }
+            const ml = getLeafMembers(groups[i]);
+            if (ntbc.some(item => ml.has(item))) {
+                j = i;
+                ntbcContaining.add(groups[i]);
+                break;
+            }
+            nonNtbcContaining.add(groups[i]);
+        }
+        if (j<0 && !visited && actIndex>=0) { 
+            // item has an active group, and no active group in its hierarchy contains not-to-be-copied nodes.
+            result.push(groups[actIndex]);
+        }
+        else if (actIndex<0 || (j<1 && ntbcContaining.has(groups[0]))) {
+            // Either item has no active group, or the group of which it is a direct member also contains a not-to-be-copied node.
+            result.push(item);
+        }
+        else if (!visited && j>0) {
+            // groups[j-1] is one level below the lowest active group in item's hierarchy that contains not-to-be-copied nodes.
+            result.push(groups[j-1]);
         }
     });
+    return result;
 }
+
+const getNodeGroups = (array: (Item | Group<any>)[]): NodeGroup[] =>
+    array.reduce((acc: NodeGroup[], it) => 
+        it instanceof Item? acc: 
+        it instanceof NodeGroup? [...acc, it]:
+        [...acc, ...getNodeGroups(it.members)], 
+    []);
 
 
 
@@ -345,7 +387,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     preselection2Ref.current = preselection2
 
     const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0) // canvas editor is default
-    const [itemEditorConfig, ] = useState<Config>({logTranslationIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT})
+    const [itemEditorConfig, ] = useState<Config>({logIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT})
     const [rotation, setRotation] = useState(0)
     const [scaling, setScaling] = useState(100) // default is 100%
     const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
@@ -433,6 +475,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
     }
 
+    const scrollTo = (item: Item) => {
+        const canvas = canvasRef.current;
+        if (canvas) { // scroll to the position of focusItem, if there has been a change in position
+            const dx = item.x - canvas.scrollLeft;
+            const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
+            const dy = canvas.scrollTop + item.y - yOffset;
+            const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
+            setTimeout(() => {
+                canvas.scrollBy(scrollRight, scrollDown);
+            }, 0);
+        }
+    }
 
     const updateSecondaryPreselection = (prim: Item[] = preselection1) => {
         const lm = new Set<GroupMember>();
@@ -584,7 +638,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 console.log('Unexpectedly missing CNode');
                                 return;
                             }
-                            if (i!==j && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { // We're splitting group into two parts:
+                            if (i!==j && newList.length<MAX_LIST_SIZE && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { 
+                                // We're splitting group into two parts:
                                 if (i+1<j) {
                                     newMembers = group.members.splice(i+1, j-i-1);                                        
                                 } 
@@ -640,12 +695,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                 
                 const handleMouseMove = (e: MouseEvent) => {
-                    // We have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
+                    // First, we take into account the grid:
+                    const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
+                    // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
                     // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
-                    const newX = Math.min(Math.max(e.clientX - startX, xMinD), MAX_X);
-                    const newY = Math.min(Math.max(H + yOffset - e.clientY + startY, MIN_Y), MAX_Y);
-                    // Next, we take into account the grid:
-                    const [x, y] = getSnapPoint(newX, newY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
+                    const x = Math.min(Math.max(snapX, xMinD), MAX_X);
+                    const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
                     const dx = x - item.x;
                     const dy = y - item.y;
                     // Finally, we move each item in the selection:
@@ -684,28 +739,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
         if(!dragging) {
-            setPreselection1(pre1 => {  
-                // Nesting one state update inside another may look strange (and it does lead to additional rerenders), but this is the only way I have found to ensure
-                // that the state gets updated properly when the mouse pointer is moved back and forth between two adjacent ENodeComps.
-                const newPres = pre1.includes(item)? pre1: [...pre1, item];
-                if (e.ctrlKey) {
-                    setPreselection2(pre2 => pre2.includes(item)? pre2: [...pre2, item]); // if Ctrl is pressed, only add item by itself
-                }
-                else {
-                    updateSecondaryPreselection(newPres); // otherwise add all the leaf members of its highest active group
-                }
-                return newPres
-            });
+            setPreselection1(prev => [item]); 
+            if (e.ctrlKey) {
+                setPreselection2(prev => [item]); // if Ctrl is pressed, only add item by itself
+            }
+            else {
+                updateSecondaryPreselection([item]); // otherwise add all the leaf members of its highest active group
+            }
         }
     }
 
     const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
         if(!dragging) {
-            setPreselection1(pre1 => {
-                const newPres = pre1.filter(it => it!==item);
-                updateSecondaryPreselection(newPres);
-                return newPres
-            });
+            setPreselection1(prev => []); 
+            updateSecondaryPreselection([]);
         }
     }
 
@@ -850,51 +897,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
-    const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
-        .map(node => node.group)
-        .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; // A deduplicated array of those NodeGroups that have members included in selection.
+    /**
+     * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
+     * the purposes of the 'Create Group' button in the GroupTab.
+     */
+    const topTbc: (Item | Group<any>)[] = getTopToBeCopied(deduplicatedSelection, getNodes(list, item => !deduplicatedSelection.includes(item))); 
 
     const copySelection = () => {
         if (selection.length>0) {
-            const ntbc = getNodes(list, item => !selection.includes(item)); // not-to-be-copied nodes
-            const topTbc: (Item | Group<any>)[] = []; // top-level to-be-copied groups or items
             const copies: Record<string, ENode | NodeGroup> = {}; // This will store the keys of the copied ENodes and NodeGroups, mapped to their respective copies.
             const cNodeCopies: Record<string, CNode> = {}; // Same, but for the members of NodeGroups.
-            const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied nodes
-            const nonNtbcContaining = new Set<Group<any>>(); // already-visited groups that do NOT contain any not-to-be-copied nodes
-            deduplicatedSelection.forEach(item => {
-                const groups = getGroups(item)[0];
-                let j = -1, // The index of that group, if some such group exists; -1 otherwise.
-                    visited = false;
-                for (let i = 0; i<groups.length; i++) { // We are looking for the lowest group that has both item and a not-to-be-copied node among its leaf members.
-                    if (ntbcContaining.has(groups[i]) || nonNtbcContaining.has(groups[i])) {
-                        visited = true;
-                        break;
-                    }
-                    const ml = getLeafMembers(groups[i]);
-                    if (ntbc.some(item => ml.has(item))) {
-                        j = i;
-                        ntbcContaining.add(groups[i]);
-                        break;
-                    }
-                    nonNtbcContaining.add(groups[i]);
-                }
-                if (j<0 && !visited && groups.length>0) { 
-                    // item is in a group, and no group in its hierarchy contains not-to-be-copied nodes.
-                    topTbc.push(groups[groups.length-1]);
-                }
-                else if (groups.length==0 || (j<1 && ntbcContaining.has(groups[0]))) {
-                    // Either item is not in any group, or the group that it is a direct member of also contains a not-to-be-copied node.
-                    topTbc.push(item);
-                }
-                else if (!visited && j>0) {
-                    // groups[j-1] is one level below the first group in item's hierarchy that contains not-to-be-copied nodes.
-                    topTbc.push(groups[j-1]);
-                }
-            });
             let counter = enodeCounter,
                 ngCounter = nodeGroupCounter;
-            //console.log(` topTbc.length: ${topTbc.length}  topTbc: ${topTbc.map(m => m.getString()).join(', ')}`);
             topTbc.forEach(m => {
                 if (m instanceof ENode) {
                     const node = copyENode(m, counter++, hDisplacement, vDisplacement);
@@ -939,12 +953,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
                 return acc;
             }, []);
-            const newSelection = selection.map(node => node instanceof ENode? (copies[node.id] as ENode): 
+            const newSelection = selection.map(node => 
+                node instanceof ENode? copies[node.id] as ENode: 
                 node instanceof CNode? cNodeCopies[node.id]: null as never);
-            const oldFocus = focusItem;
             const newList = [...list, ...copiedList];
-            const newFocus: Item | null = focusItem && (focusItem instanceof ENode? (copies[focusItem.id] as ENode): 
-                focusItem instanceof CNode? cNodeCopies[focusItem.id]: null);
+            const newFocus = 
+                focusItem instanceof ENode? copies[focusItem.id] as ENode: 
+                focusItem instanceof CNode? cNodeCopies[focusItem.id]: null as never;
             adjustLimit(newList);
             setEnodeCounter(counter);
             setNodeGroupCounter(ngCounter);
@@ -952,11 +967,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(prev => newFocus);
             setOrigin(true, points, newFocus, newSelection); 
             setSelection(newSelection);
-            if (oldFocus && newFocus) {
-                setTimeout(() => {
-                    canvasRef.current?.scrollBy({left: newFocus.x-oldFocus.x, top: oldFocus.y-newFocus.y, behavior: 'smooth'});
-                }, 0);
-            }
+            scrollTo(newFocus);
         }
     }
 
@@ -1100,21 +1111,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
 
-    /** 
-     * We create a (deduplicated) array of 'new group members' for the purposes of creating a new group if the user presses the appropriate button in the GroupTab.
-     * This array contains the members of the current selection, except where the latter contains ALL leaf members of a given member's highest active group, in which case
-     * the array contains that group instead.
-     */
-    const newGroupMembers = tabIndex==2? 
-        deduplicatedSelection.map(it => {
-            const ha = highestActive(it);
-            return !(ha instanceof Item) && ([...getLeafMembers(ha)] as Item[]).every(m => deduplicatedSelection.includes(m))? ha: it
-        }).filter((m, i, array) => i===array.indexOf(m)): [];
-    //console.log(`ngm: ${newGroupMembers.map(m => m.getString()).join(', ')}`);
-
-
-
-    // The delete button gets some special colors:
+     // The delete button gets some special colors:
     const deleteButtonStyle = clsx('rounded-xl', 
         (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
@@ -1132,7 +1129,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'> 
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
-                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[640px] relative overflow-auto border'
+                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
                             onMouseDown= {canvasMouseDown}>
                         {list.flatMap((it, i) => 
                             it instanceof ENode?
@@ -1192,7 +1189,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                 </div>
                 <div id='button-panels' className={clsx('flex-grow min-w-[300px] max-w-[380px] select-none')}>
-                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[640px]'>
+                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' 
                                 disabled={points.length<1 || list.length>=MAX_LIST_SIZE} onClick={addEntityNodes} />
@@ -1248,46 +1245,43 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
                                     list.length + 
                                         deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
-                                        affectedNodeGroups.reduce((acc, g) => g.members.every(node => deduplicatedSelection.includes(node))? acc+1: acc, 0) > MAX_LIST_SIZE
+                                        getNodeGroups(topTbc).length > MAX_LIST_SIZE
                                 ) ||
-                                affectedNodeGroups.some(g => {
-                                    const n = g.members.reduce((acc, node) => deduplicatedSelection.includes(node)? acc+1: acc, 0);
-                                    return n<g.members.length // If n>=g.members.length, then all members of g are selected, which means that g would be copied as a whole.
-                                        && n+g.members.length>MAX_NODEGROUP_SIZE 
-                                }) ||
+                                (() => {
+                                    const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
+                                    const dedupTbcContainingNGs = tbcContainingNGs.filter((g, i) => i===tbcContainingNGs.indexOf(g));
+                                    return dedupTbcContainingNGs.some(group => group && 
+                                        group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_NODEGROUP_SIZE)
+                                })() ||
                                 (hDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.x)? min: item.x, Infinity) + hDisplacement < 0) ||
                                 (vDisplacement>0 && deduplicatedSelection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity) + vDisplacement > MAX_Y) ||
                                 (hDisplacement>0 && deduplicatedSelection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity) + hDisplacement > MAX_X) ||
                                 (vDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px] h-[372px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
-                            <TabList className="grid grid-cols-3">
+                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3 relative z-30' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
+                            <TabList className="grid grid-cols-3 mb-0.5">
                                 <Tab key='editor-tab'className={clsx(tabClassName, 'border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
                                     Editor
                                 </Tab>
-                                <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} animation='shift-toward' content='Transform selection'>
-                                    <Tab key='transform-tab' className={clsx(tabClassName, 'data-[selected]:border-x-0', 
-                                                tabIndex===0 && 'border-l-[1px] rounded-bl-xl border-l-0', tabIndex==2 && 'border-r-[1px] rounded-br-xl border-r-0')} 
-                                            disabled={selection.length==0}>
-                                        Transform
-                                    </Tab>
-                                </Tippy>
-                                <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} animation='shift-toward' content='Manage groups'>
-                                    <Tab key='group-tab' className={clsx(tabClassName, 'border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
-                                                tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
-                                            disabled={!focusItem}>
-                                        Groups
-                                    </Tab>
-                                </Tippy>
+                                <Tab key='transform-tab' className={clsx(tabClassName, 'data-[selected]:border-x-0', 
+                                            tabIndex===0 && 'border-l-[1px] rounded-bl-xl border-l-0', tabIndex==2 && 'border-r-[1px] rounded-br-xl border-r-0')} 
+                                        disabled={selection.length==0}>
+                                    Transform
+                                </Tab>
+                                <Tab key='group-tab' className={clsx(tabClassName, 'border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
+                                            tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
+                                        disabled={!focusItem}>
+                                    Groups
+                                </Tab>
                             </TabList>
-                            <TabPanels className='mb-2 flex-1 h-[364px] bg-btnbg/5 overflow-auto scrollbox'>
-                                <TabPanel key='editor-panel' className='rounded-xl px-2 pt-2 pb-1 h-full'>
+                            <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-1 h-full'>
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(list, itemEditorConfig)} 
-                                            onChange={(e, i) => {
-                                                const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, i);
+                                            onChange={(e, key) => {
+                                                const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, key);
                                                 const nodes = applyToAll? 
                                                     deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
                                                             //console.log(`Editing item ${item.key}`);
@@ -1297,19 +1291,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 setList(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
                                                 adjustLimit();
                                                 setOrigin(false);
-                                                const canvas = canvasRef.current;
-                                                if (canvas) { // scroll to the position of focusItem, if there has been a change in position
-                                                    const dx = focusItem.x - canvas.scrollLeft;
-                                                    const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
-                                                    const dy = canvas.scrollTop + focusItem.y - yOffset;
-                                                    const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
-                                                    setTimeout(() => {
-                                                        canvas.scrollBy(scrollRight, scrollDown);
-                                                    }, 0);
-                                                }
-                                                setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
-                                            }} />
-                                        :
+                                                scrollTo(focusItem);
+                                                setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render (in case it hasn't already)                               
+                                        }} />:
                                         <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
                                             changeHGap={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
                                             changeVGap={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
@@ -1393,6 +1377,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                     if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
                                                 }
                                             }); 
+                                            const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
+                                                .map(node => node.group) // An array of those NodeGroups that have members included in selection.  
+                                                .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; 
                                             affectedNodeGroups.forEach(group => {
                                                 if (group) {
                                                     if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
@@ -1431,9 +1418,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     {focusItem &&
                                         <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
                                             canCreate={
-                                                (newGroupMembers.every(m => m instanceof CNode) && newGroupMembers.length<=MAX_NODEGROUP_SIZE) ||
-                                                (newGroupMembers.every(m => !(m instanceof CNode)) &&
-                                                    newGroupMembers.reduce((acc, it) => {
+                                                (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_NODEGROUP_SIZE &&
+                                                    // Since creating a new NodeGroup can lead to exceeding the list size limit, we have to check whether it would.
+                                                    (list.length < MAX_LIST_SIZE ||
+                                                        (() => { // Here we check whether creating the new NodeGroup would lead to the deletion of at least one existing NodeGroup:
+                                                            const affectedNGs = topTbc.map(node => node.group).filter((g, i, arr) => i==arr.indexOf(g));
+                                                            return affectedNGs.some(g => g && g.members.every(m => topTbc.includes(m)));
+                                                        })()
+                                                    )
+                                                ) ||
+                                                (topTbc.every(m => !(m instanceof CNode)) &&
+                                                    topTbc.reduce((acc, it) => {
                                                         const d = depth(it);
                                                         return acc>d? acc: d;
                                                     }, 0) < MAX_GROUP_LEVEL
@@ -1441,23 +1436,23 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             }
                                             create={() => {
                                                 let group: Group<any>;
-                                                if (newGroupMembers.every(m => m instanceof CNode)) {
+                                                if (topTbc.every(m => m instanceof CNode)) {
                                                     group = new NodeGroup(nodeGroupCounter);
-                                                    group.members = newGroupMembers;
+                                                    group.members = topTbc;
                                                     setNodeGroupCounter(prev => prev+1);
                                                     setList(prev => [...prev, group as NodeGroup]);
                                                 }                                                
                                                 else {
-                                                    group = new StandardGroup<Item | Group<any>>(newGroupMembers);
+                                                    group = new StandardGroup<Item | Group<any>>(topTbc);
                                                 }
-                                                const oldGroups = newGroupMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
+                                                const oldGroups = topTbc.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
                                                 oldGroups.forEach(g => {
                                                     if (g) {
-                                                        g.members = g.members.filter(m => !newGroupMembers.includes(m));
+                                                        g.members = g.members.filter(m => !topTbc.includes(m));
                                                         if (g.members.length==0) setList(prev => purge(g, prev));
                                                     }
                                                 });
-                                                newGroupMembers.forEach(member => {
+                                                topTbc.forEach(member => {
                                                     member.group = group;
                                                     member.isActiveMember = true;
                                                 });

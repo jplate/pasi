@@ -2,7 +2,7 @@ import React from 'react';
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR, HSL } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
-import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
+import { validInt, validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
 import { NodeGroup } from './CNode.tsx'
 
@@ -24,13 +24,8 @@ export default class ENode extends Item {
     public radius: number = DEFAULT_RADIUS;
     public radius100: number = DEFAULT_RADIUS;
 
-    private info: Entry[] = []; // current info array, allows access to input refs
+    private dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
-    private dottedIndex = -1; // the first index at which we've found a dot (possibly followed by one or more zeros) at the end of a portion of the stroke pattern input. We'll
-        // assume that the user is editing at that point, and add the corresponding string - i.e., match - to the string shown in the input field.
-    private match = ''; // the 'match' just mentioned
-    private trailingSpace = false; // keeps track of whether a space should be added to the stroke pattern in editing
-    
     constructor(i: number, x: number, y: number) {
         super(`E${i}`, x, y);
     }
@@ -52,31 +47,26 @@ export default class ENode extends Item {
     }
 
     public override getInfo(list: (ENode | NodeGroup)[], config: Config): Entry[] {
-
-        return this.info = [
-            /*  0 */{type: 'number input', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
-            /*  1 */{type: 'number input', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
-            /*  2 */{type: 'number input', text: 'log Increment', width: 'short', value: config.logTranslationIncrement, step: 1, 
-                        extraBottomMargin: true,
-                        onChange: (e) => {
-                            if(e) {
-                                const val = validInt(e.target.value, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT)
-                                config.logTranslationIncrement = val
-                            }
-                        }
-                    },
-            /*  3 */{type: 'number input', text: 'Radius', width: 'long', value: this.radius, step: 1},
-            /*  4 */{type: 'number input', text: 'Line width', width: 'long', value: this.linewidth, step: 0.1},
-            /*  5 */{type: 'string input', text: 'Stroke pattern', width: 'long', 
-                        value: this.dash.map((n, i) => {        
-                            return i==this.dottedIndex? n+this.match: n
-                        }).join(' ')+(this.trailingSpace? ' ': '')
-                    },
-            /*  6 */{type: 'number input', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
-            /*  7 */{type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
-            /*  8 */{type: 'number input', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
-            /*  9 */{type: 'label', text: '', style: 'flex-1'}, // a filler
-            /* 10 */{type: 'button', text: 'Defaults'}
+        return [
+            {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
+            {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
+            {type: 'number input', key: 'inc', text: 'log Increment', width: 'short', value: config.logIncrement, step: 1, 
+                extraBottomMargin: true,
+                onChange: (e) => {
+                    if(e) {
+                        const val = validInt(e.target.value, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT)
+                        config.logIncrement = val
+                    }
+                }
+            },
+            {type: 'number input', key: 'radius', text: 'Radius', width: 'long', value: this.radius, step: 1},
+            {type: 'number input', key: 'lw', text: 'Line width', width: 'long', value: this.linewidth, step: 0.1},
+            {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: this.dashValidator.write(this.dash)},
+            {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
+            {type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
+            {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
+            {type: 'label', text: '', style: 'flex-1'}, // a filler
+            {type: 'button', key: 'defaults', text: 'Defaults'}
         ]
     }
 
@@ -84,80 +74,37 @@ export default class ENode extends Item {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             config: Config, 
             selection: Item[],
-            index: number): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
-        switch(index) {
-            case 0: if(e) {
+            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
+        switch(key) {
+            case 'x': if (e) {
                     const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
-                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
+                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
                     const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
                     return [(item, array) => {
-                        item.move(dx, 0);                         
+                        if (dx!==0) item.move(dx, 0);                         
                         return array
                     }, true]
                 }
-            case 1: if(e) {
-                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logTranslationIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
+            case 'y': if (e) {
+                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
-                        item.move(0, dy);                            
-                        return array
+                        if (!isNaN(dy) && dy!==0) {
+                            item.move(0, dy);
+                        }
+                        return array;
                     }, true]
                 }
-        	case 3: if(e) return [(item, array) => {if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); return array}, true]
-            case 4: if(e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
-            case 5: if(e) return [(item, array) => {
-                    const split = e.target.value.split(/[^0-9.]+/);
-                    if(this.info[5].inputRef?.current) {
-                        const element = this.info[5].inputRef.current;
-                        const {selectionEnd: caret} = element;
-                    
-                        let found = -1,
-                            uptoNext = 0,
-                            deleted = 0;
-                        for(let i = 0; i<split.length && caret; i++) {
-                            uptoNext += split[i].length + 1;
-                            const m0 = split[i].match(/^\d*\.\d*$/); // We're looking for representations of floating point numbers...
-                            const m1 = split[i].match(/\.0*$|0+$/); // ... that end EITHER with a dot followed by zero or more zeros OR with one or more zeros. 
-                            if(m0 && m1) {
-                                if(caret<uptoNext) {
-                                    this.match = m1[0];
-                                    found = i;
-                                    break;
-                                }
-                                else deleted += m1[0].length;
-                            } 
-                            else { // In this case, split[i] contains either no dot or two dots (unless the pattern has been pasted in, in which case split[i] may contain more than
-                                // two dots -- but we can safely ignore this possibility). So, if split[i] ends in a dot, that will be the SECOND dot, and it will effectively be deleted below, 
-                                // when we're computing item.dash, along with any preceding zeros and possibly the first dot ('effectively' because the deletion is partially due to how  
-                                // string representation of numbers works). We'll add their number to deleted.
-                                const m2 = split[i].match(/\.0*\.$|0*\.$/);
-                                if(m2) deleted += m2[0].length;
-                            }
-                            
-                            if(caret<uptoNext) break;
-                        }
-                        this.dottedIndex = found;
-                        this.trailingSpace = split[split.length-1]===''; // the last element of split will be '' iff the user entered a comma or space (or some combination thereof) at the end
-                        const slice = split.filter(s => s!=='').slice(0, MAX_DASH_LENGTH); // shorten the array if too long
-                        
-                        // Now we just have to translate the string array into numbers:
-                        let substituteZero = false, 
-                            eliminateZero = false;
-                        item.dash = item.dash100 = slice.map(s => {
-                            const match = s.match(/^[^.]*\.[^.]*/); // If there is a second dot in s, then match[0] will only include the material up to that second dot (exclusive).
-                            const trimmed = match? match[0]: s; // This may still be just a dot, in which case it should be interpreted as a zero.
-                            if(!substituteZero) substituteZero = trimmed.startsWith('.');
-                            if(!eliminateZero) eliminateZero = trimmed.match(/^0\d/)!==null;
-                            return Math.min(trimmed=='.'? 0: Number(trimmed), MAX_DASH_VALUE);
-                        }).filter(n => !isNaN(n));
-                        if(caret) setTimeout(() => {
-                            const extra = eliminateZero? -1: substituteZero? 1: 0;
-                            element.setSelectionRange(caret + extra - deleted, caret + extra - deleted);
-                        }, 0);
-                    }
+        	case 'radius': if (e) return [(item, array) => {
+                    if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
                     return array
                 }, true]
-            case 6: if(e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
-            case 8: if(e) return [(item, array) => {
+            case 'lw': if (e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
+            case 'dash': if (e) return [(item, array) => {
+                    item.dash = item.dash100 = this.dashValidator.read(e.target);                    
+                    return array
+                }, true]
+            case 'shading': if (e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
+            case 'rank': if (e) return [(item, array) => {
                     if (item instanceof ENode) {
                         const currentPos = array.indexOf(item);
                         const newPos = parseInt(e.target.value);
@@ -172,7 +119,7 @@ export default class ENode extends Item {
                     }
                     else return array
                 }, false]
-            case 10: if(index==10) return [(item, array) => {
+            case 'defaults': return [(item, array) => {
                     if(item instanceof ENode) {
                         item.radius = item.radius100 = DEFAULT_RADIUS;
                         item.linewidth = item.linewidth100 = DEFAULT_LINEWIDTH;

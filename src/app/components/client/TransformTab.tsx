@@ -51,7 +51,7 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
             <InputField label='Rotate' value={rotation} 
                 min={-MAX_ROTATION_INPUT} max={MAX_ROTATION_INPUT} 
                 step={0} width={'long'} onChange={(e) => {
-                    const [val, delta] = parseCyclicInputValue(e.target.value, MIN_ROTATION, 360, rotation, logIncrements.rotate, Math.max(0, -MIN_ROTATION_LOG_INCREMENT));
+                    const [val, delta] = parseCyclicInputValue(e.target.value, rotation, logIncrements.rotate, MIN_ROTATION, 360, Math.max(0, -MIN_ROTATION_LOG_INCREMENT));
                     if(!isNaN(val) && val!==rotation && testRotation(delta)) rotate(delta, val)
                 }} />
             <InputField label='log Increment' value={logIncrements.rotate} min={MIN_ROTATION_LOG_INCREMENT} max={MAX_ROTATION_LOG_INCREMENT} 
