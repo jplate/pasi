@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import React, { useState, useEffect } from "react";
-import 'tippy.js/dist/tippy.css';
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});

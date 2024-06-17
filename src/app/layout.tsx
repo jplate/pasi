@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Lusitana } from "next/font/google";
 import "./globals.css";
 
-// const inter = Inter({ subsets: ["latin"] });
+//const inter = Inter({ subsets: ["latin"] });
 
 const lusitana = Lusitana({
   weight: ['400', '700'],

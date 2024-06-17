@@ -2,11 +2,6 @@ import React, { useState, useRef, useEffect, createContext } from 'react'
 import Modal from 'react-modal'
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import NextImage, { StaticImageData } from 'next/image'
-import Tippy from '@tippyjs/react'
-import 'tippy.js/dist/tippy.css'
-import 'tippy.js/themes/light.css'
-import 'tippy.js/themes/translucent.css'
-import 'tippy.js/animations/shift-toward.css'
 import clsx from 'clsx/lite'
 
 import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE } from './Item.tsx'
@@ -1259,7 +1254,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 (vDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3 relative z-30' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
+                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-3 mb-0.5">
                                 <Tab key='editor-tab'className={clsx(tabClassName, 'border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
@@ -1276,7 +1271,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     Groups
                                 </Tab>
                             </TabList>
-                            <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
+                            <TabPanels className='flex-1 h-[364px] bg-btnbg/5 overflow-auto scrollbox'>
                                 <TabPanel key='editor-panel' className='rounded-xl px-2 py-1 h-full'>
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(list, itemEditorConfig)} 
