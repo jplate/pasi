@@ -113,7 +113,9 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
  * Returns the point to 'snap' to from the supplied coordinates, given the supplied grid, list, and selection. Since this is called from within a mouseMove handler while
  * dragging, elements of the selection (which is being dragged) have to be ignored. Same for the centers of NodeGroups containing elements of the selection.
  */
-const getSnapPoint = (x: number, y: number, grid: Grid, list: (ENode | NodeGroup)[], selection: Item[]) => {
+const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)[], selection: Item[], 
+        dccDx: number | undefined, 
+        dccDy: number | undefined) => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
         d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
         snappingToGrid = true;
@@ -129,6 +131,17 @@ const getSnapPoint = (x: number, y: number, grid: Grid, list: (ENode | NodeGroup
                         rx = cx;
                         ry = cy;
                         d = dc;
+                    }
+                    if (dccDx!==undefined && dccDy!==undefined) { // If we're dragging a contour, its center should snap to the centers of other contours.
+                        const dx = x + dccDx - cx;
+                        const dy = y + dccDy - cy;
+                        const ddc = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                        if (ddc<d || (snappingToGrid && ddc<CONTOUR_CENTER_SNAP_RADIUS)) {
+                            snappingToGrid = false;
+                            rx = x - dx;
+                            ry = y - dy;
+                            d = ddc;
+                        }
                     }
                 }
                 if (grid.snapToNodes) {
@@ -483,7 +496,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newPoints = [];
                     const itemToAdd = e.ctrlKey? item: highestActive(item);
                     const group = highestActive(focusItem);
-                    if (!(group instanceof Item) && group!==itemToAdd && !group.members.includes(itemToAdd)) {
+                    if (!(group instanceof Item) && (group instanceof NodeGroup || (group!==itemToAdd && !group.members.includes(itemToAdd)))) {
                         if (itemToAdd instanceof Item) {
                             newSelection=[...selection, itemToAdd];
                         }
@@ -491,74 +504,99 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             const lm = getLeafMembers(itemToAdd);
                             newSelection=[...selection, item, ...getNodes(list, it => it!==item && !selection.includes(it) && lm.has(it))];
                         }
-                        if (adding || itemToAdd instanceof Item) {
-                            if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
-                                setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                setShowModal(true);
-                                return;
-                            }
-                            else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
-                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                setShowModal(true);
-                                return;
-                            }
-                            else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
-                                setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                setShowModal(true);
-                                return;
-                            }
-                            else {
-                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
-                                    const i = group.members.indexOf(focusItem);
-                                    group.members.splice(i+1, 0, itemToAdd as CNode);
+                        if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
+                            if (adding || itemToAdd instanceof Item) {
+                                if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
+                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                    setShowModal(true);
+                                    return;
+                                }
+                                else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
+                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
+                                    setShowModal(true);
+                                    return;
+                                }
+                                else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
+                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
+                                    setShowModal(true);
+                                    return;
                                 }
                                 else {
-                                    group.members.push(itemToAdd);
+                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                        const i = group.members.indexOf(focusItem);
+                                        group.members.splice(i+1, 0, itemToAdd as CNode);
+                                    }
+                                    else {
+                                        group.members.push(itemToAdd);
+                                    }
+                                    const oldGroup = itemToAdd.group;
+                                    itemToAdd.group = group;
+                                    itemToAdd.isActiveMember = true;
+                                    if (oldGroup) {
+                                        oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
+                                        if (oldGroup.members.length==0) newList = purge(oldGroup, newList);
+                                    }
                                 }
-                                const oldGroup = itemToAdd.group;
-                                itemToAdd.group = group;
-                                itemToAdd.isActiveMember = true;
-                                if (oldGroup) {
-                                    oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
-                                    if (oldGroup.members.length==0) newList = purge(oldGroup, newList);
+                            }
+                            else { // dissolve adding                            
+                                if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
+                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                    setShowModal(true);
+                                    return;
+                                }
+                                else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
+                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
+                                    setShowModal(true);
+                                    return;
+                                }
+                                else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
+                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
+                                    setShowModal(true);
+                                    return;
+                                }
+                                else {
+                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                        const i = group.members.indexOf(focusItem); // the index after which to insert
+                                        const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
+                                        const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
+                                        group.members.splice(i+1, 0, ...nodes);
+                                    }
+                                    else {
+                                        group.members.push(...itemToAdd.members);
+                                    }
+                                    itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
+                                    itemToAdd.members = [];
+                                    if (itemToAdd instanceof NodeGroup) {
+                                        // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
+                                        setList(prev => prev.filter(it => it!==itemToAdd));
+                                    }
+                                    if (itemToAdd.group) {
+                                        itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
+                                    }
                                 }
                             }
                         }
-                        else { // dissolve adding
-                            if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
-                                setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                setShowModal(true);
+                        else if (group instanceof NodeGroup) { // In this case, item must already be a member of group, just like focusItem.
+                            let i = group.members.indexOf(focusItem as CNode),
+                                j = group.members.indexOf(item as CNode),
+                                newMembers: CNode[];
+                            if (i<0 || j<0) {
+                                console.log('Unexpectedly missing CNode');
                                 return;
                             }
-                            else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
-                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                setShowModal(true);
-                                return;
-                            }
-                            else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
-                                setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                setShowModal(true);
-                                return;
-                            }
-                            else {
-                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
-                                    const i = group.members.indexOf(focusItem); // the index after which to insert
-                                    const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
-                                    const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
-                                    group.members.splice(i+1, 0, ...nodes);
-                                }
+                            if (i!==j && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { // We're splitting group into two parts:
+                                if (i+1<j) {
+                                    newMembers = group.members.splice(i+1, j-i-1);                                        
+                                } 
                                 else {
-                                    group.members.push(...itemToAdd.members);
+                                    newMembers = [...group.members.slice(0, j), ...group.members.slice(i+1)];
+                                    group.members = group.members.slice(j, i+1);
                                 }
-                                itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
-                                itemToAdd.members = [];
-                                if (itemToAdd instanceof NodeGroup) {
-                                    // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
-                                    setList(prev => prev.filter(it => it!==itemToAdd));
-                                }
-                                if (itemToAdd.group) {
-                                    itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
-                                }
+                                const newGroup = new NodeGroup(nodeGroupCounter);
+                                newGroup.members = newMembers;
+                                setNodeGroupCounter(prev => prev+1);
+                                newMembers.forEach(node => node.group = newGroup);   
+                                newList = [...newList, newGroup];
                             }
                         }
                     }
@@ -587,10 +625,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
                 // Handle dragging:
                 setDragging(true);
+                const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
+                const contourDragged = item.group instanceof NodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
+                let dccDx: number | undefined, 
+                    dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
+                if (contourDragged && item.group instanceof NodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
+                    const [cx, cy] = item.group.getCenter(); 
+                    dccDx = cx - item.x;
+                    dccDy = cy - item.y;
+                }
                 const startX = e.clientX - item.x;
                 const startY = e.clientY - (H + yOffset - item.y);
-                const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
+
                 
                 const handleMouseMove = (e: MouseEvent) => {
                     // We have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
@@ -598,13 +645,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const newX = Math.min(Math.max(e.clientX - startX, xMinD), MAX_X);
                     const newY = Math.min(Math.max(H + yOffset - e.clientY + startY, MIN_Y), MAX_Y);
                     // Next, we take into account the grid:
-                    const [x, y] = getSnapPoint(newX, newY, grid, newList, selectionWithoutDuplicates);
+                    const [x, y] = getSnapPoint(newX, newY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
                     const dx = x - item.x;
                     const dy = y - item.y;
                     // Finally, we move each item in the selection:
                     if(dx!==0 || dy!==0) {
                         selectionWithoutDuplicates.forEach(item => item.move(dx, dy));
-                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render                               
+                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render 
                     }
                 };            
 
@@ -785,8 +832,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const addContours = () => { // onClick handler for the contour button
         if (points.length>0) {
-            const newNodeGroups = points.map((point, i) => new NodeGroup(nodeGroupCounter, point.x, point.y));
-            setNodeGroupCounter(prev => prev+1);
+            let counter = nodeGroupCounter;
+            const newNodeGroups = points.map((point, i) => new NodeGroup(counter++, point.x, point.y));
+            setNodeGroupCounter(counter);
             setList(list => {
                 const newList = [...list, ...newNodeGroups];
                 adjustLimit(newList); 
@@ -1049,15 +1097,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
+
+    const tabIndex = selection.length==0? 0: userSelectedTabIndex;
+
     /** 
      * We create a (deduplicated) array of 'new group members' for the purposes of creating a new group if the user presses the appropriate button in the GroupTab.
      * This array contains the members of the current selection, except where the latter contains ALL leaf members of a given member's highest active group, in which case
      * the array contains that group instead.
      */
-    const newGroupMembers = deduplicatedSelection.map(it => {
-        const ha = highestActive(it);
-        return !(ha instanceof Item) && ([...getLeafMembers(ha)] as Item[]).every(m => deduplicatedSelection.includes(m))? ha: it
-    }).filter((m, i, array) => i===array.indexOf(m));
+    const newGroupMembers = tabIndex==2? 
+        deduplicatedSelection.map(it => {
+            const ha = highestActive(it);
+            return !(ha instanceof Item) && ([...getLeafMembers(ha)] as Item[]).every(m => deduplicatedSelection.includes(m))? ha: it
+        }).filter((m, i, array) => i===array.indexOf(m)): [];
     //console.log(`ngm: ${newGroupMembers.map(m => m.getString()).join(', ')}`);
 
 
@@ -1073,9 +1125,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const sorry = () => {setModalMsg(['Apology', 'Sorry, this feature has not yet been implemented!']); setShowModal(true);}
 
-    const tabIndex = selection.length==0? 0: userSelectedTabIndex;
-
-    console.log(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id}  haGroup=${focusItem && highestActive(focusItem).getString()}`);
+    console.log(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id}  ha=${focusItem && highestActive(focusItem).getString()}`);
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:

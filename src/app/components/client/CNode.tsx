@@ -13,26 +13,6 @@ export const DEFAULT_DISTANCE = 10;
 export const MAX_NODEGROUP_SIZE = 1000;
 
 
-export default class CNode extends Item {
-
-    public angle0: number = 0; // angle to control point 0
-    public angle1: number = 0; // angle to controle point 1
-    public dist0: number = DEFAULT_DISTANCE; // distance to control point 0
-    public dist1: number = DEFAULT_DISTANCE; // distance to control point 1
-    public dist0_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 0
-    public dist1_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 1
-
-    public numberOfCopies: number = 0; // to help generate unique ids
-
-    constructor(id: string, x: number, y: number, a0: number, a1: number, group: NodeGroup) {
-        super(id, x, y);
-        this.angle0 = a0;
-        this.angle1 = a1;
-        this.group = group;
-        this.isActiveMember = true;
-    }
-}
-
 export class NodeGroup implements Group<CNode> {
 
     public members: CNode[];
@@ -83,7 +63,7 @@ export class NodeGroup implements Group<CNode> {
             maxY = maxY>node.y? maxY: node.y;
             minY = minY<node.y? minY: node.y;
         }
-        return [minX + (maxX-minX)/2, minY + (maxY-minY)/2]
+        return [(minX+maxX)/2, (minY+maxY)/2]
     }
 
     public getString = () => `NG[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
@@ -99,8 +79,6 @@ export type CubicLine = {
     x3: number,
     y3: number
 }
-
-const lineString = (line: CubicLine) => `(${line.x0}, ${line.y0}) (${line.x1} ${line.y1}) (${line.x2}, ${line.y2}) (${line.x3}, ${line.y3})`;
 
 const angle = (x1: number, y1: number, x2: number, y2: number): number => {
     const dx = x2 - x1;
@@ -175,6 +153,26 @@ export const Contour = ({id, group, yOffset, bg}: ContourProps) => {
     else return null
 }
 
+
+export default class CNode extends Item {
+
+    public angle0: number = 0; // angle to control point 0
+    public angle1: number = 0; // angle to controle point 1
+    public dist0: number = DEFAULT_DISTANCE; // distance to control point 0
+    public dist1: number = DEFAULT_DISTANCE; // distance to control point 1
+    public dist0_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 0
+    public dist1_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 1
+
+    public numberOfCopies: number = 0; // to help generate unique ids
+
+    constructor(id: string, x: number, y: number, a0: number, a1: number, group: NodeGroup) {
+        super(id, x, y);
+        this.angle0 = a0;
+        this.angle1 = a1;
+        this.group = group;
+        this.isActiveMember = true;
+    }
+}
 
 export interface CNodeCompProps {
     id: string
