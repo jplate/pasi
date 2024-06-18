@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
   return (
     <html lang="en">
-      <body className={`${lusitana.className} antialiased`}>
+      <body className={`${lusitana.className}antialiased`}>
         {children}
       </body>
     </html>

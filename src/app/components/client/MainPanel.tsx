@@ -1218,7 +1218,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         leaveTo='opacity-0 scale-95'>
                                     <MenuItems
                                             anchor='bottom end'
-                                            className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                            className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm font-serif text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
                                         {depItemLabels.map((label, index) => 
                                             <MenuItem key={'di-'+index}>
                                                 <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
@@ -1255,17 +1255,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             } onClick={copySelection} /> 
 
                         <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
-                            <TabList className="grid grid-cols-3 mb-0.5">
-                                <Tab key='editor-tab'className={clsx(tabClassName, 'border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
+                            <TabList className="grid grid-cols-10 mb-0.5">
+                                <Tab key='editor-tab'className={clsx(tabClassName, 'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
                                     Editor
                                 </Tab>
-                                <Tab key='transform-tab' className={clsx(tabClassName, 'data-[selected]:border-x-0', 
+                                <Tab key='transform-tab' className={clsx(tabClassName, 'col-span-4 data-[selected]:border-x-0', 
                                             tabIndex===0 && 'border-l-[1px] rounded-bl-xl border-l-0', tabIndex==2 && 'border-r-[1px] rounded-br-xl border-r-0')} 
                                         disabled={selection.length==0}>
                                     Transform
                                 </Tab>
-                                <Tab key='group-tab' className={clsx(tabClassName, 'border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
+                                <Tab key='group-tab' className={clsx(tabClassName, 'col-span-3 border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
                                             tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
                                         disabled={!focusItem}>
                                     Groups

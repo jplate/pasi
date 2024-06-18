@@ -42,7 +42,7 @@ export default function Home() {
 
 
   return (<> {/* We're returning a fragment. */}
-    <div id='sticky-top' className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
+    <div id='sticky-top' className={`sticky top-0 font-serif ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
       <span className='flex items-center justify-between px-6'>
         <i><strong>pasi</strong></i>
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
@@ -57,7 +57,7 @@ export default function Home() {
         </button>
       </span>
     </div>
-    <main className='flex flex-col min-h-screen items-center justify-between p-12'>
+    <main className='flex flex-col min-h-screen items-center justify-between p-12 font-serif'>
       {isMobile? 
         <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
             <p><strong>Mobile device not supported.</strong></p>

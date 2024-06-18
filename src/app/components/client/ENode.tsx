@@ -63,7 +63,7 @@ export default class ENode extends Item {
             {type: 'number input', key: 'lw', text: 'Line width', width: 'long', value: this.linewidth, step: 0.1},
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: this.dashValidator.write(this.dash)},
             {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
-            {type: 'gloss', text: '(Shading = 0: transparent; > 0: opaque)', style: 'mb-4'},
+            {type: 'gloss', text: '(Shading=0: transparent; >0: opaque)', style: 'mb-4'},
             {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
             {type: 'label', text: '', style: 'flex-1'}, // a filler
             {type: 'button', key: 'defaults', text: 'Defaults'}
@@ -183,7 +183,8 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus
             style={{
                 position: 'absolute',
                 left: `${x - radius - MARK_LINEWIDTH - linewidth / 2}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`
+                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
+                cursor: 'pointer'
             }}>
             <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight}>
                 <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}

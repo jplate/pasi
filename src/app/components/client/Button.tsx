@@ -1,12 +1,7 @@
 import react, { useContext } from 'react'
 import clsx from 'clsx/lite'
-import Tippy from '@tippyjs/react'
 import { Placement } from 'tippy.js'
-import 'tippy.js/dist/tippy.css'
-import 'tippy.js/themes/light.css'
-import 'tippy.js/themes/translucent.css'
-import 'tippy.js/animations/shift-toward.css'
-
+import { withTooltip } from './EditorComponents.tsx'
 import { DarkModeContext } from './MainPanel.tsx'
 
 
@@ -23,8 +18,6 @@ interface ButtonProps {
 }
 
 export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipPlacement, onClick}: ButtonProps) => {
-    const dark = useContext(DarkModeContext)
-
     const button = (<button id={id} className={clsx('block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none', 
                 'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
                 'focus:outline-none focus:ring-1', style)}
@@ -34,12 +27,7 @@ export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipP
                     <span key={1} id={id+'span1'}className='sr-only'>{label?? ''}</span>]: 
                 label?? ''}
         </button>)
-
-
-    return tooltip? 
-        (<Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={tooltipPlacement} animation='shift-toward' content={tooltip}>
-            {button}
-        </Tippy>): button
+    return tooltip? withTooltip(button, tooltip, tooltipPlacement): button
 }
 
 export const BasicColoredButton = ({id, label, icon, style, tooltip, tooltipPlacement, pressed, disabled, onClick}: ButtonProps) => {

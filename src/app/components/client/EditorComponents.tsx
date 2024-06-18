@@ -9,6 +9,9 @@ import 'tippy.js/animations/shift-toward.css'
 
 import { DarkModeContext } from './MainPanel.tsx'
 
+const ACCENT_LIGHT = 'accent-slate-50';
+const ACCENT_DARK = 'accent-amber-600';
+
 
 export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
     let timeout: ReturnType<typeof setTimeout>;
@@ -29,9 +32,11 @@ export interface CheckBoxFieldProps {
 }
 
 export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBottomMargin, onChange}: CheckBoxFieldProps) => {
+    const dark = useContext(DarkModeContext)
+
     return (
         <span className={clsx(style, extraBottomMargin? 'mb-4': '')}>
-            <input type='checkbox' className='mr-2' checked={value} onChange={()=>{onChange()}} /> 
+            <input type='checkbox' className={clsx('mr-2', dark? ACCENT_DARK: ACCENT_LIGHT)} checked={value} onChange={()=>{onChange()}} /> 
             <a className='text-textcolor hover:text-textcolor' href='#' 
                     onClick={(e) => {
                         e.preventDefault();
@@ -84,13 +89,7 @@ export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE
             value={value} type={type} step={step==0? 'any': step} min={min} max={max} onChange={onChange} />);
     return ( 
         <span className={clsx('flex items-center justify-end px-2 py-1 text-sm', lowTopMargin? 'mt-[-4px]': '', extraBottomMargin? 'mb-4': '')}>
-            {tooltip? 
-                <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={tooltipPlacement} animation='shift-toward' content={tooltip}>
-                    {labelComp}
-                </Tippy>
-                :
-                labelComp
-            }
+            {tooltip? withTooltip(labelComp, tooltip, tooltipPlacement): labelComp}
             {inputComp}
         </span>
     );      
@@ -242,4 +241,16 @@ export class DashValidator {
         }, 0);
         return result;
     }
+}
+
+
+
+export const withTooltip = (comp: react.JSX.Element, tooltip: react.ReactNode, tooltipPlacement?: Placement) => {
+    const dark = useContext(DarkModeContext)
+    return (
+        <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={tooltipPlacement} animation='shift-toward' 
+                content={<div className='font-serif'>{tooltip}</div>}>
+            {comp}
+        </Tippy>
+    );
 }

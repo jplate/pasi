@@ -383,7 +383,8 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
             style={{
                 position: 'absolute',
                 left: `${x - radius - MARK_LINEWIDTH}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH}px`
+                top: `${H + yOffset - y - radius - MARK_LINEWIDTH}px`,
+                cursor: 'pointer'
             }}>
             <svg width={mW + MARK_LINEWIDTH} height={mH + MARK_LINEWIDTH * 2}>
                 <polyline stroke={markColor}  points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
