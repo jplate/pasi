@@ -1,7 +1,7 @@
 import react, { useContext } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
-import { withTooltip } from './EditorComponents.tsx'
+import { WithTooltip } from './EditorComponents.tsx'
 import { DarkModeContext } from './MainPanel.tsx'
 
 
@@ -27,7 +27,7 @@ export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipP
                     <span key={1} id={id+'span1'}className='sr-only'>{label?? ''}</span>]: 
                 label?? ''}
         </button>)
-    return tooltip? withTooltip(button, tooltip, tooltipPlacement): button
+    return tooltip? <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />: button
 }
 
 export const BasicColoredButton = ({id, label, icon, style, tooltip, tooltipPlacement, pressed, disabled, onClick}: ButtonProps) => {

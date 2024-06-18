@@ -89,7 +89,7 @@ export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE
             value={value} type={type} step={step==0? 'any': step} min={min} max={max} onChange={onChange} />);
     return ( 
         <span className={clsx('flex items-center justify-end px-2 py-1 text-sm', lowTopMargin? 'mt-[-4px]': '', extraBottomMargin? 'mb-4': '')}>
-            {tooltip? withTooltip(labelComp, tooltip, tooltipPlacement): labelComp}
+            {tooltip? <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />: labelComp}
             {inputComp}
         </span>
     );      
@@ -244,11 +244,16 @@ export class DashValidator {
 }
 
 
+interface WithToolTipProps {
+    comp: react.JSX.Element
+    tooltip: react.ReactNode
+    placement?: Placement
+}
 
-export const withTooltip = (comp: react.JSX.Element, tooltip: react.ReactNode, tooltipPlacement?: Placement) => {
+export const WithTooltip = ({comp, tooltip, placement}: WithToolTipProps) => {
     const dark = useContext(DarkModeContext)
     return (
-        <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={tooltipPlacement} animation='shift-toward' 
+        <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={placement} animation='shift-toward' 
                 content={<div className='font-serif'>{tooltip}</div>}>
             {comp}
         </Tippy>
