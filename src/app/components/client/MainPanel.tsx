@@ -1218,7 +1218,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         leaveTo='opacity-0 scale-95'>
                                     <MenuItems
                                             anchor='bottom end'
-                                            className='w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 backdrop-blur-md p-1 text-sm font-serif text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                            className='menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm font-serif text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
                                         {depItemLabels.map((label, index) => 
                                             <MenuItem key={'di-'+index}>
                                                 <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
@@ -1254,7 +1254,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 (vDisplacement<0 && deduplicatedSelection.reduce((min, item) => (min<item.y)? min: item.y, Infinity) + vDisplacement < MIN_Y)
                             } onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3' selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
+                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5' 
+                                selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-10 mb-0.5">
                                 <Tab key='editor-tab'className={clsx(tabClassName, 'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
@@ -1350,12 +1351,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                     const v = item.linewidth100 * val/100;
                                                     if(v<0 || v>MAX_LINEWIDTH) return false;
                                                 }
-                                                if (transformFlags.scaleDash) {
-                                                    if(item.dash100.some(l => {
-                                                            const v = l * val/100;
-                                                            return v<0 || v>MAX_DASH_VALUE;
-                                                    })) return false;
-                                                }
+                                                if (transformFlags.scaleDash && item.dash100.some(l => {
+                                                    const v = l * val/100;
+                                                    return v<0 || v>MAX_DASH_VALUE;
+                                                })) return false;
                                             }
                                             return true
                                         }}
@@ -1535,7 +1534,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>
-                    <Modal isOpen={showModal} closeTimeoutMS={1000}
+                    <Modal isOpen={showModal} closeTimeoutMS={750}
                             className='fixed inset-0 flex items-center justify-center z-50'
                             overlayClassName='fixed inset-0 bg-gray-900/70' 
                             contentLabel={modalMsg[0]}

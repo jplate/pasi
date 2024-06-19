@@ -55,7 +55,7 @@ export interface GlossFieldProps {
 
 export const GlossField = ({text, style=''}: GlossFieldProps) => {
     return (
-        <div className={clsx('block px-2 py-1 text-left text-sm', style)}>
+        <div className={clsx('block px-2 py-1', style)}>
             <p>
                 {text}
             </p>
@@ -254,7 +254,7 @@ export const WithTooltip = ({comp, tooltip, placement}: WithToolTipProps) => {
     const dark = useContext(DarkModeContext)
     return (
         <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={placement} animation='shift-toward' 
-                content={<div className='font-serif'>{tooltip}</div>}>
+                content={tooltip}>
             {comp}
         </Tippy>
     );
