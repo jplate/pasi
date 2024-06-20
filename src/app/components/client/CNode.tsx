@@ -6,17 +6,24 @@ import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, 
 import { validInt, validFloat, parseInputValue, parseCyclicInputValue, getCyclicValue, DashValidator } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
 
-const STANDARD_CONTOUR_HEIGHT = 50
-const STANDARD_CONTOUR_WIDTH = 70
-const STANDARD_CONTOUR_CORNER_RADIUS = 16
+const STANDARD_CONTOUR_HEIGHT = 80
+const STANDARD_CONTOUR_WIDTH = 120
+const STANDARD_CONTOUR_CORNER_RADIUS = 18
 const CNODE_RADIUS = 7
+const CNODE_ARROW_DIV_RADIUS = 10
+export const CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW = 30
+const CNODE_ARROW_DISTANCE_RATIO = 0.2
+const CNODE_ARROW_DISTANCE_MIN = 15
+const CNODE_ARROW_DISTANCE_MAX = 40
+const CNODE_ARROW_POINTS = '6,10 5,7 15,10 5,13, 6,10'
+const CNODE_ARROW_MITER_LIMIT = 5
 const MIN_ROTATION = -180
-const MAX_ROTATION_INPUT = 9999;
-const MIN_DISTANCE = -9999;
-const MAX_DISTANCE = 9999;
+const MAX_ROTATION_INPUT = 9999
+const MIN_DISTANCE = -9999
+const MAX_DISTANCE = 9999
 
-export const DEFAULT_DISTANCE = 10;
-export const MAX_NODEGROUP_SIZE = 1000;
+export const DEFAULT_DISTANCE = 10
+export const MAX_NODEGROUP_SIZE = 1000
 
 
 export class NodeGroup implements Group<CNode> {
@@ -151,7 +158,7 @@ export const Contour = ({id, group, yOffset, bg}: ContourProps) => {
                 top: `${H + yOffset - maxY - lwc}px`,
                 pointerEvents: 'none'
             }}>
-                <svg width={maxX-minX+2*linewidth} height={maxY-minY+2*linewidth} >
+                <svg width={maxX - minX + 2*linewidth} height={maxY - minY + 2*linewidth} xmlns="http://www.w3.org/2000/svg">
                     <path d={d}  
                         fill={shading == 0 ? 'hsla(0,0%,0%,0)' : `hsla(${bg.hue},${bg.sat - Math.floor(bg.sat * shading)}%,${bg.lgt - Math.floor(bg.lgt * shading)}%,1)`}
                         stroke={DEFAULT_COLOR}
@@ -353,12 +360,13 @@ export interface CNodeCompProps {
     focus: boolean
     selected: boolean
     preselected: boolean
+    arrow: boolean // indicates whether an arrow to the next CNodeComp should be displayed
     onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }
 
-export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave}: CNodeCompProps) => {
+export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, preselected, arrow, onMouseDown, onMouseEnter, onMouseLeave}: CNodeCompProps) => {
     const x = cnode.x;
     const y = cnode.y;
     const radius = CNODE_RADIUS;
@@ -372,26 +380,57 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = 0.9 * l;
 
+    let arrowDiv = null;
+    if (arrow && cnode.group) {
+        const index = cnode.group.members.indexOf(cnode);
+        const next = (cnode.group as NodeGroup).members[index==cnode.group.members.length-1? 0: index+1];
+        const d = Math.sqrt((cnode.x - next.x) ** 2 + (cnode.y - next.y) ** 2);
+        const ratio = CNODE_ARROW_DISTANCE_RATIO;
+        const min = CNODE_ARROW_DISTANCE_MIN;
+        const max = CNODE_ARROW_DISTANCE_MAX;
+        const r = CNODE_ARROW_DIV_RADIUS;
+        const factor = Math.min(Math.max(d * ratio, min), max) / d;
+        arrowDiv = (
+            <div className={focus || selected? 'selected': 'preselected'}
+                style={{
+                    position: 'absolute',
+                    left: `${x + (next.x-x) * factor - r}px`,
+                    top: `${H + yOffset - (y + (next.y-y) * factor + r)}px`,
+                    pointerEvents: 'none'
+                }}>
+                <svg width={2*r} height={2*r} xmlns="http://www.w3.org/2000/svg">
+                    <g opacity='0.5' transform={`rotate(${-angle(x, y, next.x, next.y)} 10 10)`}>
+                        <polyline stroke={markColor} points={CNODE_ARROW_POINTS} fill={markColor} stroke-miterlimit={CNODE_ARROW_MITER_LIMIT} />
+                    </g>
+                </svg>
+            </div>
+        );
+    }
+    
+
     //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
     return (
-        <div className={focus ? 'focused' : selected ? 'selected' : preselected? 'preselected': 'unselected'}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => onMouseDown(cnode, e)}
-            onMouseEnter={(e) => onMouseEnter(cnode, e)}
-            onMouseLeave={(e) => onMouseLeave(cnode, e)}
-            style={{
-                position: 'absolute',
-                left: `${x - radius - MARK_LINEWIDTH}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH}px`,
-                cursor: 'pointer'
-            }}>
-            <svg width={mW + MARK_LINEWIDTH} height={mH + MARK_LINEWIDTH * 2}>
-                <polyline stroke={markColor}  points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
-            </svg>
-        </div>
+        <>
+            <div className={focus? 'focused': selected? 'selected': preselected? 'preselected': 'unselected'}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => onMouseDown(cnode, e)}
+                onMouseEnter={(e) => onMouseEnter(cnode, e)}
+                onMouseLeave={(e) => onMouseLeave(cnode, e)}
+                style={{
+                    position: 'absolute',
+                    left: `${x - radius - MARK_LINEWIDTH}px`,
+                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH}px`,
+                    cursor: 'pointer'
+                }}>
+                <svg width={mW + MARK_LINEWIDTH} height={mH + MARK_LINEWIDTH * 2} xmlns="http://www.w3.org/2000/svg">
+                    <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
+                    <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
+                    <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
+                    <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+                </svg>
+            </div>
+            {arrowDiv}
+        </>
     )
 }

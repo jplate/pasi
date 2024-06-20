@@ -6,7 +6,7 @@ import { validInt, validFloat, parseInputValue, DashValidator } from './EditorCo
 import { Config } from './ItemEditor.tsx'
 import { NodeGroup } from './CNode.tsx'
 
-export const DEFAULT_RADIUS = 10
+export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
 export const D1 = 2*Math.PI/12 // 'comfortable' angle between two contact points on the periphery of an ENode
 export const HALF_DISTANCE_PENALTY = 48
@@ -186,7 +186,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus
                 top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
                 cursor: 'pointer'
             }}>
-            <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight}>
+            <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
                 <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                     cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
                     fill={shading == 0 ? 'hsla(0,0%,0%,0)' : `hsla(${bg.hue},${bg.sat - Math.floor(bg.sat * shading)}%,${bg.lgt - Math.floor(bg.lgt * shading)}%,1)`}

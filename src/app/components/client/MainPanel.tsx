@@ -14,7 +14,7 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { NodeGroup, Contour, CNodeComp, DEFAULT_DISTANCE, MAX_NODEGROUP_SIZE } from './CNode.tsx'
+import CNode, { NodeGroup, Contour, CNodeComp, DEFAULT_DISTANCE, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW } from './CNode.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -1138,18 +1138,50 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onMouseEnter={itemMouseEnter} 
                                 onMouseLeave={itemMouseLeave} />]
                             :
-                            it instanceof NodeGroup? [
+                            it instanceof NodeGroup? (() => {
+                                let allSelected = true, 
+                                    allPreselected = true;
+                                const selectedNodes = it.members.map(m => {
+                                    if (deduplicatedSelection.includes(m)) return true;
+                                    else {
+                                        allSelected = false;
+                                        return false
+                                    }
+                                });
+                                const preselectedNodes = it.members.map(m => {
+                                    if (preselection2.includes(m)) return true;
+                                    else {
+                                        allPreselected = false;
+                                        return false
+                                    }
+                                });
+                                const last = it.members.length-1;
+                                let defer = false;
+                                return [
                                 <Contour key={it.id} id={it.id+'Contour'} group={it} yOffset={yOffset} bg={dark? canvasHSLDark: canvasHSLLight} />, 
-                                ...it.members.map(node => 
-                                    <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
+                                ...it.members.map((node, i, arr) => {
+                                    const selected = selectedNodes[i];
+                                    const preselected = preselectedNodes[i];
+                                    const next = arr[i==last? 0: i+1];
+                                    const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
+                                    const arrow = (selected && (defer || (allSelected && i==last) || (!allSelected && !selectedNodes[i==0? last: i-1]))) ||
+                                        (preselected && (defer || (allPreselected && i==last) || (!allPreselected && !preselectedNodes[i==0? last: i-1])));
+                                    if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
+                                        defer = true;
+                                    }
+                                    else {
+                                        defer = false;
+                                    }
+                                    return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
                                         markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
                                         focus={focusItem===node}
-                                        selected={deduplicatedSelection.includes(node)}
-                                        preselected={preselection2.includes(node)}
+                                        selected={selected}
+                                        preselected={preselected}
+                                        arrow={arrow && !defer}
                                         onMouseDown={itemMouseDown}
                                         onMouseEnter={itemMouseEnter} 
                                         onMouseLeave={itemMouseLeave} />
-                                )]
+                                })]})()
                             : null as never)}
                         {points.map(point => 
                             <PointComp key={point.id} x={point.x} y={point.y - yOffset} 
