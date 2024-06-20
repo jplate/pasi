@@ -1156,28 +1156,37 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     }
                                 });
                                 const last = it.members.length-1;
+                                const arrowNodes: boolean[] = new Array(last+1).fill(false);
                                 let defer = false;
+                                for (let i = 0; i<2 && (i==0 || defer); i++) {
+                                    for (let j=0; j<last+1 && (i==0 || defer); j++) {
+                                        const node = it.members[j];
+                                        const selected = selectedNodes[j];
+                                        const preselected = preselectedNodes[j];
+                                        const next = it.members[j==last? 0: j+1];
+                                        const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
+                                        const arrow = (selected && (defer || (allSelected && j==last) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
+                                            (preselected && (defer || (allPreselected && j==last) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
+                                        if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
+                                            defer = true;
+                                        }
+                                        else {
+                                            defer = false;
+                                        }
+                                        arrowNodes[j] = arrow && !defer;
+                                    }
+                                }
                                 return [
                                 <Contour key={it.id} id={it.id+'Contour'} group={it} yOffset={yOffset} bg={dark? canvasHSLDark: canvasHSLLight} />, 
-                                ...it.members.map((node, i, arr) => {
+                                ...it.members.map((node, i) => {
                                     const selected = selectedNodes[i];
                                     const preselected = preselectedNodes[i];
-                                    const next = arr[i==last? 0: i+1];
-                                    const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
-                                    const arrow = (selected && (defer || (allSelected && i==last) || (!allSelected && !selectedNodes[i==0? last: i-1]))) ||
-                                        (preselected && (defer || (allPreselected && i==last) || (!allPreselected && !preselectedNodes[i==0? last: i-1])));
-                                    if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
-                                        defer = true;
-                                    }
-                                    else {
-                                        defer = false;
-                                    }
                                     return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
                                         markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
                                         focus={focusItem===node}
-                                        selected={selected}
-                                        preselected={preselected}
-                                        arrow={arrow && !defer}
+                                        selected={selectedNodes[i]}
+                                        preselected={preselectedNodes[i]}
+                                        arrow={arrowNodes[i]}
                                         onMouseDown={itemMouseDown}
                                         onMouseEnter={itemMouseEnter} 
                                         onMouseLeave={itemMouseLeave} />
