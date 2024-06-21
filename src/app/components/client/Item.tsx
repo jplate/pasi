@@ -2,6 +2,7 @@ import type { Config, Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
 import ENode from './ENode.tsx'
 import NodeGroup from './NodeGroup.tsx'
+import { DashValidator } from './EditorComponents.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -33,14 +34,14 @@ export interface HSL {
     lgt: number
 }
 
-export type Range = 'onlyThis' | 'wholeSelection' | 'nodeGroups';
+export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndNodeGroups'; // This last value means that the editing function will be applied to only at most one CNode per NodeGroup.
 
 
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
  */
 export default class Item implements GroupMember {
-    public readonly id: string
+    readonly id: string
     x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number
     x100: number // These coordinates represent the item's location at 100% scaling.
@@ -52,6 +53,8 @@ export default class Item implements GroupMember {
     dash100: number[] = DEFAULT_DASH
     group: Group<Item | Group<any>> | null = null
     isActiveMember: boolean = false
+
+    protected dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
     constructor(key: string, x: number, y: number) {
         this.id = key;
@@ -101,5 +104,24 @@ export default class Item implements GroupMember {
     public getString() {
         return this.id
     }
+
+    public setLinewidth(lw: number) {
+        this.linewidth = this.linewidth100 = lw;
+    }
+
+    public setShading(sh: number) {
+        this.shading = sh;
+    }
+
+    public setDash(dash: number[]) {
+        this.dash = this.dash100 = dash;
+    }
+
+    public reset() {
+        this.linewidth = this.linewidth100 = DEFAULT_LINEWIDTH;
+        this.dash = this.dash100 = DEFAULT_DASH;
+        this.shading = DEFAULT_SHADING;
+    }
+
 }
 

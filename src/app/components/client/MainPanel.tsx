@@ -1385,8 +1385,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         <ItemEditor info={focusItem.getInfo(list, itemEditorConfig)} 
                                             onChange={(e, key) => {
                                                 const [edit, range] = focusItem.handleEditing(e, itemEditorConfig, selection, key);
-                                                const nodeGroups: Set<NodeGroup> | null = range==='nodeGroups'? new Set<NodeGroup>(): null;
-                                                const nodes = range==='wholeSelection' || range==='nodeGroups'? 
+                                                const nodeGroups: Set<NodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<NodeGroup>(): null;
+                                                const nodes = range!=='onlyThis'? 
                                                     deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
                                                             //console.log(`Editing item ${item.key}`);
                                                             if (item instanceof CNode && nodeGroups) {
@@ -1398,7 +1398,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                             return edit(item, acc) as (ENode | NodeGroup)[]
                                                     }, list):
                                                     edit(focusItem, list);
-                                                setList(prev => nodes as ENode[]); // for some reason, the setter function is called twice here.
+                                                setList(prev => nodes); // for some reason, the setter function is called twice here.
                                                 adjustLimit();
                                                 setOrigin(false);
                                                 scrollTo(focusItem);

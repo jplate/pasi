@@ -1,8 +1,8 @@
 import React from 'react';
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL, Range } from './Item.tsx'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
-import { validInt, validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
+import { validInt, validFloat, parseInputValue } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
 import NodeGroup from './NodeGroup.tsx'
 
@@ -24,8 +24,6 @@ export default class ENode extends Item {
     public radius: number = DEFAULT_RADIUS;
     public radius100: number = DEFAULT_RADIUS;
 
-    private dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
-
     constructor(i: number, x: number, y: number) {
         super(`E${i}`, x, y);
     }
@@ -44,6 +42,11 @@ export default class ENode extends Item {
 
     public override getBottom() {
         return this.y - this.radius;
+    }
+
+    public override reset() {
+        super.reset();
+        this.radius = this.radius100 = DEFAULT_RADIUS;
     }
 
     public override getInfo(list: (ENode | NodeGroup)[], config: Config): Entry[] {
@@ -98,12 +101,21 @@ export default class ENode extends Item {
                     if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
                     return array
                 }, 'wholeSelection']
-            case 'lw': if (e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, 'wholeSelection']
-            case 'dash': if (e) return [(item, array) => {
-                    item.dash = item.dash100 = this.dashValidator.read(e.target);                    
+            case 'lw': if (e) return [(item, array) => {
+                    item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                     return array
-                }, 'wholeSelection']
-            case 'shading': if (e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, 'wholeSelection']
+                }, 'ENodesAndNodeGroups']
+            case 'dash': if (e) {
+                    const dash = this.dashValidator.read(e.target);
+                    return [(item, array) => {
+                        item.setDash(dash);                    
+                        return array
+                    }, 'ENodesAndNodeGroups']
+                }
+            case 'shading': if (e) return [(item, array) => {
+                    item.setShading(validFloat(e.target.value, 0, 1)); 
+                    return array
+                }, 'ENodesAndNodeGroups']
             case 'rank': if (e) return [(item, array) => {
                     if (item instanceof ENode) {
                         const currentPos = array.indexOf(item);
@@ -120,13 +132,9 @@ export default class ENode extends Item {
                     else return array
                 }, 'onlyThis']
             case 'defaults': return [(item, array) => {
-                    if(item instanceof ENode) {
-                        item.radius = item.radius100 = DEFAULT_RADIUS;
-                        item.linewidth = item.linewidth100 = DEFAULT_LINEWIDTH;
-                        item.dash = item.dash100 = DEFAULT_DASH;
-                        item.shading = DEFAULT_SHADING;
-                    }
-                    return array}, 'wholeSelection']
+                    item.reset();
+                    return array
+                }, 'wholeSelection']
             default: 
                 return [(item, array) => array, 'onlyThis']        
        }

@@ -46,6 +46,33 @@ export default class CNode extends Item {
         this.isActiveMember = true;
     }
 
+    public override setLinewidth(lw: number) {
+        const group = this.group as NodeGroup;
+        group.linewidth = group.linewidth100 = lw;
+    }
+
+    public override setShading(sh: number) {
+        const group = this.group as NodeGroup;
+        group.shading = sh;
+    }
+
+    public override setDash(dash: number[]) {
+        const group = this.group as NodeGroup;
+        group.dash = group.dash100 = dash;
+    }
+
+    public override reset() {
+        const group = this.group as NodeGroup;
+        super.reset();
+        this.fixedAngles = true;
+        this.omitLine = false;
+        this.angle0 = this.angle1 = 0;
+        this.dist0 = this.dist0_100 = this.dist1 = this.dist1_100 = DEFAULT_DISTANCE;
+        group.linewidth = group.linewidth100 = DEFAULT_LINEWIDTH;
+        group.dash = group.dash100 = DEFAULT_DASH;
+        group.shading = DEFAULT_SHADING;
+    }
+
     public override getInfo(list: (ENode | NodeGroup)[], config: Config): Entry[] {
         const group = this.group as NodeGroup;
         return [
@@ -97,6 +124,22 @@ export default class CNode extends Item {
             selection: Item[],
             key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
         switch(key) {
+            case 'fixed':
+                const fa = !this.fixedAngles;
+                return [(item, array) => {
+                    if (item instanceof CNode) {
+                        item.fixedAngles = fa;
+                    }
+                    return array
+                }, 'wholeSelection']
+            case 'line':
+                const omit = !this.omitLine;
+                return [(item, array) => {
+                    if (item instanceof CNode) {
+                        item.omitLine = omit;
+                    }
+                    return array
+                }, 'wholeSelection']
             case 'a0': if (e) {
                     const delta = parseCyclicInputValue(e.target.value, this.angle0, config.logIncrement)[1]; 
                     return [(item, array) => {
@@ -153,32 +196,21 @@ export default class CNode extends Item {
                         return array
                     }, 'wholeSelection']
                 }
-            case 'line':
-                const omit = !this.omitLine;
-                return [(item, array) => {
-                    if (item instanceof CNode) {
-                        item.omitLine = omit;
-                    }
-                    return array
-                }, 'wholeSelection']
             case 'lw': if (e) return [(item, array) => {
-                    if (item.group instanceof NodeGroup) {
-                        item.group.linewidth = item.group.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); 
-                    }
+                    item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                     return array
-                }, 'nodeGroups']
-            case 'dash': if (e) return [(item, array) => {
-                    if (item.group instanceof NodeGroup) {
-                        item.group.dash = item.group.dash100 = item.group.dashValidator.read(e.target); 
-                    }
-                    return array
-                }, 'nodeGroups']
+                }, 'ENodesAndNodeGroups']
+            case 'dash': if (e) {
+                    const dash = this.dashValidator.read(e.target);
+                    return [(item, array) => {
+                        item.setDash(dash); 
+                        return array
+                    }, 'ENodesAndNodeGroups']
+                }
             case 'shading': if (e) return [(item, array) => {
-                    if (item.group instanceof NodeGroup) {
-                        item.group.shading = validFloat(e.target.value, 0, 1); 
-                    }
+                    item.setShading(validFloat(e.target.value, 0, 1)); 
                     return array
-                }, 'nodeGroups']
+                }, 'ENodesAndNodeGroups']
             case 'rank': if (e) return [(item, array) => {
                     if (item.group instanceof NodeGroup) {
                         const currentPos = array.indexOf(item.group);
@@ -194,23 +226,8 @@ export default class CNode extends Item {
                     }
                     else return array
                 }, 'onlyThis']
-            case 'fixed': 
-                const fa = !this.fixedAngles;
-                return [(item, array) => {
-                    if (item instanceof CNode) {
-                        item.fixedAngles = fa;
-                    }
-                    return array
-                }, 'wholeSelection']
             case 'defaults': return [(item, array) => {
-                    if (item instanceof CNode && item.group instanceof NodeGroup) {
-                        item.omitLine = false;
-                        item.angle0 = item.angle1 = 0;
-                        item.dist0 = item.dist0_100 = item.dist1 = item.dist1_100 = DEFAULT_DISTANCE;
-                        item.group.linewidth = item.group.linewidth100 = DEFAULT_LINEWIDTH;
-                        item.group.dash = item.group.dash100 = DEFAULT_DASH;
-                        item.group.shading = DEFAULT_SHADING;
-                    }
+                    item.reset();
                     return array
                 }, 'wholeSelection']
             default: 
