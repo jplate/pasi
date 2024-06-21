@@ -200,7 +200,9 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, tit
                 <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                     cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
                     fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
-                        `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                        `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
+                        `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
+                        `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                     stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                     strokeWidth={linewidth}
                     strokeDasharray={enode.dash.join(' ')} />

@@ -261,13 +261,15 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
                         {shading>0 && 
                             <path d={fillPath}  
                                 fill={shading==0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
-                                    `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                                    `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
+                                    `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,` +
+                                    `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                                 stroke='none' />
                         }
                     </svg>
                 </div>
                 {cdW>=CONTOUR_CENTER_DIV_MIN_WIDTH && cdH>=CONTOUR_CENTER_DIV_MIN_HEIGHT && 
-                    <div className={showCenterDiv? (selected? 'selected': preselected? 'preselected': 'unselected'): 'unselected'}
+                    <div className={showCenterDiv? 'selected': 'unselected'}
                             onClick={(e) => e.stopPropagation()}
                             onMouseDown={(e) => onMouseDown(group, e)}
                             onMouseEnter={(e) => onMouseEnter(group, e)}

@@ -108,9 +108,10 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
 
 /**
  * Returns the point to 'snap' to from the supplied coordinates, given the supplied grid, list, and selection. Since this is called from within a mouseMove handler while
- * dragging, elements of the selection (which is being dragged) have to be ignored. Same for the centers of NodeGroups containing elements of the selection.
+ * dragging, members of the selection (which is being dragged) have to be ignored. Same for the centers and members of NodeGroups containing the main ('focus') item that
+ * is being dragged.
  */
-const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)[], selection: Item[], 
+const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)[], focus: Item, selection: Item[],
         dccDx: number | undefined, 
         dccDy: number | undefined) => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
@@ -118,7 +119,7 @@ const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)
         snappingToGrid = true;
     if (grid.snapToContourCenters || grid.snapToNodes) {
         for (const it of list) {
-            if (it instanceof NodeGroup) {
+            if (it instanceof NodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
                 const overlap = it.members.filter(m => selection.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
                     const { minX, maxX, minY, maxY } = it.getBounds();
@@ -542,8 +543,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return newList;
     }
 
-    
-    const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
+    /**
+     * Mouse down handler for items on the canvas.
+     */
+    const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>, clearPreselection: boolean = true) => { 
         e.stopPropagation();
         if(e.ctrlKey && !e.shiftKey && selection.includes(item)) {
             deselect(item);
@@ -664,7 +667,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
             }
             else {
-                const pres = preselection2Ref.current; // This may be empty if we've just selected the same item.
+                const pres = preselection2Ref.current; // This may be empty if we've just selected the same item (due to the clearing of the preselection at the end of this function).
                 if (e.shiftKey) { // increase selection
                     if (e.ctrlKey || pres.length===0) {
                         if (item instanceof ENode || !selection.includes(item)) { // If item is a CNode, we don't add it twice.
@@ -678,8 +681,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 else { // replace selection
                     if (e.ctrlKey || pres.length===0) {
                         newSelection = [item];
+                        // For the case that the user presses this item again, we prepare the selection not just of item itself but of all members of its highest active group:
+                        const ha = highestActive(item);
+                        if (!(ha instanceof Item)) {
+                            setPreselection2(prev => ha.members);
+                            clearPreselection = false;
+                        }
                     }
-                    else {
+                    else { // The 'normal' case: we select the preselection.
                         newSelection = pres;
                     }
                     newPoints = [];
@@ -705,26 +714,30 @@ const MainPanel = ({dark}: MainPanelProps) => {
             
             const handleMouseMove = (e: MouseEvent) => {
                 // First, we take into account the grid:
-                const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
+                const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, selectionWithoutDuplicates, dccDx, dccDy);
                 // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
                 // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
                 const x = Math.min(Math.max(snapX, xMinD), MAX_X);
                 const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
                 const dx = x - item.x;
                 const dy = y - item.y;
-                // Finally, we move each item in the selection:
+                // Finally, we move each item in the selection, if necessary:
                 if(dx!==0 || dy!==0) {
                     const nodeGroups: NodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
                     selectionWithoutDuplicates.forEach(item => {
                         // console.log(`moving: ${item.id}`);
-                        if (item.group instanceof NodeGroup && !nodeGroups.includes(item.group)) {
-                            nodeGroups.push(item.group);
-                            const members = item.group.members;
-                            (item.group as NodeGroup).groupMove(
-                                selectionWithoutDuplicates.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
-                                dx, dy);
+                        if (item.group instanceof NodeGroup) {
+                            if (!nodeGroups.includes(item.group)) {
+                                nodeGroups.push(item.group);
+                                const members = item.group.members;
+                                (item.group as NodeGroup).groupMove(
+                                    selectionWithoutDuplicates.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
+                                    dx, 
+                                    dy
+                                );
+                            }
                         }
-                        else if (!(item.group instanceof NodeGroup)) {
+                        else {
                             item.move(dx, dy)
                         }
                     });
@@ -752,20 +765,28 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(item);
             setList(newList);
             setPoints(newPoints);
-            setPreselection1([]);
-            setPreselection2([]);
+            if (clearPreselection) {
+                setPreselection1([]);
+                setPreselection2([]);
+            }
             setSelection(newSelection);
         }           
     }
 
-    const groupMouseDown = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for contour center divs
+    /**
+     * Mouse down handler for contour center divs.
+     */
+    const groupMouseDown = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { 
         if (group.members.length>0) {
-            itemMouseDown(group.members[group.members.length-1], e);
+            itemMouseDown(group.members[group.members.length-1], e, false); // the 'false' parameter prevents the preselection from being cleared after selecting,
+                // which means that the whole current preselection will again be selected if the user clicks on the center div again.
         }
     }
 
-
-    const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseEnter handler for items on the canvas
+    /**
+     * Mouse enter handler for items on the canvas
+     */
+    const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { 
         if(!dragging) {
             setPreselection1(prev => [item]); 
             if (e.ctrlKey) {
@@ -777,7 +798,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
-    const groupMouseEnter = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseEnter handler for the 'center divs' of contours
+    /**
+     * Mouse enter handler for the contour center divs.
+     */
+    const groupMouseEnter = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { 
         if(!dragging) {
             setPreselection1(prev => group.members); 
             if (e.ctrlKey) {
@@ -789,6 +813,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
+    /**
+     * Mouse leave handler for ENodes, CNodes, and contour center divs.
+     */
     const mouseLeft = () => {
         if(!dragging) {
             setPreselection1(prev => []); 
@@ -796,6 +823,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
+    /**
+     * Mouse down handler for the canvas.
+     */
     const canvasMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {  // mouseDown handler for the canvas. Adds and removes Points. 
         const {left, top} = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
         const {scrollLeft, scrollTop, clientWidth, clientHeight} = canvasRef.current?? {scrollLeft: 0, scrollTop:0, clientWidth: 0, clientHeight: 0};
@@ -900,7 +930,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setDissolveAdding(false);
     }
 
-    const addEntityNodes = () => { // onClick handler for the node button
+    /**
+     *  OnClick handler for the 'Node' button.
+     */
+    const addEntityNodes = () => {
         if (points.length>0) {
             let counter = enodeCounter;
             const newNodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
@@ -917,7 +950,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
-    const addContours = () => { // onClick handler for the contour button
+    /**
+     *  OnClick handler for the 'Contour' button.
+     */
+    const addContours = () => { 
         if (points.length>0) {
             let counter = nodeGroupCounter;
             const newNodeGroups = points.map((point, i) => new NodeGroup(counter++, point.x, point.y));
@@ -1249,7 +1285,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE} 
                                         markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} 
                                         centerDivClickable={centerDivClickable}
-                                        showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles}
+                                        showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles && it.members.includes(focusItem)}
                                         onMouseDown={groupMouseDown}
                                         onMouseEnter={groupMouseEnter} 
                                         onMouseLeave={(group, e) => mouseLeft()} />, 
