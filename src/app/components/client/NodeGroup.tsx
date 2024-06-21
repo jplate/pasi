@@ -116,8 +116,6 @@ export default class NodeGroup implements Group<CNode> {
                         const next = members[k];
                         if (nodes.includes(next)) break;
 
-                        console.log(`s: ${s} next: ${next.id} cdx: ${cdx}  cdy: ${cdy}`);
-
                         if (x0==next.x) {
                             if ((y0<next.y && y0+cdy<next.y-bd) || (y0>next.y && y0+cdy>next.y+bd)) {
                                 cdy = 0;
