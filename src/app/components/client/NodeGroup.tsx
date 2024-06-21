@@ -102,7 +102,8 @@ export default class NodeGroup implements Group<CNode> {
             if (node.fixedAngles) {
                 let current: CNode,
                     x0, y0, cdx, cdy;
-                for (const s of [-1, 1]) {
+                for (const s of [-1, 1]) { 
+                    // Starting from the current node, we propagate changes in both directions, as far as necessary. The changes are stored in the arrays dxs and dys.
                     current = node;
                     cdx = dx;
                     cdy = dy;
@@ -145,6 +146,7 @@ export default class NodeGroup implements Group<CNode> {
                 }
             }
         });
+        // Apply the changes:
         if (members.every((m, i) => {
                 const x = m.x + dxs[i];
                 return x>=0 && x<=MAX_X

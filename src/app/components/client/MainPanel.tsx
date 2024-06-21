@@ -68,6 +68,7 @@ export const MAX_TRANSLATION_LOG_INCREMENT = 2
 const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
+const EPSILON = 1E-6 // used in round() for rounding values resulting from rotations of points, etc.
 
 const CONTOUR_CENTER_SNAP_RADIUS = 10 // radius around contour centers where snapping ignores grid points
 const CONTOUR_NODE_SNAP_RADIUS = 15 // radius around contour nodes where snapping ignores grid points
@@ -196,6 +197,15 @@ const depItemLabels = [
     new DepItemLabel('Single hook, straight', orpSrc, 'An arrow with a single straight hook'),
 ];
 
+
+/**
+ * Rounds to nearest tenth if the difference to that value is less than EPSILON. Used for avoiding the compounding of slight rounding errors.
+ */
+const round = (num: number): number => { 
+    const rounded = Math.round(num*10)/10;
+    return Math.abs(rounded-num)<EPSILON? rounded: num;
+}
+
 /**
  * Rotates a point around another point by a given angle.
  * @returns The new coordinates {x, y} of the rotated point.
@@ -208,9 +218,9 @@ const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: numb
     const translatedX: number = px - cx;
     const translatedY: number = py - cy;
 
-    // Rotate point
-    const rotatedX: number = translatedX * Math.cos(radians) - translatedY * Math.sin(radians);
-    const rotatedY: number = translatedX * Math.sin(radians) + translatedY * Math.cos(radians);
+    // Rotate point, and apply rounding to get rid of tiny rounding errors that would otherwise accumulate:
+    const rotatedX: number = round(translatedX * Math.cos(radians) - translatedY * Math.sin(radians));
+    const rotatedY: number = round(translatedX * Math.sin(radians) + translatedY * Math.cos(radians));
 
     // Translate point back
     const finalX: number = rotatedX + cx;
