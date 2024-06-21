@@ -10,7 +10,7 @@ import 'tippy.js/animations/shift-toward.css'
 import { DarkModeContext } from './MainPanel.tsx'
 
 const ACCENT_LIGHT = 'accent-slate-50';
-const ACCENT_DARK = 'accent-amber-600';
+const ACCENT_DARK = 'accent-amber-600 dark';
 
 
 export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
@@ -28,22 +28,28 @@ export interface CheckBoxFieldProps {
     style?: string,
     value: boolean,
     extraBottomMargin?: boolean,
+    tooltip?: react.ReactNode,
+    tooltipPlacement?: Placement,
     onChange: () => void,
 }
 
-export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBottomMargin, onChange}: CheckBoxFieldProps) => {
+export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBottomMargin, tooltip, tooltipPlacement, onChange}: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext)
 
-    return (
-        <span className={clsx(style, extraBottomMargin? 'mb-4': '')}>
-            <input type='checkbox' className={clsx('mr-2', dark? ACCENT_DARK: ACCENT_LIGHT)} checked={value} onChange={()=>{onChange()}} /> 
-            <a className='text-textcolor hover:text-textcolor' href='#' 
+    const link = (
+        <a className='text-textcolor hover:text-textcolor' href='#' 
                     onClick={(e) => {
                         e.preventDefault();
                         onChange()
                     }}> 
                 {label}
             </a>
+    );
+
+    return (
+        <span className={clsx(style, extraBottomMargin? 'mb-4': '')}>
+            <input type='checkbox' className={clsx('checkbox mr-2', dark? ACCENT_DARK: ACCENT_LIGHT)} checked={value} onChange={()=>{onChange()}} /> 
+            {tooltip? <WithTooltip comp={link} tooltip={tooltip} placement={tooltipPlacement} />: link}
         </span>
     )
 }
@@ -80,7 +86,6 @@ export interface InputFieldProps {
 
 export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', 
         lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange}: InputFieldProps) => {
-    const dark = useContext(DarkModeContext);
 
     const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-20 w-20';
     const labelComp = (<span>{label}</span>);

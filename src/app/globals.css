@@ -194,3 +194,7 @@ body {
   -webkit-backdrop-filter: blur(15px);
   backdrop-filter: blur(15px);
 }
+
+.checkbox.dark {
+  filter: brightness(0.85); 
+}

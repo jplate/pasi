@@ -1,10 +1,10 @@
 import React from 'react';
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, DEFAULT_COLOR, HSL } from './Item.tsx'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validInt, validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import { Config } from './ItemEditor.tsx'
-import { NodeGroup } from './CNode.tsx'
+import NodeGroup from './NodeGroup.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -74,7 +74,7 @@ export default class ENode extends Item {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             config: Config, 
             selection: Item[],
-            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
+            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'x': if (e) {
                     const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
@@ -83,7 +83,7 @@ export default class ENode extends Item {
                     return [(item, array) => {
                         if (dx!==0) item.move(dx, 0);                         
                         return array
-                    }, true]
+                    }, 'wholeSelection']
                 }
             case 'y': if (e) {
                     const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
@@ -92,18 +92,18 @@ export default class ENode extends Item {
                             item.move(0, dy);
                         }
                         return array;
-                    }, true]
+                    }, 'wholeSelection']
                 }
         	case 'radius': if (e) return [(item, array) => {
                     if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
                     return array
-                }, true]
-            case 'lw': if (e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, true]
+                }, 'wholeSelection']
+            case 'lw': if (e) return [(item, array) => {item.linewidth = item.linewidth100 = validFloat(e.target.value, 0, MAX_LINEWIDTH, 0); return array}, 'wholeSelection']
             case 'dash': if (e) return [(item, array) => {
                     item.dash = item.dash100 = this.dashValidator.read(e.target);                    
                     return array
-                }, true]
-            case 'shading': if (e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, true]
+                }, 'wholeSelection']
+            case 'shading': if (e) return [(item, array) => {item.shading = validFloat(e.target.value, 0, 1); return array}, 'wholeSelection']
             case 'rank': if (e) return [(item, array) => {
                     if (item instanceof ENode) {
                         const currentPos = array.indexOf(item);
@@ -118,7 +118,7 @@ export default class ENode extends Item {
                         return result
                     }
                     else return array
-                }, false]
+                }, 'onlyThis']
             case 'defaults': return [(item, array) => {
                     if(item instanceof ENode) {
                         item.radius = item.radius100 = DEFAULT_RADIUS;
@@ -126,9 +126,9 @@ export default class ENode extends Item {
                         item.dash = item.dash100 = DEFAULT_DASH;
                         item.shading = DEFAULT_SHADING;
                     }
-                    return array}, true]
+                    return array}, 'wholeSelection']
             default: 
-                return [(item, array) => array, false]        
+                return [(item, array) => array, 'onlyThis']        
        }
     }
 }
@@ -140,6 +140,7 @@ export interface ENodeProps {
     enode: ENode
     yOffset: number
     bg: HSL
+    primaryColor: HSL
     markColor: string
     titleColor: string
     focus: boolean
@@ -151,7 +152,7 @@ export interface ENodeProps {
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus = false, selected = [], preselected = false, 
+export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, titleColor, focus = false, selected = [], preselected = false, 
         onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeProps) => {
 
     const x = enode.x;
@@ -176,6 +177,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus
 
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
+            id={id}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => onMouseDown(enode, e)}
             onMouseEnter={(e) => onMouseEnter(enode, e)}
@@ -189,8 +191,9 @@ export const ENodeComp = ({ id, enode, yOffset, bg, markColor, titleColor, focus
             <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
                 <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                     cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
-                    fill={shading == 0 ? 'hsla(0,0%,0%,0)' : `hsla(${bg.hue},${bg.sat - Math.floor(bg.sat * shading)}%,${bg.lgt - Math.floor(bg.lgt * shading)}%,1)`}
-                    stroke={DEFAULT_COLOR}
+                    fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
+                        `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                    stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                     strokeWidth={linewidth}
                     strokeDasharray={enode.dash.join(' ')} />
                 <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />

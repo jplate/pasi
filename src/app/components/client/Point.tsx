@@ -1,5 +1,5 @@
 import React from 'react'
-import Item, { DEFAULT_COLOR } from './Item.tsx'
+import Item, { HSL } from './Item.tsx'
 import { H } from './MainPanel.tsx'
 
 export const POINT_RADIUS = 4;
@@ -11,17 +11,18 @@ export default class Point extends Item {
 }
 
 interface PointProps {
-    x: number,
-    y: number,
-    markColor: string,
-    visible?: boolean,
+    x: number
+    y: number
+    primaryColor: HSL
+    markColor: string
+    visible?: boolean
 }
 
-export const PointComp = ({x, y, markColor, visible = true}: PointProps) => {    
+export const PointComp = ({x, y, primaryColor, markColor, visible = true}: PointProps) => {    
     return (
         <div style={{position: 'absolute', left: `${x-POINT_RADIUS}px`, top: `${H-y-POINT_RADIUS}px`}}>
                 <svg width={POINT_RADIUS*2} height={POINT_RADIUS*2}> 
-                    <circle cx={POINT_RADIUS} cy={POINT_RADIUS} r={visible? 0.5: 0} fill={DEFAULT_COLOR} />
+                    <circle cx={POINT_RADIUS} cy={POINT_RADIUS} r={visible? 0.5: 0} fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`} />
                 </svg>
                 {visible && 
                     <svg width={POINT_RADIUS*2 + 2} height={POINT_RADIUS*2 + 2} // the 'border'

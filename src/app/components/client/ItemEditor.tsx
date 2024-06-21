@@ -50,7 +50,7 @@ const ItemEditor = ({info, onChange}: ItemEditorProps) => {
                         <GlossField key={i} text={entry.text} style={entry.style} />):
                     entry.type==='checkbox'? (
                         <CheckBoxField key={i} label={entry.text} style={entry.style} value={entry.value} 
-                            extraBottomMargin={entry.extraBottomMargin}
+                            extraBottomMargin={entry.extraBottomMargin} tooltip={entry.tooltip} tooltipPlacement={entry.tooltipPlacement}
                             onChange={() => handleChange(null, entry.key?? '', entry)} />):
                     entry.type==='number input'? (
                         <InputField key={i} label={entry.text} width={entry.width} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
@@ -62,7 +62,7 @@ const ItemEditor = ({info, onChange}: ItemEditorProps) => {
                             onChange={(e) => handleChange(e, entry.key?? '', entry)} />):
                     entry.type==='button'? (
                         <BasicColoredButton key={i} id={`${i}`} label={entry.text} style={clsx('mx-2 rounded-lg', entry.extraBottomMargin? 'mb-4': 'mb-2')} 
-                                disabled={false} 
+                                disabled={false} tooltip={entry.tooltip} tooltipPlacement={entry.tooltipPlacement}
                                 onClick={() => handleChange(null, entry.key?? '', entry)} />):
                     null})
             }

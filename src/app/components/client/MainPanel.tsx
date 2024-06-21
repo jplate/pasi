@@ -4,7 +4,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
-import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE } from './Item.tsx'
+import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, Range } from './Item.tsx'
 import { BasicButton, BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
@@ -14,7 +14,8 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { NodeGroup, Contour, CNodeComp, DEFAULT_DISTANCE, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW } from './CNode.tsx'
+import CNode, { CNodeComp, DEFAULT_DISTANCE, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW,  } from './CNode.tsx'
+import NodeGroup, { Contour, CONTOUR_CENTER_DIV_MAX_WIDTH, CONTOUR_CENTER_DIV_MAX_HEIGHT } from './NodeGroup.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -74,10 +75,10 @@ const CONTOUR_NODE_SNAP_RADIUS = 15 // radius around contour nodes where snappin
 const CANVAS_CLICK_THRESHOLD = 4 // For determining when a mouseUp is a mouseClick
 const SCROLL_X_OFFSET = 20 // How close to the left edge of the viewport the limit point may be before we resize the canvas
 const SCROLL_Y_OFFSET = 20 // How close to the top edge of the viewport the limit point may be before we resize the canvas
-const canvasHSLLight = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
-const canvasHSLDark = {hue: 29.2, sat: 78.6, lgt: 47.65} 
-const lassoDeselectLight = 'rgba(255, 255, 255, 0.5)'
-const lassoDeselectDark = 'rgba(0, 0, 0, 0.1)'
+const CANVAS_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
+const CANVAS_HSL_DARK_MODE = {hue: 29.2, sat: 78.6, lgt: 47.65} 
+const LASSO_DESELECT_LIGHT_MODE = 'rgba(255, 255, 255, 0.5)'
+const LASSO_DESELECT_DARK_MODE = 'rgba(0, 0, 0, 0.1)'
 
 export const DarkModeContext = createContext(false);
 
@@ -119,7 +120,9 @@ const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)
             if (it instanceof NodeGroup) {
                 const overlap = it.members.filter(m => selection.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
-                    const [cx, cy] = it.getCenter();
+                    const { minX, maxX, minY, maxY } = it.getBounds();
+                    const cx = (minX+maxX)/2;
+                    const cy = (minY+maxY)/2;
                     const dc = Math.sqrt(Math.pow(x-cx, 2) + Math.pow(y-cy, 2));
                     if (dc<d || (snappingToGrid && dc<CONTOUR_CENTER_SNAP_RADIUS)) {
                         snappingToGrid = false;
@@ -532,207 +535,227 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     const itemMouseDown = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for items on the canvas
         e.stopPropagation();
-        if(item) {
-            if(e.ctrlKey && !e.shiftKey && selection.includes(item)) {
-                deselect(item);
-            } 
-            else {
-                let newPoints = points,
-                    newList = list,
-                    newSelection = selection;
+        if(e.ctrlKey && !e.shiftKey && selection.includes(item)) {
+            deselect(item);
+        } 
+        else {
+            let newPoints = points,
+                newList = list,
+                newSelection = selection;
 
-                if (focusItem && (adding || dissolveAdding)) {
-                    newPoints = [];
-                    const itemToAdd = e.ctrlKey? item: highestActive(item);
-                    const group = highestActive(focusItem);
-                    if (!(group instanceof Item) && (group instanceof NodeGroup || (group!==itemToAdd && !group.members.includes(itemToAdd)))) {
-                        if (itemToAdd instanceof Item) {
-                            newSelection=[...selection, itemToAdd];
-                        }
-                        else {
-                            const lm = getLeafMembers(itemToAdd);
-                            newSelection=[...selection, item, ...getNodes(list, it => it!==item && !selection.includes(it) && lm.has(it))];
-                        }
-                        if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
-                            if (adding || itemToAdd instanceof Item) {
-                                if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
-                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
-                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
-                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else {
-                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
-                                        const i = group.members.indexOf(focusItem);
-                                        group.members.splice(i+1, 0, itemToAdd as CNode);
-                                    }
-                                    else {
-                                        group.members.push(itemToAdd);
-                                    }
-                                    const oldGroup = itemToAdd.group;
-                                    itemToAdd.group = group;
-                                    itemToAdd.isActiveMember = true;
-                                    if (oldGroup) {
-                                        oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
-                                        if (oldGroup.members.length==0) newList = purge(oldGroup, newList);
-                                    }
-                                }
-                            }
-                            else { // dissolve adding                            
-                                if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
-                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
-                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
-                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                    setShowModal(true);
-                                    return;
-                                }
-                                else {
-                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
-                                        const i = group.members.indexOf(focusItem); // the index after which to insert
-                                        const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
-                                        const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
-                                        group.members.splice(i+1, 0, ...nodes);
-                                    }
-                                    else {
-                                        group.members.push(...itemToAdd.members);
-                                    }
-                                    itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
-                                    itemToAdd.members = [];
-                                    if (itemToAdd instanceof NodeGroup) {
-                                        // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
-                                        setList(prev => prev.filter(it => it!==itemToAdd));
-                                    }
-                                    if (itemToAdd.group) {
-                                        itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
-                                    }
-                                }
-                            }
-                        }
-                        else if (group instanceof NodeGroup) { // In this case, item must already be a member of group, just like focusItem.
-                            let i = group.members.indexOf(focusItem as CNode),
-                                j = group.members.indexOf(item as CNode),
-                                newMembers: CNode[];
-                            if (i<0 || j<0) {
-                                console.log('Unexpectedly missing CNode');
+            if (focusItem && (adding || dissolveAdding)) {
+                newPoints = [];
+                const itemToAdd = e.ctrlKey? item: highestActive(item);
+                const group = highestActive(focusItem);
+                if (!(group instanceof Item) && (group instanceof NodeGroup || (group!==itemToAdd && !group.members.includes(itemToAdd)))) {
+                    if (itemToAdd instanceof Item) {
+                        newSelection=[...selection, itemToAdd];
+                    }
+                    else {
+                        const lm = getLeafMembers(itemToAdd);
+                        newSelection=[...selection, item, ...getNodes(list, it => it!==item && !selection.includes(it) && lm.has(it))];
+                    }
+                    if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
+                        if (adding || itemToAdd instanceof Item) {
+                            if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
+                                setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                setShowModal(true);
                                 return;
                             }
-                            if (i!==j && newList.length<MAX_LIST_SIZE && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { 
-                                // We're splitting group into two parts:
-                                if (i+1<j) {
-                                    newMembers = group.members.splice(i+1, j-i-1);                                        
-                                } 
-                                else {
-                                    newMembers = [...group.members.slice(0, j), ...group.members.slice(i+1)];
-                                    group.members = group.members.slice(j, i+1);
+                            else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
+                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
+                                setShowModal(true);
+                                return;
+                            }
+                            else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
+                                setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
+                                setShowModal(true);
+                                return;
+                            }
+                            else {
+                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    const i = group.members.indexOf(focusItem);
+                                    group.members.splice(i+1, 0, itemToAdd as CNode);
                                 }
-                                const newGroup = new NodeGroup(nodeGroupCounter);
-                                newGroup.members = newMembers;
-                                setNodeGroupCounter(prev => prev+1);
-                                newMembers.forEach(node => node.group = newGroup);   
-                                newList = [...newList, newGroup];
+                                else {
+                                    group.members.push(itemToAdd);
+                                }
+                                const oldGroup = itemToAdd.group;
+                                itemToAdd.group = group;
+                                itemToAdd.isActiveMember = true;
+                                if (oldGroup) {
+                                    oldGroup.members = oldGroup.members.filter(m => m!==itemToAdd);
+                                    if (oldGroup.members.length==0) newList = purge(oldGroup, newList);
+                                }
+                            }
+                        }
+                        else { // dissolve adding                            
+                            if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
+                                setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
+                                setShowModal(true);
+                                return;
+                            }
+                            else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
+                                setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
+                                setShowModal(true);
+                                return;
+                            }
+                            else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
+                                setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
+                                setShowModal(true);
+                                return;
+                            }
+                            else {
+                                if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    const i = group.members.indexOf(focusItem); // the index after which to insert
+                                    const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
+                                    const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
+                                    group.members.splice(i+1, 0, ...nodes);
+                                }
+                                else {
+                                    group.members.push(...itemToAdd.members);
+                                }
+                                itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
+                                itemToAdd.members = [];
+                                if (itemToAdd instanceof NodeGroup) {
+                                    // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
+                                    setList(prev => prev.filter(it => it!==itemToAdd));
+                                }
+                                if (itemToAdd.group) {
+                                    itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
+                                }
                             }
                         }
                     }
-                }
-                else {
-                    const pres = preselection2Ref.current; // This may be empty if we've just selected the same item.
-                    if (e.shiftKey) { // increase selection
-                        if (e.ctrlKey || pres.length===0) {
-                            if (item instanceof ENode || !selection.includes(item)) { // If item is a CNode, we don't add it twice.
-                                newSelection = [...selection, item];
+                    else if (group instanceof NodeGroup) { // In this case, item must already be a member of group, just like focusItem.
+                        let i = group.members.indexOf(focusItem as CNode),
+                            j = group.members.indexOf(item as CNode),
+                            newMembers: CNode[];
+                        if (i<0 || j<0) {
+                            console.log('Unexpectedly missing CNode');
+                            return;
+                        }
+                        if (i!==j && newList.length<MAX_LIST_SIZE && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { 
+                            // We're splitting group into two parts:
+                            if (i+1<j) {
+                                newMembers = group.members.splice(i+1, j-i-1);                                        
+                            } 
+                            else {
+                                newMembers = [...group.members.slice(0, j), ...group.members.slice(i+1)];
+                                group.members = group.members.slice(j, i+1);
                             }
-                        }
-                        else {               
-                            newSelection = [...selection, ...pres.filter(it => it instanceof ENode || !selection.includes(it))];
+                            const newGroup = new NodeGroup(nodeGroupCounter);
+                            newGroup.members = newMembers;
+                            setNodeGroupCounter(prev => prev+1);
+                            newMembers.forEach(node => node.group = newGroup);   
+                            newList = [...newList, newGroup];
                         }
                     }
-                    else { // replace selection
-                        if (e.ctrlKey || pres.length===0) {
-                            newSelection = [item];
+                }
+            }
+            else {
+                const pres = preselection2Ref.current; // This may be empty if we've just selected the same item.
+                if (e.shiftKey) { // increase selection
+                    if (e.ctrlKey || pres.length===0) {
+                        if (item instanceof ENode || !selection.includes(item)) { // If item is a CNode, we don't add it twice.
+                            newSelection = [...selection, item];
                         }
-                        else {
-                            newSelection = pres;
-                        }
-                        newPoints = [];
+                    }
+                    else {               
+                        newSelection = [...selection, ...pres.filter(it => it instanceof ENode || !selection.includes(it))];
                     }
                 }
-                // Handle dragging:
-                setDragging(true);
-                const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
-                const contourDragged = item.group instanceof NodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
-                let dccDx: number | undefined, 
-                    dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
-                if (contourDragged && item.group instanceof NodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
-                    const [cx, cy] = item.group.getCenter(); 
-                    dccDx = cx - item.x;
-                    dccDy = cy - item.y;
+                else { // replace selection
+                    if (e.ctrlKey || pres.length===0) {
+                        newSelection = [item];
+                    }
+                    else {
+                        newSelection = pres;
+                    }
+                    newPoints = [];
                 }
-                const startX = e.clientX - item.x;
-                const startY = e.clientY - (H + yOffset - item.y);
-                const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
+            }
+            // Handle dragging:
+            setDragging(true);
+            const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
+            const contourDragged = item.group instanceof NodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
+            let dccDx: number | undefined, 
+                dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
+            if (contourDragged && item.group instanceof NodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
+                const { minX, maxX, minY, maxY } = item.group.getBounds();
+                const cx = (minX+maxX)/2;
+                const cy = (minY+maxY)/2;
+                dccDx = cx - item.x;
+                dccDy = cy - item.y;
+            }
+            const startX = e.clientX - item.x;
+            const startY = e.clientY - (H + yOffset - item.y);
+            const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
 
-                
-                const handleMouseMove = (e: MouseEvent) => {
-                    // First, we take into account the grid:
-                    const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
-                    // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
-                    // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
-                    const x = Math.min(Math.max(snapX, xMinD), MAX_X);
-                    const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
-                    const dx = x - item.x;
-                    const dy = y - item.y;
-                    // Finally, we move each item in the selection:
-                    if(dx!==0 || dy!==0) {
-                        selectionWithoutDuplicates.forEach(item => item.move(dx, dy));
-                        setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render 
-                    }
-                };            
-
-                const handleMouseUp = () => {
-                    window.removeEventListener('mousemove', handleMouseMove);
-                    window.removeEventListener('mouseup', handleMouseUp);
-                    setDragging(false);
-                    adjustLimit();
-                    setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
-                    // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
-                    // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
-                    if(newPoints.length>0) newSelection.forEach(item => { 
-                        item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
-                        item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
-                    })
-                }
             
-                window.addEventListener('mousemove', handleMouseMove);
-                window.addEventListener('mouseup', handleMouseUp);
+            const handleMouseMove = (e: MouseEvent) => {
+                // First, we take into account the grid:
+                const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, selectionWithoutDuplicates, dccDx, dccDy);
+                // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
+                // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
+                const x = Math.min(Math.max(snapX, xMinD), MAX_X);
+                const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
+                const dx = x - item.x;
+                const dy = y - item.y;
+                // Finally, we move each item in the selection:
+                if(dx!==0 || dy!==0) {
+                    const nodeGroups: NodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+                    selectionWithoutDuplicates.forEach(item => {
+                        // console.log(`moving: ${item.id}`);
+                        if (item.group instanceof NodeGroup && !nodeGroups.includes(item.group)) {
+                            nodeGroups.push(item.group);
+                            const members = item.group.members;
+                            (item.group as NodeGroup).groupMove(
+                                selectionWithoutDuplicates.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
+                                dx, dy);
+                        }
+                        else if (!(item.group instanceof NodeGroup)) {
+                            item.move(dx, dy)
+                        }
+                    });
+                    setPoints(prevPoints => [...prevPoints]);  // to trigger a re-render 
+                }
+            };            
 
-                setFocusItem(item);
-                setList(newList);
-                setPoints(newPoints);
-                setPreselection1([]);
-                setPreselection2([]);
-                setSelection(newSelection);
-            }           
-        } 
+            const handleMouseUp = () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+                setDragging(false);
+                adjustLimit();
+                setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
+                // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
+                // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
+                if(newPoints.length>0) newSelection.forEach(item => { 
+                    item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
+                    item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
+                })
+            }
+        
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+
+            setFocusItem(item);
+            setList(newList);
+            setPoints(newPoints);
+            setPreselection1([]);
+            setPreselection2([]);
+            setSelection(newSelection);
+        }           
     }
 
-    const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseOver handler for items on the canvas
+    const groupMouseDown = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouse down handler for contour center divs
+        if (group.members.length>0) {
+            itemMouseDown(group.members[group.members.length-1], e);
+        }
+    }
+
+
+    const itemMouseEnter = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseEnter handler for items on the canvas
         if(!dragging) {
             setPreselection1(prev => [item]); 
             if (e.ctrlKey) {
@@ -744,7 +767,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }
 
-    const itemMouseLeave = (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseLeave handler for items on the canvas
+    const groupMouseEnter = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => { // mouseEnter handler for the 'center divs' of contours
+        if(!dragging) {
+            setPreselection1(prev => group.members); 
+            if (e.ctrlKey) {
+                setPreselection2(prev => group.members); // if Ctrl is pressed, only add group members by themselves
+            }
+            else {
+                updateSecondaryPreselection(group.members); // otherwise add all the leaf members of their highest active group
+            }
+        }
+    }
+
+    const mouseLeft = () => {
         if(!dragging) {
             setPreselection1(prev => []); 
             updateSecondaryPreselection([]);
@@ -892,11 +927,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const deduplicatedSelection = selection.filter((item, i) => i===selection.indexOf(item));
 
+    const allNodes = getNodes(list);
+
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
      * the purposes of the 'Create Group' button in the GroupTab.
      */
-    const topTbc: (Item | Group<any>)[] = getTopToBeCopied(deduplicatedSelection, getNodes(list, item => !deduplicatedSelection.includes(item))); 
+    const topTbc: (Item | Group<any>)[] = getTopToBeCopied(deduplicatedSelection, allNodes.filter(item => !deduplicatedSelection.includes(item))); 
 
     const copySelection = () => {
         if (selection.length>0) {
@@ -991,6 +1028,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (node.group) {
             const copy = new CNode(ngCounter===0? `${node.id}c${node.numberOfCopies++}`: `CN${ngCounter}/${nodeCounter}`, 
                 node.x+dx, node.y+dy, node.angle0, node.angle1, node.group as NodeGroup);
+            copy.omitLine = node.omitLine;
+            copy.fixedAngles = node.fixedAngles;
             copy.isActiveMember = node.isActiveMember;
             copy.dist0 = node.dist0;
             copy.dist1 = node.dist1;
@@ -1128,7 +1167,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             onMouseDown= {canvasMouseDown}>
                         {list.flatMap((it, i) => 
                             it instanceof ENode?
-                            [<ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} bg={dark? canvasHSLDark: canvasHSLLight}
+                            [<ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
+                                primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                                 titleColor={dark && it.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
                                 focus={focusItem===it} 
@@ -1136,7 +1176,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 preselected={preselection2.includes(it)}
                                 onMouseDown={itemMouseDown}
                                 onMouseEnter={itemMouseEnter} 
-                                onMouseLeave={itemMouseLeave} />]
+                                onMouseLeave={(item, e) => mouseLeft()} />]
                             :
                             it instanceof NodeGroup? (() => {
                                 let allSelected = true, 
@@ -1156,17 +1196,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     }
                                 });
                                 const last = it.members.length-1;
+                                // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
+                                // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.
                                 const arrowNodes: boolean[] = new Array(last+1).fill(false);
                                 let defer = false;
-                                for (let i = 0; i<2 && (i==0 || defer); i++) {
-                                    for (let j=0; j<last+1 && (i==0 || defer); j++) {
+                                for (let i = 0; i<=1 && (i==0 || defer); i++) {
+                                    for (let j = 0; j<=last && (i==0 || defer); j++) {
                                         const node = it.members[j];
                                         const selected = selectedNodes[j];
                                         const preselected = preselectedNodes[j];
                                         const next = it.members[j==last? 0: j+1];
                                         const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
-                                        const arrow = (selected && (defer || (allSelected && j==last) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
-                                            (preselected && (defer || (allPreselected && j==last) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
+                                        const arrow = (selected && (defer || (allSelected && j==0) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
+                                            (preselected && (defer || (allPreselected && j==0) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
                                         if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
                                             defer = true;
                                         }
@@ -1176,28 +1218,51 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         arrowNodes[j] = arrow && !defer;
                                     }
                                 }
+                                const centerDivClickable = !allNodes.some(item => {
+                                    if (item instanceof ENode || item instanceof CNode) {
+                                        const r = item.radius;
+                                        const { minX, maxX, minY, maxY } = it.getBounds();
+                                        const gx = (minX+maxX)/2;
+                                        const gy = (minY+maxY)/2;
+                                        const { x, y } = item;
+                                        return Math.abs(gx-x)+r < CONTOUR_CENTER_DIV_MAX_WIDTH/2 && Math.abs(gy-y)+r < CONTOUR_CENTER_DIV_MAX_HEIGHT/2;
+                                    }
+                                    else {
+                                        return false;
+                                    }
+                                });
                                 return [
-                                <Contour key={it.id} id={it.id+'Contour'} group={it} yOffset={yOffset} bg={dark? canvasHSLDark: canvasHSLLight} />, 
-                                ...it.members.map((node, i) => {
-                                    const selected = selectedNodes[i];
-                                    const preselected = preselectedNodes[i];
-                                    return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
-                                        markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
-                                        focus={focusItem===node}
-                                        selected={selectedNodes[i]}
-                                        preselected={preselectedNodes[i]}
-                                        arrow={arrowNodes[i]}
-                                        onMouseDown={itemMouseDown}
-                                        onMouseEnter={itemMouseEnter} 
-                                        onMouseLeave={itemMouseLeave} />
-                                })]})()
+                                    <Contour key={it.id} id={it.id+'Contour'} group={it} yOffset={yOffset} 
+                                        selected={selectedNodes.some(b => b)}
+                                        preselected={preselectedNodes.some(b => b)}
+                                        bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE} 
+                                        primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE} 
+                                        markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} 
+                                        centerDivClickable={centerDivClickable}
+                                        showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles}
+                                        onMouseDown={groupMouseDown}
+                                        onMouseEnter={groupMouseEnter} 
+                                        onMouseLeave={(group, e) => mouseLeft()} />, 
+                                    ...it.members.map((node, i) => {
+                                        return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
+                                            markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
+                                            focus={focusItem===node}
+                                            selected={selectedNodes[i]}
+                                            preselected={preselectedNodes[i]}
+                                            arrow={arrowNodes[i]}
+                                            onMouseDown={itemMouseDown}
+                                            onMouseEnter={itemMouseEnter} 
+                                            onMouseLeave={(item, e) => mouseLeft()} />
+                                    })
+                                ]})()
                             : null as never)}
                         {points.map(point => 
                             <PointComp key={point.id} x={point.x} y={point.y - yOffset} 
+                                primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
                         <style> {/* we're using polylines for the 'mark borders' of items */}
                             @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
-                            polyline {'{'} stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
+                            polyline {'{'} stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'} 
                             .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
                             .selected polyline {'{'} opacity: 1; {'}'}
                             .preselected polyline {'{'} opacity: 0.65; transition: 0.15s; {'}'}
@@ -1209,7 +1274,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         left: lasso.x0 - MARK_LINEWIDTH, 
                                         top: lasso.y0 - MARK_LINEWIDTH, marginTop: '-1px', marginLeft: '-1px'}}>
                                 <rect x='1' y='1' width={lasso.x1 - lasso.x0} height={lasso.y1 - lasso.y0} 
-                                    fill={lasso.deselect? (dark? lassoDeselectDark: lassoDeselectLight): 'none'}
+                                    fill={lasso.deselect? (dark? LASSO_DESELECT_DARK_MODE: LASSO_DESELECT_LIGHT_MODE): 'none'}
                                     stroke={dark? LASSO_COLOR_DARK_MODE: LASSO_COLOR_LIGHT_MODE} strokeWidth = {MARK_LINEWIDTH} strokeDasharray={LASSO_DASH} />
                             </svg>
                         }
@@ -1218,6 +1283,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <PointComp key={limit.id} 
                                 x={limitCompX(limit.x, canvasRef.current)} 
                                 y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)} 
+                                primaryColor={DEFAULT_HSL_LIGHT_MODE}
                                 markColor='red' visible={false} /> 
                         }
                     </div>
@@ -1318,10 +1384,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     {focusItem?
                                         <ItemEditor info={focusItem.getInfo(list, itemEditorConfig)} 
                                             onChange={(e, key) => {
-                                                const [edit, applyToAll] = focusItem.handleEditing(e, itemEditorConfig, selection, key);
-                                                const nodes = applyToAll? 
+                                                const [edit, range] = focusItem.handleEditing(e, itemEditorConfig, selection, key);
+                                                const nodeGroups: Set<NodeGroup> | null = range==='nodeGroups'? new Set<NodeGroup>(): null;
+                                                const nodes = range==='wholeSelection' || range==='nodeGroups'? 
                                                     deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
                                                             //console.log(`Editing item ${item.key}`);
+                                                            if (item instanceof CNode && nodeGroups) {
+                                                                if (nodeGroups.has(item.group as NodeGroup)) return acc;
+                                                                else {
+                                                                    nodeGroups.add(item.group as NodeGroup);
+                                                                }
+                                                            }
                                                             return edit(item, acc) as (ENode | NodeGroup)[]
                                                     }, list):
                                                     edit(focusItem, list);

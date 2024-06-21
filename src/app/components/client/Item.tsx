@@ -1,7 +1,7 @@
 import type { Config, Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
 import ENode from './ENode.tsx'
-import { NodeGroup } from './CNode.tsx'
+import NodeGroup from './NodeGroup.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -22,15 +22,19 @@ export const DEFAULT_LINEWIDTH = 1.0;
 export const DEFAULT_DASH = [];
 export const DEFAULT_SHADING = 0.0; // 0=white (transparent), 1=black
 
-export const DEFAULT_COLOR = '#323232';
+export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
+export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 
-export const DEFAULT_DIRECTION = COUNTERCLOCKWISE;
+
 
 export interface HSL {
     hue: number
     sat: number
     lgt: number
 }
+
+export type Range = 'onlyThis' | 'wholeSelection' | 'nodeGroups';
+
 
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
@@ -65,10 +69,10 @@ export default class Item implements GroupMember {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             config: Config, 
             selection: Item[],
-            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyToAll: boolean] {
+            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
-        return [(item: Item, items) => items, false]
+        return [(item: Item, items) => items, 'onlyThis']
     }
 
     public getWidth() {
@@ -87,7 +91,7 @@ export default class Item implements GroupMember {
         return this.y;
     }
 
-    public move(dx: number, dy: number) {
+    public move(dx: number, dy: number): void {
         this.x += dx;
         this.y += dy;
         this.x100 += dx;
