@@ -583,7 +583,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 const delta1 = Math.max(0, top - H) - yoff;
                 const delta2 = Math.ceil((delta1%H===0? delta1-1: delta1) / H) * H;
                 const adjust = top<H? -yoff: (yoff + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2>0)? delta2: Math.max(-scrollTop, delta2);
-                console.log(` top: ${top}  yoff: ${yoff}  adjust: ${adjust}`);
                 if (adjust !== 0) {
                     setYOffset(yoff + adjust);
                     setTimeout(() => {
