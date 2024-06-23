@@ -1,4 +1,4 @@
-import react, { useContext } from 'react'
+import React, { useContext } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { WithTooltip } from './EditorComponents.tsx'
@@ -10,7 +10,7 @@ interface ButtonProps {
     label?: string
     icon?: JSX.Element
     style?: string
-    tooltip?: react.ReactNode
+    tooltip?: React.ReactNode
     tooltipPlacement?: Placement
     pressed?: boolean // for toggle functionality
     disabled: boolean
@@ -23,9 +23,19 @@ export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipP
                 'focus:outline-none focus:ring-1', style)}
                 disabled={disabled}
                 onClick={onClick} >
-            {icon? [<span key={0} id={id+'span0'}>{icon}</span>, 
-                    <span key={1} id={id+'span1'}className='sr-only'>{label?? ''}</span>]: 
-                label?? ''}
+            {icon? [
+                    <span key={0} id={id+'span0'}>{icon}</span>, 
+                    <span key={1} id={id+'span1'}className='sr-only'>
+                        {label?? ''}
+                    </span>
+                ]: 
+                label? label.split('\n').map((line, index) => 
+                    <React.Fragment key={index}>
+                        {line}
+                        <br />
+                    </React.Fragment>
+                ): ''
+            }
         </button>)
     return tooltip? <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />: button
 }

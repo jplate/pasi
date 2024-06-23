@@ -68,8 +68,18 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 
                     setScalingIncrement(prev => logIncrements.scale = validInt(e.target.value, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT))
             } />
-            <BasicColoredButton id='hflip-button' label='Horizontal flip' style='px-2 mx-2 mt-3 rounded-lg' disabled={!hFlipPossible} onClick={hFlip} />
-            <BasicColoredButton id='vflip-button' label='Vertical flip' style='px-2 mx-2 mt-2 mb-3 rounded-lg' disabled={!vFlipPossible} onClick={vFlip} />
+            <BasicColoredButton id='hflip-button' label='Horizontal flip' style='px-2 mx-2 mt-3 rounded-lg' 
+                tooltip={<>Flips the current selection horizontally, using a vertical axis that runs through <i>either</i>&nbsp; the last-selected location on the canvas or
+                    (if there are no such locations) the center of the currently focused node or (if there is no such node) the center of the last item in the 
+                    selection.<br />Hotkey: <kbd>F</kbd></>}
+                tooltipPlacement='left'
+                disabled={!hFlipPossible} onClick={hFlip} />
+            <BasicColoredButton id='vflip-button' label='Vertical flip' style='px-2 mx-2 mt-2 mb-3 rounded-lg' 
+                tooltip={<>Flips the current selection vertically, using an horizontal axis that runs through <i>either</i>&nbsp; the last-selected location on the canvas or
+                    (if there are no such locations) the center of the currently focused node or (if there is no such node) the center of the last item in the 
+                    selection.<br />Hotkey: <kbd>V</kbd></>}
+                tooltipPlacement='left'
+                disabled={!vFlipPossible} onClick={vFlip} />
             <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={() => 
                 setScaleArrowheads(prev => transformFlags.scaleArrowheads = !prev)
             } />

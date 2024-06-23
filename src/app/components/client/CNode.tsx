@@ -114,6 +114,8 @@ export default class CNode extends Item {
             {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: group.shading, min: 0, max: 1, step: 0.1},
             {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(group), step: 1, extraBottomMargin: true},
             {type: 'button', key: 'defaults', text: 'Defaults'},
+            {type: 'button', key: 'angles', text: 'Equalize central angles', style: 'text-sm'},
+            {type: 'button', key: 'distances', text:'Equalize distances\n from center', style: 'text-sm'},
             {type: 'label', text: '', style: 'flex-1'}, // a filler to ensure that there's some margin at the bottom
         ]
     }
@@ -230,6 +232,18 @@ export default class CNode extends Item {
                     item.reset();
                     return array
                 }, 'wholeSelection']
+            case 'angles': return [(item, array) => {
+                if (item.group instanceof NodeGroup) {
+                    item.group.equalizeCentralAngles(item as CNode);
+                }
+                return array
+            }, 'ENodesAndNodeGroups']
+            case 'distances': return [(item, array) => {
+                if (item.group instanceof NodeGroup) {
+                    item.group.equalizeDistancesFromCenter(item as CNode);
+                }
+                return array
+            }, 'ENodesAndNodeGroups']
             default: 
                 return [(item, array) => array, 'onlyThis']        
         }
@@ -296,7 +310,6 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
         <>
             <div className={focus? 'focused': selected? 'selected': preselected? 'preselected': 'unselected'}
                 id={id}
-                onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => onMouseDown(cnode, e)}
                 onMouseEnter={(e) => onMouseEnter(cnode, e)}
                 onMouseLeave={(e) => onMouseLeave(cnode, e)}

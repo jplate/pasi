@@ -186,7 +186,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, tit
     return (
         <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
             id={id}
-            onClick={(e) => e.stopPropagation()}
+            //onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => onMouseDown(enode, e)}
             onMouseEnter={(e) => onMouseEnter(enode, e)}
             onMouseLeave={(e) => onMouseLeave(enode, e)}
