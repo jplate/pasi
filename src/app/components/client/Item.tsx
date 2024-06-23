@@ -54,7 +54,6 @@ export default class Item implements GroupMember {
     group: Group<Item | Group<any>> | null = null
     isActiveMember: boolean = false
 
-    protected dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
     constructor(key: string, x: number, y: number) {
         this.id = key;

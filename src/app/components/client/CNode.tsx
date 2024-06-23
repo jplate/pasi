@@ -203,7 +203,7 @@ export default class CNode extends Item {
                     return array
                 }, 'ENodesAndNodeGroups']
             case 'dash': if (e) {
-                    const dash = this.dashValidator.read(e.target);
+                    const dash = (this.group as NodeGroup).dashValidator.read(e.target);
                     return [(item, array) => {
                         item.setDash(dash); 
                         return array

@@ -780,11 +780,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     else { // replace selection
                         if (e.ctrlKey || pres.length===0) {
                             newSelection = [item];
-                            // For the case that the user presses this item again, we prepare the selection not just of item itself but of all members of its highest active group:
-                            const ha = highestActive(item);
-                            if (!(ha instanceof Item)) {
-                                setPreselection2(prev => ([...getLeafMembers(ha)] as Item[]));
-                                clearPreselection = false;
+                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not just of item itself but of all members of its highest active group:
+                            if (!e.ctrlKey) {
+                                const ha = highestActive(item);
+                                if (!(ha instanceof Item)) {
+                                    setPreselection2(prev => ([...getLeafMembers(ha)] as Item[]));
+                                    clearPreselection = false;
+                                }
                             }
                         }
                         else { // The 'normal' case: we select the preselection.
@@ -1258,8 +1260,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys('2', () => itemEditorConfig.logIncrement = 0);
     useHotkeys('3', () => itemEditorConfig.logIncrement = 1);
     useHotkeys('4', () => itemEditorConfig.logIncrement = 2);
-    useHotkeys('q', () => rotateSelection(90), {enabled: testRotation(90)});
-    useHotkeys('e', () => rotateSelection(-90), {enabled: testRotation(-90)});
+    useHotkeys('q', () => rotateSelection(45), {enabled: testRotation(45)});
+    useHotkeys('e', () => rotateSelection(-45), {enabled: testRotation(-45)});
     useHotkeys('f', hFlip, {enabled: canHFlip});
     useHotkeys('v', vFlip, {enabled: canVFlip});
 
