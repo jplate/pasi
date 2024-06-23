@@ -1,4 +1,4 @@
-import type { Config, Entry } from './ItemEditor.tsx'
+import type { Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
 import ENode from './ENode.tsx'
 import NodeGroup from './NodeGroup.tsx'
@@ -63,17 +63,16 @@ export default class Item implements GroupMember {
         this.y100 = y;
     }
 
-    public getInfo(list: (ENode | NodeGroup)[], editorConfig: Object): Entry[] {
+    public getInfo(list: (ENode | NodeGroup)[]): Entry[] {
         return []
     }
 
     public handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
-            config: Config, 
+            logIncrement: number, 
             selection: Item[],
             key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
-        // The boolean returned by handleEditing should be true iff the function should be applied to all elements of the current selection (a state variable of MainPanel).
         return [(item: Item, items) => items, 'onlyThis']
     }
 

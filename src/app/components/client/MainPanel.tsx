@@ -9,7 +9,7 @@ import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HS
 import { BasicButton, BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
-import ItemEditor, { Config } from './ItemEditor.tsx'
+import ItemEditor from './ItemEditor.tsx'
 import TransformTab from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
@@ -202,13 +202,16 @@ const depItemLabels = [
 
 
 /**
- * Rounds to nearest (10^digits)th if the difference to that value is less than 10^-(digits+5). Used for avoiding the compounding of slight rounding errors.
+ * For n = 0,...,digits, rounds to nearest (10^n)th if the difference to that value is less than 10^-(n+5). Used for avoiding the compounding of slight rounding errors.
  */
 export const round = (num: number, digits: number): number => { 
-    const factor = 10 ** digits;
-    const e = 10 ** -(digits + 5);
-    const rounded = Math.round(num*factor)/factor;
-    return Math.abs(rounded-num)<e? rounded: num;
+    for (let n = 0; n <= digits; n++) {
+        const factor = 10 ** n;
+        const e = 10 ** -(n + 5);
+        const rounded = Math.round(num*factor) / factor;
+        if (Math.abs(rounded-num) < e) return rounded;
+    }
+    return num;
 }
 
 /**
@@ -413,11 +416,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
     preselection2Ref.current = preselection2
 
     const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0) // canvas editor is default
-    const [itemEditorConfig, ] = useState<Config>({logIncrement: DEFAULT_TRANSLATION_LOG_INCREMENT})
+    const [logIncrement, setLogIncrement] = useState(DEFAULT_TRANSLATION_LOG_INCREMENT) // for itemEditor
     const [rotation, setRotation] = useState(0)
     const [scaling, setScaling] = useState(100) // default is 100%
     const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
-    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT})
+    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}) // for the transform tab
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
 
     const [adding, setAdding] = useState(false)
@@ -489,13 +492,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     
     const canAddContours: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
 
-    const canMoveLeft: boolean = leftMostSelected - 10 ** itemEditorConfig.logIncrement >= 0;
+    const canMoveLeft: boolean = leftMostSelected - 10 ** logIncrement >= 0;
 
-    const canMoveRight: boolean = rightMostSelected + 10 ** itemEditorConfig.logIncrement <= MAX_X;
+    const canMoveRight: boolean = rightMostSelected + 10 ** logIncrement <= MAX_X;
 
-    const canMoveUp: boolean = topMostSelected + 10 ** itemEditorConfig.logIncrement <= MAX_Y;
+    const canMoveUp: boolean = topMostSelected + 10 ** logIncrement <= MAX_Y;
 
-    const canMoveDown: boolean = bottomMostSelected - 10 ** itemEditorConfig.logIncrement >= MIN_Y;
+    const canMoveDown: boolean = bottomMostSelected - 10 ** logIncrement >= MIN_Y;
 
     const canHFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
         const x = 2*origin.x - item.x; // simulate hFlip on item
@@ -517,7 +520,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             resetTransform: boolean, 
             pts: Point[] = points, 
             focus: Item | null = focusItem, 
-            sel: Item[] = selection
+            sel: Item[] = selection,
+            l: (ENode | NodeGroup)[] = list
         ) => {
             // Compute new origin:
             const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
@@ -529,7 +533,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if(resetTransform && originChanged) {
                 setRotation(0);
                 setScaling(100);
-                list.forEach(it => { // resetting the items for new scaling 
+                l.forEach(it => { // resetting the items for new scaling 
                     if (it instanceof NodeGroup) {
                         it.linewidth100 = it.linewidth;
                         it.dash100 = it.dash;
@@ -549,16 +553,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     });
                 });
             }
-        }, [points, focusItem, selection, origin, list]
+        }, [points, focusItem, selection, list] // origin has no setter, so is not included.
     );
-
+    
     const adjustLimit = useCallback((
-            nodes: (ENode | NodeGroup)[] = list
+            l: (ENode | NodeGroup)[] = list,
+            yoff: number = yOffset,
+            lim: Point = limit
         ) => {
             let top = 0,
                 right = 0,
                 bottom = H;
-            nodes.forEach(it => {
+            l.forEach(it => {
                 (it instanceof NodeGroup? it.members: [it]).forEach(item => {
                     if(item.y > top) {
                         top = item.y;
@@ -574,27 +580,28 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const canvas = canvasRef.current;
             if (canvas) {
                 const { scrollTop } = canvas;
-                const delta1 = Math.max(0, top - H) - yOffset;
+                const delta1 = Math.max(0, top - H) - yoff;
                 const delta2 = Math.ceil((delta1%H===0? delta1-1: delta1) / H) * H;
-                const adjust = top<H? -yOffset: (yOffset+delta2<scrollTop-SCROLL_Y_OFFSET || delta2>0)? delta2: Math.max(-scrollTop, delta2);
+                const adjust = top<H? -yoff: (yoff + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2>0)? delta2: Math.max(-scrollTop, delta2);
+                console.log(` top: ${top}  yoff: ${yoff}  adjust: ${adjust}`);
                 if (adjust !== 0) {
-                    setYOffset(yOffset + adjust);
+                    setYOffset(yoff + adjust);
                     setTimeout(() => {
                         canvas.scrollBy(0, adjust);
                     }, 0);
                 }
             }
             const newLimit = new Point(right, bottom);
-            if (limit.x!==newLimit.x || limit.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
-        }, [list, H, yOffset, limit]
+            if (lim.x!==newLimit.x || lim.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
+        }, [yOffset, list, limit]
     );
 
-    const scrollTo = useCallback((item: Item) => {
+    const scrollTo = useCallback((item: Item, yoff: number = yOffset) => {
         const canvas = canvasRef.current;
         if (canvas) { // scroll to the position of focusItem, if there has been a change in position
             const dx = item.x - canvas.scrollLeft;
             const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
-            const dy = canvas.scrollTop + item.y - yOffset;
+            const dy = canvas.scrollTop + item.y - yoff;
             const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
             setTimeout(() => {
                 canvas.scrollBy(scrollRight, scrollDown);
@@ -627,16 +634,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const deselect = useCallback((item: Item) => {
         const index = selection.lastIndexOf(item);
+        let newFocus = focusItem;
         setSelection(prev => {
             const newSelection = prev.filter((it, i) => i!==index);
             if(focusItem && !newSelection.includes(focusItem)) {
+                newFocus = null;
                 setFocusItem(null);
             }
             return newSelection;
         });
-        setOrigin(true);
+        setOrigin(true, points, newFocus, deduplicatedSelection, list);
         return item;
-    }, [selection, focusItem]);
+    }, [selection, focusItem, points, deduplicatedSelection, list]);
+
 
     /**
      * Mouse down handler for items on the canvas.
@@ -850,7 +860,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     window.removeEventListener('mousemove', handleMouseMove);
                     window.removeEventListener('mouseup', handleMouseUp);
                     setDragging(false);
-                    adjustLimit();
+                    adjustLimit(newList, yOffset, limit);
                     setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
                     // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
                     // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
@@ -878,7 +888,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
                 setSelection(newSelection);
             }           
-        }, [deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem]
+        }, [deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, limit]
     );
 
     /**
@@ -1055,19 +1065,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (points.length>0) {
             let counter = enodeCounter;
             const nodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
+            const newList = [...list, ...nodes];
             setEnodeCounter(counter);
-            setList(list => {
-                const newList = [...list, ...nodes];
-                adjustLimit(newList); 
-                return newList
-            });
+            setList(list => newList);
+            adjustLimit(newList, yOffset, limit); 
             const newFocus = nodes[nodes.length-1];
             setPoints([]);
             setSelection(nodes);
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, enodeCounter]);
+    }, [points, enodeCounter, list, yOffset, limit]);
 
     /**
      *  OnClick handler for the 'Contour' button.
@@ -1076,12 +1084,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (points.length>0) {
             let counter = nodeGroupCounter;
             const newNodeGroups = points.map((point, i) => new NodeGroup(counter++, point.x, point.y));
+            const newList = [...list, ...newNodeGroups];
             setNodeGroupCounter(counter);
-            setList(list => {
-                const newList = [...list, ...newNodeGroups];
-                adjustLimit(newList); 
-                return newList
-            });
+            setList(list => newList);
+            adjustLimit(newList, yOffset, limit); 
             const nodes = getNodes(newNodeGroups);
             const newFocus = nodes[nodes.length-1];
             setPoints([]);
@@ -1089,7 +1095,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, nodeGroupCounter]);
+    }, [points, nodeGroupCounter, list, yOffset, limit]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1114,7 +1120,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const newFocus = 
                 focusItem instanceof ENode? copies[focusItem.id] as ENode: 
                 focusItem instanceof CNode? cNodeCopies[focusItem.id]: null as never;
-            adjustLimit(newList);
+            adjustLimit(newList, yOffset, limit);
             setEnodeCounter(enCounter);
             setNodeGroupCounter(ngCounter);
             setList(newList);
@@ -1123,7 +1129,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(newSelection);
             scrollTo(newFocus);
         }
-    }, [topTbc, list, hDisplacement, vDisplacement, enodeCounter, nodeGroupCounter, selection, focusItem]);
+    }, [topTbc, list, hDisplacement, vDisplacement, enodeCounter, nodeGroupCounter, selection, focusItem, yOffset, limit]);
 
 
     /**
@@ -1163,10 +1169,39 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPreselection1([]);
             setPreselection2([]);
             setFocusItem(null);
-            adjustLimit(newList);
-            setOrigin(true);
+            adjustLimit(newList, yOffset, limit);
+            setOrigin(true, points, null, []);
         }
-    }, [deduplicatedSelection, list]);
+    }, [deduplicatedSelection, list, yOffset, limit]);
+
+
+    /**
+     * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers for its various child components. 
+     * In particular, these handlers will call itemChange with an input element (or null) and a key that is obtained from the focusItem through Item.getInfo().
+     */
+    const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement> | null, key: string) => {
+        if (focusItem) {
+            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, key);
+            const nodeGroups: Set<NodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<NodeGroup>(): null;
+            const nodes = range=='onlyThis'? 
+                edit(focusItem, list):
+                deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
+                        //console.log(`Editing item ${item.key}`);
+                        if (item instanceof CNode && nodeGroups) {
+                            if (nodeGroups.has(item.group as NodeGroup)) return acc;
+                            else {
+                                nodeGroups.add(item.group as NodeGroup);
+                            }
+                        }
+                        return edit(item, acc) as (ENode | NodeGroup)[]
+                }, list);
+            setList(prev => nodes); // for some reason, the setter function is called twice here.
+            adjustLimit(list, yOffset, limit);
+            setOrigin(false, points, focusItem, selection, list);
+            scrollTo(focusItem, yOffset);
+            setItemsMoved(prev => [...prev]); 
+        }
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, limit]);  
 
 
     const adjustSelection = useCallback((item: Item) => {
@@ -1197,16 +1232,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * To be called from hotkey handlers.
      */
     const moveSelection = useCallback((dirX: number, dirY: number) => {
-        const inc = 10 ** itemEditorConfig.logIncrement;
+        const inc = 10 ** logIncrement;
         deduplicatedSelection.forEach(item => {
-            if (dirX!==0) item.x = item.x100 = item.x + dirX * inc;
-            if (dirY!==0) item.y = item.y100 = item.y + dirY * inc;
+            if (dirX!==0) item.x = item.x100 = round(item.x + dirX * inc, ROUNDING_DIGITS);
+            if (dirY!==0) item.y = item.y100 = round(item.y + dirY * inc, ROUNDING_DIGITS);
         });
-        adjustLimit();
-        setOrigin(false);
-        if (focusItem) scrollTo(focusItem);
+        adjustLimit(list, yOffset, limit);
+        setOrigin(false, points, focusItem, selection, list);
+        if (focusItem) scrollTo(focusItem, yOffset);
         setItemsMoved(prev => [...prev]);
-    }, [deduplicatedSelection, itemEditorConfig, focusItem]);
+    }, [logIncrement, deduplicatedSelection, focusItem, list, yOffset, limit, points, selection]);
 
     /**
      * Rotates the selection by the specified angle (in degrees).
@@ -1217,9 +1252,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
             ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
             ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
         });
-        adjustLimit();
+        adjustLimit(list, yOffset, limit);
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection, origin]);
+    }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
     const hFlip = useCallback(() => {
         deduplicatedSelection.forEach(item => {
@@ -1230,9 +1265,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 item.angle1 = -item.angle1;
             }
         });
-        adjustLimit();
+        adjustLimit(list, yOffset, limit);
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection]);
+    }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
     const vFlip = useCallback(() => {
         deduplicatedSelection.forEach(item => {
@@ -1243,9 +1278,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 item.angle1 = -item.angle1;
             }
         });
-        adjustLimit();
+        adjustLimit(list, yOffset, limit);
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection]);
+    }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
 
     useHotkeys('c', copySelection, {enabled: canCopy});
@@ -1256,10 +1291,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys('a, left', () => moveSelection(-1, 0), {enabled: canMoveLeft});
     useHotkeys('s, down', () => moveSelection(0, -1), {enabled: canMoveDown});
     useHotkeys('d, right', () => moveSelection(1, 0), {enabled: canMoveRight});
-    useHotkeys('1', () => itemEditorConfig.logIncrement = -1);
-    useHotkeys('2', () => itemEditorConfig.logIncrement = 0);
-    useHotkeys('3', () => itemEditorConfig.logIncrement = 1);
-    useHotkeys('4', () => itemEditorConfig.logIncrement = 2);
+    useHotkeys('1', () => setLogIncrement(-1));
+    useHotkeys('2', () => setLogIncrement(0));
+    useHotkeys('3', () => setLogIncrement(1));
+    useHotkeys('4', () => setLogIncrement(2));
     useHotkeys('q', () => rotateSelection(45), {enabled: testRotation(45)});
     useHotkeys('e', () => rotateSelection(-45), {enabled: testRotation(-45)});
     useHotkeys('f', hFlip, {enabled: canHFlip});
@@ -1288,7 +1323,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             <div id='main-panel' className='pasi flex my-8 p-6'> 
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
                     <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
-                            onMouseDown={canvasMouseDown} onDoubleClick={(e) => {console.log('double click');e.stopPropagation(); e.preventDefault();}} >
+                            onMouseDown={canvasMouseDown} >
                         {list.flatMap((it, i) => 
                             it instanceof ENode?
                             [<ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
@@ -1489,29 +1524,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </TabList>
                             <TabPanels className='flex-1 h-[364px] bg-btnbg/5 overflow-auto scrollbox'>
                                 <TabPanel key='editor-panel' className='rounded-xl px-2 py-1 h-full'>
-                                    {focusItem?
-                                        <ItemEditor info={focusItem.getInfo(list, itemEditorConfig)} 
-                                            onChange={(e, key) => {
-                                                const [edit, range] = focusItem.handleEditing(e, itemEditorConfig, selection, key);
-                                                const nodeGroups: Set<NodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<NodeGroup>(): null;
-                                                const nodes = range!=='onlyThis'? 
-                                                    deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
-                                                            //console.log(`Editing item ${item.key}`);
-                                                            if (item instanceof CNode && nodeGroups) {
-                                                                if (nodeGroups.has(item.group as NodeGroup)) return acc;
-                                                                else {
-                                                                    nodeGroups.add(item.group as NodeGroup);
-                                                                }
-                                                            }
-                                                            return edit(item, acc) as (ENode | NodeGroup)[]
-                                                    }, list):
-                                                    edit(focusItem, list);
-                                                setList(prev => nodes); // for some reason, the setter function is called twice here.
-                                                adjustLimit();
-                                                setOrigin(false);
-                                                scrollTo(focusItem);
-                                                setItemsMoved(prev => [...prev]); 
-                                        }} />:
+                                    {focusItem && itemChange?
+                                        <ItemEditor info={focusItem.getInfo(list)} 
+                                            logIncrement={logIncrement}
+                                            onIncrementChange={(val) => setLogIncrement(val)}
+                                            onChange={itemChange} />:
                                         <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
                                             changeHGap={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
                                             changeVGap={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 

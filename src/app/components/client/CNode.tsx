@@ -4,8 +4,7 @@ import ENode from './ENode.tsx'
 import NodeGroup, { angle } from './NodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
-import { validInt, validFloat, parseInputValue, parseCyclicInputValue, getCyclicValue } from './EditorComponents.tsx'
-import { Config } from './ItemEditor.tsx'
+import { validFloat, parseInputValue, parseCyclicInputValue, getCyclicValue } from './EditorComponents.tsx'
 
 const CNODE_RADIUS = 7
 const CNODE_ARROW_DIV_RADIUS = 10
@@ -73,7 +72,7 @@ export default class CNode extends Item {
         group.shading = DEFAULT_SHADING;
     }
 
-    public override getInfo(list: (ENode | NodeGroup)[], config: Config): Entry[] {
+    public override getInfo(list: (ENode | NodeGroup)[]): Entry[] {
         const group = this.group as NodeGroup;
         return [
             {type: 'checkbox', key: 'fixed', text: 'Dragging preserves angles', value: this.fixedAngles,
@@ -100,15 +99,7 @@ export default class CNode extends Item {
             },
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
-            {type: 'number input', key: 'inc', text: 'log Increment', width: 'short', value: config.logIncrement, step: 1, 
-                extraBottomMargin: true,
-                onChange: (e) => {
-                    if(e) {
-                        const val = validInt(e.target.value, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT)
-                        config.logIncrement = val
-                    }
-                }
-            },
+            {type: 'logIncrement', extraBottomMargin: true},
             {type: 'number input', key: 'lw', text: 'Line width', width: 'long', value: group.linewidth, step: 0.1},
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: group.dashValidator.write(group.dash)},
             {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: group.shading, min: 0, max: 1, step: 0.1},
@@ -122,7 +113,7 @@ export default class CNode extends Item {
 
     public override handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
-            config: Config, 
+            logIncrement: number, 
             selection: Item[],
             key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
         switch(key) {
@@ -143,7 +134,7 @@ export default class CNode extends Item {
                     return array
                 }, 'wholeSelection']
             case 'a0': if (e) {
-                    const delta = parseCyclicInputValue(e.target.value, this.angle0, config.logIncrement)[1]; 
+                    const delta = parseCyclicInputValue(e.target.value, this.angle0, logIncrement)[1]; 
                     return [(item, array) => {
                         if(!isNaN(delta) && delta!==0 && item instanceof CNode) {
                             item.angle0 = getCyclicValue(item.angle0 + delta, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT));
@@ -153,7 +144,7 @@ export default class CNode extends Item {
                 }
             case 'd0': if (e) {
                     const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.dist0, 
-                        config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.dist0;
+                        logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.dist0;
                     return [(item, array) => {
                         if (!isNaN(d) && d!==0 && item instanceof CNode) {
                             item.dist0 = item.dist0_100 = item.dist0 + d;
@@ -162,7 +153,7 @@ export default class CNode extends Item {
                     }, 'wholeSelection']
                 }
             case 'a1': if (e) {
-                    const delta = parseCyclicInputValue(e.target.value, this.angle1, config.logIncrement)[1]; 
+                    const delta = parseCyclicInputValue(e.target.value, this.angle1, logIncrement)[1]; 
                     return [(item, array) => {
                         if(!isNaN(delta) && delta!==0 && item instanceof CNode) {
                             item.angle1 = getCyclicValue(item.angle1 + delta, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT));
@@ -172,7 +163,7 @@ export default class CNode extends Item {
                 }
             case 'd1': if (e) {
                     const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.dist1, 
-                        config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.dist1;
+                        logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.dist1;
                     return [(item, array) => {
                         if (!isNaN(d) && d!==0 && item instanceof CNode) {
                             item.dist1 = item.dist1_100 = item.dist1 + d;
@@ -182,7 +173,7 @@ export default class CNode extends Item {
                 }
             case 'x': if (e) {
                     const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
-                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
+                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
                     const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
                     return [(item, array) => {
                         if (dx!==0) item.move(dx, 0); 
@@ -190,7 +181,7 @@ export default class CNode extends Item {
                     }, 'wholeSelection']
                 }
             case 'y': if (e) {
-                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, config.logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
+                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
                         if (!isNaN(dy) && dy!==0) {
                             item.move(0, dy);
