@@ -202,10 +202,10 @@ export default class NodeGroup implements Group<CNode> {
         do { // Adjusting angles can move the center. We'll repeat the process until the center stops moving by more than e.
             c = newC;
             // Starting from focus, record the first two consecutive nodes that straddle the vertical center line. If n is even, then these two nodes will be placed symmetrically 
-            // (as far as their central angles are concerned) with respect to this line, either above the center or below it, depending on the location of the first of the two nodes.
-            // If n is odd, the first node will be placed directly above or below the center point, depending on whether it is originally located lower or higher than the latter.
+            // (as far as their central angles are concerned) with respect to this line, either above the center or below it, depending on where a straight line between the two nodes 
+            // would cross the center line. If n is odd, then first node will be placed directly above or below the center point.
             let p0 = node,
-                p1, 
+                p1 = p0, 
                 i0 = index, 
                 i1;
             for (let i = 1; i<n; i++) {
@@ -217,13 +217,17 @@ export default class NodeGroup implements Group<CNode> {
                 p0 = p1;
                 i0 = i1;
             }
+            // Compute the y-value of where a straight line from p0 to p1 would cross the center line:
+            const slope = (p0.y - p1.y) / (p0.x - p1.x);
+            const yIntercept = p0.y - slope * p0.x;
+            const crossing = slope * c.x + yIntercept;
 
             // Now we place the nodes:
-            const dir = ((p0.x>c.x && p0.y<c.y) || (p0.x<c.x && p0.y>c.y))? -1: 1; // -1 means we're proceeding in a clockwise direction when arranging the nodes.
+            const dir = ((p0.x>c.x && crossing<c.y) || (p0.x<c.x && crossing>c.y))? -1: 1; // -1 means we're proceeding in a clockwise direction when arranging the nodes.
             const start = i0;
             for (
                 let i = 0,
-                    angle = ((p0.y>c.y? 1: -1) * Math.PI - (n%2!==0? 0: dir*inc)) / 2;
+                    angle = ((crossing>c.y? 1: -1) * Math.PI - (n%2!==0? 0: dir*inc)) / 2;
                 i < n;
                 i++, angle += dir*inc
             ) {

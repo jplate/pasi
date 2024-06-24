@@ -409,8 +409,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [lasso, setLasso] = useState<Lasso | null>(null)
     const [dragging, setDragging] = useState(false)
     const [preselection1, setPreselection1] = useState<Item[]>([])
-    const preselection1Ref = useRef<Item[]>([])
-    preselection1Ref.current = preselection1
     const [preselection2, setPreselection2] = useState<Item[]>([])
     const preselection2Ref = useRef<Item[]>([])
     preselection2Ref.current = preselection2
@@ -973,22 +971,21 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 if (dist >= CANVAS_CLICK_THRESHOLD) { // Only in this case do we create a Lasso.
                     setPoints(newPoints);
                     const lasso = new Lasso(Math.min(x, x+dx), Math.min(y, y+dy), Math.max(x, x+dx), Math.max(y, y+dy), deselect);
-                    const pres1 = preselection1Ref.current;
+                    const pres = preselection2Ref.current;
                     let changed = false;
-                    const newPres1 = [
-                        ...pres1.filter(item => {
+                    const newPres = [
+                        ...pres.filter(item => {
                             const result = lasso.contains(item, yOffset);
                             changed = changed || !result;
                             return result
                         }),
                         ...getNodes(list, item => {
-                            const result = lasso.contains(item, yOffset) && !pres1.includes(item) && (!deselect || selection.includes(item));
+                            const result = lasso.contains(item, yOffset) && !pres.includes(item) && (!deselect || selection.includes(item));
                             changed = changed || result;
                             return result
                         })];
                     if (changed) {
-                        setPreselection1(prev => newPres1);
-                        setPreselection2(prev => newPres1);
+                        setPreselection2(prev => newPres);
                     }
                     setLasso(prevLasso => lasso);;
                 }
@@ -1281,6 +1278,47 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setItemsMoved(prev => [...prev]);                                     
     }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
+    /**
+     * Turn all contours that have members in the supplied array into regular polygons.
+     */
+    const turnIntoRegularPolygons = useCallback((selection: Item[]) => {
+        (selection.map(it => {
+                if (it instanceof CNode) {
+                    it.reset();
+                    return it.group;
+                } 
+                else return null;
+            }).filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
+        ).forEach(g => {
+            g.equalizeCentralAngles(g.members[0]);
+            g.equalizeDistancesFromCenter(g.members[0]);
+        });
+        setItemsMoved(prev => [...prev]);
+    }, []);
+
+    /**
+     * Rotate all contours that have members in the supplied array by 180/n degrees, where n is the number of nodes in the respective contour.
+     */
+    const rotatePolygons = useCallback((selection: Item[]) => {
+        (selection.map(it => {
+                if (it instanceof CNode) {
+                    it.reset();
+                    return it.group;
+                } 
+                else return null;
+            }).filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
+        ).forEach(g => {
+            const c = g.getNodalCenter();
+            const angle = 180 / g.members.length;
+            g.members.forEach(node => {
+                ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle));
+                ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle));
+            });
+        });
+        setItemsMoved(prev => [...prev]);
+    }, []);
+
+
 
     useHotkeys('c', copySelection, {enabled: canCopy});
     useHotkeys('delete, backspace', deleteSelection, {enabled: canDelete});
@@ -1298,6 +1336,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys('e', () => rotateSelection(-45), {enabled: testRotation(-45)});
     useHotkeys('f', hFlip, {enabled: canHFlip});
     useHotkeys('v', vFlip, {enabled: canVFlip});
+    useHotkeys('p', () => turnIntoRegularPolygons(deduplicatedSelection), {enabled: deduplicatedSelection.some(i => i instanceof CNode)});
+    useHotkeys('r', () => rotatePolygons(deduplicatedSelection), {enabled: deduplicatedSelection.some(i => i instanceof CNode)});
 
 
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
