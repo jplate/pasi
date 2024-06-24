@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useState, useEffect } from "react";
+import { hotkeys } from './components/client/MainPanel'
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
@@ -85,7 +86,41 @@ export default function Home() {
 
           <MainPanel dark={isDarkMode} />
 
-          <section className='max-w-3xl ml-9'>
+          <section className='max-w-5xl ml-9'>
+            <h3>
+              Keyboard shortcuts
+            </h3>
+            <table>
+              <colgroup>
+                <col className='w-[160px]' />
+              </colgroup>              
+              <thead>
+                <tr>
+                    <th className='text-left px-4 py-3'>Shortcut</th>
+                    <th className='text-left px-4 py-3'>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hotkeys.map((it, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-btnbg/40' : 'bg-transparent'}>
+                    <td className='px-4 py-2'>{it.rep.map((key, i, arr) => (
+                      <>
+                        <kbd>{key}</kbd>
+                        {i===arr.length-1? null: ', '}
+                      </>
+                    ))}
+                    </td>
+                    <td className='pl-4 pr-6 py-2'>{it.descr}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          </section>
+
+          <section className='max-w-3xl ml-9 mt-3'>
+            <h3>
+              Alternative apps
+            </h3>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>
@@ -97,96 +132,6 @@ export default function Home() {
             </ul>
           </section>
 
-          <section className='max-w-3xl ml-9'>
-            <h3>
-              Keyboard shortcuts
-            </h3>
-            <table>
-              <colgroup>
-                <col className='w-[170px]' />
-              </colgroup>              
-              <thead>
-                <tr>
-                    <th className='text-left'>Shortcut</th>
-                    <th className='text-left'>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><kbd>C</kbd></td>
-                  <td>Copy selection</td>
-                </tr>
-                <tr>
-                  <td><kbd>W</kbd>, <kbd>↑</kbd></td>
-                  <td>Move selection upwards</td>
-                </tr>
-                <tr>
-                  <td><kbd>A</kbd>, <kbd>←</kbd></td>
-                  <td>Move selection to the left</td>
-                </tr>
-                <tr>
-                  <td><kbd>S</kbd>, <kbd>↓</kbd></td>
-                  <td>Move selection downward</td>
-                </tr>
-                <tr>
-                  <td><kbd>D</kbd>, <kbd>→</kbd></td>
-                  <td>Move selection to the right</td>
-                </tr>
-                <tr>
-                  <td><kbd>1</kbd></td>
-                  <td>Set increment to 0.1 pixels</td>
-                </tr>
-                <tr>
-                  <td><kbd>2</kbd></td>
-                  <td>Set increment to 1 pixel</td>
-                </tr>
-                <tr>
-                  <td><kbd>3</kbd></td>
-                  <td>Set increment to 10 pixels</td>
-                </tr>
-                <tr>
-                  <td><kbd>4</kbd></td>
-                  <td>Set increment to 100 pixels</td>
-                </tr>
-                <tr>
-                  <td><kbd>F</kbd></td>
-                  <td>Flip selection horizontally</td>
-                </tr>
-                <tr>
-                  <td><kbd>V</kbd></td>
-                  <td>Flip selection vertically</td>
-                </tr>
-                <tr>
-                  <td><kbd>Q</kbd></td>
-                  <td>Rotate selection counter-clockwise by 45 degrees</td>
-                </tr>
-                <tr>
-                  <td><kbd>E</kbd></td>
-                  <td>Rotate selection clockwise by 45 degrees</td>
-                </tr>
-                <tr>
-                  <td><kbd>R</kbd></td>
-                  <td>Rotate selected contours by 180 &frasl; <i>n</i> degrees, where <i>n</i> is the number of nodes in the respective contour</td>
-                </tr>
-                <tr>
-                  <td><kbd>P</kbd></td>
-                  <td>Turn selected contours into regular polygons</td>
-                </tr>
-                <tr>
-                  <td><kbd>Delete</kbd>,<br /> <kbd>Backspace</kbd></td>
-                  <td>Delete selection</td>
-                </tr>
-                <tr>
-                  <td><kbd>N</kbd></td>
-                  <td>Add entity nodes at selected locations</td>
-                </tr>
-                <tr>
-                  <td><kbd>M</kbd></td>
-                  <td>Add contours at selected locations</td>
-                </tr>
-            </tbody>
-          </table>
-          </section>
         </div>
       }
     </main>

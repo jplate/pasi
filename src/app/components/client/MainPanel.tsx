@@ -83,6 +83,40 @@ const CANVAS_HSL_DARK_MODE = {hue: 29.2, sat: 78.6, lgt: 47.65}
 const LASSO_DESELECT_LIGHT_MODE = 'rgba(255, 255, 255, 0.5)'
 const LASSO_DESELECT_DARK_MODE = 'rgba(0, 0, 0, 0.1)'
 
+interface HotkeyInfo {
+    key: string
+    keys: string
+    rep: string[]
+    descr: JSX.Element
+}
+
+export const hotkeys: HotkeyInfo[] = [
+    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection</> },
+    { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards</> },
+    { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left</> },
+    { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards</> },
+    { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right</> },
+    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set increment to 0.1 pixels</> },
+    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set increment to 1 pixel</> },
+    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set increment to 10 pixels</> },
+    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set increment to 100 pixels</> },
+    { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally</> },
+    { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically</> },
+    { key: 'rotate counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees</> },
+    { key: 'rotate clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees</> },
+    { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours by 180 / <i>n</i> degrees, where <i>n</i> is the number of nodes in the respective contour</> },
+    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons</> },
+    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection</> },
+    { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations</> },
+    { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations</> },
+  ];
+
+const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
+    acc[info.key] = info.keys;
+    return acc;
+}, {} as Record<string, string>);
+
+
 export const DarkModeContext = createContext(false);
 
 export type Grid = {
@@ -1319,27 +1353,26 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, []);
 
 
-
-    useHotkeys('c', copySelection, {enabled: canCopy});
-    useHotkeys('delete, backspace', deleteSelection, {enabled: canDelete});
-    useHotkeys('n', addEntityNodes, {enabled: canAddENodes});
-    useHotkeys('m', addContours, {enabled: canAddContours});
-    useHotkeys('w, up', () => moveSelection(0, 1), {enabled: canMoveUp});
-    useHotkeys('a, left', () => moveSelection(-1, 0), {enabled: canMoveLeft});
-    useHotkeys('s, down', () => moveSelection(0, -1), {enabled: canMoveDown});
-    useHotkeys('d, right', () => moveSelection(1, 0), {enabled: canMoveRight});
-    useHotkeys('1', () => setLogIncrement(-1));
-    useHotkeys('2', () => setLogIncrement(0));
-    useHotkeys('3', () => setLogIncrement(1));
-    useHotkeys('4', () => setLogIncrement(2));
-    useHotkeys('q', () => rotateSelection(45), {enabled: testRotation(45)});
-    useHotkeys('e', () => rotateSelection(-45), {enabled: testRotation(-45)});
-    useHotkeys('f', hFlip, {enabled: canHFlip});
-    useHotkeys('v', vFlip, {enabled: canVFlip});
-    useHotkeys('p', () => turnIntoRegularPolygons(deduplicatedSelection), {enabled: deduplicatedSelection.some(i => i instanceof CNode)});
-    useHotkeys('r', () => rotatePolygons(deduplicatedSelection), {enabled: deduplicatedSelection.some(i => i instanceof CNode)});
-
-
+    useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy });
+    useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete });
+    useHotkeys(hotkeyMap['add nodes'], addEntityNodes, { enabled: canAddENodes });
+    useHotkeys(hotkeyMap['add contours'], addContours, { enabled: canAddContours });
+    useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), { enabled: canMoveUp });
+    useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), { enabled: canMoveLeft });
+    useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), { enabled: canMoveDown });
+    useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), { enabled: canMoveRight });
+    useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1));
+    useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0));
+    useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1));
+    useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2));
+    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(45), { enabled: testRotation(45) });
+    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-45), { enabled: testRotation(-45) });
+    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip });
+    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
+    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    
+    
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
 
      // The delete button gets some special colors:

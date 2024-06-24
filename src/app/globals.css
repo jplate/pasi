@@ -202,11 +202,15 @@ body {
 h2 {
   font-size: 1.5em;
   font-weight: bold;
-  margin: 1em 0;
+  margin: 1.25em 0;
 }
 
 h3 {
+  position: sticky;
+  top: 0;
+  -webkit-backdrop-filter: blur(15px); /* for Safari */
+  backdrop-filter: blur(15px);
   font-size: 1.25em;
   font-weight: bold;
-  margin: 0.75em 0;
+  margin: 1em 0;
 }
