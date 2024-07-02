@@ -70,7 +70,7 @@ export const GlossField = ({text, style=''}: GlossFieldProps) => {
 }
 
 export interface InputFieldProps {
-    label: JSX.Element,
+    label: string,
     value: any,
     type?: string,
     step?: number,
