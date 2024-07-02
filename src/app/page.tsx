@@ -97,14 +97,16 @@ export default function Home() {
                 <col className='w-[160px]' />
               </colgroup>              
               <thead>
-                <tr>
+                <tr className='border-b-4 border-btnborder/50'>
                     <th className='text-left px-4 py-3'>Shortcut</th>
                     <th className='text-left px-4 py-3'>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {hotkeys.map((it, i) => (
-                  <tr key={i} className={i % 2 === 0 ? (isDarkMode? 'bg-btnbg/33' : 'bg-btnbg/40'): 'bg-btnbg/10'}>
+                {hotkeys.map((it, i, arr) => (
+                  <tr key={i} 
+                    className={clsx(i % 2 === 0 ? (isDarkMode? 'bg-btnbg/33' : 'bg-btnbg/40'): 'bg-btnbg/10', 
+                        i===arr.length-1? 'border-b-4 border-btnborder/50': '')}>
                     {/* In light mode, we use the elaborate <kbd> styling provided by tailwind typography, with its box shadows and borders (which require a greater line height). 
                         In dark mode, these shadows don't really look good and are hardly visible, so we default to monospace font. */}
                     <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((key, j, arr) => (

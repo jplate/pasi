@@ -56,9 +56,9 @@ export default class ENode extends Item {
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
             {type: 'logIncrement', extraBottomMargin: true},
             {type: 'number input', key: 'radius', text: 'Radius', width: 'long', value: this.radius, step: 1},
-            {type: 'number input', key: 'lw', text: 'Line width', width: 'long', value: this.linewidth, step: 0.1},
+            {type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: this.linewidth, step: 0.1},
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: this.dashValidator.write(this.dash)},
-            {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: this.shading, min: 0, max: 1, step: 0.1},
+            {type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: this.shading, min: 0, max: 1, step: 0.1},
             {type: 'gloss', text: '(Shading=0: transparent; >0: opaque)', style: 'mb-4 text-right text-xs'},
             {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
             {type: 'label', text: '', style: 'flex-1'}, // a filler

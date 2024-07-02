@@ -85,7 +85,7 @@ export default class CNode extends Item {
                 tooltip: 'The angle (in degrees) by which a straight line to the previous control point would deviate from a straight line to the previous contour node.',
                 tooltipPlacement: 'left'
             },
-            {type: 'number input', key: 'd0', text: 'Distance 1', width: 'medium', value: this.dist0, step: 0,
+            {type: 'number input', key: 'd0', text: 'Distance 1', width: 'long', value: this.dist0, step: 0,
                 tooltip: 'The distance from the present contour node to the previous control point.',
                 tooltipPlacement: 'left'
             },
@@ -93,16 +93,16 @@ export default class CNode extends Item {
                 tooltip: 'The angle (in degrees) by which a straight line to the next control point would deviate from a straight line to the next contour node.',
                 tooltipPlacement: 'left'
             },
-            {type: 'number input', key: 'd1', text: 'Distance 2', width: 'medium', value: this.dist1, step: 0,
+            {type: 'number input', key: 'd1', text: 'Distance 2', width: 'long', value: this.dist1, step: 0,
                 tooltip: 'The distance from the present contour node to the next control point.',
                 tooltipPlacement: 'left'
             },
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
             {type: 'logIncrement', extraBottomMargin: true},
-            {type: 'number input', key: 'lw', text: 'Line width', width: 'long', value: group.linewidth, step: 0.1},
+            {type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: group.linewidth, step: 0.1},
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: group.dashValidator.write(group.dash)},
-            {type: 'number input', key: 'shading', text: 'Shading', width: 'long', value: group.shading, min: 0, max: 1, step: 0.1},
+            {type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: group.shading, min: 0, max: 1, step: 0.1},
             {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(group), step: 1, extraBottomMargin: true},
             {type: 'button', key: 'defaults', text: 'Defaults'},
             {type: 'button', key: 'angles', text: 'Equalize central angles', style: 'text-sm'},
