@@ -5,7 +5,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
-import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, Range } from './Item.tsx'
+import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, DEFAULT_LINEWIDTH } from './Item.tsx'
 import { BasicButton, BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
@@ -15,7 +15,7 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { CNodeComp, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW,  } from './CNode.tsx'
+import CNode, { CNodeComp, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, DEFAULT_DISTANCE  } from './CNode.tsx'
 import NodeGroup, { Contour, CONTOUR_CENTER_DIV_MAX_WIDTH, CONTOUR_CENTER_DIV_MAX_HEIGHT } from './NodeGroup.tsx'
 import copy from './Copying'
 
@@ -37,9 +37,9 @@ import unvSrc from '../../../icons/unv.png'
 
 export const H = 650; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 export const W = 900; // the width of the canvas
-export const MAX_X = 32*W-1 // the highest possible TeX coordinate for an Item
-export const MIN_Y = -16*H+1 // the lowest possible TeX coordinate for an Item 
-export const MAX_Y = 16*H-1 // the highest possible TeX coordinate for an Item 
+export const MAX_X = 32*W-1 // the highest possible coordinate for an Item
+export const MIN_Y = -16*H+1 // the lowest possible coordinate for an Item 
+export const MAX_Y = 16*H-1 // the highest possible coordinate for an Item 
 export const MARGIN = 0; // the width of the 'margin' at right and bottom edges of the canvas
 
 const MAX_LIST_SIZE = 5000 // maximal size of the list of ENodes and NodeGroups
@@ -65,7 +65,7 @@ export const DEFAULT_HDISPLACEMENT = 50
 export const DEFAULT_VDISPLACEMENT = 0
 export const MIN_DISPLACEMENT = -9999
 export const MAX_DISPLACEMENT = 9999
-export const MIN_TRANSLATION_LOG_INCREMENT = -2
+export const MIN_TRANSLATION_LOG_INCREMENT = -3
 export const MAX_TRANSLATION_LOG_INCREMENT = 2
 const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
@@ -91,24 +91,29 @@ interface HotkeyInfo {
 }
 
 export const hotkeys: HotkeyInfo[] = [
-    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection</> },
-    { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards</> },
-    { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left</> },
-    { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards</> },
-    { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right</> },
-    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set increment to 0.1 pixels</> },
-    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set increment to 1 pixel</> },
-    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set increment to 10 pixels</> },
-    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set increment to 100 pixels</> },
-    { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally</> },
-    { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically</> },
-    { key: 'rotate counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees</> },
-    { key: 'rotate clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees</> },
-    { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours by 180 / <i>n</i> degrees, where <i>n</i> is the number of nodes in the respective contour</> },
-    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons</> },
-    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection</> },
-    { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations</> },
-    { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations</> },
+    { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
+    { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
+    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection.</> },
+    { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
+    { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
+    { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
+    { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right.</> },
+    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set increment to 0.1 pixels.</> },
+    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set increment to 1 pixel.</> },
+    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set increment to 10 pixels.</> },
+    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set increment to 100 pixels.</> },
+    { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
+    { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
+    { key: 'rotate counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
+    { key: 'rotate clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees.</> },
+    { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours counter-clockwise by 180 / <i>n</i> degrees, where{' '}
+        <i>n</i> is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
+    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
+    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
+    { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
+    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels.</> },
+    { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
+    { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
   ];
 
 const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
@@ -1318,7 +1323,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const turnIntoRegularPolygons = useCallback((selection: Item[]) => {
         (selection.map(it => {
                 if (it instanceof CNode) {
-                    it.reset();
+                    it.angle0 = it.angle1 = 0;
+                    it.dist0 = it.dist0_100 = it.dist1 = it.dist1_100 = DEFAULT_DISTANCE;
                     return it.group;
                 } 
                 else return null;
@@ -1334,13 +1340,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Rotate all contours that have members in the supplied array by 180/n degrees, where n is the number of nodes in the respective contour.
      */
     const rotatePolygons = useCallback((selection: Item[]) => {
-        (selection.map(it => {
-                if (it instanceof CNode) {
-                    it.reset();
-                    return it.group;
-                } 
-                else return null;
-            }).filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
+        (selection.map(it => it instanceof CNode? it.group: null)
+            .filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
         ).forEach(g => {
             const c = g.getNodalCenter();
             const angle = 180 / g.members.length;
@@ -1350,6 +1351,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
             });
         });
         setItemsMoved(prev => [...prev]);
+    }, []);
+
+    /**
+     * Either sets or increases/decreases the linewidth of the selected nodes, depending on whether the third argument is true.
+     */
+    const setLinewidth = useCallback((selection: Item[], val: number, inc: boolean = false) => {
+        selection.map(it => it.group instanceof NodeGroup? it.group: it)
+        .filter((it, i, arr) => i===arr.indexOf(it))
+        .forEach(obj => {
+            const newLw = Math.min(Math.max(inc? round(obj.linewidth + val, ROUNDING_DIGITS): val, 0), MAX_LINEWIDTH);
+            obj.linewidth = obj.linewidth100 = newLw;
+        });
+        setPoints(prev => [...prev]); // to trigger a re-render
     }, []);
 
 
@@ -1371,6 +1385,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
     useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
     useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
     
     
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
@@ -1381,8 +1399,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
     const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
-        'focus:outline-none data-[selected]:bg-btnbg/5 data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
-        'data-[selected]:data-[hover]:text-btncolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg');
+        'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
+        'data-[selected]:data-[hover]:text-btncolor');
 
     const sorry = () => {setModalMsg(['Apology', 'Sorry, this feature has not yet been implemented!']); setShowModal(true);}
 
@@ -1555,7 +1573,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         leaveTo='opacity-0 scale-95'>
                                     <MenuItems
                                             anchor='bottom end'
-                                            className='menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm font-serif text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                                            className='menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
                                         {depItemLabels.map((label, index) => 
                                             <MenuItem key={'di-'+index}>
                                                 <button className="group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor" onClick={() => setDepItemIndex(index)}>
@@ -1594,7 +1612,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     Groups
                                 </Tab>
                             </TabList>
-                            <TabPanels className='flex-1 h-[364px] bg-btnbg/5 overflow-auto scrollbox'>
+                            <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
                                 <TabPanel key='editor-panel' className='rounded-xl px-2 py-1 h-full'>
                                     {focusItem && itemChange?
                                         <ItemEditor info={focusItem.getInfo(list)} 
@@ -1813,13 +1831,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                     <Modal isOpen={showModal} closeTimeoutMS={750}
                             className='fixed inset-0 flex items-center justify-center z-50'
-                            overlayClassName='fixed inset-0 bg-gray-900/70' 
+                            overlayClassName={clsx('fixed inset-0', dark? 'bg-black/70':  'bg-gray-900/70')} 
                             contentLabel={modalMsg[0]}
                             onRequestClose={() => setShowModal(false)}>
                         <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
-                            <h2>
                                 {modalMsg[1]}
-                            </h2>
                             <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4 rounded-xl' disabled={false} onClick={() => setShowModal(false)} />
                         </div>
                     </Modal>

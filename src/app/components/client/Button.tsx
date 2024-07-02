@@ -25,7 +25,7 @@ export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipP
                 onClick={onClick} >
             {icon? [
                     <span key={0} id={id+'span0'}>{icon}</span>, 
-                    <span key={1} id={id+'span1'}className='sr-only'>
+                    <span key={1} id={id+'span1'} className='sr-only'>
                         {label?? ''}
                     </span>
                 ]: 

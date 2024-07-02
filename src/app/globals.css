@@ -9,12 +9,6 @@
   }
 }
 
-
-a {
-  text-decoration: none; /* Remove the underline */
-  transition: color 0.2s; /* Add a smooth color transition on hover */
-}
-
 html { /* We have to insist on a fixed font-size, so as to make sure that there won't be any resizing due to hover effects within the MainPanel */
   font-size: 16px; 
 }
@@ -30,7 +24,6 @@ p:not(.pasi p) {
 li {
     margin-bottom: 8px;
 }
-
 
 .light {
   --foreground-rgb: 30, 41, 59; /* slate-800 */
@@ -56,10 +49,14 @@ li {
 
   a:not(.pasi a) {
     color: theme('colors.pink.700'); 
+    text-decoration: none; /* Remove the underline */
+    transition: color 0.1s; /* Add a smooth color transition on hover */
   }
   
   a:not(.pasi a):hover {
     color: theme('colors.pink.500'); 
+    text-decoration: none; /* Remove the underline */
+    transition: color 0.1s; /* Add a smooth color transition on hover */
   }
   
 }
@@ -88,16 +85,21 @@ li {
 
   a:not(.pasi a) {
     color: theme('colors.red.700'); 
+    text-decoration: none; /* Remove the underline */
+    transition: color 0.1s; /* Add a smooth color transition on hover */
   }
   
   a:not(.pasi a):hover {
     color: theme('colors.red.500'); 
+    text-decoration: none; /* Remove the underline */
+    transition: color 0.1s; /* Add a smooth color transition on hover */
   }
 
 }
 
 body {
-  font-feature-settings: 'liga', 'dlig';
+  font-family: 'Raleway', sans-serif;
+  font-feature-settings: 'dlig'; /* Normally we'd also include 'liga', but then the 'ff' in 'Grid offset' will look ugly, given the wider tracking in the CanvasEditor. */
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
@@ -107,6 +109,9 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+.font-variant-ligatures-none {
+  font-variant-ligatures: 'none';
+}
 
 /* For browsers that support `scrollbar-*` properties */
 @supports (scrollbar-color: auto) {

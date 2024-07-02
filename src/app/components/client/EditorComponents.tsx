@@ -70,7 +70,7 @@ export const GlossField = ({text, style=''}: GlossFieldProps) => {
 }
 
 export interface InputFieldProps {
-    label: string,
+    label: JSX.Element,
     value: any,
     type?: string,
     step?: number,
@@ -87,7 +87,7 @@ export interface InputFieldProps {
 export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', 
         lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange}: InputFieldProps) => {
 
-    const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-20 w-20';
+    const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-24 w-24';
     const labelComp = (<span>{label}</span>);
     const inputComp = (<input className={clsx(w, type==='number'? 'text-right': '',
             'ml-2 pl-2 border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor')}
@@ -107,7 +107,7 @@ export interface LabelFieldProps {
 
 export const LabelField = ({label, style=''}: LabelFieldProps) => {
     return (
-        <div className={clsx('block px-2 py-1 text-center tracking-wider', style)}>
+        <div className={clsx('block px-2 py-1 text-center tracking-wider font-variant-ligatures-none', style)}>
             {label}
         </div>
     )

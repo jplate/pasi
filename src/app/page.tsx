@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import React, { useState, useEffect } from "react";
+import clsx from 'clsx/lite';
 import { hotkeys } from './components/client/MainPanel'
 
 
@@ -41,10 +42,11 @@ export default function Home() {
     }
   }, [isDarkMode]);
 
+  const sectionStyle = clsx('prose prose-lg', isDarkMode? 'prose-dark': 'prose-light', 'max-w-5xl mt-3 ml-9 mb-9');
 
   return (<> {/* We're returning a fragment. */}
     <div id='sticky-top' className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
-      <span className='flex items-center justify-between px-6'>
+      <span className='flex items-center justify-between px-6 font-serif tracking-wide'>
         <i><strong>pasi</strong></i>
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
           {isDarkMode ? (
@@ -65,8 +67,8 @@ export default function Home() {
             <p>Please access this application from a laptop or desktop.</p>
         </div>:
         <div id='content' className='flex-1 flex flex-col mb-[30px]'>
-          <section className='max-w-3xl ml-9'>
-            <p className='text-red-500/50'>
+          <section className={sectionStyle}>
+            <p>
               <strong>------------------UNDER CONSTRUCTION------------------</strong> 
             </p>
             <p>
@@ -79,14 +81,14 @@ export default function Home() {
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below, and then click either the <strong>Node</strong> or 
               the <strong>Contour</strong> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
               with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the grey area further below. 
-              To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><code><i>texdraw</i></code></a> package.
+              To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
               You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
             </p>
           </section>
 
           <MainPanel dark={isDarkMode} />
 
-          <section className='max-w-5xl ml-9'>
+          <section className={sectionStyle}>
             <h3>
               Keyboard shortcuts
             </h3>
@@ -102,12 +104,14 @@ export default function Home() {
               </thead>
               <tbody>
                 {hotkeys.map((it, i) => (
-                  <tr key={i} className={i % 2 === 0 ? 'bg-btnbg/40' : 'bg-transparent'}>
-                    <td className='px-4 py-2'>{it.rep.map((key, i, arr) => (
-                      <>
-                        <kbd>{key}</kbd>
-                        {i===arr.length-1? null: ', '}
-                      </>
+                  <tr key={i} className={i % 2 === 0 ? (isDarkMode? 'bg-btnbg/33' : 'bg-btnbg/40'): 'bg-btnbg/10'}>
+                    {/* In light mode, we use the elaborate <kbd> styling provided by tailwind typography, with its box shadows and borders (which require a greater line height). 
+                        In dark mode, these shadows don't really look good and are hardly visible, so we default to monospace font. */}
+                    <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((key, j, arr) => (
+                       <React.Fragment key={j}>
+                        {isDarkMode? <span className='font-mono'>{key}</span>: <kbd>{key}</kbd>}
+                        {j===arr.length-1? null: isDarkMode? <>, </>: <> ,&nbsp; </>}
+                      </React.Fragment>
                     ))}
                     </td>
                     <td className='pl-4 pr-6 py-2'>{it.descr}</td>
@@ -117,14 +121,14 @@ export default function Home() {
           </table>
           </section>
 
-          <section className='max-w-3xl ml-9 mt-3'>
+          <section className={sectionStyle}>
             <h3>
               Alternative apps
             </h3>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>
-            <ul className='list-disc translate-x-5'>
+            <ul>
               <li><a href='https://sourceforge.net/projects/dia-installer/?source=directory' target='_blank'><i>Dia</i></a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
               <li><a href='https://inkscape.org/' target='_blank'><i>Inkscape</i></a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
               <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
