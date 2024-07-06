@@ -1,15 +1,13 @@
 import React, { useState } from 'react'
-import clsx from 'clsx/lite'
 import { InputField, CheckBoxField, parseInputValue, parseCyclicInputValue, validInt } from './EditorComponents.tsx'
 import { BasicColoredButton } from './Button.tsx'
+import { MAX_SCALING, MIN_ROTATION } from './MainPanel'
 
-const MIN_ROTATION_LOG_INCREMENT = -3
-const MAX_ROTATION_LOG_INCREMENT = 2
-const MIN_SCALING_LOG_INCREMENT = -3
-const MAX_SCALING_LOG_INCREMENT = 3
-const MIN_ROTATION = -180
+export const MIN_ROTATION_LOG_INCREMENT = -3
+export const MAX_ROTATION_LOG_INCREMENT = 2
+export const MIN_SCALING_LOG_INCREMENT = -3
+export const MAX_SCALING_LOG_INCREMENT = 3
 const MAX_ROTATION_INPUT = 360 + 10 ** MAX_ROTATION_LOG_INCREMENT
-const MAX_SCALING = 1E6
 
 interface TransformTabProps {
     rotation: number
@@ -28,7 +26,7 @@ interface TransformTabProps {
         scale: number
     }
     testRotation: (increment: number) => boolean // The increment is how much the selection needs to be rotated by; the newAngle is the...
-    rotate: (increment: number, newAngle: number) => void // ...new value to be shown in the input field.        
+    rotate: (increment: number) => void // ...new value to be shown in the input field.        
     testScaling: (newScaling: number) => boolean
     scale: (newScaling: number) => void 
     hFlip: () => void
@@ -52,7 +50,7 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 min={-MAX_ROTATION_INPUT} max={MAX_ROTATION_INPUT} 
                 step={0} width={'long'} onChange={(e) => {
                     const [val, delta] = parseCyclicInputValue(e.target.value, rotation, logIncrements.rotate, MIN_ROTATION, 360, Math.max(0, -MIN_ROTATION_LOG_INCREMENT));
-                    if(!isNaN(val) && val!==rotation && testRotation(delta)) rotate(delta, val)
+                    if(!isNaN(val) && val!==rotation && testRotation(delta)) rotate(delta);
                 }} />
             <InputField label='log Increment' value={logIncrements.rotate} min={MIN_ROTATION_LOG_INCREMENT} max={MAX_ROTATION_LOG_INCREMENT} 
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 

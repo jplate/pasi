@@ -5,12 +5,12 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
-import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, DEFAULT_LINEWIDTH } from './Item.tsx'
+import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Item.tsx'
 import { BasicButton, BasicColoredButton } from './Button.tsx'
-import { CheckBoxField, validFloat } from './EditorComponents.tsx'
+import { CheckBoxField, validFloat, getCyclicValue } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
-import TransformTab from './TransformTab.tsx'
+import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
@@ -72,6 +72,9 @@ const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 export const ROUNDING_DIGITS = 3 // used for rounding values resulting from rotations of points, etc.
 
+export const MAX_SCALING = 1E6
+export const MIN_ROTATION = -180
+
 const CONTOUR_CENTER_SNAP_RADIUS = 10 // radius around contour centers where snapping ignores grid points
 const CONTOUR_NODE_SNAP_RADIUS = 15 // radius around contour nodes where snapping ignores grid points
 
@@ -88,7 +91,27 @@ interface HotkeyInfo {
     keys: string
     rep: string[]
     descr: JSX.Element
+    descrDark?: JSX.Element
 }
+
+const scalingHotkeyDescrRump = (darkMode: boolean): JSX.Element => (
+    <>
+        the scaling of the selection by 10<sup><i>n</i></sup> percentage points, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
+        (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}) and is selected by the keys &thinsp;
+        {darkMode? 
+            <><span className='font-mono'>{1}</span>&ndash;<span className='font-mono'>{4}</span></>: 
+            <><kbd>1</kbd>&thinsp;&ndash;&thinsp;<kbd>4</kbd>&thinsp;</>
+        }
+    </>
+);
+
+const scaleDownHotkeyDescr = (darkMode: boolean): JSX.Element => (
+    <>Decreases {scalingHotkeyDescrRump(darkMode)}. The value of 100% corresponds to the size of the selection at the time it was initiated.</>
+);
+
+const scaleUpHotkeyDescr = (darkMode: boolean): JSX.Element => (
+    <>Increases {scalingHotkeyDescrRump(darkMode)}.</>
+);
 
 export const hotkeys: HotkeyInfo[] = [
     { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
@@ -98,22 +121,28 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
     { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
     { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right.</> },
-    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set increment to 0.1 pixels.</> },
-    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set increment to 1 pixel.</> },
-    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set increment to 10 pixels.</> },
-    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set increment to 100 pixels.</> },
+    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set movement distance to 0.1 pixels.</> },
+    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set movement distance to 1 pixel.</> },
+    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set movement distance to 10 pixels.</> },
+    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set movement distance to 100 pixels.</> },
+    { key: 'dec sh', keys: '5', rep: ['5'], descr: <>Decrease shading by 0.1.</> },
+    { key: 'inc sh', keys: '6', rep: ['6'], descr: <>Increase shading by 0.1 (maximum: 1).</> },
+    { key: 'sh 0', keys: '7', rep: ['7'], descr: <>Set shading to 0.</> },
+    { key: 'sh 1', keys: 'shift+7', rep: ['Shift+7'], descr: <>Set shading to 1.</> },
+    { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
+    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels.</> },
+    { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
+    { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
     { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
     { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
     { key: 'rotate counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
     { key: 'rotate clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees.</> },
     { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours counter-clockwise by 180 / <i>n</i> degrees, where{' '}
-        <i>n</i> is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
+        <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
+    { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
+    { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
     { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
     { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
-    { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
-    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels.</> },
-    { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
-    { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
   ];
 
 const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
@@ -152,9 +181,13 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
  * dragging, members of the selection (which is being dragged) have to be ignored. Same for the centers and members of NodeGroups containing the main ('focus') item that
  * is being dragged.
  */
-const getSnapPoint = (x: number, y: number, grid: Grid, list: (Item | NodeGroup)[], focus: Item, selection: Item[],
+const getSnapPoint = (x: number, y: number, grid: Grid, 
+        list: (Item | NodeGroup)[], 
+        focus: Item, 
+        selection: Item[],
         dccDx: number | undefined, 
-        dccDy: number | undefined) => {
+        dccDy: number | undefined
+) => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
         d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
         snappingToGrid = true;
@@ -583,7 +616,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         item.linewidth100 = item.linewidth;
                         item.dash100 = item.dash;
                         }
-                    else if (it instanceof CNode) {
+                    else if (item instanceof CNode) {
                         item.dist0_100 = item.dist0;
                         item.dist1_100 = item.dist1;
                     }
@@ -1251,18 +1284,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, [list]);
 
     /**
-     * Returns true if the rotation of the selection by the specified angle is within bounds.
-     */
-    const testRotation = useCallback((angle: number) => {
-        for(const item of deduplicatedSelection) {
-            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
-            if (x<0 || x>MAX_X) return false;
-            if (y<MIN_Y || y>MAX_Y) return false;
-        }
-        return true
-    }, [deduplicatedSelection, itemsMoved, origin]);
-
-    /**
      * Moves the selection in one of the four cardinal directions, by an amount determined by itemEditorConfig.logIncrement.
      * To be called from hotkey handlers.
      */
@@ -1279,8 +1300,49 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, [logIncrement, deduplicatedSelection, focusItem, list, yOffset, limit, points, selection]);
 
     /**
+     * Returns true if the rotation of the selection by the specified angle is within bounds.
+     */
+    const testRotation = useCallback((angle: number) => {
+        for(const item of deduplicatedSelection) {
+            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
+            if (x<0 || x>MAX_X) return false;
+            if (y<MIN_Y || y>MAX_Y) return false;
+        }
+        return true
+    }, [deduplicatedSelection, origin]);
+
+    /**
+     * Returns true if setting the scaling of the selection to the specified angle doesn't violate any constraints on the placement, radius, etc. of nodes.
+     * May display error messages.
+     */
+    const testScaling = useCallback((val: number) => {
+        for (const item of deduplicatedSelection) {
+            const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
+            if (!isFinite(x) || !isFinite(y)) {
+                setModalMsg(['Buzz Lightyear alert', 
+                    `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`]);
+                setShowModal(true);
+            }
+            if (x<0 || x>MAX_X) return false;
+            if (y<MIN_Y || y>MAX_Y) return false;
+            if (transformFlags.scaleENodes && item instanceof ENode) {
+                const v = item.radius100 * val/100;
+                if(v<0 || v>MAX_RADIUS) return false;
+            }
+            if (transformFlags.scaleLinewidths) {
+                const v = item.linewidth100 * val/100;
+                if(v<0 || v>MAX_LINEWIDTH) return false;
+            }
+            if (transformFlags.scaleDash && item.dash100.some(l => {
+                const v = l * val/100;
+                return v<0 || v>MAX_DASH_VALUE;
+            })) return false;
+        }
+        return true
+    }, [deduplicatedSelection, origin]);    
+
+    /**
      * Rotates the selection by the specified angle (in degrees).
-     * To be called from hotkey handlers.
      */
     const rotateSelection = useCallback((angle: number) => {
         deduplicatedSelection.forEach(item => {
@@ -1288,6 +1350,37 @@ const MainPanel = ({dark}: MainPanelProps) => {
             ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
         });
         adjustLimit(list, yOffset, limit);
+        setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
+        setItemsMoved(prev => [...prev]);                                     
+    }, [deduplicatedSelection, origin, list, yOffset, limit]);
+
+    /**
+     * Sets the scaling of the current selection to the indicated value, as a percentage of the respective 'original' size of the selected items.
+     */
+    const scaleSelection = useCallback((newValue: number) => {
+        deduplicatedSelection.forEach(item => {
+            ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
+            if (item instanceof CNode) {
+                item.dist0 = item.dist0_100 * newValue/100;
+                item.dist1 = item.dist1_100 * newValue/100;
+            }
+            else if (item instanceof ENode) {
+                if (transformFlags.scaleENodes) item.radius = item.radius100 * newValue/100;
+                if (transformFlags.scaleLinewidths) item.linewidth = item.linewidth100 * newValue/100;
+                if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
+            }
+        }); 
+        const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
+            .map(node => node.group) // An array of those NodeGroups that have members included in selection.  
+            .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; 
+        affectedNodeGroups.forEach(group => {
+            if (group) {
+                if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
+                if (transformFlags.scaleDash) group.dash = group.dash100.map(l => l * newValue/100);
+            }
+        });
+        adjustLimit(list, yOffset, limit);
+        setScaling(newValue);
         setItemsMoved(prev => [...prev]);                                     
     }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
@@ -1354,6 +1447,19 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, []);
 
     /**
+     * Either sets or increases/decreases the shading of the selected nodes, depending on whether the third argument is true.
+     */
+    const setShading = useCallback((selection: Item[], val: number, inc: boolean = false) => {
+        selection.map(it => it.group instanceof NodeGroup? it.group: it)
+        .filter((it, i, arr) => i===arr.indexOf(it))
+        .forEach(obj => {
+            const newVal = Math.min(Math.max(inc? round(obj.shading + val, ROUNDING_DIGITS): val, 0), 1);
+            obj.shading = newVal;
+        });
+        setPoints(prev => [...prev]); // to trigger a re-render
+    }, []);
+
+    /**
      * Either sets or increases/decreases the linewidth of the selected nodes, depending on whether the third argument is true.
      */
     const setLinewidth = useCallback((selection: Item[], val: number, inc: boolean = false) => {
@@ -1366,7 +1472,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setPoints(prev => [...prev]); // to trigger a re-render
     }, []);
 
+    const canRotateCWBy45Deg = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved]);
 
+    const canRotateCCWBy45Deg = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canScaleUp = useMemo(() => testScaling(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy });
     useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete });
     useHotkeys(hotkeyMap['add nodes'], addEntityNodes, { enabled: canAddENodes });
@@ -1379,16 +1490,22 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0));
     useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1));
     useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2));
-    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(45), { enabled: testRotation(45) });
-    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-45), { enabled: testRotation(-45) });
-    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip });
-    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
-    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
-    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    useHotkeys(hotkeyMap['dec sh'], () => setShading(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['inc sh'], () => setShading(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['sh 0'], () => setShading(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['sh 1'], () => setShading(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
+    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg });
+    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg });
+    useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)));
+    useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: canScaleUp });
+    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip });
+    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
+    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
     
     
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
@@ -1640,66 +1757,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                         hFlipPossible={canHFlip} vFlipPossible={canVFlip} 
                                         logIncrements={logIncrements} transformFlags={transformFlags}
                                         testRotation={testRotation}
-                                        rotate={(angle, newValue) => {
-                                            deduplicatedSelection.forEach(item => {
-                                                ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
-                                                ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
-                                            });
-                                            adjustLimit();
-                                            setRotation(newValue);
-                                            setItemsMoved(prev => [...prev]);                                     
-                                        }}
-                                        testScaling={val => {
-                                            for (const item of deduplicatedSelection) {
-                                                const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
-                                                if (!isFinite(x) || !isFinite(y)) {
-                                                    setModalMsg(['Buzz Lightyear alert', 
-                                                        `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`]);
-                                                    setShowModal(true);
-                                                }
-                                                if (x<0 || x>MAX_X) return false;
-                                                if (y<MIN_Y || y>MAX_Y) return false;
-                                                if (transformFlags.scaleENodes && item instanceof ENode) {
-                                                    const v = item.radius100 * val/100;
-                                                    if(v<0 || v>MAX_RADIUS) return false;
-                                                }
-                                                if (transformFlags.scaleLinewidths) {
-                                                    const v = item.linewidth100 * val/100;
-                                                    if(v<0 || v>MAX_LINEWIDTH) return false;
-                                                }
-                                                if (transformFlags.scaleDash && item.dash100.some(l => {
-                                                    const v = l * val/100;
-                                                    return v<0 || v>MAX_DASH_VALUE;
-                                                })) return false;
-                                            }
-                                            return true
-                                        }}
-                                        scale={newValue => {
-                                            deduplicatedSelection.forEach(item => {
-                                                ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
-                                                if (item instanceof CNode) {
-                                                    item.dist0 = item.dist0_100 * newValue/100;
-                                                    item.dist1 = item.dist1_100 * newValue/100;
-                                                }
-                                                else if (item instanceof ENode) {
-                                                    if (transformFlags.scaleENodes) item.radius = item.radius100 * newValue/100;
-                                                    if (transformFlags.scaleLinewidths) item.linewidth = item.linewidth100 * newValue/100;
-                                                    if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
-                                                }
-                                            }); 
-                                            const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
-                                                .map(node => node.group) // An array of those NodeGroups that have members included in selection.  
-                                                .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; 
-                                            affectedNodeGroups.forEach(group => {
-                                                if (group) {
-                                                    if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
-                                                    if (transformFlags.scaleDash) group.dash = group.dash100.map(l => l * newValue/100);
-                                                }
-                                            });
-                                            adjustLimit();
-                                            setScaling(newValue);
-                                            setItemsMoved(prev => [...prev]);                                     
-                                        }}
+                                        rotate={rotateSelection}
+                                        testScaling={testScaling}
+                                        scale={scaleSelection}
                                         hFlip={hFlip}
                                         vFlip={vFlip} />
                                 </TabPanel>

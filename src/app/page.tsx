@@ -80,7 +80,7 @@ export default function Home() {
             <p>
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below, and then click either the <strong>Node</strong> or 
               the <strong>Contour</strong> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
-              with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the grey area further below. 
+              with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the text area below the canvas. 
               To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
               You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
             </p>
@@ -94,10 +94,10 @@ export default function Home() {
             </h3>
             <table>
               <colgroup>
-                <col className='w-[160px]' />
+                <col className='w-[150px]' />
               </colgroup>              
               <thead>
-                <tr className='border-b-4 border-btnborder/50'>
+                <tr className='border-b-2 border-btnborder/50'>
                     <th className='text-left px-4 py-3'>Shortcut</th>
                     <th className='text-left px-4 py-3'>Action</th>
                 </tr>
@@ -112,11 +112,11 @@ export default function Home() {
                     <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((key, j, arr) => (
                        <React.Fragment key={j}>
                         {isDarkMode? <span className='font-mono'>{key}</span>: <kbd>{key}</kbd>}
-                        {j===arr.length-1? null: isDarkMode? <>, </>: <> ,&nbsp; </>}
+                        {j===arr.length-1? null: isDarkMode? <>, </>: <>&thinsp;, &thinsp;</>}
                       </React.Fragment>
                     ))}
                     </td>
-                    <td className='pl-4 pr-6 py-2'>{it.descr}</td>
+                    <td className='pl-4 pr-6 py-2'>{isDarkMode && it.descrDark? it.descrDark: it.descr}</td>
                   </tr>
                 ))}
             </tbody>
