@@ -161,10 +161,10 @@ export const hotkeys: HotkeyInfo[] = [
         (where applicable) in its currently highest active group.</> },
     { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of the currently focused node or its highest active group {' '}
         (where applicable) in its currently lowest inactive group.</> },
-    { key: 'dissolve', keys: 'k', rep: ['K'], descr: <>Deactivate the membership of each member of the currently focused node's highest active group.</> },
-    { key: 'restore', keys: 'l', rep: ['L'], descr: <>Reactivate the membership of each member of the currently focused node's highest active group.</> },
+    { key: 'dissolve', keys: 'k', rep: ['K'], descr: <>Deactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
+    { key: 'restore', keys: 'l', rep: ['L'], descr: <>Reactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
     { key: 'adding', keys: 'comma', rep: [','], descr: <>Activate the &lsquo;adding&rsquo; mode: selecting nodes will add them to the currently {' '}
-        focused node's highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
+        focused node&apos;s highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
     { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Activate dissolve-adding. This mode can be {' '}
         deactivated by clicking on the canvas or by activating adding.</> },
     { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
