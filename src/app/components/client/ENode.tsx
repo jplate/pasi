@@ -1,9 +1,10 @@
 import React from 'react';
-import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, MAX_LINEWIDTH, HSL, Range } from './Item.tsx'
+import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
-import { validInt, validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
+import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import NodeGroup from './NodeGroup.tsx'
+import * as Texdraw from '../../codec/Texdraw.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -17,6 +18,7 @@ export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9
 export const MAX_RADIUS = 9999
 export const MIN_RADIUS_FOR_INNER_TITLE = 5
 export const TITLE_FONTSIZE = 9
+
 
 export default class ENode extends Item {
 
@@ -132,6 +134,20 @@ export default class ENode extends Item {
                 return [(item, array) => array, 'onlyThis']        
        }
     }
+
+    public override getTexdrawCode() {
+		return super.getTexdrawCode() + (
+            this.shading>0 || this.linewidth>0?
+            (Texdraw.move(this.x, this.y) + 
+                (this.shading>0? Texdraw.fcirc(this.radius, this.shading): '') +
+                (this.linewidth>0? (
+                    (this.dash.length>0? Texdraw.linePattern(this.dash): '') + 
+                    Texdraw.circ(this.radius) +
+                    (this.dash.length>0? Texdraw.linePattern([]): '')
+                ): '')
+            ): ''
+        );			        
+	}	
 }
 
 
@@ -198,7 +214,9 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, tit
                         `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                     stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                     strokeWidth={linewidth}
-                    strokeDasharray={enode.dash.join(' ')} />
+                    strokeDasharray={enode.dash.join(' ')} 
+                    strokeLinecap={LINECAP_STYLE}
+                    strokeLinejoin={LINEJOIN_STYLE} />
                 <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
                 <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
                 <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />

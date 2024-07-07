@@ -1,8 +1,11 @@
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
+import React from 'react'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
 import Group from './Group.tsx'
-import { H, MARK_LINEWIDTH, MAX_X, MAX_Y, MIN_Y, round, ROUNDING_DIGITS } from './MainPanel.tsx'
+import { H, MARK_LINEWIDTH, MAX_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
-import CNode from './CNode.tsx'
+import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
+import ENode from './ENode'
+import { round } from '../../util/MathTools.tsx'
 
 const STANDARD_CONTOUR_HEIGHT = 80
 const STANDARD_CONTOUR_WIDTH = 120
@@ -96,12 +99,18 @@ export default class NodeGroup implements Group<CNode> {
         return { minX, maxX, minY, maxY }
     }
 
-    /** Returns the 'nodal center' of this NodeGroup, i.e., the non-weighted average of its members' locations.
+    /** Returns the geometric center of this NodeGroup, i.e., the average of the locations of its members nodes.
      */
-    public getNodalCenter = () => ({
-        x: (this.members.reduce((acc, m) => m.x<acc? m.x: acc, Infinity) + this.members.reduce((acc, m) => m.x>acc? m.x: acc, -Infinity)) / 2,
-        y: (this.members.reduce((acc, m) => m.y<acc? m.y: acc, Infinity) + this.members.reduce((acc, m) => m.y>acc? m.y: acc, -Infinity)) / 2
-    });
+    public getNodalCenter = () => {
+        const n = this.members.length;
+        let xSum = 0,
+            ySum = 0;
+        this.members.forEach(m => {
+            xSum += m.x;
+            ySum += m.y;
+        });        
+        return {x: xSum/n, y: ySum/n};
+    }
 
 
     public getString = () => `NG[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
@@ -197,41 +206,46 @@ export default class NodeGroup implements Group<CNode> {
 
         const e = 10 ** -(ROUNDING_DIGITS+1);       
         const inc = 2*Math.PI/n;
-        let c, newC = this.getNodalCenter();
+        let newC = this.getNodalCenter(),
+            c = newC;
+        // Starting from focus, record the first two consecutive nodes that straddle the vertical center line. If n is even, then these two nodes will be placed symmetrically 
+        // (as far as their central angles are concerned) with respect to this line, either above the center or below it, depending on where a straight line between the two nodes 
+        // would cross the center line. If n is odd, then the first node will be placed directly above or below the center point.
+        let p0 = node,
+            p1 = p0, 
+            i0 = index, 
+            i1;
+        for (let i = 1; i<n; i++) {
+            const j = index + i;
+            const k = j>=n? j-n: j;
+            p1 = this.members[k];
+            i1 = k;
+            if ((p0.x<=c.x && p1.x>=c.x) || (p1.x<=c.x && p0.x>=c.x)) break;
+            p0 = p1;
+            i0 = i1;
+        }
+        // Compute the y-value of where a straight line from p0 to p1 would cross the center line:
+        const dx = p0.x - p1.x;
+        let crossing;
+        if (dx !== 0) {
+            const slope = (p0.y - p1.y) / dx;
+            const yIntercept = p0.y - slope * p0.x;
+            crossing = slope * c.x + yIntercept;
+        }
+        else {
+            crossing = (p0.y + p1.y) / 2;
+        }
+
+        const dir = ((p0.x>c.x && crossing<c.y) || (p0.x<c.x && crossing>c.y))? -1: 1; // -1 means we're proceeding in a clockwise direction when arranging the nodes.
+        const a0 = ((crossing>c.y? 1: -1) * Math.PI - (n%2!==0? 0: dir*inc)) / 2; // the starting angle
 
         do { // Adjusting angles can move the center. We'll repeat the process until the center stops moving by more than e.
             c = newC;
-            // Starting from focus, record the first two consecutive nodes that straddle the vertical center line. If n is even, then these two nodes will be placed symmetrically 
-            // (as far as their central angles are concerned) with respect to this line, either above the center or below it, depending on where a straight line between the two nodes 
-            // would cross the center line. If n is odd, then first node will be placed directly above or below the center point.
-            let p0 = node,
-                p1 = p0, 
-                i0 = index, 
-                i1;
-            for (let i = 1; i<n; i++) {
-                const j = index + i;
-                const k = j>=n? j-n: j;
-                p1 = this.members[k];
-                i1 = k;
-                if ((p0.x<=c.x && p1.x>=c.x) || (p1.x<=c.x && p0.x>=c.x)) break;
-                p0 = p1;
-                i0 = i1;
-            }
-            // Compute the y-value of where a straight line from p0 to p1 would cross the center line:
-            const slope = (p0.y - p1.y) / (p0.x - p1.x);
-            const yIntercept = p0.y - slope * p0.x;
-            const crossing = slope * c.x + yIntercept;
-
-            // Now we place the nodes:
-            const dir = ((p0.x>c.x && crossing<c.y) || (p0.x<c.x && crossing>c.y))? -1: 1; // -1 means we're proceeding in a clockwise direction when arranging the nodes.
-            const start = i0;
-            for (
-                let i = 0,
-                    angle = ((crossing>c.y? 1: -1) * Math.PI - (n%2!==0? 0: dir*inc)) / 2;
+            for (let i = 0, angle = a0;
                 i < n;
                 i++, angle += dir*inc
             ) {
-                const j = start + i;
+                const j = i0 + i;
                 const k = j>=n? j-n: j;
                 const m = this.members[k];
                 const d = Math.sqrt((m.x - c.x) ** 2 + (m.y - c.y) ** 2);
@@ -257,28 +271,14 @@ export default class NodeGroup implements Group<CNode> {
         const n = this.members.length;
         if (n<3) return; // Nothing to do if n is less than 3.
        
-        const e = 10 ** -(ROUNDING_DIGITS+1);       
-        let c = this.getNodalCenter(),
-            newC = c;
+        let c = this.getNodalCenter();
         const d = Math.sqrt((node.x - c.x) ** 2 + (node.y - c.y) ** 2);
-        
-        do {
-            c = newC;
-            this.members.forEach(m => {
-                const a = angle(c.x, c.y, m.x, m.y, true);
-                m.x = c.x + Math.cos(a) * d;
-                m.y = c.y + Math.sin(a) * d;
-            });
-            newC = this.getNodalCenter();
-        } 
-        while (Math.abs(newC.x-c.x)>e || Math.abs(newC.y-c.y)>e);
-
-        // Finally, we round all coordinates to the nearest (e/10)th.
         const factor = 10 ** ROUNDING_DIGITS;
+        
         this.members.forEach(m => {
-            // We apply extra rounding because the division by factor can yield numbers that differ from the intended values by a tiny amount.
-            m.x = m.x100 = round(Math.round(m.x * factor) / factor, ROUNDING_DIGITS);
-            m.y = m.y100 = round(Math.round(m.y * factor) / factor, ROUNDING_DIGITS);
+            const a = angle(c.x, c.y, m.x, m.y, true);
+            m.x = m.x100 = round(Math.round((c.x + Math.cos(a) * d) * factor) / factor, ROUNDING_DIGITS);
+            m.y = m.y100 = round(Math.round((c.y + Math.sin(a) * d) * factor) / factor, ROUNDING_DIGITS);
         });
     }
 }
@@ -349,6 +349,7 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
         
         const cdW = Math.min((maxX - minX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
         const cdH = Math.min((maxY - minY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
+        const c = group.getNodalCenter();
 
         return (
             <>
@@ -365,7 +366,9 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
                                 fill='none'
                                 stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                                 strokeWidth={linewidth}
-                                strokeDasharray={dash.join(' ')} />
+                                strokeDasharray={dash.join(' ')} 
+                                strokeLinecap={LINECAP_STYLE}
+                                strokeLinejoin={LINEJOIN_STYLE} />
                         }
                         {shading>0 && 
                             <path d={fillPath}  
@@ -387,8 +390,8 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
                             onMouseLeave={(e) => onMouseLeave(group, e)}
                             style={{                
                                 position: 'absolute',
-                                left: `${(minX + maxX - cdW)/2 - mlw}px`,
-                                top: `${H + yOffset - (minY + maxY + cdH)/2 - mlw}px`,
+                                left: `${c.x - cdW/2 - mlw/2}px`,
+                                top: `${H + yOffset - c.y - cdH/2 - mlw}px`,
                                 cursor: centerDivClickable? 'pointer': 'auto',
                                 pointerEvents: centerDivClickable? 'auto': 'none'
 
@@ -402,4 +405,103 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
         );
     }
     else return null
+}
+
+interface NodeGroupCompProps {
+    id: string
+    nodeGroup: NodeGroup
+    focusItem: Item | null
+    preselection: Item[]
+    selection: Item[]
+    allNodes: Item[]
+    yOffset: number
+    bg: HSL
+    primaryColor: HSL
+    markColor: string
+    itemMouseDown: (
+        item: Item, 
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>, 
+        clearPreselection?: boolean
+    ) => void
+    itemMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    groupMouseDown: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    groupMouseEnter: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    mouseLeft: () => void
+}
+
+export const NodeGroupComp = ({nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
+        itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft}: NodeGroupCompProps) => {
+    const centerDivClickable = !allNodes.some(item => {
+        if (item instanceof ENode || item instanceof CNode) {
+            const r = item.radius;
+            const { minX, maxX, minY, maxY } = nodeGroup.getBounds();
+            const gx = (minX+maxX)/2;
+            const gy = (minY+maxY)/2;
+            const { x, y } = item;
+            return Math.abs(gx-x)+r < CONTOUR_CENTER_DIV_MAX_WIDTH/2 && Math.abs(gy-y)+r < CONTOUR_CENTER_DIV_MAX_HEIGHT/2;
+        }
+        else {
+            return false;
+        }
+    });
+    // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
+    // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.
+    let allSelected = true,
+        someSelected = false,
+        allPreselected = true;
+    const selectedNodes = nodeGroup.members.map(m => {
+        if (selection.includes(m)) return someSelected = true;
+        else return allSelected = false;
+    });
+    const preselectedNodes = nodeGroup.members.map(m => {
+        if (preselection.includes(m)) return true;
+        else return allPreselected = false
+    });
+    const last = nodeGroup.members.length-1;
+    const arrowNodes: boolean[] = new Array(last+1).fill(false);
+    let defer = false;
+    for (let i = 0; i<=1 && (i==0 || defer); i++) {
+        for (let j = 0; j<=last && (i==0 || defer); j++) {
+            const node = nodeGroup.members[j];
+            const selected = selectedNodes[j];
+            const preselected = preselectedNodes[j];
+            const next = nodeGroup.members[j==last? 0: j+1];
+            const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
+            const arrow = (selected && (defer || (allSelected && j==0) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
+                (preselected && (defer || (!someSelected && allPreselected && j==0) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
+            if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
+                defer = true;
+            }
+            else {
+                defer = false;
+            }
+            arrowNodes[j] = arrow && !defer;
+        }
+    }
+    return (
+        <React.Fragment key={nodeGroup.id}>
+            <Contour key={nodeGroup.id} id={nodeGroup.id+'Contour'} group={nodeGroup} yOffset={yOffset} 
+                selected={selectedNodes.some(b => b)}
+                preselected={preselectedNodes.some(b => b)}
+                bg={bg} 
+                primaryColor={primaryColor} 
+                markColor={markColor} 
+                centerDivClickable={centerDivClickable}
+                showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles && nodeGroup.members.includes(focusItem)}
+                onMouseDown={groupMouseDown}
+                onMouseEnter={groupMouseEnter} 
+                onMouseLeave={(group, e) => mouseLeft()} />
+            {nodeGroup.members.map((node, i) => {
+                return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
+                    markColor={markColor}
+                    focus={focusItem===node}
+                    selected={selectedNodes[i]}
+                    preselected={preselectedNodes[i]}
+                    arrow={arrowNodes[i]}
+                    onMouseDown={itemMouseDown}
+                    onMouseEnter={itemMouseEnter} 
+                    onMouseLeave={(item, e) => mouseLeft()} />
+            })}
+        </React.Fragment>
+    );
 }

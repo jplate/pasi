@@ -2,7 +2,7 @@ import type { Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
 import ENode from './ENode.tsx'
 import NodeGroup from './NodeGroup.tsx'
-import { DashValidator } from './EditorComponents.tsx'
+import * as Texdraw from '../../codec/Texdraw.tsx'
 
 export const CLOCKWISE = 0;
 export const COUNTERCLOCKWISE = 1;
@@ -15,13 +15,15 @@ export const MAX_VALUE = 16384;
  * The lowest value that item parameters should be allowed to take (to prevent crashes).
  */
 export const MIN_VALUE = -MAX_VALUE; 
-export const MAX_LINEWIDTH = 999;
+export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
 export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 
 export const DEFAULT_LINEWIDTH = 1.0;
 export const DEFAULT_DASH = [];
 export const DEFAULT_SHADING = 0.0; // 0=white (transparent), 1=black
+export const LINECAP_STYLE = 'round';
+export const LINEJOIN_STYLE = 'round';
 
 export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
 export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
@@ -119,6 +121,10 @@ export default class Item implements GroupMember {
         this.linewidth = this.linewidth100 = DEFAULT_LINEWIDTH;
         this.dash = this.dash100 = DEFAULT_DASH;
         this.shading = DEFAULT_SHADING;
+    }
+
+    public getTexdrawCode() {
+        return Texdraw.linewidth(this.linewidth);
     }
 
 }

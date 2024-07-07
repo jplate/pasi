@@ -6,7 +6,7 @@ import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
 import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Item.tsx'
-import { BasicButton, BasicColoredButton } from './Button.tsx'
+import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, validFloat, getCyclicValue } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
@@ -15,9 +15,11 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { CNodeComp, MAX_NODEGROUP_SIZE, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, DEFAULT_DISTANCE  } from './CNode.tsx'
-import NodeGroup, { Contour, CONTOUR_CENTER_DIV_MAX_WIDTH, CONTOUR_CENTER_DIV_MAX_HEIGHT } from './NodeGroup.tsx'
+import CNode, { MAX_NODEGROUP_SIZE, DEFAULT_DISTANCE  } from './CNode.tsx'
+import NodeGroup, { NodeGroupComp } from './NodeGroup.tsx'
+import { round, rotatePoint, scalePoint } from '../../util/MathTools'
 import copy from './Copying'
+import { getCode } from '../../codec/Codec1.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -94,29 +96,34 @@ interface HotkeyInfo {
     descrDark?: JSX.Element
 }
 
-const scalingHotkeyDescrRump = (darkMode: boolean): JSX.Element => (
+const transformHotkeyDescrRump = (s1: string, s2: string, units: string, addExplanation: boolean, darkMode: boolean): JSX.Element => (
     <>
-        the scaling of the selection by 10<sup><i>n</i></sup> percentage points, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
-        (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}) and is selected by the keys &thinsp;
-        {darkMode? 
-            <><span className='font-mono'>{1}</span>&ndash;<span className='font-mono'>{4}</span></>: 
-            <><kbd>1</kbd>&thinsp;&ndash;&thinsp;<kbd>4</kbd>&thinsp;</>
+        {s1} selection {s2} by 10<sup><i>n</i></sup> {units}, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
+        (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}).&nbsp; 
+        {addExplanation? <>The value of <i>n</i>&thinsp; can be set by using the keys &thinsp;
+            {darkMode? 
+                <><span className='font-mono'>{1}</span>&ndash;<span className='font-mono'>{4}</span></>: 
+                <><kbd>1</kbd>&thinsp;&ndash;&thinsp;<kbd>4</kbd>&thinsp;</>
+            }.</>:
+            null
         }
     </>
 );
 
 const scaleDownHotkeyDescr = (darkMode: boolean): JSX.Element => (
-    <>Decreases {scalingHotkeyDescrRump(darkMode)}. The value of 100% corresponds to the size of the selection at the time it was initiated.</>
+    <>Decrease {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', false, darkMode)} {' '}
+    The value of 100% corresponds to the size of the selection&mdash;as measured by the distances between selected nodes&mdash;at the time it was initiated. {' '}
+    Scaling is affected by the relevant options listed in the &lsquo;Transform&rsquo; tab.</>
 );
 
 const scaleUpHotkeyDescr = (darkMode: boolean): JSX.Element => (
-    <>Increases {scalingHotkeyDescrRump(darkMode)}.</>
+    <>Increase {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', true, darkMode)}</>
 );
 
 export const hotkeys: HotkeyInfo[] = [
     { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
     { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
-    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection.</> },
+    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection. (Tip: by copying individual members of a group, new members can be added to that group.)</> },
     { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
     { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
     { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
@@ -130,19 +137,39 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'sh 0', keys: '7', rep: ['7'], descr: <>Set shading to 0.</> },
     { key: 'sh 1', keys: 'shift+7', rep: ['Shift+7'], descr: <>Set shading to 1.</> },
     { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
-    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels.</> },
+    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels (maximum: {MAX_LINEWIDTH} pixels).</> },
     { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
     { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
     { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
     { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
-    { key: 'rotate counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
-    { key: 'rotate clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees.</> },
+    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
+    { key: 'rotate by 45° counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
+    { key: 'rotate counter-clockwise', keys: 'shift+q', rep: ['Shift+Q'], 
+        descr: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, false)}</>,
+        descrDark: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, true)}</> },
+    { key: 'rotate by 45° clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees.</> },
+    { key: 'rotate clockwise', keys: 'shift+e', rep: ['Shift+E'], 
+        descr: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, false)}</>,
+        descrDark: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, true)}</> },
     { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours counter-clockwise by 180 / <i>n</i> degrees, where{' '}
         <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
     { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
     { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
-    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
+    { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains the selected nodes or, where applicable, their respective {' '}
+        highest active groups. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
+    { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of the currently focused node or its second-highest active group {' '}
+        (where applicable) in its currently highest active group.</> },
+    { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of the currently focused node or its highest active group {' '}
+        (where applicable) in its currently lowest inactive group.</> },
+    { key: 'dissolve', keys: 'k', rep: ['K'], descr: <>Deactivate the membership of each member of the currently focused node's highest active group.</> },
+    { key: 'restore', keys: 'l', rep: ['L'], descr: <>Reactivate the membership of each member of the currently focused node's highest active group.</> },
+    { key: 'adding', keys: 'comma', rep: [','], descr: <>Activate the &lsquo;adding&rsquo; mode: selecting nodes will add them to the currently {' '}
+        focused node's highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
+    { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Activate dissolve-adding. This mode can be {' '}
+        deactivated by clicking on the canvas or by activating adding.</> },
     { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
+    { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
+    { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram.</> }
   ];
 
 const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
@@ -196,19 +223,17 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
             if (it instanceof NodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
                 const overlap = it.members.filter(m => selection.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
-                    const { minX, maxX, minY, maxY } = it.getBounds();
-                    const cx = (minX+maxX)/2;
-                    const cy = (minY+maxY)/2;
-                    const dc = Math.sqrt(Math.pow(x-cx, 2) + Math.pow(y-cy, 2));
+                    const c = it.getNodalCenter();
+                    const dc = Math.sqrt(Math.pow(x-c.x, 2) + Math.pow(y-c.y, 2));
                     if (dc<d || (snappingToGrid && dc<CONTOUR_CENTER_SNAP_RADIUS)) {
                         snappingToGrid = false;
-                        rx = cx;
-                        ry = cy;
+                        rx = c.x;
+                        ry = c.y;
                         d = dc;
                     }
                     if (dccDx!==undefined && dccDy!==undefined) { // If we're dragging a contour, its center should snap to the centers of other contours.
-                        const dx = x + dccDx - cx;
-                        const dy = y + dccDy - cy;
+                        const dx = x + dccDx - c.x;
+                        const dy = y + dccDy - c.y;
                         const ddc = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
                         if (ddc<d || (snappingToGrid && ddc<CONTOUR_CENTER_SNAP_RADIUS)) {
                             snappingToGrid = false;
@@ -271,63 +296,6 @@ const depItemLabels = [
     new DepItemLabel('Single hook, curved', prdSrc, 'An arrow with a single curved hook (cubic)'),
     new DepItemLabel('Single hook, straight', orpSrc, 'An arrow with a single straight hook'),
 ];
-
-
-/**
- * For n = 0,...,digits, rounds to nearest (10^n)th if the difference to that value is less than 10^-(n+5). Used for avoiding the compounding of slight rounding errors.
- */
-export const round = (num: number, digits: number): number => { 
-    for (let n = 0; n <= digits; n++) {
-        const factor = 10 ** n;
-        const e = 10 ** -(n + 5);
-        const rounded = Math.round(num*factor) / factor;
-        if (Math.abs(rounded-num) < e) return rounded;
-    }
-    return num;
-}
-
-/**
- * Rotates a point around another point by a given angle.
- * @returns The new coordinates {x, y} of the rotated point.
- */
-const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number): { x: number, y: number } => {
-    // Convert angle from degrees to radians
-    const radians: number = angle * Math.PI / 180;
-
-    // Translate point to origin
-    const translatedX: number = px - cx;
-    const translatedY: number = py - cy;
-
-    // Rotate point, and apply rounding to get rid of tiny rounding errors that would otherwise accumulate:
-    const rotatedX: number = round(translatedX * Math.cos(radians) - translatedY * Math.sin(radians), ROUNDING_DIGITS);
-    const rotatedY: number = round(translatedX * Math.sin(radians) + translatedY * Math.cos(radians), ROUNDING_DIGITS);
-
-    // Translate point back
-    const finalX: number = rotatedX + cx;
-    const finalY: number = rotatedY + cy;
-
-    return { x: finalX, y: finalY };
-}
-
-/**
- * Scales a point around a specified origin by a given scale factor.
- * @returns The new coordinates {x, y} of the scaled point.
- */
-const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number, y: number } => {
-    // Translate point to the origin
-    const translatedX = px - ox;
-    const translatedY = py - oy;
-
-    // Scale the point
-    const scaledX = translatedX * scaleFactor;
-    const scaledY = translatedY * scaleFactor;
-
-    // Translate point back
-    const finalX = scaledX + ox;
-    const finalY = scaledY + oy;
-
-    return { x: finalX, y: finalY };
-}
 
 
 const highestActive = (item: Item): Item | Group<any> => {
@@ -461,11 +429,13 @@ interface MainPanelProps {
 const MainPanel = ({dark}: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
+    const codeRef = useRef<HTMLTextAreaElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel))
     const [pixel, setPixel] = useState(1.0)
     const [replace, setReplace] = useState(true)
     const [points, setPoints] = useState<Point[]>([])
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
+    const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
     const [list, setList] = useState<(ENode | NodeGroup)[]>([])
     const [enodeCounter, setEnodeCounter] = useState(0) // used for generating keys
     const [nodeGroupCounter, setNodeGroupCounter] = useState(0) // used for generating keys
@@ -495,6 +465,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const [adding, setAdding] = useState(false)
     const [dissolveAdding, setDissolveAdding] = useState(false)
+
+    const [code, setCode] = useState<string>(''); // the texdraw code to be displayed in the code area.
 
     const [showModal, setShowModal] = useState(false)
     const [modalMsg, setModalMsg] = useState<[string, string]>(['', '']) // the first element is the content label, the second the message.
@@ -535,51 +507,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
         getTopToBeCopied(deduplicatedSelection, allNodes.filter(item => !deduplicatedSelection.includes(item))),
         [deduplicatedSelection, allNodes]
     ); 
-
-    const canCopy: boolean = useMemo(() => !(
-            deduplicatedSelection.length<1 || 
-            (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
-                list.length + 
-                    deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
-                    getNodeGroups(topTbc).length > MAX_LIST_SIZE
-            ) ||
-            (() => {
-                const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
-                const dedupTbcContainingNGs = tbcContainingNGs.filter((g, i) => i===tbcContainingNGs.indexOf(g));
-                return dedupTbcContainingNGs.some(group => group && 
-                    group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_NODEGROUP_SIZE)
-            })() ||
-            (hDisplacement<0 && leftMostSelected + hDisplacement < 0) ||
-            (vDisplacement>0 && topMostSelected + vDisplacement > MAX_Y) ||
-            (hDisplacement>0 && rightMostSelected + hDisplacement > MAX_X) ||
-            (vDisplacement<0 && bottomMostSelected + vDisplacement < MIN_Y)
-        ), [deduplicatedSelection, list, topTbc, leftMostSelected, rightMostSelected, topMostSelected, bottomMostSelected]  
-    );
-
-    const canDelete: boolean = selection.length>0;
-
-    const canAddENodes: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
-    
-    const canAddContours: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
-
-    const canMoveLeft: boolean = leftMostSelected - 10 ** logIncrement >= 0;
-
-    const canMoveRight: boolean = rightMostSelected + 10 ** logIncrement <= MAX_X;
-
-    const canMoveUp: boolean = topMostSelected + 10 ** logIncrement <= MAX_Y;
-
-    const canMoveDown: boolean = bottomMostSelected - 10 ** logIncrement >= MIN_Y;
-
-    const canHFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
-        const x = 2*origin.x - item.x; // simulate hFlip on item
-        return x<0 || x>MAX_X;
-    }), [deduplicatedSelection, origin, points, itemsMoved]);
-
-    const canVFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
-        const y = 2*origin.y - item.y; // simulate vFlip on item
-        return y<MIN_Y || y>MAX_Y;
-    }), [deduplicatedSelection, origin, points, itemsMoved]);
-
 
 
     /**
@@ -921,7 +848,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 item.move(dx, dy)
                             }
                         });
-                        setPoints(prev=> [...prev]);  // to trigger a re-render 
+                        setItemsDragged(prev=> [...prev]);  // to trigger a re-render 
                     }
                 };            
 
@@ -1243,6 +1170,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, [deduplicatedSelection, list, yOffset, limit]);
 
 
+
     /**
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers for its various child components. 
      * In particular, these handlers will call itemChange with an input element (or null) and a key that is obtained from the focusItem through Item.getInfo().
@@ -1304,7 +1232,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const testRotation = useCallback((angle: number) => {
         for(const item of deduplicatedSelection) {
-            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle);
+            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle, ROUNDING_DIGITS);
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
         }
@@ -1346,8 +1274,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const rotateSelection = useCallback((angle: number) => {
         deduplicatedSelection.forEach(item => {
-            ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle));
-            ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle))                              
+            ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
+            ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle, ROUNDING_DIGITS))                              
         });
         adjustLimit(list, yOffset, limit);
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
@@ -1361,8 +1289,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         deduplicatedSelection.forEach(item => {
             ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
             if (item instanceof CNode) {
-                item.dist0 = item.dist0_100 * newValue/100;
-                item.dist1 = item.dist1_100 * newValue/100;
+                item.dist0 = round(item.dist0_100 * newValue/100, ROUNDING_DIGITS);
+                item.dist1 = round(item.dist1_100 * newValue/100, ROUNDING_DIGITS);
             }
             else if (item instanceof ENode) {
                 if (transformFlags.scaleENodes) item.radius = item.radius100 * newValue/100;
@@ -1439,8 +1367,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const c = g.getNodalCenter();
             const angle = 180 / g.members.length;
             g.members.forEach(node => {
-                ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle));
-                ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle));
+                ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle, ROUNDING_DIGITS));
+                ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle, ROUNDING_DIGITS));
             });
         });
         setItemsMoved(prev => [...prev]);
@@ -1472,20 +1400,165 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setPoints(prev => [...prev]); // to trigger a re-render
     }, []);
 
-    const canRotateCWBy45Deg = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    /**
+     * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
+     */
+    const createGroup = useCallback(() => {
+        let group: Group<any>;
+        if (topTbc.every(m => m instanceof CNode)) {
+            group = new NodeGroup(nodeGroupCounter);
+            group.members = topTbc;
+            setNodeGroupCounter(prev => prev+1);
+            setList(prev => [...prev, group as NodeGroup]);
+        }                                                
+        else {
+            group = new StandardGroup<Item | Group<any>>(topTbc);
+        }
+        const oldGroups = topTbc.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
+        oldGroups.forEach(g => {
+            if (g) {
+                g.members = g.members.filter(m => !topTbc.includes(m));
+                if (g.members.length==0) setList(prev => purge(g, prev));
+            }
+        });
+        topTbc.forEach(member => {
+            member.group = group;
+            member.isActiveMember = true;
+        });
+        if (focusItem) adjustSelection(focusItem);                                 
+    }, [topTbc, focusItem]);
 
-    const canRotateCCWBy45Deg = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const leaveGroup = useCallback(() => {
+        if (focusItem) {
+            const groups = getGroups(focusItem);
+            const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
+            member.isActiveMember = false;
+            if (member instanceof Item) {
+                setAdding(prev => false);
+                setDissolveAdding(prev => false);
+            }
+            adjustSelection(focusItem);
+        }
+    }, [focusItem]);
 
-    const canScaleUp = useMemo(() => testScaling(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const rejoinGroup = useCallback(() => {
+        if (focusItem) {
+            const member = highestActive(focusItem);
+            if(member.group) member.isActiveMember = true;
+            adjustSelection(focusItem);                                 
+        }
+    }, [focusItem]);
+
+    const dissolveGroup = useCallback(() => {
+        if (focusItem) {
+            const group = highestActive(focusItem);
+            if (!(group instanceof Item)) {
+                const { members } = group;
+                members.forEach(m => m.isActiveMember = false);
+            }
+            const ha = highestActive(focusItem);
+            if (ha instanceof Item) {
+                setAdding(prev => false);
+                setDissolveAdding(prev => false);
+            }
+            adjustSelection(focusItem);
+        }
+    }, [focusItem]);
+
+    const restoreGroup = useCallback(() => {
+        if (focusItem) {
+            const ha = highestActive(focusItem);
+            if (!(ha instanceof Item)) {
+                ha.members.forEach(m => m.isActiveMember=true);
+            }
+            adjustSelection(focusItem);                                 
+        }
+    }, [focusItem]);
+
+    const displayCode = useCallback(() => {
+        setCode(prev => getCode(list, pixel))
+    }, [list, pixel]);
+
+    const canCopy: boolean = useMemo(() => !(
+        deduplicatedSelection.length<1 || 
+        (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
+            list.length + 
+                deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
+                getNodeGroups(topTbc).length > MAX_LIST_SIZE
+        ) ||
+        (() => {
+            const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
+            const dedupTbcContainingNGs = tbcContainingNGs.filter((g, i) => i===tbcContainingNGs.indexOf(g));
+            return dedupTbcContainingNGs.some(group => group && 
+                group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_NODEGROUP_SIZE)
+        })() ||
+        (hDisplacement<0 && leftMostSelected + hDisplacement < 0) ||
+        (vDisplacement>0 && topMostSelected + vDisplacement > MAX_Y) ||
+        (hDisplacement>0 && rightMostSelected + hDisplacement > MAX_X) ||
+        (vDisplacement<0 && bottomMostSelected + vDisplacement < MIN_Y)
+    ), [deduplicatedSelection, list, topTbc, leftMostSelected, rightMostSelected, topMostSelected, bottomMostSelected]);
+
+    const canDelete: boolean = selection.length>0;
+
+    const canAddENodes: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
+
+    const canAddContours: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
+
+    const canMoveLeft: boolean = leftMostSelected - 10 ** logIncrement >= 0;
+
+    const canMoveRight: boolean = rightMostSelected + 10 ** logIncrement <= MAX_X;
+
+    const canMoveUp: boolean = topMostSelected + 10 ** logIncrement <= MAX_Y;
+
+    const canMoveDown: boolean = bottomMostSelected - 10 ** logIncrement >= MIN_Y;
+
+    const canHFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
+        const x = 2*origin.x - item.x; // simulate hFlip on item
+        return x<0 || x>MAX_X;
+    }), [deduplicatedSelection, origin, points, itemsMoved]);
+
+    const canVFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
+        const y = 2*origin.y - item.y; // simulate vFlip on item
+        return y<MIN_Y || y>MAX_Y;
+    }), [deduplicatedSelection, origin, points, itemsMoved]);
+
+    const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canRotateCW: boolean = useMemo(() => testRotation(-(10**logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canScaleUp: boolean = useMemo(() => testScaling(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
+
+    const canCreateGroup: boolean= useMemo(() => 
+        (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_NODEGROUP_SIZE &&
+            // Since creating a new NodeGroup can lead to exceeding the list size limit, we have to check whether it would.
+            (list.length < MAX_LIST_SIZE ||
+                (() => { // Here we check whether creating the new NodeGroup would lead to the deletion of at least one existing NodeGroup:
+                    const affectedNGs = topTbc.map(node => node.group).filter((g, i, arr) => i==arr.indexOf(g));
+                    return affectedNGs.some(g => g && g.members.every(m => topTbc.includes(m)));
+                })()
+            )
+        ) ||
+        (topTbc.every(m => !(m instanceof CNode)) &&
+            topTbc.reduce((acc, it) => {
+                const d = depth(it);
+                return acc>d? acc: d;
+            }, 0) < MAX_GROUP_LEVEL
+        ), [topTbc]
+    );
     
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy });
     useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete });
+    useHotkeys(hotkeyMap['clear points'], () => setPoints(prev => []), { preventDefault: true });
     useHotkeys(hotkeyMap['add nodes'], addEntityNodes, { enabled: canAddENodes });
     useHotkeys(hotkeyMap['add contours'], addContours, { enabled: canAddContours });
-    useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), { enabled: canMoveUp });
-    useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), { enabled: canMoveLeft });
-    useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), { enabled: canMoveDown });
-    useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), { enabled: canMoveRight });
+    useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), { enabled: canMoveUp, preventDefault: true });
+    useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), { enabled: canMoveLeft, preventDefault: true });
+    useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), { enabled: canMoveDown, preventDefault: true });
+    useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), { enabled: canMoveRight, preventDefault: true });
     useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1));
     useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0));
     useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1));
@@ -1498,14 +1571,24 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
     useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg });
-    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg });
+    useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg });
+    useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg });
+    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW });
+    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW });
     useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)));
     useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: canScaleUp });
     useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip });
     useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
     useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
     useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
+    useHotkeys(hotkeyMap['create group'], createGroup, { enabled: canCreateGroup });
+    useHotkeys(hotkeyMap['leave'], leaveGroup, { enabled: focusItem!==null });
+    useHotkeys(hotkeyMap['rejoin'], rejoinGroup, { enabled: focusItem!==null });
+    useHotkeys(hotkeyMap['dissolve'], dissolveGroup, { enabled: focusItem!==null });
+    useHotkeys(hotkeyMap['restore'], restoreGroup);
+    useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null });
+    useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null });
+    useHotkeys(hotkeyMap['generate code'], displayCode);
     
     
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
@@ -1531,9 +1614,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
                     <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
                             onMouseDown={canvasMouseDown} >
-                        {list.flatMap((it, i) => 
+                        {list.map((it, i) => 
                             it instanceof ENode?
-                            [<ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
+                            <ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                                 titleColor={dark && it.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
@@ -1542,85 +1625,29 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 preselected={preselection2.includes(it)}
                                 onMouseDown={itemMouseDown}
                                 onMouseEnter={itemMouseEnter} 
-                                onMouseLeave={(item, e) => mouseLeft()} />]
-                            :
-                            it instanceof NodeGroup? (() => {
-                                const centerDivClickable = !allNodes.some(item => {
-                                    if (item instanceof ENode || item instanceof CNode) {
-                                        const r = item.radius;
-                                        const { minX, maxX, minY, maxY } = it.getBounds();
-                                        const gx = (minX+maxX)/2;
-                                        const gy = (minY+maxY)/2;
-                                        const { x, y } = item;
-                                        return Math.abs(gx-x)+r < CONTOUR_CENTER_DIV_MAX_WIDTH/2 && Math.abs(gy-y)+r < CONTOUR_CENTER_DIV_MAX_HEIGHT/2;
-                                    }
-                                    else {
-                                        return false;
-                                    }
-                                });
-                                // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
-                                // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.
-                                let allSelected = true,
-                                    someSelected = false,
-                                    allPreselected = true;
-                                const selectedNodes = it.members.map(m => {
-                                    if (deduplicatedSelection.includes(m)) return someSelected = true;
-                                    else return allSelected = false;
-                                });
-                                const preselectedNodes = it.members.map(m => {
-                                    if (preselection2.includes(m)) return true;
-                                    else return allPreselected = false
-                                });
-                                const last = it.members.length-1;
-                                const arrowNodes: boolean[] = new Array(last+1).fill(false);
-                                let defer = false;
-                                for (let i = 0; i<=1 && (i==0 || defer); i++) {
-                                    for (let j = 0; j<=last && (i==0 || defer); j++) {
-                                        const node = it.members[j];
-                                        const selected = selectedNodes[j];
-                                        const preselected = preselectedNodes[j];
-                                        const next = it.members[j==last? 0: j+1];
-                                        const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
-                                        const arrow = (selected && (defer || (allSelected && j==0) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
-                                            (preselected && (defer || (!someSelected && allPreselected && j==0) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
-                                        if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
-                                            defer = true;
-                                        }
-                                        else {
-                                            defer = false;
-                                        }
-                                        arrowNodes[j] = arrow && !defer;
-                                    }
-                                }
-                                return [
-                                    <Contour key={it.id} id={it.id+'Contour'} group={it} yOffset={yOffset} 
-                                        selected={selectedNodes.some(b => b)}
-                                        preselected={preselectedNodes.some(b => b)}
-                                        bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE} 
-                                        primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE} 
-                                        markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} 
-                                        centerDivClickable={centerDivClickable}
-                                        showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles && it.members.includes(focusItem)}
-                                        onMouseDown={groupMouseDown}
-                                        onMouseEnter={groupMouseEnter} 
-                                        onMouseLeave={(group, e) => mouseLeft()} />, 
-                                    ...it.members.map((node, i) => {
-                                        return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
-                                            markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
-                                            focus={focusItem===node}
-                                            selected={selectedNodes[i]}
-                                            preselected={preselectedNodes[i]}
-                                            arrow={arrowNodes[i]}
-                                            onMouseDown={itemMouseDown}
-                                            onMouseEnter={itemMouseEnter} 
-                                            onMouseLeave={(item, e) => mouseLeft()} />
-                                    })
-                                ]})()
-                            : null as never)}
+                                onMouseLeave={(item, e) => mouseLeft()} />:
+                            it instanceof NodeGroup? 
+                            <NodeGroupComp key={it.id} id={it.id} nodeGroup={it} 
+                                focusItem={focusItem}
+                                preselection={preselection2}
+                                selection={deduplicatedSelection}
+                                allNodes={allNodes}
+                                yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
+                                primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
+                                markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
+                                itemMouseDown={itemMouseDown}
+                                itemMouseEnter={itemMouseEnter}
+                                groupMouseDown={groupMouseDown}
+                                groupMouseEnter={groupMouseEnter}
+                                mouseLeft={mouseLeft}
+                            />: 
+                            null as never
+                        )}
                         {points.map(point => 
                             <PointComp key={point.id} x={point.x} y={point.y - yOffset} 
                                 primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
-                                markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />)}
+                                markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />
+                        )}
                         <style> {/* we're using polylines for the 'mark borders' of items */}
                             @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
                             polyline {'{'} stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'} 
@@ -1648,7 +1675,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 markColor='red' visible={false} /> 
                         }
                     </div>
-                    <div id='code-panel' className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] mt-[25px] shadow-inner'>
+                    <div id='code-panel' className='relative mt-[25px]'> 
+                        <textarea 
+                            className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] shadow-inner font-mono p-2 text-sm resize-none focus:outline-none'
+                            ref={codeRef}
+                            value={code}
+                            spellCheck={false}
+                            onChange={(e) => setCode(e.target.value)} />
+                        <CopyToClipboardButton id='copy-button' textareaRef={codeRef} />
                     </div>
                 </div>
                 <div id='button-panels' className={clsx('flex-grow min-w-[300px] max-w-[380px] select-none')}>
@@ -1766,73 +1800,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <TabPanel key='groups-panel' className="rounded-xl px-3 pt-3 pb-1">
                                     {focusItem &&
                                         <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
-                                            canCreate={
-                                                (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_NODEGROUP_SIZE &&
-                                                    // Since creating a new NodeGroup can lead to exceeding the list size limit, we have to check whether it would.
-                                                    (list.length < MAX_LIST_SIZE ||
-                                                        (() => { // Here we check whether creating the new NodeGroup would lead to the deletion of at least one existing NodeGroup:
-                                                            const affectedNGs = topTbc.map(node => node.group).filter((g, i, arr) => i==arr.indexOf(g));
-                                                            return affectedNGs.some(g => g && g.members.every(m => topTbc.includes(m)));
-                                                        })()
-                                                    )
-                                                ) ||
-                                                (topTbc.every(m => !(m instanceof CNode)) &&
-                                                    topTbc.reduce((acc, it) => {
-                                                        const d = depth(it);
-                                                        return acc>d? acc: d;
-                                                    }, 0) < MAX_GROUP_LEVEL
-                                                )
-                                            }
-                                            create={() => {
-                                                let group: Group<any>;
-                                                if (topTbc.every(m => m instanceof CNode)) {
-                                                    group = new NodeGroup(nodeGroupCounter);
-                                                    group.members = topTbc;
-                                                    setNodeGroupCounter(prev => prev+1);
-                                                    setList(prev => [...prev, group as NodeGroup]);
-                                                }                                                
-                                                else {
-                                                    group = new StandardGroup<Item | Group<any>>(topTbc);
-                                                }
-                                                const oldGroups = topTbc.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
-                                                oldGroups.forEach(g => {
-                                                    if (g) {
-                                                        g.members = g.members.filter(m => !topTbc.includes(m));
-                                                        if (g.members.length==0) setList(prev => purge(g, prev));
-                                                    }
-                                                });
-                                                topTbc.forEach(member => {
-                                                    member.group = group;
-                                                    member.isActiveMember = true;
-                                                });
-                                                adjustSelection(focusItem);                                 
-                                            }} 
-                                            leave={() => {
-                                                const groups = getGroups(focusItem);
-                                                const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
-                                                member.isActiveMember = false;
-                                                adjustSelection(focusItem);                                 
-                                            }}
-                                            rejoin={() => {
-                                                const member = highestActive(focusItem);
-                                                if(member.group) member.isActiveMember = true;
-                                                adjustSelection(focusItem);                                 
-                                            }}
-                                            dissolve={() => {
-                                                const group = highestActive(focusItem);
-                                                if (!(group instanceof Item)) {
-                                                    const { members } = group;
-                                                    members.forEach(m => m.isActiveMember = false);
-                                                }
-                                                adjustSelection(focusItem);
-                                            }}
-                                            restore={() => {
-                                                const ha = highestActive(focusItem);
-                                                if (!(ha instanceof Item)) {
-                                                    ha.members.forEach(m => m.isActiveMember=true);
-                                                }
-                                                adjustSelection(focusItem);                                 
-                                            }}
+                                            canCreate={canCreateGroup}
+                                            create={createGroup} 
+                                            leave={leaveGroup}
+                                            rejoin={rejoinGroup}
+                                            dissolve={dissolveGroup}
+                                            restore={restoreGroup}
                                             changeAdding={() => {
                                                 const add = !adding;
                                                 setAdding(add);
@@ -1842,8 +1815,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                                 const add = !dissolveAdding;
                                                 setDissolveAdding(add);
                                                 if (add) setAdding(!add);
-                                            }}
-                                            />
+                                            }} />
                                     }
                                 </TabPanel>
                             </TabPanels>
@@ -1878,7 +1850,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </div>
                     </div>
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                        <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} />
+                        <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} 
+                            onClick={displayCode} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
@@ -1886,7 +1859,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onChange={(e) => setPixel(parseFloat(e.target.value))}/>
                             pt
                         </div>
-                        <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} onClick={sorry} /> 
+                        <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} 
+                            onClick={sorry} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>
                     <Modal isOpen={showModal} closeTimeoutMS={750}
