@@ -102,7 +102,7 @@ export default class Item implements GroupMember {
     }
 
     public getString() {
-        return this.id
+        return this.id;
     }
 
     public setLinewidth(lw: number) {
@@ -123,8 +123,12 @@ export default class Item implements GroupMember {
         this.shading = DEFAULT_SHADING;
     }
 
-    public getTexdrawCode() {
+    public getTexdrawCode():string {
         return Texdraw.linewidth(this.linewidth);
+    }
+
+    public getInfoString(): string {
+        return '';
     }
 
 }

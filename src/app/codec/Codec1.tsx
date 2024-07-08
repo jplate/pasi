@@ -100,14 +100,14 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
     const groupInfo = [...gMap.entries()].reduce(
         (acc: string[], [g, name]) => {
             const list = g.members.reduce(
-                (acc: string[], m) => m instanceof StandardGroup? [...acc, gMap.get(m)]: acc, 
+                (acc: string[], m) => m instanceof StandardGroup? [...acc, `${m.isActiveMember? ':': '.'}${gMap.get(m)}`]: acc, 
                 []
             );
-            return list.length>0? [...acc, `${name}:${list.join(',')}`]: acc; 
+            return list.length>0? [...acc, `${name}${list.join('')}`]: acc; 
         }, []
-    ).join(';');
+    ).join(' ');
 
-    arr.push(`\\drawdim pt \\setunitscale ${pixel} ${groupInfo}`);
+    arr.push(`\\drawdim pt \\setunitscale ${pixel}${groupInfo.length>0? ` %${groupInfo}`: ''}`);
 
     // Next, we construct the main part of the code.
 
@@ -116,10 +116,33 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
     for (const it of list) {
         if (it instanceof ENode) {
             eMap.set(it, encode(enodeCounter++));
-            arr.push(it.getTexdrawCode());
         }
+        const code = it.getTexdrawCode();
+        arr.push(`${code}%${getHint(it, eMap, gMap)}`);
     }
 
     arr.push('\\end{texdraw}');
     return arr.join('\n');
+}
+
+const getHint = (item: ENode | NodeGroup, eMap: Map<ENode, string>, gMap: Map<Group<any>, string>) => {
+    let result = '';
+    const cc = getItemInfoString(item, false);
+    
+    if (item instanceof ENode) {
+        result = `${eMap.get(item)}${cc}`;
+    }
+    if (item.group) {
+        result += `${item.isActiveMember? ':': '.'}${gMap.get(item.group)}`;
+    }
+    return result;
+}
+
+const getItemInfoString = (item: ENode | NodeGroup, inCompoundArrow: boolean): string => {
+    let result = '';
+    const info = item.getInfoString();
+    if (info.length>0) {
+        result += `(${info})`;
+    }
+    return result;
 }

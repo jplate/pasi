@@ -147,7 +147,12 @@ export default class ENode extends Item {
                 ): '')
             ): ''
         );			        
-	}	
+    }
+
+    public override getInfoString() {
+        return (this.linewidth>0 || this.shading>0)? '': 
+            `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
+    }
 }
 
 

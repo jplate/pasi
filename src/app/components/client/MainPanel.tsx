@@ -1682,7 +1682,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             value={code}
                             spellCheck={false}
                             onChange={(e) => setCode(e.target.value)} />
-                        <CopyToClipboardButton id='copy-button' textareaRef={codeRef} />
+                        <CopyToClipboardButton id='copy-button' size={6} textareaRef={codeRef} />
                     </div>
                 </div>
                 <div id='button-panels' className={clsx('flex-grow min-w-[300px] max-w-[380px] select-none')}>

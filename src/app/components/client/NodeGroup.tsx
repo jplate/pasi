@@ -281,6 +281,14 @@ export default class NodeGroup implements Group<CNode> {
             m.y = m.y100 = round(Math.round((c.y + Math.sin(a) * d) * factor) / factor, ROUNDING_DIGITS);
         });
     }
+
+    public getTexdrawCode() {
+        return '';
+    }
+
+    public getInfoString() {
+        return '';
+    }
 }
 
 

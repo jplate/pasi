@@ -1,5 +1,5 @@
 import { round } from '../util/MathTools'
-const ROUNDING_DIGITS = 5;
+const ROUNDING_DIGITS = 3;
 const PRECISION = 10**ROUNDING_DIGITS; 
 
 export const encodeFloat = (f: number): string => {
@@ -17,18 +17,18 @@ export const encodeFloat = (f: number): string => {
     return result;
 }
 
-export const linewidth = (lw: number) => `\\linewd ${lw} `;
+export const linewidth = (lw: number) => `\\linewd ${encodeFloat(lw)} `;
 
-export const move = (x: number, y: number) => `\\move(${x} ${y}) `;
+export const move = (x: number, y: number) => `\\move(${encodeFloat(x)} ${encodeFloat(y)}) `;
 
 export const linePattern = (dash: number[]): string => `\\lpatt (${dash.join(' ')}) `;
 
-export const line = (x: number, y: number) => `\\lvec(${x} ${y}) `;
+export const line = (x: number, y: number) => `\\lvec(${encodeFloat(x)} ${encodeFloat(y)}) `;
 
-export const ifill = (f: number) => `\\ifill f:${1-f} `;
+export const ifill = (f: number) => `\\ifill f:${encodeFloat(1-f)} `;
 
-export const lfill = (f: number) => `\\lfill f:${1-f} `;
+export const lfill = (f: number) => `\\lfill f:${encodeFloat(1-f)} `;
 
-export const circ = (r: number) => `\\lcir r:${r} `;
+export const circ = (r: number) => `\\lcir r:${encodeFloat(r)} `;
 
-export const fcirc = (r: number, f: number) => `\\fcir f:${1-f} r:${r} `;
+export const fcirc = (r: number, f: number) => `\\fcir f:${encodeFloat(1-f)} r:${encodeFloat(r)} `;
