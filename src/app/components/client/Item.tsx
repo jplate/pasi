@@ -131,5 +131,14 @@ export default class Item implements GroupMember {
         return '';
     }
 
+    /**
+	 * Invoked by Codec1#load(); should be overridden by subclasses. Parses the supplied code and info string and updates this Item's fields 
+     * accordingly.
+	 * @param code the texdraw code
+	 * @param info the info string contained in the 'hint' in the comment to the texdraw code
+	 */
+	public parse(code: string, info: string): void {}
+
+
 }
 

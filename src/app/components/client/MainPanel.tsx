@@ -19,7 +19,7 @@ import CNode, { MAX_NODEGROUP_SIZE, DEFAULT_DISTANCE  } from './CNode.tsx'
 import NodeGroup, { NodeGroupComp } from './NodeGroup.tsx'
 import { round, rotatePoint, scalePoint } from '../../util/MathTools'
 import copy from './Copying'
-import { getCode } from '../../codec/Codec1.tsx'
+import { getCode, load } from '../../codec/Codec1.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -437,7 +437,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
     const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
     const [list, setList] = useState<(ENode | NodeGroup)[]>([])
-    const [enodeCounter, setEnodeCounter] = useState(0) // used for generating keys
+    const [eNodeCounter, setENodeCounter] = useState(0) // used for generating keys
     const [nodeGroupCounter, setNodeGroupCounter] = useState(0) // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]);// list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
@@ -469,7 +469,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [code, setCode] = useState<string>(''); // the texdraw code to be displayed in the code area.
 
     const [showModal, setShowModal] = useState(false)
-    const [modalMsg, setModalMsg] = useState<[string, string]>(['', '']) // the first element is the content label, the second the message.
+    const [modalMsg, setModalMsg] = useState<[string, React.ReactNode]>(['', '']) // the first element is the content label, the second the message.
 
     useEffect(() => {
         const element = document.getElementById('content');
@@ -1058,10 +1058,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const addEntityNodes = useCallback(() => {
         if (points.length>0) {
-            let counter = enodeCounter;
+            let counter = eNodeCounter;
             const nodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
             const newList = [...list, ...nodes];
-            setEnodeCounter(counter);
+            setENodeCounter(counter);
             setList(list => newList);
             adjustLimit(newList, yOffset, limit); 
             const newFocus = nodes[nodes.length-1];
@@ -1070,7 +1070,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, enodeCounter, list, yOffset, limit]);
+    }, [points, eNodeCounter, list, yOffset, limit]);
 
     /**
      *  OnClick handler for the 'Contour' button.
@@ -1100,7 +1100,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (topTbc.length>0) {
             const copies: Record<string, ENode | NodeGroup> = {}; // This will store the keys of the copied ENodes and NodeGroups, mapped to their respective copies.
             const cNodeCopies: Record<string, CNode> = {}; // Same, but for the members of NodeGroups.
-            const [enCounter, ngCounter] = copy(topTbc, hDisplacement, vDisplacement, copies, cNodeCopies, enodeCounter, nodeGroupCounter);
+            const [enCounter, ngCounter] = copy(topTbc, hDisplacement, vDisplacement, copies, cNodeCopies, eNodeCounter, nodeGroupCounter);
             const copiedList = list.reduce((acc: (ENode | NodeGroup)[], node) => { // an array that holds the copied nodes or node groups in the same 
                 // order as list holds the nodes or node groups that they're copies of
                 if (node.id in copies) {
@@ -1116,7 +1116,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 focusItem instanceof ENode? copies[focusItem.id] as ENode: 
                 focusItem instanceof CNode? cNodeCopies[focusItem.id]: null as never;
             adjustLimit(newList, yOffset, limit);
-            setEnodeCounter(enCounter);
+            setENodeCounter(enCounter);
             setNodeGroupCounter(ngCounter);
             setList(newList);
             setFocusItem(prev => newFocus);
@@ -1124,7 +1124,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(newSelection);
             scrollTo(newFocus);
         }
-    }, [topTbc, list, hDisplacement, vDisplacement, enodeCounter, nodeGroupCounter, selection, focusItem, yOffset, limit]);
+    }, [topTbc, list, hDisplacement, vDisplacement, eNodeCounter, nodeGroupCounter, selection, focusItem, yOffset, limit]);
 
 
     /**
@@ -1475,9 +1475,30 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }, [focusItem]);
 
-    const displayCode = useCallback(() => {
+    const displayCode = useCallback((pixel: number) => {
         setCode(prev => getCode(list, pixel))
-    }, [list, pixel]);
+    }, [list]);
+
+    const loadDiagram = useCallback((code: string, replace: boolean) => {
+        try {
+            const [newList, newPixel, newENodeCounter, newNGCounter] = replace? load(code, 0, 0): load(code, eNodeCounter, nodeGroupCounter);
+            if (replace) {
+                setPixel(prev => newPixel);
+            }
+            setList(prev => replace? newList: [...list, ...newList]);
+            setENodeCounter(prev => newENodeCounter);
+            setNodeGroupCounter(prev => newNGCounter);
+        } 
+        catch (e: any) {
+            if (e.msg) {
+                setModalMsg(['Parsing failed', e.msg]);
+                setShowModal(true);
+            }
+            else {
+                console.error('Parsing failed:', e.message);
+            }
+        }
+    }, [list, eNodeCounter, nodeGroupCounter]);
 
     const canCopy: boolean = useMemo(() => !(
         deduplicatedSelection.length<1 || 
@@ -1588,7 +1609,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['restore'], restoreGroup);
     useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['generate code'], displayCode);
+    useHotkeys(hotkeyMap['generate code'], () => displayCode(pixel));
     
     
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
@@ -1682,7 +1703,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             value={code}
                             spellCheck={false}
                             onChange={(e) => setCode(e.target.value)} />
-                        <CopyToClipboardButton id='copy-button' size={6} textareaRef={codeRef} />
+                        <CopyToClipboardButton id='copy-button' iconStyle='size-6' textareaRef={codeRef} />
                     </div>
                 </div>
                 <div id='button-panels' className={clsx('flex-grow min-w-[300px] max-w-[380px] select-none')}>
@@ -1851,7 +1872,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} 
-                            onClick={displayCode} />
+                            onClick={() => displayCode(pixel)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
@@ -1860,7 +1881,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             pt
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} 
-                            onClick={sorry} /> 
+                            onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>
                     <Modal isOpen={showModal} closeTimeoutMS={750}
@@ -1868,8 +1889,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             overlayClassName={clsx('fixed inset-0', dark? 'bg-black/70':  'bg-gray-900/70')} 
                             contentLabel={modalMsg[0]}
                             onRequestClose={() => setShowModal(false)}>
-                        <div className='grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'>
-                                {modalMsg[1]}
+                        <div className={clsx('prose prose-lg', dark? 'prose-dark': 'prose-light', 
+                                'grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl')}>
+                            {modalMsg[1]}
                             <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4 rounded-xl' disabled={false} onClick={() => setShowModal(false)} />
                         </div>
                     </Modal>

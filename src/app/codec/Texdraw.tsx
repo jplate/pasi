@@ -17,6 +17,12 @@ export const encodeFloat = (f: number): string => {
     return result;
 }
 
+export const start = '\\begin{texdraw}';
+
+export const end = '\\end{texdraw}';
+
+export const dimCmd = '\\drawdim pt \\setunitscale';
+
 export const linewidth = (lw: number) => `\\linewd ${encodeFloat(lw)} `;
 
 export const move = (x: number, y: number) => `\\move(${encodeFloat(x)} ${encodeFloat(y)}) `;

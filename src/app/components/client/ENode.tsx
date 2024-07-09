@@ -140,11 +140,9 @@ export default class ENode extends Item {
             this.shading>0 || this.linewidth>0?
             (Texdraw.move(this.x, this.y) + 
                 (this.shading>0? Texdraw.fcirc(this.radius, this.shading): '') +
-                (this.linewidth>0? (
-                    (this.dash.length>0? Texdraw.linePattern(this.dash): '') + 
-                    Texdraw.circ(this.radius) +
-                    (this.dash.length>0? Texdraw.linePattern([]): '')
-                ): '')
+                (this.dash.length>0? Texdraw.linePattern(this.dash): '') + 
+                (this.linewidth>0? Texdraw.circ(this.radius): '') +
+                (this.dash.length>0? Texdraw.linePattern([]): '')
             ): ''
         );			        
     }
@@ -153,6 +151,11 @@ export default class ENode extends Item {
         return (this.linewidth>0 || this.shading>0)? '': 
             `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
     }
+
+    public override parse(code: string, info: string) {
+
+    }
+
 }
 
 
