@@ -19,9 +19,9 @@ export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
 export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 
-export const DEFAULT_LINEWIDTH = 1.0;
+export const DEFAULT_LINEWIDTH = 1;
 export const DEFAULT_DASH = [];
-export const DEFAULT_SHADING = 0.0; // 0=white (transparent), 1=black
+export const DEFAULT_SHADING = 0; // 0=white (transparent), 1=black
 export const LINECAP_STYLE = 'round';
 export const LINEJOIN_STYLE = 'round';
 
@@ -134,11 +134,13 @@ export default class Item implements GroupMember {
     /**
 	 * Invoked by Codec1#load(); should be overridden by subclasses. Parses the supplied code and info string and updates this Item's fields 
      * accordingly.
-	 * @param code the texdraw code
-	 * @param info the info string contained in the 'hint' in the comment to the texdraw code
+	 * @param code the texdraw code.
+	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
+	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
 	 */
-	public parse(code: string, info: string): void {}
+	public parse(code: string, info: string, name?: string): void {}
 
 
 }
+
 

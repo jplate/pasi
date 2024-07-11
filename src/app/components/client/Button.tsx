@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from 'react'
+import React, { useState, useEffect, forwardRef, CSSProperties } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { WithTooltip } from './EditorComponents.tsx'
@@ -9,6 +9,9 @@ interface ButtonProps {
     label?: string
     icon?: JSX.Element
     style?: string
+    activeStyle?: string  // the activeStyle and inactiveStyle props are used to style the button depending on whether it is 'pressed'. 
+        // They are combined with the style prop.
+    inactiveStyle?: string
     tooltip?: React.ReactNode
     tooltipPlacement?: Placement
     pressed?: boolean // for toggle functionality
@@ -16,37 +19,76 @@ interface ButtonProps {
     onClick: () => void
 }
 
-export const BasicButton = ({id, label, icon, style, disabled, tooltip, tooltipPlacement, onClick}: ButtonProps) => {
-    const button = (<button id={id} className={clsx('block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none', 
-                'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
-                'focus:outline-none focus:ring-1', style)}
-                disabled={disabled}
-                onClick={onClick} >
-            {icon? [
-                    <span key={0} id={id+'span0'}>{icon}</span>, 
-                    <span key={1} id={id+'span1'} className='sr-only'>
-                        {label?? ''}
-                    </span>
-                ]: 
-                label? label.split('\n').map((line, index) => 
-                    <React.Fragment key={index}>
-                        {line}
-                        <br />
-                    </React.Fragment>
-                ): ''
-            }
-        </button>)
-    return tooltip? <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />: button
-}
+export const BasicButton = forwardRef((
+        { id, label, icon, pressed, activeStyle, inactiveStyle, style, disabled, tooltip, tooltipPlacement, onClick }: ButtonProps, 
+        ref: React.ForwardedRef<HTMLButtonElement>
+    ) => {
+        // These states, and the keyDown handler, are needed for no other reason than to ensure that the color of the button briefly changes when 
+        // the user presses the 'Enter' key while the button is focused.
+        const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
+        const [active, setActive] = useState(false);
 
-export const BasicColoredButton = ({id, label, icon, style, tooltip, tooltipPlacement, pressed, disabled, onClick}: ButtonProps) => {
-    return (
-        <BasicButton id={id} label={label} icon={icon} style={clsx(pressed? 'bg-btnactivebg': 'bg-btnbg/85 enabled:hover:bg-btnhoverbg', 
-            'text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor',
-            'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring', style)} 
-            tooltip={tooltip} tooltipPlacement={tooltipPlacement} disabled={disabled} onClick={onClick} />
-    )
-}
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent the default form submission behavior
+                e.stopPropagation();
+                buttonElement?.click(); 
+                setActive(true);
+                setTimeout(() => {
+                    setActive(false);
+                }, 1100);
+            }
+        };
+        const button = (
+            <button id={id} className={clsx('block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none', 
+                        'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
+                        'focus:outline-none focus:ring-1', style, pressed || active? activeStyle: inactiveStyle)}
+                    disabled={disabled}
+                    onClick={onClick} 
+                    onKeyDown={handleKeyDown} 
+                    onKeyUp={(e) => setActive(false)}
+                    onBlur={(e) => setTimeout(() => setActive(false), 50)}
+                    ref={(element) => {
+                        setButtonElement(element); // Save the DOM element in the state.
+                        if (typeof ref === 'function') {
+                          ref(element); 
+                        } else if (ref) {
+                          ref.current = element; 
+                        }
+                    }} >
+                    {icon? [
+                        <span key={0} id={id+'span0'}>{icon}</span>, 
+                        <span key={1} id={id+'span1'} className='sr-only'>
+                            {label?? ''}
+                        </span>
+                    ]: 
+                    label? label.split('\n').map((line, index) => 
+                        <React.Fragment key={index}>
+                            {line}
+                            <br />
+                        </React.Fragment>
+                    ): ''
+                }
+            </button>
+        );
+        return tooltip? <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />: button;
+    }
+);
+
+export const BasicColoredButton = forwardRef((
+        { id, label, icon, style, tooltip, tooltipPlacement, pressed, disabled, onClick }: ButtonProps,
+        ref: React.ForwardedRef<HTMLButtonElement>
+    ) => {
+        return (
+            <BasicButton id={id} label={label} icon={icon} pressed={pressed} 
+                activeStyle='bg-btnactivebg' 
+                inactiveStyle='bg-btnbg/85 enabled:hover:bg-btnhoverbg'
+                style={clsx('text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor',
+                    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring', style)} 
+                tooltip={tooltip} tooltipPlacement={tooltipPlacement} disabled={disabled} onClick={onClick} ref={ref} />
+        );
+    }
+);
 
 
   
@@ -107,7 +149,7 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
         borderRadius: '0.125rem',
         backgroundColor: 'rgba(var(--btnbg), 0.5)',
         color: 'rgba(var(--btncolor), 0.6)',
-        transition: 'background-color 0.2s ease-in-out'
+        transition: 'all 0.2s ease-in-out'
     };
 
     const hoverStyle: CSSProperties = {

@@ -1,10 +1,14 @@
 import React from 'react';
-import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
+import assert from 'assert'
+import clsx from 'clsx/lite'
+import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import NodeGroup from './NodeGroup.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
+import { ROUNDING_DIGITS, ParseError } from '../../codec/Texdraw.tsx'
+import { round } from '../../util/MathTools.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -136,14 +140,13 @@ export default class ENode extends Item {
     }
 
     public override getTexdrawCode() {
-		return super.getTexdrawCode() + (
-            this.shading>0 || this.linewidth>0?
-            (Texdraw.move(this.x, this.y) + 
-                (this.shading>0? Texdraw.fcirc(this.radius, this.shading): '') +
-                (this.dash.length>0? Texdraw.linePattern(this.dash): '') + 
-                (this.linewidth>0? Texdraw.circ(this.radius): '') +
-                (this.dash.length>0? Texdraw.linePattern([]): '')
-            ): ''
+		return clsx(
+            super.getTexdrawCode(),
+            (this.shading>0 || this.linewidth>0? Texdraw.move(this.x, this.y): ''),
+            (this.shading>0? Texdraw.fcirc(this.radius, this.shading): ''),
+            (this.dash.length>0? Texdraw.linePattern(this.dash): ''),
+            (this.linewidth>0? Texdraw.circ(this.radius): ''),
+            (this.dash.length>0? Texdraw.linePattern([]): '')
         );			        
     }
 
@@ -152,10 +155,82 @@ export default class ENode extends Item {
             `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
     }
 
-    public override parse(code: string, info: string) {
+    public override parse(code: string, info: string | null, name: string) {
+        const stShapes =  Texdraw.getStrokedShapes(code, DEFAULT_LINEWIDTH);
+        
+        //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
 
+        const circles: Texdraw.Circle[] = [];
+        if (stShapes.length>2) {
+            throw new ParseError(<span>Too many shapes in the definition of entity node <code>{name}</code>.</span>);
+        }
+        let n = 0;
+        for(; n<stShapes.length; n++) {
+		    if(!(stShapes[n].shape instanceof Texdraw.Circle)) {
+		        throw new ParseError(`Expected a circle, not ${stShapes[n].shape.genericDescription}`);
+		    }
+            circles.push(stShapes[n].shape as Texdraw.Circle);
+	    }
+        
+        assert(n>=0 && n<3);
+        
+        if (n>0) {
+            this.shading = round(1 - circles[0].fillLevel, ROUNDING_DIGITS);
+            this.linewidth = this.linewidth100 = stShapes[n-1].stroke.linewidth;
+            this.dash = this.dash100 = stShapes[n-1].stroke.pattern;
+            this.radius = circles[0].radius;
+            ({ x: this.x, y: this.y } = circles[0].location);
+        }
+        else { // In this case there are no shapes, so we have to rely in part on the info string, assuming there is one.
+            if(info===null) {	        	
+	            throw new ParseError(<span>Incomplete definition of entity node <code>{name}</code>: info string required.</span>);
+	        }
+            //console.log(`info: ${info}`);
+            this.linewidth = this.linewidth100 = 0;
+            this.dash = this.dash100 = Texdraw.extractDashArray(code) || [];
+            [this.radius, this.x, this.y] = info.split(/\s+/).map(s => Texdraw.decodeFloat(s));            
+            if (isNaN(this.radius) || isNaN(this.x) || isNaN(this.y)) {
+                throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);
+            }
+        }
+        if (this.linewidth<0) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.</span>);
+        }
+        if (this.linewidth>MAX_LINEWIDTH) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width exceeds maximum value.</span>);
+        }
+        if (this.shading<0) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value should not be negative.</span>);
+        }
+        if (this.shading>1) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value exceeds 1.</span>);
+        }
+        if (this.dash.length>MAX_DASH_LENGTH) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length exceeds maximum value.</span>); 
+        }
+        if (this.dash.some(v => v>MAX_DASH_VALUE)) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value exceeds  maximum value.</span>); 
+        }
+        if (this.radius<0) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.</span>); 
+        }
+        if (this.radius>MAX_RADIUS) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius exceeds maximum value.</span>); 
+        }
+        if (this.x<MIN_X) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate below minimum value.</span>); 
+        }
+        if (this.x>MAX_X) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate exceeds maximum value.</span>); 
+        }
+        if (this.y<MIN_Y) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate below minimum value.</span>); 
+        }
+        if (this.y>MAX_Y) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate exceeds maximum value.</span>); 
+        }
+        [this.radius100, this.x100, this.y100] = [this.radius, this.x, this.y];
     }
-
 }
 
 

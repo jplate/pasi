@@ -39,9 +39,10 @@ import unvSrc from '../../../icons/unv.png'
 
 export const H = 650; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
 export const W = 900; // the width of the canvas
-export const MAX_X = 32*W-1 // the highest possible coordinate for an Item
-export const MIN_Y = -16*H+1 // the lowest possible coordinate for an Item 
-export const MAX_Y = 16*H-1 // the highest possible coordinate for an Item 
+export const MAX_X = 32*W-1 // the highest possible X coordinate for an Item
+export const MIN_X = 0 // the lowest possible X coordinate for an Item
+export const MIN_Y = -16*H+1 // the lowest possible Y coordinate for an Item 
+export const MAX_Y = 16*H-1 // the highest possible Y coordinate for an Item 
 export const MARGIN = 0; // the width of the 'margin' at right and bottom edges of the canvas
 
 const MAX_LIST_SIZE = 5000 // maximal size of the list of ENodes and NodeGroups
@@ -169,7 +170,9 @@ export const hotkeys: HotkeyInfo[] = [
         deactivated by clicking on the canvas or by activating adding.</> },
     { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
     { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
-    { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram.</> }
+    { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram and display {' '}
+        it in the text area below the canvas.</> },
+    { key: 'load diagram', keys: 'ctrl+enter', rep: ['Ctrl+Enter'], descr: <>(Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.</> }
   ];
 
 const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
@@ -408,6 +411,10 @@ const getNodeGroups = (array: (Item | Group<any>)[]): NodeGroup[] =>
         [...acc, ...getNodeGroups(it.members)], 
     []);
 
+/**
+ * A function to be called on groups that have just been emptied of all their members. The second argument is the list of items to be displayed
+ * on the canvas. Returns a new, 'purged' list.
+ */
 const purge = (group: Group<any>, list: (ENode | NodeGroup)[]): (ENode | NodeGroup)[] => {
     let newList = list;
     if (group instanceof NodeGroup) {
@@ -421,9 +428,16 @@ const purge = (group: Group<any>, list: (ENode | NodeGroup)[]): (ENode | NodeGro
     return newList;
 }
 
+interface DialogConfig {
+    contentLabel?: string
+    title?: string
+    content?: React.ReactNode
+    extraWide?: boolean
+}
+
 
 interface MainPanelProps {
-    dark: boolean;
+    dark: boolean
 }
 
 const MainPanel = ({dark}: MainPanelProps) => {
@@ -450,7 +464,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const [lasso, setLasso] = useState<Lasso | null>(null)
     const [dragging, setDragging] = useState(false)
-    const [preselection1, setPreselection1] = useState<Item[]>([])
+    const [preselection1, setPreselection1] = useState<Item[]>([]) // In the current implementation, this array only ever contains at most one item. It's meant to contain
+        // those items that are 'directly' preselected, either because they're hovered over by the mouse or (at least in an earlier implementation) because they're included 
+        // in the lasso; and the items that are 'secondarily preselected' are those that are preselected because they share a group-membership with those contained in the 
+        // primary preselection. However, as far as items preselected with the lasso are concerned, it seems more intuitive to ignore shared group-membership.
     const [preselection2, setPreselection2] = useState<Item[]>([])
     const preselection2Ref = useRef<Item[]>([])
     preselection2Ref.current = preselection2
@@ -468,8 +485,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const [code, setCode] = useState<string>(''); // the texdraw code to be displayed in the code area.
 
-    const [showModal, setShowModal] = useState(false)
-    const [modalMsg, setModalMsg] = useState<[string, React.ReactNode]>(['', '']) // the first element is the content label, the second the message.
+    const [modalShown, setModalShown] = useState(false)
+    const [dialog, setDialog] = useState<DialogConfig>({}) 
+    const okButtonRef = useRef<HTMLButtonElement>(null)
 
     useEffect(() => {
         const element = document.getElementById('content');
@@ -553,6 +571,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }, [points, focusItem, selection, list] // origin has no setter, so is not included.
     );
     
+    /**
+     * This function should be called whenever items have moved or new items have been added to the canvas. It adjusts both the yOffset state
+     * and updates the coordinates stored in the limit object.
+     */
     const adjustLimit = useCallback((
             l: (ENode | NodeGroup)[] = list,
             yoff: number = yOffset,
@@ -676,18 +698,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
                                 if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
-                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                    setShowModal(true);
+                                    showModal('Alert', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
                                 else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
-                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                    setShowModal(true);
+                                    showModal('Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
                                 else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
-                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                    setShowModal(true);
+                                    showModal('Alert', 'A contour node can only be a member of a contour node group.');
                                     return;
                                 }
                                 else {
@@ -709,18 +728,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             }
                             else { // dissolve adding                            
                                 if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
-                                    setModalMsg(['Alert', 'A contour node group can only have contour nodes as members.']);
-                                    setShowModal(true);
+                                    showModal('Alert', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
                                 else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
-                                    setModalMsg(['Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`]);
-                                    setShowModal(true);
+                                    showModal('Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
                                 else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
-                                    setModalMsg(['Alert', 'A contour node can only be a member of a contour node group.']);
-                                    setShowModal(true);
+                                    showModal('Alert', 'A contour node can only be a member of a contour node group.');
                                     return;
                                 }
                                 else {
@@ -912,7 +928,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     updateSecondaryPreselection([item]); // otherwise add all the leaf members of its highest active group
                 }
             }
-        }, [dragging]
+        }, [dragging, preselection1, list]
     );
 
     /**
@@ -931,7 +947,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     updateSecondaryPreselection(group.members); // otherwise add all the leaf members of their highest active group
                 }
             }
-        }, [dragging]
+        }, [dragging, preselection1, list]
     );
 
     /**
@@ -942,7 +958,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPreselection1(prev => []); 
             updateSecondaryPreselection([]);
         }
-    }, [dragging]);
+    }, [dragging, preselection1, list]);
 
     /**
      * Mouse down handler for the canvas. Adds and removes Points and creates a lasso.
@@ -1247,9 +1263,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         for (const item of deduplicatedSelection) {
             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
             if (!isFinite(x) || !isFinite(y)) {
-                setModalMsg(['Buzz Lightyear alert', 
-                    `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`]);
-                setShowModal(true);
+                showModal('Buzz Lightyear alert', 
+                    `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`);
             }
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
@@ -1400,6 +1415,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setPoints(prev => [...prev]); // to trigger a re-render
     }, []);
 
+
     /**
      * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
      */
@@ -1475,30 +1491,53 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }, [focusItem]);
 
+
     const displayCode = useCallback((pixel: number) => {
         setCode(prev => getCode(list, pixel))
     }, [list]);
 
+
     const loadDiagram = useCallback((code: string, replace: boolean) => {
+
+        if (false) { // for debugging purposes
+            load(code, 0, 0); 
+            console.log('Success!');
+            return;
+        }
+        let newList: (ENode | NodeGroup)[] = [], 
+            newPixel = 0, 
+            newENodeCounter = 0, 
+            newNGCounter = 0;
         try {
-            const [newList, newPixel, newENodeCounter, newNGCounter] = replace? load(code, 0, 0): load(code, eNodeCounter, nodeGroupCounter);
+            [newList, newPixel, newENodeCounter, newNGCounter] = replace? 
+                load(code, 0, 0): 
+                load(code, eNodeCounter, nodeGroupCounter);
             if (replace) {
                 setPixel(prev => newPixel);
+                setPreselection1([]);
+                setPreselection2([]);
+                setSelection([]);
+                setFocusItem(null);
+                setOrigin(true, points, null, [], newList);
             }
-            setList(prev => replace? newList: [...list, ...newList]);
+            else {
+                newList = [...list, ...newList];
+            }
+            setList(prev => newList);
             setENodeCounter(prev => newENodeCounter);
-            setNodeGroupCounter(prev => newNGCounter);
+            setNodeGroupCounter(prev => newNGCounter);            
+            adjustLimit(newList, yOffset, limit);
         } 
         catch (e: any) {
             if (e.msg) {
-                setModalMsg(['Parsing failed', e.msg]);
-                setShowModal(true);
+                showModal('Parsing failed', e.msg, e.extraWide);
             }
             else {
-                console.error('Parsing failed:', e.message);
+                console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, nodeGroupCounter]);
+    }, [list, eNodeCounter, nodeGroupCounter, points, yOffset, limit]);
+
 
     const canCopy: boolean = useMemo(() => !(
         deduplicatedSelection.length<1 || 
@@ -1609,7 +1648,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['restore'], restoreGroup);
     useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['generate code'], () => displayCode(pixel));
+    useHotkeys(hotkeyMap['generate code'], () => displayCode(pixel), { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement) });
+    useHotkeys(hotkeyMap['load diagram'], () => loadDiagram(code, replace), { enableOnFormTags: ['textarea'], preventDefault: true });
+
+    const showModal = (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
+        setDialog(prev => ({ contentLabel, title, content, extraWide }));
+        setModalShown(true);
+    }
     
     
     const tabIndex = selection.length==0? 0: userSelectedTabIndex;
@@ -1623,7 +1668,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
 
-    const sorry = () => {setModalMsg(['Apology', 'Sorry, this feature has not yet been implemented!']); setShowModal(true);}
+    const sorry = () => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}
 
     console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem && focusItem.x},${focusItem && focusItem.y})`,
         `ha=${focusItem && highestActive(focusItem).getString()}`));
@@ -1877,22 +1922,50 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
                                 type='number' step='0.1' value={pixel}
-                                onChange={(e) => setPixel(parseFloat(e.target.value))}/>
+                                onChange={(e) => setPixel(Math.max(0, parseFloat(e.target.value)))}/>
                             pt
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} 
                             onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>
-                    <Modal isOpen={showModal} closeTimeoutMS={750}
-                            className='fixed inset-0 flex items-center justify-center z-50'
+                    <Modal isOpen={modalShown} closeTimeoutMS={750}
+                            onAfterOpen={() => setTimeout(() => okButtonRef.current?.focus(), 500)}
+                            style={{
+                                content: {                                    
+                                    top: '50%',
+                                    left: '50%',
+                                    width: dialog.extraWide? '60rem': '40rem', // We use wider boxes to display more complex content.
+                                    right: 'auto',
+                                    bottom: 'auto',
+                                    marginRight: '-50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    backgroundColor: 'transparent',
+                                    border: 'none',
+                                    padding: 'none'
+                                  },
+                            }}
                             overlayClassName={clsx('fixed inset-0', dark? 'bg-black/70':  'bg-gray-900/70')} 
-                            contentLabel={modalMsg[0]}
-                            onRequestClose={() => setShowModal(false)}>
-                        <div className={clsx('prose prose-lg', dark? 'prose-dark': 'prose-light', 
+                            contentLabel={dialog.contentLabel}
+                            onRequestClose={() => setModalShown(false)}>
+                        <div className={clsx('prose prose-lg', dark? 'prose-dark': 'prose-light',
+                                dialog.extraWide? 'min-w-[60rem]': 'min-w-[40rem]',
                                 'grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl')}>
-                            {modalMsg[1]}
-                            <BasicColoredButton id='close-button' label='OK' style='w-20 mt-4 rounded-xl' disabled={false} onClick={() => setShowModal(false)} />
+                            {dialog.title && 
+                                <div className='w-full text-center mb-4'>
+                                    <h2 className='text-lg font-semibold mt-2 mb-0 py-2'>{dialog.title}</h2>
+                                </div>
+                            }
+                            <div className='grid w-full justify-items-center text-center'>
+                                {dialog.content}
+                                <style>
+                                    pre {'{'} text-align: left; {'}'}
+                                </style>
+                            </div>
+                            <BasicColoredButton id='ok-button' ref={okButtonRef} label='OK' 
+                                style={clsx('w-20 rounded-xl', dialog.title? 'mt-6 mb-4': 'mt-4 mb-2')} 
+                                disabled={false}                              
+                                onClick={() => setModalShown(false)} />
                         </div>
                     </Modal>
                 </div>
