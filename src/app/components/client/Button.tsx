@@ -74,6 +74,8 @@ export const BasicButton = forwardRef((
         return tooltip? <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />: button;
     }
 );
+// Set the displayName property for debugging purposes
+BasicButton.displayName = 'BasicButton';
 
 export const BasicColoredButton = forwardRef((
         { id, label, icon, style, tooltip, tooltipPlacement, pressed, disabled, onClick }: ButtonProps,
@@ -89,7 +91,8 @@ export const BasicColoredButton = forwardRef((
         );
     }
 );
-
+// Set the displayName property for debugging purposes
+BasicColoredButton.displayName = 'BasicColoredButton';
 
   
 interface CopyToClipboardButtonProps {
@@ -138,7 +141,7 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
                 observer.disconnect();
             };
         }
-    }, []);
+    }, [textareaRef]);
 
 
     const baseStyle: CSSProperties = {
