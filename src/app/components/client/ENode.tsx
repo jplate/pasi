@@ -1,5 +1,5 @@
 import React from 'react';
-import assert from 'assert'
+//import assert from 'assert' // pretty hefty package, and not really needed
 import clsx from 'clsx/lite'
 import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
@@ -66,7 +66,7 @@ export default class ENode extends Item {
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: this.dashValidator.write(this.dash)},
             {type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: this.shading, min: 0, max: 1, step: 0.1},
             {type: 'gloss', text: '(Shading=0: transparent; >0: opaque)', style: 'mb-4 text-right text-xs'},
-            {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(this), step: 1},
+            {type: 'number input', key: 'rank', text: 'Rank in paint-order', value: list.indexOf(this), step: 1},
             {type: 'label', text: '', style: 'flex-1'}, // a filler
             {type: 'button', key: 'defaults', text: 'Defaults'}
         ]
@@ -155,8 +155,13 @@ export default class ENode extends Item {
             `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
     }
 
-    public override parse(code: string, info: string | null, name: string) {
-        const stShapes =  Texdraw.getStrokedShapes(code, DEFAULT_LINEWIDTH);
+    /** 
+     *  The 'name' is the string by which this ENode is referred to in the 'hints' that appear as comments in the texdraw code. 
+     *  The calling function should make sure that this name is of reasonable length so that we don't have to worry about truncating it in our
+     *  error messages.
+     */
+    public override parse(tex: string, info: string | null, name: string) {
+        const stShapes =  Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
 
@@ -172,7 +177,7 @@ export default class ENode extends Item {
             circles.push(stShapes[n].shape as Texdraw.Circle);
 	    }
         
-        assert(n>=0 && n<3);
+        //assert(n>=0 && n<3);
         
         if (n>0) {
             this.shading = round(1 - circles[0].fillLevel, ROUNDING_DIGITS);
@@ -187,7 +192,7 @@ export default class ENode extends Item {
 	        }
             //console.log(`info: ${info}`);
             this.linewidth = this.linewidth100 = 0;
-            this.dash = this.dash100 = Texdraw.extractDashArray(code) || [];
+            this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
             [this.radius, this.x, this.y] = info.split(/\s+/).map(s => Texdraw.decodeFloat(s));            
             if (isNaN(this.radius) || isNaN(this.x) || isNaN(this.y)) {
                 throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);

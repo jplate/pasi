@@ -99,6 +99,22 @@ export default class NodeGroup implements Group<CNode> {
         return { minX, maxX, minY, maxY }
     }
 
+    /** Returns the bounds of this NodeGroup, taking into account only the coordinates of its members.
+     */
+    public getNodalBounds = () => {
+        let minX = Infinity,
+            maxX = -Infinity,
+            minY = Infinity,
+            maxY = -Infinity;
+        for (const m of this.members) {
+            if (m.x < minX) minX = m.x;
+            if (m.x > maxX) maxX = m.x;
+            if (m.y < minY) minY = m.y;
+            if (m.y > maxY) maxY = m.y;
+        }
+        return { minX, maxX, minY, maxY };
+    }
+
     /** Returns the geometric center of this NodeGroup, i.e., the average of the locations of its members nodes.
      */
     public getNodalCenter = () => {
@@ -109,13 +125,16 @@ export default class NodeGroup implements Group<CNode> {
             xSum += m.x;
             ySum += m.y;
         });        
-        return {x: xSum/n, y: ySum/n};
+        return { x: xSum/n, y: ySum/n };
     }
 
 
     public getString = () => `NG[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
 
-
+    /**
+     * A function called in order to change the locations of one or more members. Member nodes that have the 'fixed Angles' property propagate their movement
+     * to neighboring nodes.
+     */
     public groupMove = (nodes: CNode[], dx: number, dy: number) => {
         const members = this.members;
         const n = members.length;
@@ -323,8 +342,6 @@ export interface ContourProps {
     bg: HSL
     primaryColor: HSL
     markColor: string
-    selected: boolean
-    preselected: boolean
     centerDivClickable: boolean
     showCenterDiv: boolean
     onMouseDown: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
@@ -332,14 +349,14 @@ export interface ContourProps {
     onMouseLeave: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
 }
 
-export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryColor, markColor, centerDivClickable, showCenterDiv,
-        onMouseDown, onMouseEnter, onMouseLeave}: ContourProps) => {
+export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, centerDivClickable, showCenterDiv,
+        onMouseDown, onMouseEnter, onMouseLeave }: ContourProps) => {
     const linewidth = group.linewidth;
     const shading = group.shading;
     const dash = group.dash;
     const lines = group.getLines();
     if (lines.length>0) {
-        const { minX, maxX, minY, maxY } = group.getBounds(lines);
+        const { minX, maxX, minY, maxY } = group.getBounds();
         if (!isFinite(minX)) return null;
         const h = maxY-minY;
         const lwc = linewidth; // linewidth correction
@@ -355,8 +372,9 @@ export const Contour = ({id, group, yOffset, selected, preselected, bg, primaryC
             lines.map((line, i) => 
                 `C ${line.x1-minX+lwc} ${h-line.y1+minY+lwc}, ${line.x2-minX+lwc} ${h-line.y2+minY+lwc}, ${line.x3-minX+lwc} ${h-line.y3+minY+lwc}`).join(' ');
         
-        const cdW = Math.min((maxX - minX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
-        const cdH = Math.min((maxY - minY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
+        const { minX: nodalMinX, maxX: nodalMaxX, minY: nodalMinY, maxY: nodalMaxY } = group.getNodalBounds();
+        const cdW = Math.min((nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
+        const cdH = Math.min((nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
         const c = group.getNodalCenter();
 
         return (
@@ -437,8 +455,8 @@ interface NodeGroupCompProps {
     mouseLeft: () => void
 }
 
-export const NodeGroupComp = ({nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
-        itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft}: NodeGroupCompProps) => {
+export const NodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
+        itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: NodeGroupCompProps) => {
     const centerDivClickable = !allNodes.some(item => {
         if (item instanceof ENode || item instanceof CNode) {
             const r = item.radius;
@@ -489,8 +507,6 @@ export const NodeGroupComp = ({nodeGroup, focusItem, preselection, selection, al
     return (
         <React.Fragment key={nodeGroup.id}>
             <Contour key={nodeGroup.id} id={nodeGroup.id+'Contour'} group={nodeGroup} yOffset={yOffset} 
-                selected={selectedNodes.some(b => b)}
-                preselected={preselectedNodes.some(b => b)}
                 bg={bg} 
                 primaryColor={primaryColor} 
                 markColor={markColor} 

@@ -10,6 +10,7 @@ export const versionString = 'pasiCodecV1';
 const CODE = '0123456789aáàäâbcdeéèêfghiíìîjklmnoóòöôpqrstuúùüûvwxyýzAÁÀÄÂBCDEÉÈÊFGHIÍÌÎJKLMNOÓÒÖÔPQRSTUÚÙÜÛVWXYÝZ';
 const ENCODE_BASE = CODE.length;
 const ENCODE_PRECISION = 10;
+const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 
 
 const encodeInt = (num: number) => {
@@ -152,11 +153,15 @@ const getItemInfoString = (item: ENode | NodeGroup, inCompoundArrow: boolean): s
     return result;
 }
 
-
 const getGroupMap = (str: string) => {
     const map = new Map<string, Group<any>>();
     str.split(' ').forEach(s => {
         const sp = s.split(/[\.:]/); // The dot/colon distinction is used to indicate whether a group member's membership is active.
+        if (sp.some(s => s.length > MAX_NAME_LENGTH || isNaN(decodeInt(s)))) {
+            throw new ParseError(<span>Corrupt data: illegal group names in preamble.</span>);
+        }
+        // Now that all group names are guaranteed to be reasonably short, we don't have to worry about truncating them in our error messages.
+
         let g: StandardGroup<ENode | Group<any>>;
         if (map.has(sp[0])) {
             g = map.get(sp[0]) as StandardGroup<ENode | Group<any>>;
@@ -166,7 +171,7 @@ const getGroupMap = (str: string) => {
             map.set(sp[0], g);
         }
         if (g.members.length>0) {
-            throw new ParseError(<span>Corrupt data: group&nbsp;<span className='font-mono'>{sp[0]}</span> is assigned members more than once.</span>);
+            throw new ParseError(<span>Corrupt data: group <code>{sp[0]}</code> is assigned members more than once.</span>);
         }
         const groups = getGroups(g)[0]; // the current list of g's groups. This will be used to prevent us from building a cyclic hierarchy due to corrupt data.
         const memberStrings = sp.slice(1);
@@ -176,12 +181,12 @@ const getGroupMap = (str: string) => {
                 m = map.get(ms) as Group<any>;
                 if (m) {
                     if (m.group) {
-                        throw new ParseError(<span>Corrupt data: group <span className='font-mono'>{ms}</span> is listed as a member of more than one group.</span>);
+                        throw new ParseError(<span>Corrupt data: group <code>{ms}</code> is listed as a member of more than one group.</span>);
                     }
                     if (m===g || 
                         groups.some(gr => m===gr || (m instanceof StandardGroup && m.contains(gr)))
                     ) {
-                        throw new ParseError(<span>Corrupt data: group <span className='font-mono'>{ms}</span> cannot be a direct or indirect member of itself.</span>);
+                        throw new ParseError(<span>Corrupt data: group <code>{ms}</code> cannot be a direct or indirect member of itself.</span>);
                     }
                 }
             }
@@ -198,6 +203,13 @@ const getGroupMap = (str: string) => {
     return map;
 }
 
+/**
+ * Truncate the supplied string for use in short error messages.
+ */
+const truncate = (s: string) => {
+    const max = 25;
+    return `${s.length>max? s.slice(0, max-3)+'...': s}`;
+}
 
 /**
  * Tries to match the supplied string to the supplied pattern with the specified offset. Returns the matched group if the match succeeds and null otherwise.
@@ -228,9 +240,11 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
 
     //console.log(` name: ${name}  groupName: ${groupName}  active: ${activeMember}  info: ${info}  in map: ${eMap.has(name)}`);
 
-    if(isNaN(decode(name)) || (groupName && isNaN(decode(groupName)))) return null; // By returning null at this point, 
+    if(name.length > MAX_NAME_LENGTH || isNaN(decodeInt(name)) ||         
+        (groupName && 
+            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) return null; // By returning null at this point, 
         // we give the 'load' function the chance to try to interpret the tex/hint pair as representing something other than an ENode. 
-        // If an error occurs beyond this point, that error will result in a failure to parse the entire texdraw code.
+        // If an error occurs beyond this point, that will result in a failure to parse the entire texdraw code.
 
     let node: ENode;
     if (eMap.has(name)) {
@@ -257,9 +271,7 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
         node.isActiveMember = activeMember;
     }
     node.parse(tex, info, name);
-
     eMap.set(name, [node, true]);
-
     return node;
 }
 
@@ -279,13 +291,13 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
     // first line
     const expectedStart = `${Texdraw.start}%${versionString}`;
     if (!lines[0].startsWith(expectedStart)) {
-        throw new ParseError(<>Code should start with <code>{expectedStart}</code>.</>);
+        throw new ParseError(<span>Code should start with <code>{expectedStart}</code>.</span>);
     }
 
     // second line
     const split1 = lines[1].split('%');
     if (!split1[0].startsWith(Texdraw.dimCmd)) {
-        throw new ParseError(<>Second line should start with <code>{Texdraw.dimCmd}</code>.</>);
+        throw new ParseError(<span>Second line should start with <code>{Texdraw.dimCmd}</code>.</span>);
     }
     const pixel = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
     if (isNaN(pixel)) {
@@ -325,17 +337,8 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
                     ngCounter++;
                     list.push(nodeGroup);
                 }
-                else {
-                    throw new ParseError((
-                        <>
-                            Unable to parse the following code: 
-                                <pre className='mt-6 w-[50rem] overflow-auto'>
-                                    <code>
-                                        {tex} %{hint}
-                                    </code>
-                                </pre>
-                        </>
-                    ), true);
+                else { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
+                    throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
                 }
             }
         } 

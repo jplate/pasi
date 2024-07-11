@@ -821,14 +821,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 setDragging(true);
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
                 const contourDragged = item.group instanceof NodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
+                
+                // If we're dragging a contour, we need to determine the location of its center, which is then (in handleMouseMove) passed on to getSnapPoint.
                 let dccDx: number | undefined, 
                     dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
                 if (contourDragged && item.group instanceof NodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
-                    const { minX, maxX, minY, maxY } = item.group.getBounds();
-                    const cx = (minX+maxX)/2;
-                    const cy = (minY+maxY)/2;
-                    dccDx = cx - item.x;
-                    dccDy = cy - item.y;
+                    const { x, y } = item.group.getNodalCenter();
+                    dccDx = x - item.x;
+                    dccDy = y - item.y;
                 }
                 const startX = e.clientX - item.x;
                 const startY = e.clientY - (H + yOffset - item.y);

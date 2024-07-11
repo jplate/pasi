@@ -16,6 +16,7 @@ class Point2D {
         public x: number,
         public y: number
     ) {}
+
     toString(): string {
         return `(${this.x}, ${this.y})`;
     }
@@ -195,6 +196,7 @@ export type Position = typeof TOP | typeof LEFT | typeof RIGHT | typeof BOTTOM |
 
 //const shapePattern = /(.*?)(?:\\lvec\s*\((\S+)\s+(\S+)\)|\\clvec\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)|\\larc\s+r:(\S+)\s+sd:(\S+)\s+ed:(\S+)|(?:\\lcir|\\fcir\s+f:(\S+))\s+r:(\S+))/g;
 // This pattern works in java, but apparently javascript's regex engine gets easily confused by pattern alternations!
+// For example, the pattern erroneously fails to match the string '\linewd 1 \moved(430 410) \lcir r:12'.
 // So we have to use a slightly different approach.
 
 const shapePattern = /(.*?)(\\lvec|\\clvec|\\larc|\\lcir|\\fcir)/g; // 1: preamble, 2: shape command
@@ -229,12 +231,12 @@ export const extractDashArray = (s: string) => {
 }
 
 
-export const getStrokedShapes = (s: string, defaultLinewidth: number): StrokedShape[] => {
-    const textMatch = s.match(textPattern);
+export const getStrokedShapes = (code: string, defaultLinewidth: number): StrokedShape[] => {
+    const textMatch = code.match(textPattern);
     if (textMatch) return []; // If we're dealing with a textref command, there's no need to go looking for shape commands, because any such commands will all be in the 
         // argument to \htext (i.e., they'll be part of a label text).
     const shapeFinder = new RegExp(shapePattern);
-    let match = shapeFinder.exec(s);
+    let match = shapeFinder.exec(code);
   
     const l: StrokedShape[] = []; // list of Shapes, incl. Paths
     const lx: Shape[] = []; // current list of Shapes, possibly elements of a Path
@@ -251,7 +253,7 @@ export const getStrokedShapes = (s: string, defaultLinewidth: number): StrokedSh
         if (match) {
             index = match.index + match[0].length;
         }
-        const toSearch = match ? match[1] : s.slice(index); // m[1] is the material that precedes the first found shape. It might contain, e.g., a move command.
+        const toSearch = match ? match[1] : code.slice(index); // m[1] is the material that precedes the first found shape. It might contain, e.g., a move command.
     
         const fillMatch = fillPattern.exec(toSearch);
         const lwMatch = linewdPattern.exec(toSearch);
@@ -305,14 +307,14 @@ export const getStrokedShapes = (s: string, defaultLinewidth: number): StrokedSh
                 throw new ParseError(
                     <>
                         No specification of a starting point detected in the following code: {' '}
-                        <pre className='mt-6 w-[50rem] overflow-auto'><code>{s}</code></pre>
+                        <pre className='mt-6 w-[50rem]'><code>{code}</code></pre>
                     </>, 
                     true // for an extra-wide dialog
                 );
             }
     
             stroke = new Stroke(lw, dashArray);
-            const shapeString = s.slice(match.index + match[1].length);
+            const shapeString = code.slice(match.index + match[1].length);
             let shape: Shape | null = null,
                 shapeMatch;
             switch (match[2]) {
@@ -369,16 +371,16 @@ export const getStrokedShapes = (s: string, defaultLinewidth: number): StrokedSh
         }
         
         // Move to the next match
-        match = shapeFinder.exec(s);
+        match = shapeFinder.exec(code);
     }
 
     return l;
 }
 
-const getTexts = (s: string): Text[] => {
+const getTexts = (code: string): Text[] => {
     const list: Text[] = [];
     let match: RegExpExecArray | null;
-    while (match = textPattern.exec(s)) {
+    while (match = textPattern.exec(code)) {
         list.push(new Text(
             match[1],
             match[2],
