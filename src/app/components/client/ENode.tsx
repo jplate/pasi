@@ -26,8 +26,8 @@ export const TITLE_FONTSIZE = 9
 
 export default class ENode extends Item {
 
-    public radius: number = DEFAULT_RADIUS;
-    public radius100: number = DEFAULT_RADIUS;
+    radius: number = DEFAULT_RADIUS;
+    radius100: number = DEFAULT_RADIUS;
     private dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
 
@@ -139,20 +139,20 @@ export default class ENode extends Item {
        }
     }
 
+    public override getInfoString() {
+        return (this.linewidth>0 || this.shading>0)? '': 
+            `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
+    }
+
     public override getTexdrawCode() {
 		return clsx(
             super.getTexdrawCode(),
             (this.shading>0 || this.linewidth>0? Texdraw.move(this.x, this.y): ''),
             (this.shading>0? Texdraw.fcirc(this.radius, this.shading): ''),
-            (this.dash.length>0? Texdraw.linePattern(this.dash): ''),
+            (this.dash.length>0? Texdraw.lpatt(this.dash): ''),
             (this.linewidth>0? Texdraw.circ(this.radius): ''),
-            (this.dash.length>0? Texdraw.linePattern([]): '')
+            (this.dash.length>0? Texdraw.lpatt([]): '')
         );			        
-    }
-
-    public override getInfoString() {
-        return (this.linewidth>0 || this.shading>0)? '': 
-            `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
     }
 
     /** 
@@ -180,7 +180,7 @@ export default class ENode extends Item {
         //assert(n>=0 && n<3);
         
         if (n>0) {
-            this.shading = round(1 - circles[0].fillLevel, ROUNDING_DIGITS);
+            this.shading = circles[0].fillLevel;
             this.linewidth = this.linewidth100 = stShapes[n-1].stroke.linewidth;
             this.dash = this.dash100 = stShapes[n-1].stroke.pattern;
             this.radius = circles[0].radius;
@@ -190,7 +190,7 @@ export default class ENode extends Item {
             if(info===null) {	        	
 	            throw new ParseError(<span>Incomplete definition of entity node <code>{name}</code>: info string required.</span>);
 	        }
-            //console.log(`info: ${info}`);
+            // console.log(`info: ${info}`);
             this.linewidth = this.linewidth100 = 0;
             this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
             [this.radius, this.x, this.y] = info.split(/\s+/).map(s => Texdraw.decodeFloat(s));            
@@ -198,42 +198,52 @@ export default class ENode extends Item {
                 throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);
             }
         }
-        if (this.linewidth<0) {
+        if (this.linewidth < 0) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.</span>);
         }
-        if (this.linewidth>MAX_LINEWIDTH) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width exceeds maximum value.</span>);
+        else if (this.linewidth > MAX_LINEWIDTH) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width {this.linewidth} exceeds maximum value.</span>);
         }
-        if (this.shading<0) {
+
+        if (this.shading < 0) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value should not be negative.</span>);
         }
-        if (this.shading>1) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value exceeds 1.</span>);
+        else if (this.shading > 1) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value {this.shading} exceeds 1.</span>);
         }
-        if (this.dash.length>MAX_DASH_LENGTH) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length exceeds maximum value.</span>); 
+
+        if (this.dash.length > MAX_DASH_LENGTH) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length {this.dash.length} exceeds maximum value.</span>); 
         }
-        if (this.dash.some(v => v>MAX_DASH_VALUE)) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value exceeds  maximum value.</span>); 
+        if (this.dash.some(v => (val = v) < 0)) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value should not be negative.</span>); 
+        }        
+        let val;
+        if (this.dash.some(v => v > MAX_DASH_VALUE)) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds  maximum value.</span>); 
         }
-        if (this.radius<0) {
+
+        if (this.radius < 0) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.</span>); 
         }
-        if (this.radius>MAX_RADIUS) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius exceeds maximum value.</span>); 
+        else if (this.radius > MAX_RADIUS) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius {this.radius} exceeds maximum value.</span>); 
         }
-        if (this.x<MIN_X) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate below minimum value.</span>); 
+        
+        if (this.x < MIN_X) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {this.x} below minimum value.</span>); 
         }
-        if (this.x>MAX_X) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate exceeds maximum value.</span>); 
+        else if (this.x > MAX_X) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {this.x} exceeds maximum value.</span>); 
         }
-        if (this.y<MIN_Y) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate below minimum value.</span>); 
+        
+        if (this.y < MIN_Y) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {this.y} below minimum value.</span>); 
         }
-        if (this.y>MAX_Y) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate exceeds maximum value.</span>); 
+        else if (this.y > MAX_Y) {
+            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {this.y} exceeds maximum value.</span>); 
         }
+        
         [this.radius100, this.x100, this.y100] = [this.radius, this.x, this.y];
     }
 }

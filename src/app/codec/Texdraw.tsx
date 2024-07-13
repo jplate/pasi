@@ -1,3 +1,5 @@
+import clsx from 'clsx/lite'
+
 import { round } from '../util/MathTools'
 
 export const ROUNDING_DIGITS = 4;
@@ -11,7 +13,17 @@ export class ParseError extends Error {
     ) {super();}
 }
 
-class Point2D {
+export const makeParseError = (message: React.ReactNode, code: string) => {
+    const long = code.length > 30;
+    const codeComp = long? <pre className='mt-6 w-[50rem]'><code>{code}</code></pre>: <code>{code}</code>;
+    return new ParseError(long? 
+            <><span>{message}:</span> {codeComp}</>: 
+            <span>{message}: {codeComp}.</span>, 
+        long
+    );
+}
+
+export class Point2D {
     constructor(
         public x: number,
         public y: number
@@ -22,13 +34,11 @@ class Point2D {
     }
 }
 
-interface Fillable {
+export interface Fillable {
     fillLevel: number
-    filled: boolean
 }
-const isFillable = (obj: any): obj is Fillable => 
-    typeof obj.fillLevel === 'number' &&
-    typeof obj.filled === 'boolean';
+export const isFillable = (obj: any): obj is Fillable => 
+    typeof obj.fillLevel === 'number';
 
 export abstract class Shape {
     location: Point2D;
@@ -37,6 +47,14 @@ export abstract class Shape {
 
     constructor(location: Point2D) {
         this.location = location;
+    }
+
+    getStartingPoint(): Point2D {
+        return this.location;
+    }
+
+    getEndPoint(): Point2D {
+        return this.location;
     }
 }
 
@@ -61,15 +79,13 @@ export class Arc extends Shape {
 
 export class Circle extends Shape {
     radius: number;
-    filled: boolean;
     fillLevel: number;
     readonly genericDescription = 'a circle';
     readonly isIndependent = true;
 
-    constructor(p: Point2D, r: number, f: boolean, fl: number) {
+    constructor(p: Point2D, r: number, fl: number) {
         super(p);
         this.radius = r;
-        this.filled = f;
         this.fillLevel = fl;
     }
 
@@ -79,65 +95,78 @@ export class Circle extends Shape {
 }
 
 export class CubicCurve extends Shape implements Fillable {
-    p1: Point2D;
+    p0: Point2D;
+    p0a: Point2D;
     p1a: Point2D;
-    p2a: Point2D;
-    p2: Point2D;
-    filled: boolean;
+    p1: Point2D;
     fillLevel: number;
     readonly genericDescription = 'a curve';
     readonly isIndependent = false;
 
-    constructor(p1: Point2D, p1a: Point2D, p2a: Point2D, p2: Point2D) {
-        super(p1);
-        this.p1 = p1;
+    constructor(p0: Point2D, p0a: Point2D, p1a: Point2D, p1: Point2D) {
+        super(p0);
+        this.p0 = p0;
+        this.p0a = p0a;
         this.p1a = p1a;
-        this.p2a = p2a;
-        this.p2 = p2;
-        this.filled = false;
+        this.p1 = p1;
         this.fillLevel = 0;
     }
 
     toString(): string {
-        return `(CubicCurve: ${this.p1}, ${this.p1a}, ${this.p2a}, ${this.p2}${this.filled ? " filled" : ""})`;
+        return `(CubicCurve: ${this.p0}, ${this.p0a}, ${this.p1a}, ${this.p1}${this.fillLevel>0 ? " filled" : ""})`;
+    }
+
+    override getStartingPoint() {
+        return this.p0;
+    }
+
+    override getEndPoint() {
+        return this.p1;
     }
 }
 
 export class Line extends Shape {
+    p0: Point2D;
     p1: Point2D;
-    p2: Point2D;
     readonly genericDescription = 'a line';
     readonly isIndependent = false;
 
-    constructor(p1: Point2D, p2: Point2D) {
-        super(p1);
+    constructor(p0: Point2D, p1: Point2D) {
+        super(p0);
+        this.p0 = p0;
         this.p1 = p1;
-        this.p2 = p2;
     }
 
     toString(): string {
-        return `(Line: ${this.p1}, ${this.p2})`;
+        return `(Line: ${this.p0}, ${this.p1})`;
+    }
+
+    override getStartingPoint() {
+        return this.p0;
+    }
+
+    override getEndPoint() {
+        return this.p1;
     }
 }
 
 export class Path extends Shape implements Fillable {
     shapes: Shape[];
     drawn: boolean;
-    filled: boolean;
     fillLevel: number;
     readonly genericDescription = 'a curve/line sequence';
     readonly isIndependent = false;
 
-    constructor(shapes: Shape[], drawn: boolean, filled: boolean, fillLevel: number) {
+    constructor(shapes: Shape[], drawn: boolean, fillLevel: number) {
         super(shapes[0].location);
         this.shapes = shapes;
         this.drawn = drawn;
-        this.filled = filled;
         this.fillLevel = fillLevel;
     }
 
     toString(): string {
-        return `(Path: ${(this.drawn ? "drawn" : "")}${(this.filled ? (this.drawn ? ", filled" : "filled") : "")}${this.shapes.join(', ')})`;
+        const drawnFilled = [this.drawn? 'drawn': '', this.fillLevel>0? 'filled': ''].filter(s => s!=='').join(', ');
+        return `(Path: ${drawnFilled} (${this.shapes.map(sh => sh.toString()).join(', ')})`;
     }
 }
 
@@ -196,80 +225,79 @@ export type Position = typeof TOP | typeof LEFT | typeof RIGHT | typeof BOTTOM |
 
 //const shapePattern = /(.*?)(?:\\lvec\s*\((\S+)\s+(\S+)\)|\\clvec\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)|\\larc\s+r:(\S+)\s+sd:(\S+)\s+ed:(\S+)|(?:\\lcir|\\fcir\s+f:(\S+))\s+r:(\S+))/g;
 // This pattern works in java, but apparently javascript's regex engine gets easily confused by pattern alternations!
-// For example, the pattern erroneously fails to match the string '\linewd 1 \moved(430 410) \lcir r:12'.
+// For example, javascript wrongly thinks that the pattern fails to match the string '\linewd 1 \moved(430 410) \lcir r:12'.
 // So we have to use a slightly different approach.
 
-const shapePattern = /(.*?)(\\lvec|\\clvec|\\larc|\\lcir|\\fcir)/g; // 1: preamble, 2: shape command
-
-const lvecPattern = /^\\lvec\s*\((\S+)\s+(\S+)\)/; // 1: x, 2: y
-
 const clvecPattern = /^\\clvec\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)/; // 3 groups for coordinates
+
+const fillPattern = /\\(i|l)fill\s+f:(\S*)/;
+
+const floatPattern = /^-?\d*\.?\d+$/;
 
 const larcPattern = /^\\larc\s+r:(\S+)\s+sd:(\S+)\s+ed:(\S+)/; // radius, starting angle, end angle (in degrees)
 
 const lfcirPattern = /^(?:\\lcir|\\fcir\s+f:(\S+))\s+r:(\S+)/; // fill-level, radius
 
-const textPattern = /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\htext\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
+const linewdPattern = /\\linewd\s+(\S+)/;
 
-const linewdPattern = /.*\\linewd\s+(\S+)/;
+const lpattPattern = /\\lpatt\s+\((.*?)\)/;
 
-const movePattern = /.*\\move\s*\((\S+)\s+(\S+)\)/;
+const lvecPattern = /^\\lvec\s*\((\S+)\s+(\S+)\)/; // 1: x, 2: y
+
+const movePattern = /\\move\s*\((\S+)\s+(\S+)\)/;
 
 const movePattern1 = /\\move\s*\((\S+)\s+(\S+)\)/;
 
-const lpattPattern = /.*\\lpatt\s+\((.*)\)/;
+const shapePattern = /(.*?)(\\lvec|\\clvec|\\larc|\\lcir|\\fcir)/; // 1: preamble, 2: shape command
 
-const fillPattern = /.*\\(i|l)fill\s+f:(.*)/;
-
-const floatPattern = /^-?\d*\.?\d+$/;
+const textPattern = /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\htext\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
 
 
 export const extractDashArray = (s: string) => {
     const match = s.match(lpattPattern);
-    console.log(`m: ${match}`);
     return match? match[1].split(/\s+/).filter(s => s.length>0).map(s => decodeFloat(s)): null;  
 }
 
+export const extractLinewidth = (s: string) => {
+    const match = s.match(linewdPattern);
+    return match? decodeFloat(match[1]): 0; 
+}
 
 export const getStrokedShapes = (code: string, defaultLinewidth: number): StrokedShape[] => {
     const textMatch = code.match(textPattern);
     if (textMatch) return []; // If we're dealing with a textref command, there's no need to go looking for shape commands, because any such commands will all be in the 
         // argument to \htext (i.e., they'll be part of a label text).
     const shapeFinder = new RegExp(shapePattern);
-    let match = shapeFinder.exec(code);
-  
-    const l: StrokedShape[] = []; // list of Shapes, incl. Paths
+    const list: StrokedShape[] = []; // list of Shapes, incl. Paths
     const lx: Shape[] = []; // current list of Shapes, possibly elements of a Path
     let lw = defaultLinewidth,
-        index = 0, // to keep track of how far we've come in our search for shape commands in s.
+        index = 0, // points to the end of the matched portion of the string.
         dashArray: number[] = [],
         stroke: Stroke = new Stroke(lw, dashArray),
         currentPoint: Point2D | null = null,
-        newPoint: Point2D | null = null;
-  
-    while (match || lx.length > 0) { // Even after the shape commands run out, there may be a fill command to look out for, which will then be used to 
-            // add relevant information to the Path to be constructed from the shapes stored in lx.
+        newPoint: Point2D | null = null,
+        match;
 
-        if (match) {
-            index = match.index + match[0].length;
-        }
-        const toSearch = match ? match[1] : code.slice(index); // m[1] is the material that precedes the first found shape. It might contain, e.g., a move command.
+    while ((match = code.match(shapeFinder)) || lx.length > 0) { // Even after the shape commands run out, there may be a fill command to look out for, 
+            // which will then be used to add relevant information to the Path to be constructed from the shapes stored in lx.
+
+        index = match? match[0].length: 0;
+        //console.log(`index: ${index} code: ${code}`);
+        const toSearch = match ? match[1] : code; // match[1] is the material that precedes the first found shape. It might contain, e.g., a move command.
     
-        const fillMatch = fillPattern.exec(toSearch);
-        const lwMatch = linewdPattern.exec(toSearch);
-        const moveMatch = movePattern.exec(toSearch);
-        const dashMatch = lpattPattern.exec(toSearch);
+        const fillMatch = toSearch.match(fillPattern);
+        const lwMatch = toSearch.match(linewdPattern);
+        const moveMatch = toSearch.match(movePattern);
+        const dashMatch = toSearch.match(lpattPattern);
 
         //console.log(`tS="${toSearch}" f=${fillMatch!==null}  l=${lwMatch!==null}  m=${moveMatch!==null} d=${dashMatch!==null} M: ${match?.map((m, i, a) => `${i}: "${a[i]}"`).join(', ')}`);
     
         let pathClosed = false,
-            filled = false,
             fillLevel = 0,
             drawn = true;
         if (fillMatch) {
             pathClosed = true;
-            filled = true;
-            fillLevel = decodeFloat(fillMatch[2]);
+            fillLevel = round(1 - decodeFloat(fillMatch[2]), ROUNDING_DIGITS);
             drawn = fillMatch[1]==='l';
         }
         if (moveMatch) { 
@@ -289,14 +317,13 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
             if (lxs > 0) {
                 const s0 = lx[0];
                 if (lxs===1 && isFillable(s0)) {
-                    s0.filled = filled;
                     s0.fillLevel = fillLevel;
                 }
                 const ss = new StrokedShape(
-                    lx.length>1? new Path(lx, drawn, filled, fillLevel): s0,
+                    lx.length>1? new Path([...lx], drawn, fillLevel): s0,
                     stroke
                 );
-                l.push(ss);
+                list.push(ss);
             }
             lx.length = 0; // clear the array
             pathClosed = false;
@@ -304,17 +331,11 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
   
         if (match) {
             if (!currentPoint) {
-                throw new ParseError(
-                    <>
-                        No specification of a starting point detected in the following code: {' '}
-                        <pre className='mt-6 w-[50rem]'><code>{code}</code></pre>
-                    </>, 
-                    true // for an extra-wide dialog
-                );
+                throw makeParseError('No specification of a starting point detected in the following code', code);
             }
     
             stroke = new Stroke(lw, dashArray);
-            const shapeString = code.slice(match.index + match[1].length);
+            const shapeString = code.slice(match[1].length);
             let shape: Shape | null = null,
                 shapeMatch;
             switch (match[2]) {
@@ -344,12 +365,10 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
                     }
                 case '\\fcir':
                 case '\\lcir': if (shapeMatch = shapeString.match(lfcirPattern)) {
-                        const filled = shapeMatch[1]?.length>0;
                         shape = new Circle(
                             currentPoint,
                             decodeFloat(shapeMatch[2]),
-                            filled,
-                            filled? decodeFloat(shapeMatch[1]): 1
+                            shapeMatch[1]? round(1 - decodeFloat(shapeMatch[1]), ROUNDING_DIGITS): 0
                         );
                         break;
                     }
@@ -358,9 +377,10 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
                     }
             }
     
-            if (shape) {
+            if (shapeMatch && shape) {
+                index = match[1].length + shapeMatch[0].length;
                 if (shape.isIndependent) {
-                    l.push(new StrokedShape(shape, stroke));
+                    list.push(new StrokedShape(shape, stroke));
                 } else {
                     lx.push(shape);
                 }
@@ -370,12 +390,11 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
             }
         }
         
-        // Move to the next match
-        match = shapeFinder.exec(code);
+        code = code.slice(index);
     }
-
-    return l;
+    return list;
 }
+
 
 const getTexts = (code: string): Text[] => {
     const list: Text[] = [];
@@ -414,7 +433,8 @@ export const decodeFloat = (s: string): number => {
     else {
         const result = parseFloat(s);
         if (isNaN(result) || !s.match(floatPattern)) { // Since parseFloat is very lenient, we have to explicitly check whether s is a proper 
-                // representation of a number.
+                // representation of a number.            
+            console.trace();
             const max = 20;
             throw new ParseError(<span>Number expected, read <code>{s.length>max? s.slice(0, max-3)+'...': s}</code>.</span>);
         }
@@ -429,27 +449,115 @@ export const end = '\\end{texdraw}';
 
 export const dimCmd = '\\drawdim pt \\setunitscale';
 
-export const linewidth = (lw: number) => `\\linewd ${encodeFloat(lw)}`;
+export const linewd = (lw: number) => `\\linewd ${encodeFloat(lw)} `;
 
 export const move = (x: number, y: number) => `\\move(${encodeFloat(x)} ${encodeFloat(y)})`;
 
-export const linePattern = (dash: number[]): string => `\\lpatt (${dash.join(' ')})`;
+export const lpatt = (dash: number[]): string => `\\lpatt (${dash.join(' ')})`;
 
 export const line = (x: number, y: number) => `\\lvec(${encodeFloat(x)} ${encodeFloat(y)})`;
 
-export const ifill = (f: number) => `\\ifill f:${encodeFloat(1-f)}`;
+export const curve = (p0ax: number, p0ay: number, p1ax: number, p1ay: number, p1x: number, p1y: number) =>
+    `\\clvec(${encodeFloat(p0ax)} ${encodeFloat(p0ay)})(${encodeFloat(p1ax)} ${encodeFloat(p1ay)})(${encodeFloat(p1x)} ${encodeFloat(p1y)})`;        
 
-export const lfill = (f: number) => `\\lfill f:${encodeFloat(1-f)}`;
+export const ifill = (f: number) => `\\ifill f:${encodeFloat(1 - f)} `;
 
-export const circ = (r: number) => `\\lcir r:${encodeFloat(r)}`;
+export const lfill = (f: number) => `\\lfill f:${encodeFloat(1 - f)} `;
 
-export const fcirc = (r: number, f: number) => `\\fcir f:${encodeFloat(1-f)} r:${encodeFloat(r)}`;
+export const circ = (r: number) => `\\lcir r:${encodeFloat(r)} `;
 
-export const textref = (horizontal: Position, vertical: Position) => `\\textref h:${horizontal} v:${vertical}`;
+export const fcirc = (r: number, f: number) => `\\fcir f:${encodeFloat(1 - f)} r:${encodeFloat(r)} `;
+
+export const textref = (horizontal: Position, vertical: Position) => `\\textref h:${horizontal} v:${vertical} `;
 
 export const movePoint = (s: string) => {
     const match = s.match(movePattern1);
     return match? new Point2D(decodeFloat(match[1]), decodeFloat(match[2])): null;
 }
 
+/**
+ * Returns a texdraw command sequence for both 'filled' and 'drawn' shapes. ('Drawn' shapes are ones that are not supposed to be filled.)
+ */
+export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], openPath: boolean, lw: number, dash: number[], shading: number): string => {
+    const result: string[] = [];
+    const filled = shading > 0;
+    if (filled && filledShapes.length > 0) {
+        if (!openPath) { // If there's no open path, we'll use lfill and not add any commands for the drawnShapes. So we'll need to add commands to set
+                // the linewidth and dash pattern, if applicable.
+            result.push(linewd(lw));        
+            if (dash.length>0) { // Since, in the texdraw code, we always reset the dash pattern after changing it to something other than the empty string, we
+                    // only need to add a command for it if the dash array is non-empty.
+                result.push(lpatt(dash));
+            }
+        }
+        const start = filledShapes[0].getStartingPoint();
+        result.push(move(start.x, start.y));
+        result.push(getShapeCommand(filledShapes[0]));
+        for(let i = 1; i < filledShapes.length; i++) {
+            result.push(getShapeCommand(filledShapes[i]));
+        }
+        if (openPath) {            
+            result.push(ifill(shading));
+        }
+        else {
+            result.push(lfill(shading));
+            if (dash.length>0) {
+                // reset dash pattern
+                result.push(lpatt([]));
+            }
+        }
+    }
+    if ((!filled || openPath) && drawnShapes.length>0 && lw>0) {
+        // If there's an openPath, then we didn't use lfill but rather ifill, and so there's still the need to draw the shapes (provided there are any and lw>0).
+        result.push(getCommandSequenceForDrawnShapes(drawnShapes, lw, dash));
+    }
+    return result.join('');
+}
 
+/**
+ * Returns a texdraw command sequence for 'drawn' shapes, i.e., shapes that are not supposed to be filled.
+ */
+export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, dash: number[]): string => {
+    const result: string[] = [];
+    
+    if (dash.length>0) {
+        result.push(lpatt(dash));
+    }
+    result.push(linewd(lw));
+
+    const start = shapes[0].getStartingPoint();
+    result.push(move(start.x, start.y));
+    result.push(getShapeCommand(shapes[0]));
+
+    let prevPoint = shapes[0].getEndPoint();
+    for(let i = 1; i < shapes.length; i++) {
+        const newPoint = shapes[i].getStartingPoint();
+        if (prevPoint.x===newPoint.x && prevPoint.y===newPoint.y) {
+            result.push(getShapeCommand(shapes[i]));
+        }
+        else { // In this case there's a jump, so we'll have to insert a texdraw move command.
+            result.push(move(newPoint.x, newPoint.y));
+            result.push(getShapeCommand(shapes[i]));
+        }
+        prevPoint = shapes[i].getEndPoint();
+    }
+    if (dash.length > 0) result.push(lpatt([]));
+
+    return result.join('');
+}
+
+/**
+ * The original version (in java) also handles the case where sh is an Arc. For now we'll ignore that case.
+ */
+export const getShapeCommand = (sh: Shape): string => {
+    if (sh instanceof Line) {
+        return line(sh.p1.x, sh.p1.y)
+    }
+    else if (sh instanceof CubicCurve) {
+        return curve(sh.p0a.x, sh.p0a.y, sh.p1a.x, sh.p1a.y, sh.p1.x, sh.p1.y);
+    }
+    else {
+        console.warn(`Unexpected shape: ${sh.genericDescription}`);
+        return '';
+    }
+}

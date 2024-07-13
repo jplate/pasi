@@ -11,6 +11,20 @@ export const round = (num: number, digits: number): number => {
     return num;
 }
 
+const modulo = (value: number, base: number) => { // a modulo function that works also for negative numbers
+    return (value % base + base) % base;
+}
+
+/** 
+ * Normalizes a 'raw' value (first argument) relative to a cyclic scale with the supplied minimum and base. Also rounds the result.
+ */
+export const getCyclicValue = (raw: number, min: number, base: number, roundingFactor: number): number => {
+    const v1 = modulo(raw - min, base);
+    const v2 = (v1==0? base: v1) + min; // jump back to min only *after* reaching min+base.
+    return Math.round(v2 * roundingFactor) / roundingFactor;
+}
+
+
 /**
  * Rotates a point around another point by a given angle.
  * @returns The new coordinates {x, y} of the rotated point.
@@ -53,3 +67,38 @@ export const scalePoint = (px: number, py: number, ox: number, oy: number, scale
 
     return { x: finalX, y: finalY };
 }
+
+
+export const toBase64 = (bools: boolean[]): string => {
+    const byteArray = new Uint8Array(Math.ceil(bools.length / 8));
+
+    for (let i = 0; i < bools.length; i++) {
+        const byteIndex = Math.floor(i / 8);
+        byteArray[byteIndex] <<= 1;
+        if (bools[i]) {
+            byteArray[byteIndex] |= 1;
+        }
+    }
+
+    // Shift remaining bits in the last byte
+    const remainingBits = bools.length % 8;
+    if (remainingBits !== 0) {
+        byteArray[byteArray.length - 1] <<= (8 - remainingBits);
+    }
+
+    return Buffer.from(byteArray).toString('base64');
+}
+
+export const fromBase64 = (base64Str: string): boolean[] => {
+    const byteArray = Buffer.from(base64Str, 'base64');
+    const bools: boolean[] = [];
+
+    for (let byte of byteArray) {
+        for (let i = 7; i >= 0; i--) {
+            bools.push((byte & (1 << i)) !== 0);
+        }
+    }
+
+    return bools.slice(0, bools.length - (8 - (base64Str.length * 6 % 8)) % 8);
+}
+

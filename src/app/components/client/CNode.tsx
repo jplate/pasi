@@ -4,7 +4,8 @@ import ENode from './ENode.tsx'
 import NodeGroup, { angle } from './NodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
-import { validFloat, parseInputValue, parseCyclicInputValue, getCyclicValue } from './EditorComponents.tsx'
+import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
+import { getCyclicValue } from '../../util/MathTools.tsx'
 
 const CNODE_RADIUS = 7
 const CNODE_ARROW_DIV_RADIUS = 10
@@ -14,7 +15,7 @@ const CNODE_ARROW_DISTANCE_MIN = 15
 const CNODE_ARROW_DISTANCE_MAX = 40
 const CNODE_ARROW_POINTS = '6,10 5,7 15,10 5,13, 6,10'
 const CNODE_ARROW_MITER_LIMIT = 5
-const MIN_ROTATION = -180
+export const MIN_ROTATION = -180
 const MAX_ROTATION_INPUT = 9999
 const MIN_DISTANCE = -9999
 const MAX_DISTANCE = 9999
@@ -25,16 +26,16 @@ export const MAX_NODEGROUP_SIZE = 1000
 
 export default class CNode extends Item {
 
-    public radius: number = CNODE_RADIUS;
-    public fixedAngles: boolean = true;
-    public omitLine: boolean = false;
-    public angle0: number = 0; // angle to control point 0
-    public angle1: number = 0; // angle to controle point 1
-    public dist0: number = DEFAULT_DISTANCE; // distance to control point 0
-    public dist1: number = DEFAULT_DISTANCE; // distance to control point 1
-    public dist0_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 0
-    public dist1_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 1
-    public numberOfCopies: number = 0; // to help generate unique ids
+    radius: number = CNODE_RADIUS;
+    fixedAngles: boolean = true;
+    omitLine: boolean = false;
+    angle0: number = 0; // angle to control point 0
+    angle1: number = 0; // angle to controle point 1
+    dist0: number = DEFAULT_DISTANCE; // distance to control point 0
+    dist1: number = DEFAULT_DISTANCE; // distance to control point 1
+    dist0_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 0
+    dist1_100: number = DEFAULT_DISTANCE; // the 'original' distance to control point 1
+    numberOfCopies: number = 0; // to help generate unique ids
 
 
     constructor(id: string, x: number, y: number, a0: number, a1: number, group: NodeGroup) {

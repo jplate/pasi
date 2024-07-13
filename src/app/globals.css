@@ -62,11 +62,11 @@ li {
 }
 
 .dark {
-  --foreground-rgb: 190, 169, 158; /* slightly redder than stone-400 */
+  --foreground-rgb: 190, 169, 150; /* slightly redder than stone-400 */
   --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
   --background-end-rgb: 20, 17, 13; /* slightly darker */
 
-  --btnbg: 76, 64, 60; /* slightly redder than stone-700 */
+  --btnbg: 66, 50, 40; 
   --btncolor: 190, 169, 158; /* slightly redder than stone-400 */
   --btnborder: 95, 83, 78; /* slightly redder than stone-600 */
   --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
@@ -109,8 +109,25 @@ body {
     rgb(var(--background-start-rgb));
 }
 
-.font-variant-ligatures-none {
-  font-variant-ligatures: 'none';
+.codepanel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-feature-settings: 'none'; /* Ligatures in the code panel would look silly, so we turn them off. */
+  background-color: rgb(var(--codepanelbg));
+  color: rgb(var(--codepanelcolor)) 
+}
+
+textarea::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  background-color: rgba(255, 0, 0, 0.5); /* Custom background color */
+  border: 1px solid #ddd; /* Optional: border to match the textarea border */
+  border-radius: 3px; /* Optional: rounded corners */
+  cursor: nwse-resize; /* Diagonal resize cursor */
+  pointer-events: none; /* Ensure the pseudo-element doesn't block textarea interaction */
 }
 
 /* For browsers that support `scrollbar-*` properties */
@@ -217,5 +234,6 @@ h3 {
   backdrop-filter: blur(15px);
   font-size: 1.25em;
   font-weight: bold;
-  margin: 1em 0;
+  margin: 1.25em 0;
+  padding-top: 0.2em;
 }

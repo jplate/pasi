@@ -1,7 +1,9 @@
-import React, { useState, useEffect, forwardRef, CSSProperties } from 'react'
+import React, { useState, useCallback, useEffect, forwardRef, CSSProperties } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { WithTooltip } from './EditorComponents.tsx'
+import { useThrottle } from '../../util/Misc'
+
 
 
 interface ButtonProps {
@@ -28,17 +30,21 @@ export const BasicButton = forwardRef((
         const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
         const [active, setActive] = useState(false);
 
-        const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent the default form submission behavior
-                e.stopPropagation();
-                buttonElement?.click(); 
-                setActive(true);
-                setTimeout(() => {
-                    setActive(false);
-                }, 1100);
-            }
-        };
+        const handleKeyDown = useCallback(
+            useThrottle(
+                (e: React.KeyboardEvent<HTMLButtonElement>) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); 
+                        e.stopPropagation();
+                        buttonElement?.click(); 
+                        setActive(prev => true);
+                    }
+                }, 
+                500
+            ),
+            [buttonElement]
+        );
+
         const button = (
             <button id={id} className={clsx('block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none', 
                         'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
@@ -122,23 +128,27 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
         const textarea = textareaRef.current;
 
         if (textarea) {
-          // Listen for user input
             textarea.addEventListener('input', updateScrollbarWidth);
+            textarea.addEventListener('resize', updateScrollbarWidth);
 
-            // Create a mutation observer to watch for programmatic changes
-            const observer = new MutationObserver(updateScrollbarWidth);
-
-            // Observe changes to child nodes and subtree to catch all changes
-            observer.observe(textarea, {
+            // Create a mutation and a resize observer to watch for programmatic changes
+            const mutObserver = new MutationObserver(updateScrollbarWidth);
+            const resizeObserver = new ResizeObserver((entries) => {
+                for (const entry of entries) {
+                    updateScrollbarWidth();
+                }
+            });
+            mutObserver.observe(textarea, {
                 childList: true,
                 subtree: true,
                 characterData: true,
             });
+            resizeObserver.observe(textarea);
 
-            // Clean up event listener and observer on component unmount
             return () => {
                 textarea.removeEventListener('input', updateScrollbarWidth);
-                observer.disconnect();
+                mutObserver.disconnect();
+                resizeObserver.disconnect();
             };
         }
     }, [textareaRef]);
@@ -172,7 +182,7 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
         ...(isActive? activeStyle: {}),
     };
 
-    return (
+    const button = (
         <button id={id} style={style}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -193,4 +203,6 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
         </svg>
     </button>);
+
+    return <WithTooltip comp={button} tooltip={'Copy to clipboard'} placement={'left'} />;
 }

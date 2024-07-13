@@ -3,14 +3,17 @@ import NodeGroup from '../components/client/NodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
-
+import { round } from '../util/MathTools'
 
 export const versionString = 'pasiCodecV1';
 
 const CODE = '0123456789aáàäâbcdeéèêfghiíìîjklmnoóòöôpqrstuúùüûvwxyýzAÁÀÄÂBCDEÉÈÊFGHIÍÌÎJKLMNOÓÒÖÔPQRSTUÚÙÜÛVWXYÝZ';
 const ENCODE_BASE = CODE.length;
-const ENCODE_PRECISION = 10;
+const ENCODE_PRECISION = 5; // the number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
+const ENODE_PREFIX = 'E';
+const NODEGROUP_PREFIX = 'K';
+
 
 
 const encodeInt = (num: number) => {
@@ -35,9 +38,10 @@ const decodeInt = (str: string) => {
 }
 
 /**
- * Returns a string that encodes the supplied argument in base 100.
+ * Returns a string that encodes the supplied argument in base 100. The format is: integer part + ('-' or '.') + fractional part (if applicable). The 
+ * minus sign appears whenever the number is negative, the dot only if the number is positive and there's a fractional part.
  */
-const encode = (val: number) => {
+export const encode = (val: number) => {
     if (isNaN(val)) return '?';
     else if (val===-Infinity) return '_';
     else if (val===Infinity) return '^';
@@ -51,33 +55,31 @@ const encode = (val: number) => {
         let fractionalString = '';
     
         let fraction = fractionalPart;
-        while (fraction > 0) {
+        for (let i = 0; i < ENCODE_PRECISION; i++) {
             fraction *= ENCODE_BASE;
             const digit = Math.floor(fraction);
             fractionalString += encodeInt(digit);
-            fraction -= digit;
+            fraction = round(fraction - digit, 2 * (ENCODE_PRECISION - i));
     
-            // Limit the length of the fractional part to avoid infinite loops
-            if (fractionalString.length > ENCODE_PRECISION) break;
+            if (fraction===0) break;
         }
     
-        return `${isNegative? '-': ''}${fractionalString ? `${integerString}.${fractionalString}` : integerString}`;
+        return `${integerString}${isNegative? '-': fractionalPart? '.': ''}${fractionalPart ? fractionalString: ''}`;
     }
 }
 
 /**
  * Returns the number represented by the supplied string. This may be NaN. NaN is also returned if the string contains a syntax error.
  */
-const decode = (s: string) => {
+export const decode = (s: string) => {
     if (s==='' || s==='?') return NaN;
     else if (s==='_') return -Infinity;
     else if (s==='^') return Infinity;
     else {
-        const isNegative = s.startsWith('-');
-        const abs = isNegative? s.slice(1): s;
-        const fpPos = s.indexOf('.');
-        const integerPart = fpPos>=0? abs.slice(0, fpPos): s;
-        const fractionalPart = fpPos>=0? abs.slice(fpPos+1): '';
+        const isNegative = s.includes('-');
+        const fpPos = s.search(/[\.-]/);
+        const integerPart = fpPos>=0? s.slice(0, fpPos): s;
+        const fractionalPart = fpPos>=0? s.slice(fpPos+1): '';
         let val = integerPart===''? 0: decodeInt(integerPart);
         for (let i = 0, k = ENCODE_BASE; i<fractionalPart.length; i++, k*=ENCODE_BASE) {
             const digit = CODE.indexOf(fractionalPart[i]);
@@ -87,6 +89,7 @@ const decode = (s: string) => {
         return (isNegative? -1: 1) * val;
     }
 }
+
 
 export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
@@ -113,7 +116,7 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
         }, []
     ).join(' ');
 
-    arr.push(`${Texdraw.dimCmd} ${pixel}${groupInfo.length>0? ` %${groupInfo}`: ''}`);
+    arr.push(`${Texdraw.dimCmd} ${pixel} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
 
     // Next, we construct the main part of the code.
 
@@ -124,7 +127,7 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
             eMap.set(it, encode(enodeCounter++));
         }
         const code = it.getTexdrawCode();
-        arr.push(`${code}%${getHint(it, eMap, gMap)}`);
+        arr.push(`${code}%${getHint(it, eMap, gMap)}`); 
     }
 
     arr.push(Texdraw.end);
@@ -132,25 +135,21 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
 }
 
 const getHint = (item: ENode | NodeGroup, eMap: Map<ENode, string>, gMap: Map<Group<any>, string>) => {
-    let result = '';
-    const cc = getItemInfoString(item, false);
+    let result = [];
+    const info = item.getInfoString();
     
     if (item instanceof ENode) {
-        result = `${eMap.get(item)}${cc}`;
+        result.push(`${ENODE_PREFIX}${eMap.get(item)}${info.length>0? `{${info}}`: ''}`);
     }
-    if (item.group) {
-        result += `${item.isActiveMember? ':': '.'}${gMap.get(item.group)}`;
+    else if (item instanceof NodeGroup) {
+        result.push(`${NODEGROUP_PREFIX}{${info}}`);
     }
-    return result;
-}
 
-const getItemInfoString = (item: ENode | NodeGroup, inCompoundArrow: boolean): string => {
-    let result = '';
-    const info = item.getInfoString();
-    if (info.length>0) {
-        result += `(${info})`;
+    if (item.group) {
+        result.push(`${item.isActiveMember? ':': '.'}${gMap.get(item.group)}`);
     }
-    return result;
+
+    return result.join('');
 }
 
 const getGroupMap = (str: string) => {
@@ -160,7 +159,7 @@ const getGroupMap = (str: string) => {
         if (sp.some(s => s.length > MAX_NAME_LENGTH || isNaN(decodeInt(s)))) {
             throw new ParseError(<span>Corrupt data: illegal group names in preamble.</span>);
         }
-        // Now that all group names are guaranteed to be reasonably short, we don't have to worry about truncating them in our error messages.
+        // Now that all group names are guaranteed to be reasonably short, we won't have to bother with truncating them in our error messages.
 
         let g: StandardGroup<ENode | Group<any>>;
         if (map.has(sp[0])) {
@@ -181,7 +180,7 @@ const getGroupMap = (str: string) => {
                 m = map.get(ms) as Group<any>;
                 if (m) {
                     if (m.group) {
-                        throw new ParseError(<span>Corrupt data: group <code>{ms}</code> is listed as a member of more than one group.</span>);
+                        throw new ParseError(<span>Corrupt data: group <code>{ms}</code> is listed as a member more than once.</span>);
                     }
                     if (m===g || 
                         groups.some(gr => m===gr || (m instanceof StandardGroup && m.contains(gr)))
@@ -219,33 +218,72 @@ const extractString = (s: string, pattern: string, offset: number): string | nul
     return match? match[1]: null;
 }
 
-const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean]>, gMap: Map<string, Group<any>>, counter: number): ENode | null => {
+/**
+ * This function analyzes the 'hint', returning an array that contains the relevant item's name, the name of its group, 
+ * a boolean indicating whether it is an active member of that group, and an info string.
+ */
+const analyzeHint = (hint: string): [name: string | null, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
     let info: string | null = null,
-        activeMember: boolean = true;
-    const i =  hint.indexOf('('); // the beginning of the info string, if present.
-    if(i>=0) {
-        info = extractString(hint, '\\((.*?)\\)', i);
+        activeMember: boolean | undefined = undefined;
+    const i =  hint.indexOf('{'); // the beginning of the info string, if present.
+    if(i >= 0) {
+        info = extractString(hint, '\\{(.*?)\\}', i);
         if (!info) { 
-            return null; // We've found an opening parenthesis but no matching closing parenthesis, which indicates that we're probably dealing with corrupt data.
-                // But instead of throwing an Error right away, we'll allow the 'load' function to try other options.
+            throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
         }
     }
     let j = hint.indexOf(':', info? i + info.length + 1: 0);
-    if (j<0) {
-        activeMember = false;
+    if (j >= 0) {
+        activeMember = true;
+    } 
+    else {
         j = hint.indexOf('.', info? i + info.length + 1: 0);
+        if (j >= 0) {
+            activeMember = false;
+        }
     }
-    const name = i<0 && j<0? hint: hint.substring(0, i<0? j: i);
-    const groupName = j<0? null: hint.slice(j+1);
+    const name = i < 0 && j < 0? hint.slice(1): hint.slice(1, i<0? j: i);
+    const groupName = j < 0? null: hint.slice(j+1);
+    if (j+1===hint.length) { // In this case the hint ends with a '.' or ':', which makes no sense.
+        throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
+    }
+    return [name.length===0? null: name, groupName, activeMember, info];
+}
+
+/** 
+ * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is obtained from gMap.
+ */
+const addToGroup = (item: ENode | NodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>) => {
+    if (groupName) {
+        let g: StandardGroup<ENode | Group<any>>;
+        if (gMap.has(groupName)) {
+            g = gMap.get(groupName) as StandardGroup<ENode | Group<any>>;
+        }
+        else {
+            g = new StandardGroup<ENode | Group<any>>([]);
+            gMap.set(groupName, g);
+        }
+        g.members.push(item);
+        item.group = g;
+        item.isActiveMember = activeMember;
+    }
+}
+
+const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean]>, gMap: Map<string, Group<any>>, counter: number): ENode => {
+    // The 'hint' for an ENode has the following format:
+    // ['E' + name] or 
+    // ['E' + name + ('.' or ':') + groupName] or 
+    // ['E' + name + info] or 
+    // ['E' + name + info + ('.' or ':') + groupName].
+    const [name, groupName, activeMember, info] = analyzeHint(hint);
 
     //console.log(` name: ${name}  groupName: ${groupName}  active: ${activeMember}  info: ${info}  in map: ${eMap.has(name)}`);
 
-    if(name.length > MAX_NAME_LENGTH || isNaN(decodeInt(name)) ||         
+    if(!name || name.length > MAX_NAME_LENGTH || isNaN(decodeInt(name)) ||         
         (groupName && 
-            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) return null; // By returning null at this point, 
-        // we give the 'load' function the chance to try to interpret the tex/hint pair as representing something other than an ENode. 
-        // If an error occurs beyond this point, that will result in a failure to parse the entire texdraw code.
-
+            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) {
+        throw new ParseError(<span>Missing and/or illegal names in directive: <code>{truncate(hint)}</code>.</span>);
+    }
     let node: ENode;
     if (eMap.has(name)) {
         let defined: boolean;
@@ -257,26 +295,21 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     else {
         node = new ENode(counter, 0, 0);
     }
-    if (groupName) {
-        let g: StandardGroup<ENode | Group<any>>;
-        if (gMap.has(groupName)) {
-            g = gMap.get(groupName) as StandardGroup<ENode | Group<any>>;
-        }
-        else {
-            g = new StandardGroup<ENode | Group<any>>([]);
-            gMap.set(groupName, g);
-        }
-        g.members.push(node);
-        node.group = g;
-        node.isActiveMember = activeMember;
-    }
+    if (groupName) addToGroup(node, groupName, activeMember!, gMap);
     node.parse(tex, info, name);
     eMap.set(name, [node, true]);
     return node;
 }
 
-const parseNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, counter: number): NodeGroup | null => {
-    return null;
+const parseNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, counter: number): NodeGroup => {
+    // The 'hint' for a NodeGroup has the following format:
+    // ['K' + info] or 
+    // ['K' + info + ('.' or ':') + groupName].
+    const [, groupName, activeMember, info] = analyzeHint(hint);
+    const nodeGroup = new NodeGroup(counter);
+    nodeGroup.parse(tex, info);
+    if (groupName) addToGroup(nodeGroup, groupName, activeMember!, gMap);
+    return nodeGroup;
 }
 
 export const load = (code: string, eCounter: number, ngCounter: number): [(ENode | NodeGroup)[], number, number, number] => {
@@ -285,7 +318,7 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
     const n = lines.length;
     
     if (n<3) {
-        throw new ParseError(`Expected at least three lines of texdraw code, got ${n===0? 'zero': n===1? 'one': 'two'}.`);
+        throw new ParseError(`Need at least three lines of texdraw code, got ${n===0? 'zero': n===1? 'one': 'two'}.`);
     }
     
     // first line
@@ -314,7 +347,7 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
         // node has already been configured by parseENode. (ENodes will be added to this map as soon as their names are used, which can happen before their respective
         // definitions have been encountered in the texdraw code.)
     let tex = '',
-        cont = false; // Ths last variable indicates whether the current texdraw command has started on a previous line.
+        cont = false; // indicates whether the current texdraw command has started on a previous line
     for (let i = 2; i<lines.length-1; i++) {
         const line = lines[i];
         const match = /((?:^|[^\\])(?:\\\\)*)%/.exec(line); // find an unescaped occurrence of '%'
@@ -325,19 +358,21 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
             cont = false;
 
             //console.log(` t="${tex}" h="${hint}" m=${match[0].length}`);
-
-            const node = parseENode(tex, hint, eMap, gMap, eCounter);
-            if (node) {
-                eCounter++;
-                list.push(node);
-            }
-            else {
-                const nodeGroup = parseNodeGroup(tex, hint, gMap, ngCounter);
-                if (nodeGroup) {
-                    ngCounter++;
-                    list.push(nodeGroup);
-                }
-                else { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
+            const prefix = hint.slice(0, 1);
+            switch (prefix) {
+                case ENODE_PREFIX: {
+                        const node = parseENode(tex, hint, eMap, gMap, eCounter);
+                        eCounter++;
+                        list.push(node);
+                        break;
+                    }
+                case NODEGROUP_PREFIX: {
+                        const nodeGroup = parseNodeGroup(tex, hint, gMap, ngCounter);
+                        ngCounter++;
+                        list.push(nodeGroup);
+                        break;
+                    }
+                default: { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
                     throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
                 }
             }

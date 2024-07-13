@@ -1,11 +1,16 @@
 import React from 'react'
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
+// import assert from 'assert'
+import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
 import Group from './Group.tsx'
-import { H, MARK_LINEWIDTH, MAX_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
+import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
-import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
+import CNode, { MIN_ROTATION, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
 import ENode from './ENode'
-import { round } from '../../util/MathTools.tsx'
+import { round, toBase64, fromBase64 } from '../../util/MathTools.tsx'
+import * as Texdraw from '../../codec/Texdraw'
+import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
+import { encode, decode } from '../../codec/Codec1.tsx'
+import { getCyclicValue } from '../../util/MathTools.tsx'
 
 const STANDARD_CONTOUR_HEIGHT = 80
 const STANDARD_CONTOUR_WIDTH = 120
@@ -44,10 +49,10 @@ export default class NodeGroup implements Group<CNode> {
 
     public dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
     
-    public readonly id: string;
+    public readonly id: number;
     
     constructor(i: number, x?: number, y?: number) {
-        this.id = `NG${i}`;
+        this.id = i;
         this.group = null;
         this.isActiveMember = false;
         if (x!==undefined && y!==undefined) {
@@ -128,8 +133,18 @@ export default class NodeGroup implements Group<CNode> {
         return { x: xSum/n, y: ySum/n };
     }
 
+    /**
+     * Returns an array [w, h], with w and h being the width and height of the 'center div' for this group. The center div acts in part as an
+     * alternative handle by which the group's nodes can be selected and moved around the canvas.
+     */
+    public centerDivDimensions = () => {
+        const { minX: nodalMinX, maxX: nodalMaxX, minY: nodalMinY, maxY: nodalMaxY } = this.getNodalBounds();
+        const cdW = Math.min((nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
+        const cdH = Math.min((nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
+        return [cdW, cdH];
+    }
 
-    public getString = () => `NG[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
+    public getString = () => `NG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
 
     /**
      * A function called in order to change the locations of one or more members. Member nodes that have the 'fixed Angles' property propagate their movement
@@ -301,12 +316,301 @@ export default class NodeGroup implements Group<CNode> {
         });
     }
 
-    public getTexdrawCode() {
-        return '';
+
+    public getInfoString(): string {
+        // The info string contains the following items, separated by semicolons and whitespace:
+        // - A number (the 'index') indicating the first node from which a line is drawn, if any. If there is none, this will be zero.
+        // - Three strings that respectively encode (in base64) the omitLine, fixedAngles, and isActiveMember properties of the contour nodes.
+        // - And finally one or more comma-delimited lists containing geometrical information about the individual nodes.
+
+        // We start by computing the index:
+        let index = 0;
+        if (this.linewidth > 0) { // If linewidth is zero, there will be no drawn lines, so index can be left at zero.
+            let foundGap = false;
+            for (let i = 0; i < this.members.length; i++) {
+                const cn = this.members[i];
+                if (!foundGap && cn.omitLine) {
+                    foundGap = true;
+                }
+                if (foundGap && !cn.omitLine) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        const result: string[] = [];
+        result.push(`${encode(index)}`);
+
+        // Next, we construct and encode the three arrays of booleans:
+        result.push(toBase64(this.members.map(m => m.omitLine)), 
+            toBase64(this.members.map(m => m.fixedAngles)),
+            toBase64(this.members.map(m => m.isActiveMember)));
+
+        // Finally, we add the info strings for the individual members:
+        const n = this.members.length;
+        if (n > 0) {
+            let prev = this.members[n - 1];
+            for (let cn of this.members) {
+                // We add information regarding the two angles aangle0 and aangle1, and the distances dist0 and dist1.
+                // In two cases, we also have to add information regarding the node's coordinate: namely, if the shading and linewidth are both zero, and if 
+                // the shading is zero and the lines both to and from this node are omitted.
+                const info = [cn.angle0, cn.angle1, cn.dist0, cn.dist1];
+                if (this.shading===0 && (this.linewidth===0 || (prev.omitLine && cn.omitLine))) {
+                    info.push(cn.x, cn.y);
+                }
+                result.push(`${info.map(encode)}`);
+                prev = cn;
+            }
+        }
+
+        return result.join('; ');
     }
 
-    public getInfoString() {
-        return '';
+    public getTexdrawCode(): string {
+        const drawnLines: Texdraw.CubicCurve[] = [];
+        const filledLines: Texdraw.CubicCurve[] = [];
+        let foundGap = false;
+        if (this.members.length > 0 && this.linewidth > 0) {
+            const initialSegment: Texdraw.CubicCurve[] = []; // This serves to optimize the output (a little bit) by making sure that, if any lines are omitted,
+                // we start the path at the beginning (rather than the middle) of a run of non-omitted lines.
+            let cn1 = this.members[0],
+                cn2: CNode | undefined;
+            foundGap = cn1.omitLine;
+            for (let i = 1; i < this.members.length || cn2!==this.members[0]; i++) {
+                cn2 = this.members[i < this.members.length? i: 0];
+                const line = getLine(cn1, cn2);
+                const curve = new Texdraw.CubicCurve(
+                    new Texdraw.Point2D(line.x0, line.y0),
+                    new Texdraw.Point2D(line.x1, line.y1),
+                    new Texdraw.Point2D(line.x2, line.y2),
+                    new Texdraw.Point2D(line.x3, line.y3)
+                );
+                if (!cn1.omitLine) {
+                    if (!foundGap) {
+                        initialSegment.push(curve);
+                    }
+                    else {
+                        drawnLines.push(curve);
+                    }                    
+                }
+                else {
+                    foundGap = true;
+                }
+                filledLines.push(curve); // We always add the line to the 'filledLines' so as to get a complete filled shape (for the case that it does get filled).
+                cn1 = cn2;
+            }
+            drawnLines.push(...initialSegment);
+        }
+        const shapeCommands = Texdraw.getCommandSequence(filledLines, drawnLines, foundGap, this.linewidth, this.dash, this.shading); 
+        // If there are no drawnLines, then shapeCommands won't contain any information about linewidth and dash array. So, in this case, 
+        // we'll supply that information upfront:
+        const result: string[] = []
+        if (drawnLines.length===0) {
+            result.push(Texdraw.linewd(this.linewidth));
+            if (this.dash.length>0) {
+                result.push(Texdraw.lpatt(this.dash), Texdraw.lpatt([]));
+            }
+        }
+        result.push(shapeCommands);
+        return result.join('');
+    }
+
+
+    public parse(tex: string, info: string | null): void {
+        if(info===null) {	        	
+            throw new ParseError(<span>Incomplete definition of contour node group: info string required.</span>);
+        }
+        const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
+        
+        //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
+
+        const paths: (Texdraw.CubicCurve | Texdraw.Path)[] = [];
+        for(let i = 0; i<stShapes.length; i++) {
+		    if(!(stShapes[i].shape instanceof Texdraw.CubicCurve) && !(stShapes[i].shape instanceof Texdraw.Path)) {
+		        throw new ParseError(`Expected a path or cubic curve, not ${stShapes[i].shape.genericDescription}`);
+		    }
+            paths.push(stShapes[i].shape as Texdraw.Path);
+	    }
+        
+        const split = info.split(/\s*;\s*/);
+        // The length of split should be at least 5: four strings encoding the index and three arrays of booleans, plus at least one string representing a node.
+        const four = 4;
+        if (split.length < four + 1) {
+            throw makeParseError(`Info string should contain at least ${four + 1} elements, found ${split.length}`, info);
+        }
+ 
+        // Extract the boolean arrays:
+        const [omitLine, fixedAngles, activeMember] = split.slice(1, four).map(fromBase64);
+
+        const ceil = omitLine.length; // Math.ceil(n / 8) * 8, where n is the number of nodes
+        // The three arrays should all be of the same length:
+        if (fixedAngles.length!==ceil || activeMember.length!==ceil) {
+            throw makeParseError('Corrupt configuration data for contour node group', split.slice(1, four).join('; '));
+        }
+        // The number of elements in the info string should more or less equal 4 + ceil:
+        if (split.length > four + ceil) {
+            throw makeParseError(`Info string contains too many elements`, info);
+        }
+        else if (split.length < four + ceil - 8) {
+            throw makeParseError(`Info string contains too few elements`, info);
+        }
+        const n = split.length - four; // What we'll take to be the number of nodes.
+
+        //assert(n > 0);
+
+        // Extract information about the fill level and the start index for decoding node information:
+        const fillLevel = stShapes.length>0? (stShapes[0].shape as Texdraw.CubicCurve | Texdraw.Path).fillLevel: 0;
+        if (fillLevel < 0) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: shading value should not be negative.</span>);
+        }
+        else if (fillLevel > 1) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: shading value {fillLevel} exceeds 1.</span>);
+        }
+        this.shading = fillLevel;
+        const index = fillLevel===0? decode(split[0]): 0; // If fillLevel is non-zero, we'll use the curves of the filled-in Path rather than those (if any) that
+            // are used for drawing the outline, and those curves start with the first node. (I.e., the information given by the first one of those curves,
+            // and more particularly its starting point, is relevant to the first node rather than any later ones.) So, in that case, we'll use an index of zero.
+        if (isNaN(index)) {
+            throw makeParseError('Unexpected token in configuration data for contour node group', split[0]);
+        }
+
+        // Extract information about linewidth and dash pattern:
+        if (stShapes.length==0) {
+            this.linewidth = this.linewidth100 = Texdraw.extractLinewidth(tex);
+            this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
+        }
+        else {
+            const stroke = stShapes[stShapes.length - 1].stroke;
+            this.linewidth = this.linewidth100 = stroke.linewidth;
+            this.dash = this.dash100 = stroke.pattern;
+        }
+        if (this.linewidth < 0) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: line width should not be negative.</span>);
+        }
+        else if (this.linewidth > MAX_LINEWIDTH) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: line width {this.linewidth} exceeds maximum value.</span>);
+        }
+        if (this.dash.length > MAX_DASH_LENGTH) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: dash array length {this.dash.length} exceeds maximum value.</span>); 
+        }
+        if (this.dash.some(v => v < 0)) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: dash value should not be negative.</span>); 
+        }        
+        let val;
+        if (this.dash.some(v => (val = v) > MAX_DASH_VALUE)) {
+            throw new ParseError(<span>Illegal data in definition of contour node group: dash value {val} exceeds  maximum value.</span>); 
+        }
+
+        // Determine the number of nodes represented in the texdraw code:
+        const texN = stShapes.length>0? 
+            fillLevel > 0? 
+                (stShapes[0].shape instanceof Texdraw.Path? stShapes[0].shape.shapes.length: 1): 
+                stShapes.reduce((acc, ssh) => acc + (ssh.shape instanceof Texdraw.Path? ssh.shape.shapes.length: 1) + 1, 0) - 1: // The reason why we add 1 is
+                    // that each curve has two end points. The reason why we subtract 1 at the end is that the sequence of curves eventually returns to its origin.
+            0;
+        // Determine whether there are any unrepresented nodes:
+        let unrepresented = 0;
+        if (stShapes.length===0) {
+            unrepresented = n;
+        }
+        else if (fillLevel===0) { // if the fillLevel is greater than 0, we'll have all nodes represented in the first element of stShapes. But if not,
+                // then the unrepresented nodes are exactly those that have no lines coming to or from them.
+            let prev = omitLine[n - 1];
+            unrepresented = omitLine.reduce((acc, b) => {
+                const oldPrev = prev;
+                prev = b;
+                return !oldPrev && !b? acc + 1: acc;
+            }, 0);
+        }
+        // The number of nodes represented in the texdraw code should not exceed n; and if there aren't any unrepresented nodes, then that number should 
+        // also not be *less* than n:
+        if (texN > n || (texN < n && unrepresented===0)) {
+            throw makeParseError(<span>{texN <  n? 'More': 'Fewer'} nodes represented in the info string (viz., {n}) than in the <i>texdraw</i> code ({texN})</span>, 
+                split.slice(four).join('; '));
+        } 
+
+        // We now have to create and configure the individual nodes, and add them as members, to replace any old ones:
+        this.members = [];
+        const coordinateIndex = 4; // indicates where to find the x-coordinate info in the config array for an individual node
+        // Construct the array of curves from which we'll get information about the coordinates of our nodes:
+        const curves = (fillLevel > 0? 
+            (stShapes[0].shape instanceof Texdraw.Path? stShapes[0].shape.shapes: [stShapes[0].shape]):
+            stShapes.flatMap(sh => sh.shape instanceof Texdraw.Path? sh.shape.shapes: [sh.shape])) as Texdraw.CubicCurve[];
+        let curveIndex = 0,
+            lookingAtEndPoint = false,
+            prevOmit = omitLine[index===0? n - 1: index - 1];
+        for (let i = 0; i < n; i++) {
+            const j = index + i;
+            const k = j >= n? j - n: j;
+            
+            const nodeInfoString = split[four + k];
+            const nodeInfo = nodeInfoString.split(/\s*,\s*/); // the info array for the current node
+            
+            let x, 
+                y;
+            // If either (i) fillLevel and linewidth are both zero or (ii) fillLevel is zero and and the lines from the previous node and to the next are 
+            // both omitted, then we try get the coordinates from the info array:
+            if (fillLevel===0 && (this.linewidth===0 || (prevOmit && omitLine[k]))) {
+                if (nodeInfo.length < coordinateIndex + 2) {
+                    throw makeParseError('Incomplete configuration string for contour node', nodeInfoString);
+                }
+                [x, y] = nodeInfo.slice(coordinateIndex).map(decode);
+            }
+            else {
+                const curve = curves[curveIndex];
+                ({ x, y } = lookingAtEndPoint? curve.getEndPoint(): curve.getStartingPoint());
+                if (lookingAtEndPoint || fillLevel > 0) {
+                    curveIndex++;
+                }
+            }
+            if (fillLevel===0) { /* If fillLevel is non-zero, then all the curves should be present in the texdraw code (whether or not they are 
+                    'omitted'), and so we should keep looking at their starting points, rather than to switch back and forth between start and end points.
+                    On the other hand, if fillLevel *is* zero, then we *do* have to switch back and forth, because the information in the code may
+                    not be redundant. So we have to start by looking at the starting point of whatever curve curveIndex points to, and then switch to 
+                    looking at its end point, since there may not be a next curve. And having looked at the end point of one curve, we then have to switch back 
+                    to looking at the starting point of the next (if there is one), and this next curve may not come up for a while. (For even though
+                    curveIndex has already advanced and points to the next curve, we won't look at it until we know from our data that its turn has come.) 
+                    However, if this next curve is the one *immediately* after the present one -- which will be the case if the line to the next node is 
+                    not 'omitted' -- then we won't look at its starting point but again only at its end point, because then there will be redundancy after all. */
+                lookingAtEndPoint = !omitLine[k];
+            }
+            prevOmit = omitLine[k];
+
+            if (x < MIN_X) {
+                throw new ParseError(<span>Illegal configuration data for contour node: X-coordinate {x} below minimum value.</span>); 
+            }
+            else if (x > MAX_X) {
+                throw new ParseError(<span>Illegal configuration data for contour node: X-coordinate {x} exceeds maximum value.</span>); 
+            }            
+            if (y < MIN_Y) {
+                throw new ParseError(<span>Illegal configuration data for contour node: Y-coordinate {y} below minimum value.</span>); 
+            }
+            else if (y > MAX_Y) {
+                throw new ParseError(<span>Illegal configuration data for contour node: Y-coordinate {y} exceeds maximum value.</span>); 
+            }
+    
+            let [a0, a1, d0, d1] = nodeInfo.slice(0, coordinateIndex).map(s => {
+                const val = decode(s);
+                if (isNaN(val)) {
+                    throw makeParseError('Unexpected token in contour node configuration string', s);
+                }
+                return val;
+            });
+            a0 = getCyclicValue(a0, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
+            a1 = getCyclicValue(a1, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
+
+            // We could try to 'validate' d0 and d1, too, but there is no real point in doing so, since very high or low values wouldn't break anything in this case.
+
+            const cn = new CNode(`CN${this.id}/${k}`, x, y, a0, a1, this);
+            cn.dist0 = cn.dist0_100 = d0;
+            cn.dist1 = cn.dist1_100 = d1;
+
+            cn.fixedAngles = fixedAngles[k];
+            cn.omitLine = omitLine[k];
+            cn.isActiveMember = activeMember[k];
+
+            this.members.push(cn);
+        }
     }
 }
 
@@ -372,9 +676,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
             lines.map((line, i) => 
                 `C ${line.x1-minX+lwc} ${h-line.y1+minY+lwc}, ${line.x2-minX+lwc} ${h-line.y2+minY+lwc}, ${line.x3-minX+lwc} ${h-line.y3+minY+lwc}`).join(' ');
         
-        const { minX: nodalMinX, maxX: nodalMaxX, minY: nodalMinY, maxY: nodalMaxY } = group.getNodalBounds();
-        const cdW = Math.min((nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
-        const cdH = Math.min((nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
+        const [cdW, cdH] = group.centerDivDimensions();
         const c = group.getNodalCenter();
 
         return (
@@ -387,15 +689,6 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                     }}>
                     <svg width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
                             pointerEvents={shading>0? 'fill': 'none'}>
-                        {linewidth>0 &&
-                            <path d={linePath}  
-                                fill='none'
-                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
-                                strokeWidth={linewidth}
-                                strokeDasharray={dash.join(' ')} 
-                                strokeLinecap={LINECAP_STYLE}
-                                strokeLinejoin={LINEJOIN_STYLE} />
-                        }
                         {shading>0 && 
                             <path d={fillPath}  
                                 onMouseDown={(e) => onMouseDown(group, e)}
@@ -407,6 +700,15 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                                     `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                                 stroke='none' />
                         }
+                        {linewidth>0 &&
+                            <path d={linePath}  
+                                fill='none'
+                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
+                                strokeWidth={linewidth}
+                                strokeDasharray={dash.join(' ')} 
+                                strokeLinecap={LINECAP_STYLE}
+                                strokeLinejoin={LINEJOIN_STYLE} />
+                        }
                     </svg>
                 </div>
                 {cdW>=CONTOUR_CENTER_DIV_MIN_WIDTH && cdH>=CONTOUR_CENTER_DIV_MIN_HEIGHT && 
@@ -417,7 +719,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                             style={{                
                                 position: 'absolute',
                                 left: `${c.x - cdW/2 - mlw/2}px`,
-                                top: `${H + yOffset - c.y - cdH/2 - mlw}px`,
+                                top: `${H + yOffset - c.y - cdH/2 - mlw/2}px`,
                                 cursor: centerDivClickable? 'pointer': 'auto',
                                 pointerEvents: centerDivClickable? 'auto': 'none'
 
@@ -434,7 +736,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
 }
 
 interface NodeGroupCompProps {
-    id: string
+    id: number
     nodeGroup: NodeGroup
     focusItem: Item | null
     preselection: Item[]
@@ -460,11 +762,10 @@ export const NodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, a
     const centerDivClickable = !allNodes.some(item => {
         if (item instanceof ENode || item instanceof CNode) {
             const r = item.radius;
-            const { minX, maxX, minY, maxY } = nodeGroup.getBounds();
-            const gx = (minX+maxX)/2;
-            const gy = (minY+maxY)/2;
+            const c = nodeGroup.getNodalCenter(); // the location of the center div
+            const [cdW, cdH] = nodeGroup.centerDivDimensions();            
             const { x, y } = item;
-            return Math.abs(gx-x)+r < CONTOUR_CENTER_DIV_MAX_WIDTH/2 && Math.abs(gy-y)+r < CONTOUR_CENTER_DIV_MAX_HEIGHT/2;
+            return Math.abs(c.x - x) + r < cdW/2 && Math.abs(c.y - y) + r < cdH/2;
         }
         else {
             return false;

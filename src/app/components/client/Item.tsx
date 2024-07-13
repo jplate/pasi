@@ -124,7 +124,7 @@ export default class Item implements GroupMember {
     }
 
     public getTexdrawCode():string {
-        return Texdraw.linewidth(this.linewidth);
+        return Texdraw.linewd(this.linewidth);
     }
 
     public getInfoString(): string {
@@ -142,5 +142,3 @@ export default class Item implements GroupMember {
 
 
 }
-
-

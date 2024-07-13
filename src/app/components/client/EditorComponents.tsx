@@ -2,6 +2,7 @@ import react, { useContext } from 'react'
 import clsx from 'clsx/lite'
 import Tippy from '@tippyjs/react'
 import { Placement } from 'tippy.js'
+import { getCyclicValue } from '../../util/MathTools'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
@@ -12,14 +13,14 @@ import { DarkModeContext } from './MainPanel.tsx'
 const ACCENT_LIGHT = 'accent-slate-50';
 const ACCENT_DARK = 'accent-amber-600 dark';
 
-
 export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
     let timeout: ReturnType<typeof setTimeout>;
     return function(...args: Parameters<T>) {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
-  }
+};
+
 
 export type Width = 'short' | 'medium' | 'long'
 
@@ -154,18 +155,6 @@ export const parseInputValue = (input: string, min: number, max: number, oldValu
     }
 }
 
-const modulo = (value: number, base: number) => { // a modulo function that works also for negative numbers
-    return (value % base + base) % base;
-}
-
-/** 
- * Normalizes a 'raw' value (first argument) relative to a cyclic scale with the supplied minimum and base. Also rounds the result.
- */
-export const getCyclicValue = (raw: number, min: number, base: number, roundingFactor: number): number => {
-    const v1 = modulo(raw - min, base);
-    const v2 = (v1==0? base: v1) + min; // jump back to min only *after* reaching min+base.
-    return Math.round(v2 * roundingFactor) / roundingFactor;
-}
 
 /**
  *  Computes and validates the new value of a 'cyclic' input number field with step 'any', whose stepping controls only increase the value by 1 or -1. The 'intended' increase or 

@@ -42,12 +42,22 @@ export default function Home() {
     }
   }, [isDarkMode]);
 
+
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0; // platform is deprecated, but the MDN docs still say that this "may be the least bad option" for
+    // detecting whether the browser is running on an Apple OS.
+
+  const key = (name: string) => {
+    if (isMac) name = name.replace(/Ctrl/, '⌘');
+    return isDarkMode? <span className='font-mono'>{name}</span>: <>&thinsp;<kbd>{name}</kbd>&thinsp;</>;
+  }
+
+
   const sectionStyle = clsx('prose prose-lg', isDarkMode? 'prose-dark': 'prose-light', 'max-w-5xl mt-3 ml-9 mb-9');
 
   return (<> {/* We're returning a fragment. */}
     <div id='sticky-top' className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
-      <span className='flex items-center justify-between px-6 font-serif tracking-wide'>
-        <i><strong>pasi</strong></i>
+      <span className='flex items-center justify-between px-6'>
+        <span className='text-xl font-light tracking-wide'>pasi</span>
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
           {isDarkMode ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"> {/* moon icon */}
@@ -92,6 +102,10 @@ export default function Home() {
             <h3>
               Keyboard shortcuts
             </h3>
+            <p>
+              The following keyboard commands are available for editing the diagram displayed on the canvas. For editing the <i>texdraw</i> code in the text area, the
+              usual commands (including {key('Ctrl+Z')} and {key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
+            </p>
             <table>
               <colgroup>
                 <col className='w-[150px]' />
@@ -109,10 +123,10 @@ export default function Home() {
                         i===arr.length-1? 'border-b-4 border-btnborder/50': '')}>
                     {/* In light mode, we use the elaborate <kbd> styling provided by tailwind typography, with its box shadows and borders (which require a greater line height). 
                         In dark mode, these shadows don't really look good and are hardly visible, so we default to monospace font. */}
-                    <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((key, j, arr) => (
+                    <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((keyName, j, arr) => (
                        <React.Fragment key={j}>
-                        {isDarkMode? <span className='font-mono'>{key}</span>: <kbd>{key}</kbd>}
-                        {j===arr.length-1? null: isDarkMode? <>, </>: <>&thinsp;, &thinsp;</>}
+                        {key(keyName)}
+                        {j===arr.length-1? null: <>, </>}
                       </React.Fragment>
                     ))}
                     </td>

@@ -7,7 +7,7 @@ import clsx from 'clsx/lite'
 
 import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Item.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
-import { CheckBoxField, validFloat, getCyclicValue } from './EditorComponents.tsx'
+import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
@@ -17,9 +17,10 @@ import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
 import CNode, { MAX_NODEGROUP_SIZE, DEFAULT_DISTANCE  } from './CNode.tsx'
 import NodeGroup, { NodeGroupComp } from './NodeGroup.tsx'
-import { round, rotatePoint, scalePoint } from '../../util/MathTools'
+import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
+import { useThrottle } from '../../util/Misc'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -335,7 +336,7 @@ const limitCompX = (limitX: number, canvas: HTMLDivElement | null) => {
     if (canvas) {
         const { scrollLeft } = canvas;
         const x = Math.min(Math.ceil(limitX/W)*W, MAX_X);
-        return x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft+W) + 
+        return x<=W || x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft+W) + 
             (limitX>W? MARGIN: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } 
     else {
@@ -350,7 +351,7 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     if (canvas) {
         const { scrollTop } = canvas;
         const y = Math.max(Math.floor(limitY/H)*H, MIN_Y);
-        return y>H-scrollTop-SCROLL_Y_OFFSET? y: Math.min(y, -scrollTop) + 
+        return y>=0 || y>H-scrollTop-SCROLL_Y_OFFSET? y: Math.min(y, -scrollTop) + 
             (limitY<0? -MARGIN: 40) // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } 
     else {
@@ -445,7 +446,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemLabels.indexOf(labelItemLabel))
-    const [pixel, setPixel] = useState(1.0)
+    const [pixel, setPixel] = useState(0.75)
     const [replace, setReplace] = useState(true)
     const [points, setPoints] = useState<Point[]>([])
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
@@ -610,7 +611,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
             }
             const newLimit = new Point(right, bottom);
-            if (lim.x!==newLimit.x || lim.y!==newLimit.y) setLimit(newLimit); // set the new bottom-right limit
+            if (lim.x!==newLimit.x || lim.y!==newLimit.y) setLimit(prev => newLimit); // set the new bottom-right limit
         }, [yOffset, list, limit]
     );
 
@@ -674,6 +675,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>, 
             clearPreselection: boolean = true
         ) => { 
+            e.preventDefault(); // This will prevent material outside of the canvas from being highlighted every time the user drags something outside of the visible 
+                // portion.
             e.stopPropagation();
             if(e.ctrlKey && !e.shiftKey && deduplicatedSelection.includes(item)) {
                 deselect(item);
@@ -836,6 +839,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                 
                 const handleMouseMove = (e: MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     // First, we take into account the grid:
                     const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, selectionWithoutDuplicates, dccDx, dccDy);
                     // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
@@ -966,8 +971,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canvasMouseDown = useCallback((
             e: React.MouseEvent<HTMLDivElement, MouseEvent>
         ) => { 
-            const {left, top} = canvasRef.current?.getBoundingClientRect()?? {left: 0, top: 0};
-            const {scrollLeft, scrollTop, clientWidth, clientHeight} = canvasRef.current?? {scrollLeft: 0, scrollTop:0, clientWidth: 0, clientHeight: 0};
+            e.preventDefault();
+            e.stopPropagation();
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const element = document.activeElement as HTMLElement;
+                element.blur();
+                canvas.focus();
+            }
+            const {left, top} = canvas?.getBoundingClientRect()?? {left: 0, top: 0};
+            const {scrollLeft, scrollTop, clientWidth, clientHeight} = canvas?? {scrollLeft: 0, scrollTop:0, clientWidth: 0, clientHeight: 0};
 
             if (e.clientX - left >= clientWidth || e.clientY - top > clientHeight) { // ignore interactions with the scrollbars
                 return;
@@ -1610,46 +1623,46 @@ const MainPanel = ({dark}: MainPanelProps) => {
         ), [topTbc]
     );
     
-    useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy });
-    useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete });
-    useHotkeys(hotkeyMap['clear points'], () => setPoints(prev => []), { preventDefault: true });
-    useHotkeys(hotkeyMap['add nodes'], addEntityNodes, { enabled: canAddENodes });
-    useHotkeys(hotkeyMap['add contours'], addContours, { enabled: canAddContours });
-    useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), { enabled: canMoveUp, preventDefault: true });
-    useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), { enabled: canMoveLeft, preventDefault: true });
-    useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), { enabled: canMoveDown, preventDefault: true });
-    useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), { enabled: canMoveRight, preventDefault: true });
-    useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1));
-    useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0));
-    useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1));
-    useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2));
-    useHotkeys(hotkeyMap['dec sh'], () => setShading(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['inc sh'], () => setShading(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['sh 0'], () => setShading(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['sh 1'], () => setShading(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 });
-    useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg });
-    useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg });
-    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW });
-    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW });
-    useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)));
-    useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: canScaleUp });
-    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip });
-    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip });
-    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
-    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) });
-    useHotkeys(hotkeyMap['create group'], createGroup, { enabled: canCreateGroup });
-    useHotkeys(hotkeyMap['leave'], leaveGroup, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['rejoin'], rejoinGroup, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['dissolve'], dissolveGroup, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['restore'], restoreGroup);
-    useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null });
-    useHotkeys(hotkeyMap['generate code'], () => displayCode(pixel), { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement) });
-    useHotkeys(hotkeyMap['load diagram'], () => loadDiagram(code, replace), { enableOnFormTags: ['textarea'], preventDefault: true });
+    useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy && !modalShown });
+    useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete && !modalShown });
+    useHotkeys(hotkeyMap['clear points'], () => setPoints(prev => []), { enabled: !modalShown, preventDefault: true });
+    useHotkeys(hotkeyMap['add nodes'], addEntityNodes, { enabled: canAddENodes && !modalShown });
+    useHotkeys(hotkeyMap['add contours'], addContours, { enabled: canAddContours && !modalShown });
+    useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), { enabled: canMoveUp && !modalShown, preventDefault: true });
+    useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), { enabled: canMoveLeft && !modalShown, preventDefault: true });
+    useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), { enabled: canMoveDown && !modalShown, preventDefault: true });
+    useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), { enabled: canMoveRight && !modalShown, preventDefault: true });
+    useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['dec sh'], () => setShading(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['inc sh'], () => setShading(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['sh 0'], () => setShading(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['sh 1'], () => setShading(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg && !modalShown });
+    useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg && !modalShown });
+    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW && !modalShown });
+    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW && !modalShown });
+    useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: canScaleUp && !modalShown });
+    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip && !modalShown });
+    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip && !modalShown });
+    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
+    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
+    useHotkeys(hotkeyMap['create group'], createGroup, { enabled: canCreateGroup && !modalShown });
+    useHotkeys(hotkeyMap['leave'], leaveGroup, { enabled: focusItem!==null && !modalShown });
+    useHotkeys(hotkeyMap['rejoin'], rejoinGroup, { enabled: focusItem!==null && !modalShown });
+    useHotkeys(hotkeyMap['dissolve'], dissolveGroup, { enabled: focusItem!==null && !modalShown });
+    useHotkeys(hotkeyMap['restore'], restoreGroup, { enabled: !modalShown });
+    useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null&& !modalShown });
+    useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null&& !modalShown });
+    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(pixel), 500), { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement)&& !modalShown });
+    useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
 
     const showModal = (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
         setDialog(prev => ({ contentLabel, title, content, extraWide }));
@@ -1661,7 +1674,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
      // The delete button gets some special colors:
     const deleteButtonStyle = clsx('rounded-xl', 
-        (dark? 'bg-[#55403c]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
+        (dark? 'bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
             'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
 
     const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
@@ -1694,7 +1707,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onMouseLeave={(item, e) => mouseLeft()} />:
                             it instanceof NodeGroup? 
                             <NodeGroupComp key={it.id} id={it.id} nodeGroup={it} 
-                                focusItem={focusItem}
+                                focusItem={focusItem} 
                                 preselection={preselection2}
                                 selection={deduplicatedSelection}
                                 allNodes={allNodes}
@@ -1738,12 +1751,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 x={limitCompX(limit.x, canvasRef.current)} 
                                 y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)} 
                                 primaryColor={DEFAULT_HSL_LIGHT_MODE}
-                                markColor='red' visible={false} /> 
+                                markColor='red' visible={true} /> 
                         }
                     </div>
-                    <div id='code-panel' className='relative mt-[25px]'> 
+                    <div id='code-panel' className='relative mt-[25px] ring-offset-red-500'> 
                         <textarea 
-                            className='bg-codepanelbg text-codepanelcolor min-w-[900px] h-[190px] shadow-inner font-mono p-2 text-sm resize-none focus:outline-none'
+                            className='codepanel min-w-[900px] min-h-[190px] p-2 shadow-inner text-sm focus:outline-none'
                             ref={codeRef}
                             value={code}
                             spellCheck={false}
@@ -1830,7 +1843,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </Tab>
                             </TabList>
                             <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
-                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-1 h-full'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                     {focusItem && itemChange?
                                         <ItemEditor info={focusItem.getInfo(list)} 
                                             logIncrement={logIncrement}
