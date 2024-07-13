@@ -9,6 +9,7 @@ import { hotkeys } from './components/client/MainPanel'
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
 
 
+
 const getInitialColorScheme = () => {
   const storedMode = localStorage.getItem('color-scheme');
   const systemMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -20,6 +21,7 @@ const getInitialColorScheme = () => {
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMac, setIsMac] = useState(false);
 
   
   useEffect(() => {
@@ -32,6 +34,10 @@ export default function Home() {
 
 
   useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0); 
+  }, []);
+  
+  useEffect(() => {
     document.body.classList.remove(isDarkMode? 'light': 'dark');
     document.body.classList.add(isDarkMode? 'dark': 'light');
     window.localStorage.setItem('color-scheme', isDarkMode? 'dark': 'light');
@@ -43,9 +49,8 @@ export default function Home() {
   }, [isDarkMode]);
 
 
-  const isMac = navigator && navigator.platform.toUpperCase().indexOf('MAC') >= 0; // platform is deprecated, but the MDN docs still say that this "may be the least bad option" for
-    // detecting whether the browser is running on an Apple OS.
-
+  
+  
   const key = (name: string) => {
     if (isMac) name = name.replace(/Ctrl/, '⌘');
     return isDarkMode? <span className='font-mono'>{name}</span>: <>&thinsp;<kbd>{name}</kbd>&thinsp;</>;
