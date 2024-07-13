@@ -9,7 +9,7 @@ export const versionString = 'pasiCodecV1';
 
 const CODE = '0123456789aáàäâbcdeéèêfghiíìîjklmnoóòöôpqrstuúùüûvwxyýzAÁÀÄÂBCDEÉÈÊFGHIÍÌÎJKLMNOÓÒÖÔPQRSTUÚÙÜÛVWXYÝZ';
 const ENCODE_BASE = CODE.length;
-const ENCODE_PRECISION = 5; // the number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
+const ENCODE_PRECISION = 2; // the number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 const ENODE_PREFIX = 'E';
 const NODEGROUP_PREFIX = 'K';

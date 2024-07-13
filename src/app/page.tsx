@@ -43,7 +43,7 @@ export default function Home() {
   }, [isDarkMode]);
 
 
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0; // platform is deprecated, but the MDN docs still say that this "may be the least bad option" for
+  const isMac = navigator && navigator.platform.toUpperCase().indexOf('MAC') >= 0; // platform is deprecated, but the MDN docs still say that this "may be the least bad option" for
     // detecting whether the browser is running on an Apple OS.
 
   const key = (name: string) => {

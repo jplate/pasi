@@ -370,7 +370,7 @@ export default class NodeGroup implements Group<CNode> {
         const drawnLines: Texdraw.CubicCurve[] = [];
         const filledLines: Texdraw.CubicCurve[] = [];
         let foundGap = false;
-        if (this.members.length > 0 && this.linewidth > 0) {
+        if (this.members.length > 0) {
             const initialSegment: Texdraw.CubicCurve[] = []; // This serves to optimize the output (a little bit) by making sure that, if any lines are omitted,
                 // we start the path at the beginning (rather than the middle) of a run of non-omitted lines.
             let cn1 = this.members[0],
@@ -402,10 +402,10 @@ export default class NodeGroup implements Group<CNode> {
             drawnLines.push(...initialSegment);
         }
         const shapeCommands = Texdraw.getCommandSequence(filledLines, drawnLines, foundGap, this.linewidth, this.dash, this.shading); 
-        // If there are no drawnLines, then shapeCommands won't contain any information about linewidth and dash array. So, in this case, 
+        // If there are no drawnLines, then shapeCommands won't contain any information about linewidth and dash array. Similarly if the linewidth is zero. So, in these cases, 
         // we'll supply that information upfront:
         const result: string[] = []
-        if (drawnLines.length===0) {
+        if (drawnLines.length===0 || this.linewidth===0) {
             result.push(Texdraw.linewd(this.linewidth));
             if (this.dash.length>0) {
                 result.push(Texdraw.lpatt(this.dash), Texdraw.lpatt([]));
@@ -598,6 +598,8 @@ export default class NodeGroup implements Group<CNode> {
             });
             a0 = getCyclicValue(a0, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
             a1 = getCyclicValue(a1, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
+            d0 = round(d0, Texdraw.ROUNDING_DIGITS);
+            d1 = round(d1, Texdraw.ROUNDING_DIGITS);
 
             // We could try to 'validate' d0 and d1, too, but there is no real point in doing so, since very high or low values wouldn't break anything in this case.
 

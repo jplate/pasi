@@ -678,6 +678,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
             e.preventDefault(); // This will prevent material outside of the canvas from being highlighted every time the user drags something outside of the visible 
                 // portion.
             e.stopPropagation();
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const element = document.activeElement as HTMLElement;
+                element.blur();
+                canvas.focus();
+            }
             if(e.ctrlKey && !e.shiftKey && deduplicatedSelection.includes(item)) {
                 deselect(item);
             } 
@@ -1756,7 +1762,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                     <div id='code-panel' className='relative mt-[25px] ring-offset-red-500'> 
                         <textarea 
-                            className='codepanel min-w-[900px] min-h-[190px] p-2 shadow-inner text-sm focus:outline-none'
+                            className='codepanel min-w-[900px] min-h-[190px] p-2 shadow-inner text-sm focus:outline-none resize-none'
                             ref={codeRef}
                             value={code}
                             spellCheck={false}
@@ -1929,7 +1935,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         </div>
                     </div>
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
-                        <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-1 py-2' disabled={false} 
+                        <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
                             onClick={() => displayCode(pixel)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
@@ -1938,7 +1944,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onChange={(e) => setPixel(Math.max(0, parseFloat(e.target.value)))}/>
                             pt
                         </div>
-                        <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-1 py-2' disabled={false} 
+                        <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-2 py-2' disabled={false} 
                             onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>

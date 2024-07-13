@@ -477,13 +477,17 @@ export const movePoint = (s: string) => {
 
 /**
  * Returns a texdraw command sequence for both 'filled' and 'drawn' shapes. ('Drawn' shapes are ones that are not supposed to be filled.)
+ * The sequence contains a command sequence for drawn shapes if and only if the following three conditions are satisfied:
+ * 1. The specified shading is zero or the filled shapes form an open path (so that the texdraw command 'lfill' cannot be used even if the shading is non-zero).
+ * 2. There is at least one drawn shape.
+ * 3. The specified linewidth is greater than zero.
  */
 export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], openPath: boolean, lw: number, dash: number[], shading: number): string => {
     const result: string[] = [];
     const filled = shading > 0;
     if (filled && filledShapes.length > 0) {
-        if (!openPath) { // If there's no open path, we'll use lfill and not add any commands for the drawnShapes. So we'll need to add commands to set
-                // the linewidth and dash pattern, if applicable.
+        if (!openPath && lw > 0) { // If there's no open path, we'll use lfill (provided that linewidth is not zero) and not add any commands for the drawnShapes. 
+                // So, if linewidth is non-zero, we'll need to add commands to set the linewidth and dash pattern, if applicable. 
             result.push(linewd(lw));        
             if (dash.length>0) { // Since, in the texdraw code, we always reset the dash pattern after changing it to something other than the empty string, we
                     // only need to add a command for it if the dash array is non-empty.
@@ -496,7 +500,7 @@ export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], 
         for(let i = 1; i < filledShapes.length; i++) {
             result.push(getShapeCommand(filledShapes[i]));
         }
-        if (openPath) {            
+        if (openPath || lw===0) {            
             result.push(ifill(shading));
         }
         else {
@@ -507,7 +511,7 @@ export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], 
             }
         }
     }
-    if ((!filled || openPath) && drawnShapes.length>0 && lw>0) {
+    if ((!filled || openPath) && drawnShapes.length > 0 && lw > 0) {
         // If there's an openPath, then we didn't use lfill but rather ifill, and so there's still the need to draw the shapes (provided there are any and lw>0).
         result.push(getCommandSequenceForDrawnShapes(drawnShapes, lw, dash));
     }

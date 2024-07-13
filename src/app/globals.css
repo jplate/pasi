@@ -113,22 +113,12 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-feature-settings: 'none'; /* Ligatures in the code panel would look silly, so we turn them off. */
   background-color: rgb(var(--codepanelbg));
-  color: rgb(var(--codepanelcolor)) 
+  color: rgb(var(--codepanelcolor));
+  outline-color: black;
+  border-color: black;
+
 }
 
-textarea::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 16px;
-  height: 16px;
-  background-color: rgba(255, 0, 0, 0.5); /* Custom background color */
-  border: 1px solid #ddd; /* Optional: border to match the textarea border */
-  border-radius: 3px; /* Optional: rounded corners */
-  cursor: nwse-resize; /* Diagonal resize cursor */
-  pointer-events: none; /* Ensure the pseudo-element doesn't block textarea interaction */
-}
 
 /* For browsers that support `scrollbar-*` properties */
 @supports (scrollbar-color: auto) {
