@@ -52,7 +52,7 @@ export default function Home() {
     if (isMac) name = name.replace(/Ctrl/, '⌘');
     const split = name.split('+');
     return split.map((s, i) => 
-      <span className={clsx(isDarkMode? 'font-mono': 'whitespace-nowrap')}>
+      <span key={i} className={clsx(isDarkMode? 'font-mono': 'whitespace-nowrap')}>
         {isDarkMode? s: <>&thinsp;<kbd>{s}</kbd>&thinsp;</>}
         {i < split.length - 1 && '+'}
       </span>
