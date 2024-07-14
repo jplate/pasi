@@ -179,10 +179,15 @@ export default class ENode extends Item {
         
         //assert(n>=0 && n<3);
         
-        if (n>0) {
+        if (n > 0) {
             this.shading = circles[0].fillLevel;
             this.linewidth = this.linewidth100 = stShapes[n-1].stroke.linewidth;
-            this.dash = this.dash100 = stShapes[n-1].stroke.pattern;
+            if (this.linewidth > 0) { // In this case the dash pattern can be got from the same shape.
+                this.dash = this.dash100 = stShapes[n-1].stroke.pattern;
+            }
+            else { // If linewidth is zero, then there will be only one stroked shape (n will be equal to 1), and we have to extract the dash pattern ourselves:
+                this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
+            }
             this.radius = circles[0].radius;
             ({ x: this.x, y: this.y } = circles[0].location);
         }
@@ -215,10 +220,10 @@ export default class ENode extends Item {
         if (this.dash.length > MAX_DASH_LENGTH) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length {this.dash.length} exceeds maximum value.</span>); 
         }
+        let val;
         if (this.dash.some(v => (val = v) < 0)) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value should not be negative.</span>); 
         }        
-        let val;
         if (this.dash.some(v => v > MAX_DASH_VALUE)) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds  maximum value.</span>); 
         }

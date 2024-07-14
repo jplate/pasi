@@ -142,8 +142,8 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels (maximum: {MAX_LINEWIDTH} pixels).</> },
     { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
     { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
-    { key: 'flip horizontally', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
-    { key: 'flip vertically', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
+    { key: 'hflip', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
+    { key: 'vflip', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
     { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
     { key: 'rotate by 45° counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
     { key: 'rotate counter-clockwise', keys: 'shift+q', rep: ['Shift+Q'], 
@@ -157,6 +157,7 @@ export const hotkeys: HotkeyInfo[] = [
         <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
     { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
     { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
+    { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</>},
     { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains the selected nodes or, where applicable, their respective {' '}
         highest active groups. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
     { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of the currently focused node or its second-highest active group {' '}
@@ -180,6 +181,39 @@ const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
     acc[info.key] = info.keys;
     return acc;
 }, {} as Record<string, string>);
+
+const hotkeyRepMap: Record<string, string[]> = hotkeys.reduce((acc, info) => {
+    acc[info.key] = info.rep;
+    return acc;
+}, {} as Record<string, string[]>);
+
+interface HotkeyCompProps {
+    mapKey: string
+}
+
+export const HotkeyComp = ({ mapKey }: HotkeyCompProps) => {
+    let result: React.ReactNode | null = null;
+    if (mapKey in hotkeyRepMap) {
+        const keyReps = hotkeyRepMap[mapKey];
+        const n = keyReps.length;
+        if (n > 0) {
+            result = (
+                <>
+                    <br />
+                    {n>1? 'Hotkeys': 'Hotkey'}
+                    :&nbsp;
+                    {keyReps.map((s, i) => 
+                        <React.Fragment key={i}>
+                            <kbd>{s}</kbd>
+                            {i < n - 1 && <>,&nbsp;</>}
+                        </React.Fragment>
+                    )}
+                </>
+            );
+        }
+    }
+    return result;
+}
 
 
 export const DarkModeContext = createContext(false);
@@ -1346,6 +1380,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setItemsMoved(prev => [...prev]);                                     
     }, [deduplicatedSelection, origin, list, yOffset, limit]);
 
+    /**
+     * Rounds the location of each selected item to the nearest pixel.
+     */
+    const roundLocations = useCallback(() => {
+        deduplicatedSelection.forEach(item => {
+            item.x = item.x100 = Math.round(item.x);
+            item.y = item.y100 = Math.round(item.y);            
+        });
+        setOrigin(false, points, focusItem, selection, list);
+        setItemsMoved(prev => [...prev]);
+    }, [deduplicatedSelection, points, focusItem, list]);
+
     const hFlip = useCallback(() => {
         deduplicatedSelection.forEach(item => {
             item.x = 2*origin.x - item.x;
@@ -1655,9 +1701,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW && !modalShown });
     useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW && !modalShown });
     useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['round'], roundLocations, { enabled: deduplicatedSelection.length>0 && !modalShown });
     useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: canScaleUp && !modalShown });
-    useHotkeys(hotkeyMap['flip horizontally'], hFlip, { enabled: canHFlip && !modalShown });
-    useHotkeys(hotkeyMap['flip vertically'], vFlip, { enabled: canVFlip && !modalShown });
+    useHotkeys(hotkeyMap['hflip'], hFlip, { enabled: canHFlip && !modalShown });
+    useHotkeys(hotkeyMap['vflip'], vFlip, { enabled: canVFlip && !modalShown });
     useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
     useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
     useHotkeys(hotkeyMap['create group'], createGroup, { enabled: canCreateGroup && !modalShown });
@@ -1774,11 +1821,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' 
-                                tooltip={<>Add entity nodes at the selected locations.<br />Hotkey: <kbd>N</kbd></>}
+                                tooltip={<>Add entity nodes at the selected locations.<HotkeyComp mapKey='add nodes' /></>}
                                 tooltipPlacement='top'
                                 disabled={!canAddENodes} onClick={addEntityNodes} />
                             <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' 
-                                tooltip={<>Add contours at the selected locations.<br />Hotkey: <kbd>M</kbd></>}
+                                tooltip={<>Add contours at the selected locations.<HotkeyComp mapKey='add contours' /></>}
                                 tooltipPlacement='top'
                                 disabled={!canAddContours} onClick={addContours} />  
                         </div>                    
@@ -1826,7 +1873,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             <BasicColoredButton id='create-button' label='Create' style='rounded-md' disabled={false} onClick={sorry} /> 
                         </div>
                         <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-4' 
-                            tooltip={<>Copy the selection.<br />Hotkey: <kbd>C</kbd></>}
+                            tooltip={<>Copy selection.<HotkeyComp mapKey='copy' /></>}
                             tooltipPlacement='right'
                             disabled={!canCopy} onClick={copySelection} /> 
 
@@ -1936,6 +1983,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     </div>
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
+                            tooltip={<>Generate and display <i>texdraw</i> code.<HotkeyComp mapKey='generate code' /></>}
+                            tooltipPlacement='right'
                             onClick={() => displayCode(pixel)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
@@ -1945,6 +1994,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             pt
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-2 py-2' disabled={false} 
+                            tooltip={<>Load diagram from <i>texdraw</i> code.<HotkeyComp mapKey='load diagram' /></>}
+                            tooltipPlacement='right'
                             onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>

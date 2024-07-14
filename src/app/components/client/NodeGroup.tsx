@@ -1,5 +1,5 @@
 import React from 'react'
-// import assert from 'assert'
+//import assert from 'assert'
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
 import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
@@ -320,7 +320,9 @@ export default class NodeGroup implements Group<CNode> {
     public getInfoString(): string {
         // The info string contains the following items, separated by semicolons and whitespace:
         // - A number (the 'index') indicating the first node from which a line is drawn, if any. If there is none, this will be zero.
-        // - Three strings that respectively encode (in base64) the omitLine, fixedAngles, and isActiveMember properties of the contour nodes.
+        // - EITHER three strings, each of which is either (i) '*' or (ii) '~' or (iii) a base64-string, encoding the omitLine, fixedAngles, and isActiveMember properties, 
+        //      respectively, of the contour nodes (where '*' represents an array of trues and '~' an array of falses),
+        //   OR a string representing a number between 0 and 7 (inclusive), where each bit represents either an array of trues or an array of falses.
         // - And finally one or more comma-delimited lists containing geometrical information about the individual nodes.
 
         // We start by computing the index:
@@ -342,9 +344,25 @@ export default class NodeGroup implements Group<CNode> {
         result.push(`${encode(index)}`);
 
         // Next, we construct and encode the three arrays of booleans:
-        result.push(toBase64(this.members.map(m => m.omitLine)), 
-            toBase64(this.members.map(m => m.fixedAngles)),
-            toBase64(this.members.map(m => m.isActiveMember)));
+        const keys: (keyof CNode)[] = ['omitLine', 'fixedAngles', 'isActiveMember'];
+        const encodeArray = (array: boolean[]): boolean | string => 
+            array.every(b => b)? true: 
+            array.every(b => !b)? false: 
+            toBase64(array);
+        const flagReps: (boolean | string)[] = keys.map(key => encodeArray(this.members.map(m => m[key]) as boolean[]));
+        if (flagReps.every(f => typeof f === 'boolean')) {
+            let byte = 0;
+            for (let i = 0; i < keys.length; i++) {
+                byte <<= 1;
+                if (flagReps[i]) {
+                    byte |= 1;
+                }
+            }
+            result.push(byte.toString());
+        }
+        else {
+            result.push(...flagReps.map(f => typeof f === 'boolean'? (f? '*': '~'): f));
+        }
 
         // Finally, we add the info strings for the individual members:
         const n = this.members.length;
@@ -433,31 +451,34 @@ export default class NodeGroup implements Group<CNode> {
 	    }
         
         const split = info.split(/\s*;\s*/);
-        // The length of split should be at least 5: four strings encoding the index and three arrays of booleans, plus at least one string representing a node.
-        const four = 4;
-        if (split.length < four + 1) {
-            throw makeParseError(`Info string should contain at least ${four + 1} elements, found ${split.length}`, info);
+        // The length of split should be at least 3: two numbers and at least one string representing a node.
+        if (split.length < 3) {
+            throw makeParseError(`Info string should contain at least 3 elements, found ${split.length}`, info);
         }
+        // check if the second element represents a number between 0 and 7 (in which case this element will be taken to represent three bits representing boolean arrays):
+        const arraysAsNum = split[1].match(/^[0-7]$/)!==null;
+        const firstNodeIndex = arraysAsNum? 2: 4;
+        const n = split.length - firstNodeIndex; // What we'll take to be the number of nodes.
  
         // Extract the boolean arrays:
-        const [omitLine, fixedAngles, activeMember] = split.slice(1, four).map(fromBase64);
-
-        const ceil = omitLine.length; // Math.ceil(n / 8) * 8, where n is the number of nodes
-        // The three arrays should all be of the same length:
-        if (fixedAngles.length!==ceil || activeMember.length!==ceil) {
-            throw makeParseError('Corrupt configuration data for contour node group', split.slice(1, four).join('; '));
-        }
-        // The number of elements in the info string should more or less equal 4 + ceil:
-        if (split.length > four + ceil) {
-            throw makeParseError(`Info string contains too many elements`, info);
-        }
-        else if (split.length < four + ceil - 8) {
-            throw makeParseError(`Info string contains too few elements`, info);
-        }
-        const n = split.length - four; // What we'll take to be the number of nodes.
-
-        //assert(n > 0);
-
+        const m = 3; // the number of arrays encoded in the second element, if they are in fact encoded in this way
+        const arraysFromNum = new Array<boolean[]>(m);
+        if (arraysAsNum) {
+            const num = parseInt(split[1]);
+            for (let i = 0; i < m; i++) {
+                const bit = (num & (1 << (m - i - 1))) !== 0;
+                arraysFromNum[i] = Array(n).fill(bit);
+            }            
+        }        
+        const [omitLine, fixedAngles, activeMember] = arraysAsNum? arraysFromNum: 
+            split.slice(1, firstNodeIndex).map(s => {
+                switch (s) {
+                    case '*': return Array(n).fill(true);
+                    case '~': return Array(n).fill(false);
+                    default: return fromBase64(s);
+                }
+            });
+        
         // Extract information about the fill level and the start index for decoding node information:
         const fillLevel = stShapes.length>0? (stShapes[0].shape as Texdraw.CubicCurve | Texdraw.Path).fillLevel: 0;
         if (fillLevel < 0) {
@@ -472,6 +493,9 @@ export default class NodeGroup implements Group<CNode> {
             // and more particularly its starting point, is relevant to the first node rather than any later ones.) So, in that case, we'll use an index of zero.
         if (isNaN(index)) {
             throw makeParseError('Unexpected token in configuration data for contour node group', split[0]);
+        }
+        else if (index >= n) {
+            throw new ParseError(`Specified index out of bounds: ${index}.`);
         }
 
         // Extract information about linewidth and dash pattern:
@@ -501,36 +525,8 @@ export default class NodeGroup implements Group<CNode> {
             throw new ParseError(<span>Illegal data in definition of contour node group: dash value {val} exceeds  maximum value.</span>); 
         }
 
-        // Determine the number of nodes represented in the texdraw code:
-        const texN = stShapes.length>0? 
-            fillLevel > 0? 
-                (stShapes[0].shape instanceof Texdraw.Path? stShapes[0].shape.shapes.length: 1): 
-                stShapes.reduce((acc, ssh) => acc + (ssh.shape instanceof Texdraw.Path? ssh.shape.shapes.length: 1) + 1, 0) - 1: // The reason why we add 1 is
-                    // that each curve has two end points. The reason why we subtract 1 at the end is that the sequence of curves eventually returns to its origin.
-            0;
-        // Determine whether there are any unrepresented nodes:
-        let unrepresented = 0;
-        if (stShapes.length===0) {
-            unrepresented = n;
-        }
-        else if (fillLevel===0) { // if the fillLevel is greater than 0, we'll have all nodes represented in the first element of stShapes. But if not,
-                // then the unrepresented nodes are exactly those that have no lines coming to or from them.
-            let prev = omitLine[n - 1];
-            unrepresented = omitLine.reduce((acc, b) => {
-                const oldPrev = prev;
-                prev = b;
-                return !oldPrev && !b? acc + 1: acc;
-            }, 0);
-        }
-        // The number of nodes represented in the texdraw code should not exceed n; and if there aren't any unrepresented nodes, then that number should 
-        // also not be *less* than n:
-        if (texN > n || (texN < n && unrepresented===0)) {
-            throw makeParseError(<span>{texN <  n? 'More': 'Fewer'} nodes represented in the info string (viz., {n}) than in the <i>texdraw</i> code ({texN})</span>, 
-                split.slice(four).join('; '));
-        } 
-
         // We now have to create and configure the individual nodes, and add them as members, to replace any old ones:
-        this.members = [];
+        this.members = new Array<CNode>(n);
         const coordinateIndex = 4; // indicates where to find the x-coordinate info in the config array for an individual node
         // Construct the array of curves from which we'll get information about the coordinates of our nodes:
         const curves = (fillLevel > 0? 
@@ -543,7 +539,7 @@ export default class NodeGroup implements Group<CNode> {
             const j = index + i;
             const k = j >= n? j - n: j;
             
-            const nodeInfoString = split[four + k];
+            const nodeInfoString = split[firstNodeIndex + k];
             const nodeInfo = nodeInfoString.split(/\s*,\s*/); // the info array for the current node
             
             let x, 
@@ -611,7 +607,7 @@ export default class NodeGroup implements Group<CNode> {
             cn.omitLine = omitLine[k];
             cn.isActiveMember = activeMember[k];
 
-            this.members.push(cn);
+            this.members[k] = cn;
         }
     }
 }

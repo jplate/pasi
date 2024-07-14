@@ -32,7 +32,6 @@ export default function Home() {
     setIsDarkMode(getInitialColorScheme()=='dark');  
   }, []);
 
-
   useEffect(() => {
     setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0); 
   }, []);
@@ -49,13 +48,16 @@ export default function Home() {
   }, [isDarkMode]);
 
 
-  
-  
   const key = (name: string) => {
     if (isMac) name = name.replace(/Ctrl/, '⌘');
-    return isDarkMode? <span className='font-mono'>{name}</span>: <>&thinsp;<kbd>{name}</kbd>&thinsp;</>;
+    const split = name.split('+');
+    return split.map((s, i) => 
+      <span className={clsx(isDarkMode? 'font-mono': 'whitespace-nowrap')}>
+        {isDarkMode? s: <>&thinsp;<kbd>{s}</kbd>&thinsp;</>}
+        {i < split.length - 1 && '+'}
+      </span>
+    );
   }
-
 
   const sectionStyle = clsx('prose prose-lg', isDarkMode? 'prose-dark': 'prose-light', 'max-w-5xl mt-3 ml-9 mb-9');
 
@@ -131,7 +133,7 @@ export default function Home() {
                     <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((keyName, j, arr) => (
                        <React.Fragment key={j}>
                         {key(keyName)}
-                        {j===arr.length-1? null: <>, </>}
+                        {j < arr.length - 1 && <>, </>}
                       </React.Fragment>
                     ))}
                     </td>

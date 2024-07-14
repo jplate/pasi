@@ -434,7 +434,7 @@ export const decodeFloat = (s: string): number => {
         const result = parseFloat(s);
         if (isNaN(result) || !s.match(floatPattern)) { // Since parseFloat is very lenient, we have to explicitly check whether s is a proper 
                 // representation of a number.            
-            console.trace();
+            //console.trace();
             const max = 20;
             throw new ParseError(<span>Number expected, read <code>{s.length>max? s.slice(0, max-3)+'...': s}</code>.</span>);
         }
