@@ -36,7 +36,7 @@ const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoi
                 disabled={!canCreate} 
                 onClick={create} 
                 tooltip={<>Creates a new group that has all elements of the current selection (or their highest active groups, where applicable) as members, and removes these {' '}
-                    elements from their current lowest inactive groups.<HotkeyComp mapKey='create group' /></>}
+                    from their current groups.<HotkeyComp mapKey='create group' /></>}
                 tooltipPlacement='right' />
             <div className='text-center mt-3'>
                 Group level:&nbsp;&nbsp;{groups[1]+1} / {groups[0].length}
@@ -44,7 +44,7 @@ const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoi
             <BasicColoredButton id='leave-button' label='Leave group' style='px-2 mx-2 mt-3 rounded-lg' 
                 disabled={!canLeave} 
                 onClick={leave} 
-                tooltip={<>Deactivates the membership the currently focused node (or the membership of its second-highest active group, where applicable) in its highest active {' '}
+                tooltip={<>Deactivates the membership of the currently focused node (or of its second-highest active group) in its highest active {' '}
                     group.<HotkeyComp mapKey='leave' /></>}
                 tooltipPlacement='right' />
             <BasicColoredButton id='rejoin-button' label='Rejoin' style='px-2 mx-2 mt-2 rounded-lg' 

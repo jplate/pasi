@@ -1,14 +1,12 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import clsx from 'clsx/lite'
 import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import NodeGroup from './NodeGroup.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
-import { ROUNDING_DIGITS, ParseError } from '../../codec/Texdraw.tsx'
-import { round } from '../../util/MathTools.tsx'
+import {  ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -145,14 +143,14 @@ export default class ENode extends Item {
     }
 
     public override getTexdrawCode() {
-		return clsx(
+		return [
             super.getTexdrawCode(),
             (this.shading>0 || this.linewidth>0? Texdraw.move(this.x, this.y): ''),
             (this.shading>0? Texdraw.fcirc(this.radius, this.shading): ''),
             (this.dash.length>0? Texdraw.lpatt(this.dash): ''),
             (this.linewidth>0? Texdraw.circ(this.radius): ''),
             (this.dash.length>0? Texdraw.lpatt([]): '')
-        );			        
+        ].join('');	        
     }
 
     /** 
@@ -172,7 +170,7 @@ export default class ENode extends Item {
         let n = 0;
         for(; n<stShapes.length; n++) {
 		    if(!(stShapes[n].shape instanceof Texdraw.Circle)) {
-		        throw new ParseError(`Expected a circle, not ${stShapes[n].shape.genericDescription}`);
+		        throw makeParseError(`Expected a circle, not ${stShapes[n].shape.genericDescription}`, tex);
 		    }
             circles.push(stShapes[n].shape as Texdraw.Circle);
 	    }

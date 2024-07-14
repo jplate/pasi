@@ -21,7 +21,6 @@ const MIN_DISTANCE = -9999
 const MAX_DISTANCE = 9999
 
 export const DEFAULT_DISTANCE = 10
-export const MAX_NODEGROUP_SIZE = 1000
 
 
 export default class CNode extends Item {

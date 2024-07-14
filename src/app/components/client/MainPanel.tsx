@@ -15,8 +15,8 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { MAX_NODEGROUP_SIZE, DEFAULT_DISTANCE  } from './CNode.tsx'
-import NodeGroup, { NodeGroupComp } from './NodeGroup.tsx'
+import CNode, { DEFAULT_DISTANCE  } from './CNode.tsx'
+import NodeGroup, { MAX_NODEGROUP_SIZE, NodeGroupComp } from './NodeGroup.tsx'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
@@ -740,16 +740,17 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         }
                         if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
+                                console.log(`gs: ${group.members.length}`);
                                 if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
-                                    showModal('Alert', 'A contour node group can only have contour nodes as members.');
+                                    showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
                                 else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
-                                    showModal('Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
+                                    showModal('Hungry 🍎 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
                                 else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
-                                    showModal('Alert', 'A contour node can only be a member of a contour node group.');
+                                    showModal('Invalid target', 'A contour node can only be a member of a contour node group.');
                                     return;
                                 }
                                 else {
@@ -771,15 +772,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             }
                             else { // dissolve adding                            
                                 if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
-                                    showModal('Alert', 'A contour node group can only have contour nodes as members.');
+                                    showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
                                 else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
-                                    showModal('Alert', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
+                                    showModal('Hungry 🍉 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
                                 else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
-                                    showModal('Alert', 'A contour node can only be a member of a contour node group.');
+                                    showModal('Invalid target', 'A contour node can only be a member of a contour node group.');
                                     return;
                                 }
                                 else {
@@ -796,7 +797,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     itemToAdd.members = [];
                                     if (itemToAdd instanceof NodeGroup) {
                                         // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
-                                        setList(prev => prev.filter(it => it!==itemToAdd));
+                                        newList = purge(itemToAdd, newList);
                                     }
                                     if (itemToAdd.group) {
                                         itemToAdd.group.members = itemToAdd.group.members.filter(m => m!==itemToAdd);  
@@ -809,7 +810,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 j = group.members.indexOf(item as CNode),
                                 newMembers: CNode[];
                             if (i<0 || j<0) {
-                                console.log('Unexpectedly missing CNode');
+                                console.warn('Unexpectedly missing CNode');
                                 return;
                             }
                             if (i!==j && newList.length<MAX_LIST_SIZE && (i+1<j || (j<i && (j>0 || i<group.members.length-1)))) { 
@@ -833,25 +834,28 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 else {
                     const pres = preselection2Ref.current; // This may be empty if we've just selected the same item (due to the clearing of the preselection at the end of this function).
                     if (e.shiftKey) { // increase selection
-                        if (e.ctrlKey || pres.length===0) {
-                            if (item instanceof ENode || !selection.includes(item)) { // If item is a CNode, we don't add it twice.
+                        if (e.ctrlKey || pres.length===0) { 
+                            if (item instanceof ENode || !deduplicatedSelection.includes(item)) { // If item is a CNode, we don't add it twice. 
                                 newSelection = [...selection, item];
                             }
                         }
                         else {               
-                            newSelection = [...selection, ...pres.filter(it => it instanceof ENode || !selection.includes(it))];
+                            newSelection = [...selection, ...pres.filter(it => (it instanceof ENode && it===item) || !deduplicatedSelection.includes(it))]; // If the user
+                                // shift-clicks on an item, she'll usually only want to add that item to the selection, together with any other items in the preselection
+                                // that have not yet been selected.
                         }
                     }
                     else { // replace selection
-                        if (e.ctrlKey || pres.length===0) {
+                        if (e.ctrlKey || pres.length===0 || 
+                            (item===focusItem && pres.length===deduplicatedSelection.length && pres.every(it => deduplicatedSelection.includes(it)))) { // If the user
+                                // clicks on the focusItem while the preselection includes only items that are already selected, then it makes sense to interpret this click as
+                                // intended to deselect everything except for the focusItem.
                             newSelection = [item];
-                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not just of item itself but of all members of its highest active group:
+                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not just of item itself but of all 
+                            // members of its highest active group:
                             if (!e.ctrlKey) {
-                                const ha = highestActive(item);
-                                if (!(ha instanceof Item)) {
-                                    setPreselection2(prev => ([...getLeafMembers(ha)] as Item[]));
-                                    clearPreselection = false;
-                                }
+                                updateSecondaryPreselection([item]);
+                                clearPreselection = false;
                             }
                         }
                         else { // The 'normal' case: we select the preselection.
@@ -1316,7 +1320,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         for (const item of deduplicatedSelection) {
             const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
             if (!isFinite(x) || !isFinite(y)) {
-                showModal('Buzz Lightyear alert', 
+                showModal('Buzz Lightyear Alert', 
                     `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`);
             }
             if (x<0 || x>MAX_X) return false;

@@ -85,22 +85,24 @@ export default class NodeGroup implements Group<CNode> {
     public getBounds = (
         lines: CubicLine[] = this.getLines(), 
     ): { minX: number, maxX: number, minY: number, maxY: number } => {
-        const minX = lines.reduce((min, line, i) => {
-            const mx = Math.min(line.x0, line.x1, line.x2);
-            return mx<min && (this.shading>0 || !this.members[i].omitLine)? mx: min
-        }, Infinity);
-        const maxX = lines.reduce((max, line, i) => {
-            const mx = Math.max(line.x0, line.x1, line.x2);
-            return mx>max && (this.shading>0 || !this.members[i].omitLine)? mx: max
-        }, -Infinity);
-        const minY = lines.reduce((min, line, i) => {
-            const my = Math.min(line.y0, line.y1, line.y2);
-            return my<min && (this.shading>0 || !this.members[i].omitLine)? my: min
-        }, Infinity);
-        const maxY = lines.reduce((max, line, i) => {
-            const my = Math.max(line.y0, line.y1, line.y2);
-            return my>max && (this.shading>0 || !this.members[i].omitLine)? my: max
-        }, -Infinity);
+        const n = this.members.length;
+        let minX = Infinity,
+            maxX = -Infinity,
+            minY = Infinity,
+            maxY = -Infinity;
+        for (let i = 0; i < n; i++) {
+            const line = lines[i];
+            if (this.shading > 0 || !this.members[i].omitLine) {
+                const mx = Math.min(line.x0, line.x1, line.x2, line.x3);
+                const mX = Math.max(line.x0, line.x1, line.x2, line.x3);
+                const my = Math.min(line.y0, line.y1, line.y2, line.y3);
+                const mY = Math.max(line.y0, line.y1, line.y2, line.y3);
+                if (mx < minX) minX = mx;
+                if (mX > maxX) maxX = mX;
+                if (my < minY) minY = my;
+                if (mY > maxY) maxY = mY;
+            }
+        }
         return { minX, maxX, minY, maxY }
     }
 
@@ -445,7 +447,7 @@ export default class NodeGroup implements Group<CNode> {
         const paths: (Texdraw.CubicCurve | Texdraw.Path)[] = [];
         for(let i = 0; i<stShapes.length; i++) {
 		    if(!(stShapes[i].shape instanceof Texdraw.CubicCurve) && !(stShapes[i].shape instanceof Texdraw.Path)) {
-		        throw new ParseError(`Expected a path or cubic curve, not ${stShapes[i].shape.genericDescription}`);
+		        throw makeParseError(`Expected a curve/line sequence, not ${stShapes[i].shape.genericDescription}`, tex);
 		    }
             paths.push(stShapes[i].shape as Texdraw.Path);
 	    }
@@ -472,11 +474,16 @@ export default class NodeGroup implements Group<CNode> {
         }        
         const [omitLine, fixedAngles, activeMember] = arraysAsNum? arraysFromNum: 
             split.slice(1, firstNodeIndex).map(s => {
+                let result: boolean[];
                 switch (s) {
-                    case '*': return Array(n).fill(true);
-                    case '~': return Array(n).fill(false);
-                    default: return fromBase64(s);
+                    case '*': result = Array(n).fill(true); break;
+                    case '~': result = Array(n).fill(false); break;
+                    default: result = fromBase64(s);
                 }
+                if (result.length < n) {
+                    throw new ParseError(<span>Corrupt data in definition of contour node group: array length does not match number of nodes ({n}).</span>);
+                }
+                return result;
             });
         
         // Extract information about the fill level and the start index for decoding node information:
