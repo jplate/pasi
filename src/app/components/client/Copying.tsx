@@ -1,5 +1,5 @@
 import ENode from './ENode'
-import NodeGroup from './NodeGroup'
+import CNodeGroup from './CNodeGroup'
 import CNode from './CNode'
 import Group, { StandardGroup } from './Group'
 import Item from './Item'
@@ -30,7 +30,7 @@ export const copyENode = (node: ENode, i: number, dx: number, dy: number): ENode
 export const copyCNode = (node: CNode, dx: number, dy: number, ngCounter: number, nodeCounter: number): CNode => {
     if (node.group) {
         const copy = new CNode(ngCounter===0? `${node.id}c${node.numberOfCopies++}`: `CN${ngCounter}/${nodeCounter}`, 
-            node.x+dx, node.y+dy, node.angle0, node.angle1, node.group as NodeGroup);
+            node.x+dx, node.y+dy, node.angle0, node.angle1, node.group as CNodeGroup);
         copy.omitLine = node.omitLine;
         copy.fixedAngles = node.fixedAngles;
         copy.isActiveMember = node.isActiveMember;
@@ -44,11 +44,11 @@ export const copyCNode = (node: CNode, dx: number, dy: number, ngCounter: number
 /**
  * Returns a copy of the supplied NodeGroup.
  */
-export const copyNodeGroup = (
-        group: NodeGroup, 
+export const copyCNodeGroup = (
+        group: CNodeGroup, 
         i: number, dx: number, dy: number, 
-        cNodeCopies: Record<string, CNode>): NodeGroup => {
-    const copiedGroup = new NodeGroup(i);
+        cNodeCopies: Record<string, CNode>): CNodeGroup => {
+    const copiedGroup = new CNodeGroup(i);
     const members = group.members.map((m: CNode, j: number) => {
         const copy = copyCNode(m, dx, dy, i, j);
         copy.group = copiedGroup;
@@ -75,7 +75,7 @@ export const copyStandardGroup = (
         group: StandardGroup<Item | Group<any>>, 
         eNodeCounter: number, nGCounter: number,
         dx: number, dy: number, 
-        copies: Record<string, ENode | NodeGroup>,
+        copies: Record<string, ENode | CNodeGroup>,
         cNodeCopies: Record<string, CNode>): [StandardGroup<Item | Group<any>>, newENodeCounter: number, newNGCounter: number] => {
     const copiedGroup = new StandardGroup<Item | Group<any>>([]);
     const members: (Item | Group<any>)[] = group.members.map(m => {
@@ -84,8 +84,8 @@ export const copyStandardGroup = (
             copy = copyENode(m, eNodeCounter++, dx, dy);
             copies[m.id] = copy;
         }
-        else if (m instanceof NodeGroup) {
-            copy = copyNodeGroup(m, nGCounter++, dx, dy, cNodeCopies);
+        else if (m instanceof CNodeGroup) {
+            copy = copyCNodeGroup(m, nGCounter++, dx, dy, cNodeCopies);
             copies[m.id] = copy;
         }
         else if (m instanceof StandardGroup) { 
@@ -104,7 +104,7 @@ export const copyStandardGroup = (
 
 
 export const copy = (topTbc: (Item | Group<any>)[], hDisplacement: number, vDisplacement: number, 
-    copies: Record<string, ENode | NodeGroup>, 
+    copies: Record<string, ENode | CNodeGroup>, 
     cNodeCopies: Record<string, CNode>, 
     enCounter: number, 
     ngCounter: number
@@ -126,8 +126,8 @@ export const copy = (topTbc: (Item | Group<any>)[], hDisplacement: number, vDisp
             m.dist1 = node.dist0 = DEFAULT_DISTANCE;
             cNodeCopies[m.id] = node;
         }
-        else if(m instanceof NodeGroup) {
-            const group = copyNodeGroup(m, ngCounter++, hDisplacement, vDisplacement, cNodeCopies);
+        else if(m instanceof CNodeGroup) {
+            const group = copyCNodeGroup(m, ngCounter++, hDisplacement, vDisplacement, cNodeCopies);
             if (group.group) {
                 group.group.members.push(group);
             }

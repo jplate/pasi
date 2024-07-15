@@ -1,7 +1,7 @@
 import type { Entry } from './ItemEditor.tsx'
 import Group, { GroupMember } from './Group.tsx'
 import ENode from './ENode.tsx'
-import NodeGroup from './NodeGroup.tsx'
+import CNodeGroup from './CNodeGroup.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 
 export const CLOCKWISE = 0;
@@ -65,7 +65,7 @@ export default class Item implements GroupMember {
         this.y100 = y;
     }
 
-    public getInfo(list: (ENode | NodeGroup)[]): Entry[] {
+    public getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return []
     }
 
@@ -73,7 +73,7 @@ export default class Item implements GroupMember {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
+            key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         return [(item: Item, items) => items, 'onlyThis']
     }

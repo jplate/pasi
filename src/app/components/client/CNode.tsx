@@ -1,7 +1,7 @@
 import clsx from 'clsx/lite'
 import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, Range } from './Item.tsx'
 import ENode from './ENode.tsx'
-import NodeGroup, { angle } from './NodeGroup.tsx'
+import CNodeGroup, { angle } from './CNodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
@@ -37,7 +37,7 @@ export default class CNode extends Item {
     numberOfCopies: number = 0; // to help generate unique ids
 
 
-    constructor(id: string, x: number, y: number, a0: number, a1: number, group: NodeGroup) {
+    constructor(id: string, x: number, y: number, a0: number, a1: number, group: CNodeGroup) {
         super(id, x, y);
         this.angle0 = a0;
         this.angle1 = a1;
@@ -46,22 +46,22 @@ export default class CNode extends Item {
     }
 
     public override setLinewidth(lw: number) {
-        const group = this.group as NodeGroup;
+        const group = this.group as CNodeGroup;
         group.linewidth = group.linewidth100 = lw;
     }
 
     public override setShading(sh: number) {
-        const group = this.group as NodeGroup;
+        const group = this.group as CNodeGroup;
         group.shading = sh;
     }
 
     public override setDash(dash: number[]) {
-        const group = this.group as NodeGroup;
+        const group = this.group as CNodeGroup;
         group.dash = group.dash100 = dash;
     }
 
     public override reset() {
-        const group = this.group as NodeGroup;
+        const group = this.group as CNodeGroup;
         super.reset();
         this.fixedAngles = true;
         this.omitLine = false;
@@ -72,8 +72,8 @@ export default class CNode extends Item {
         group.shading = DEFAULT_SHADING;
     }
 
-    public override getInfo(list: (ENode | NodeGroup)[]): Entry[] {
-        const group = this.group as NodeGroup;
+    public override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+        const group = this.group as CNodeGroup;
         return [
             {type: 'checkbox', key: 'fixed', text: 'Dragging preserves angles', value: this.fixedAngles,
                 tooltip: clsx('Dragging this node will move its two neighbors in parallel with it if this helps to preserve the angles between them.',
@@ -115,7 +115,7 @@ export default class CNode extends Item {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
+            key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'fixed':
                 const fa = !this.fixedAngles;
@@ -194,7 +194,7 @@ export default class CNode extends Item {
                     return array
                 }, 'ENodesAndNodeGroups']
             case 'dash': if (e) {
-                    const dash = (this.group as NodeGroup).dashValidator.read(e.target);
+                    const dash = (this.group as CNodeGroup).dashValidator.read(e.target);
                     return [(item, array) => {
                         item.setDash(dash); 
                         return array
@@ -205,7 +205,7 @@ export default class CNode extends Item {
                     return array
                 }, 'ENodesAndNodeGroups']
             case 'rank': if (e) return [(item, array) => {
-                    if (item.group instanceof NodeGroup) {
+                    if (item.group instanceof CNodeGroup) {
                         const currentPos = array.indexOf(item.group);
                         const newPos = parseInt(e.target.value);
                         let result = array;
@@ -224,13 +224,13 @@ export default class CNode extends Item {
                     return array
                 }, 'wholeSelection']
             case 'angles': return [(item, array) => {
-                if (item.group instanceof NodeGroup) {
+                if (item.group instanceof CNodeGroup) {
                     item.group.equalizeCentralAngles(item as CNode);
                 }
                 return array
             }, 'ENodesAndNodeGroups']
             case 'distances': return [(item, array) => {
-                if (item.group instanceof NodeGroup) {
+                if (item.group instanceof CNodeGroup) {
                     item.group.equalizeDistancesFromCenter(item as CNode);
                 }
                 return array
@@ -273,7 +273,7 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
     let arrowDiv = null;
     if (arrow && cnode.group) {
         const index = cnode.group.members.indexOf(cnode);
-        const next = (cnode.group as NodeGroup).members[index==cnode.group.members.length-1? 0: index+1];
+        const next = (cnode.group as CNodeGroup).members[index==cnode.group.members.length-1? 0: index+1];
         const d = Math.sqrt((cnode.x - next.x) ** 2 + (cnode.y - next.y) ** 2);
         const factor = Math.min(Math.max(d * CNODE_ARROW_DISTANCE_RATIO, CNODE_ARROW_DISTANCE_MIN), CNODE_ARROW_DISTANCE_MAX) / d;
         const r = CNODE_ARROW_DIV_RADIUS;

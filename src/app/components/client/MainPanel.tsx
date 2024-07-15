@@ -16,7 +16,7 @@ import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
 import CNode, { DEFAULT_DISTANCE  } from './CNode.tsx'
-import NodeGroup, { MAX_NODEGROUP_SIZE, NodeGroupComp } from './NodeGroup.tsx'
+import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup.tsx'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
@@ -153,7 +153,7 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'rotate clockwise', keys: 'shift+e', rep: ['Shift+E'], 
         descr: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, false)}</>,
         descrDark: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, true)}</> },
-    { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours counter-clockwise by 180 / <i>n</i> degrees, where{' '}
+    { key: 'rotate by 180/n deg', keys: 'r', rep: ['R'], descr: <>Rotate selected contours clockwise by 180 / <i>n</i> degrees, where{' '}
         <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
     { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
     { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
@@ -174,7 +174,7 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
     { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram and display {' '}
         it in the text area below the canvas.</> },
-    { key: 'load diagram', keys: 'ctrl+enter', rep: ['Ctrl+Enter'], descr: <>(Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.</> }
+    { key: 'load diagram', keys: 'mod+enter', rep: ['Ctrl+Enter'], descr: <>(Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.</> }
   ];
 
 const hotkeyMap: Record<string, string> = hotkeys.reduce((acc, info) => {
@@ -247,7 +247,7 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
  * is being dragged.
  */
 const getSnapPoint = (x: number, y: number, grid: Grid, 
-        list: (Item | NodeGroup)[], 
+        list: (Item | CNodeGroup)[], 
         focus: Item, 
         selection: Item[],
         dccDx: number | undefined, 
@@ -258,7 +258,7 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
         snappingToGrid = true;
     if (grid.snapToContourCenters || grid.snapToNodes) {
         for (const it of list) {
-            if (it instanceof NodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
+            if (it instanceof CNodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
                 const overlap = it.members.filter(m => selection.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
                     const c = it.getNodalCenter();
@@ -393,8 +393,8 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     }
 }
 
-const getNodes = (list: (ENode | NodeGroup)[], test: (item: Item) => boolean = it => true): Item[] => 
-    list.flatMap((it: ENode | NodeGroup) => 
+const getNodes = (list: (ENode | CNodeGroup)[], test: (item: Item) => boolean = it => true): Item[] => 
+    list.flatMap((it: ENode | CNodeGroup) => 
         it instanceof ENode? (test(it)? [it] : []): 
         (it.members as Item[]).filter(test));
 
@@ -439,10 +439,10 @@ const getTopToBeCopied = (selection: Item[], ntbc: Item[]) => {
     return result;
 }
 
-const getNodeGroups = (array: (Item | Group<any>)[]): NodeGroup[] =>
-    array.reduce((acc: NodeGroup[], it) => 
+const getNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] =>
+    array.reduce((acc: CNodeGroup[], it) => 
         it instanceof Item? acc: 
-        it instanceof NodeGroup? [...acc, it]:
+        it instanceof CNodeGroup? [...acc, it]:
         [...acc, ...getNodeGroups(it.members)], 
     []);
 
@@ -450,9 +450,9 @@ const getNodeGroups = (array: (Item | Group<any>)[]): NodeGroup[] =>
  * A function to be called on groups that have just been emptied of all their members. The second argument is the list of items to be displayed
  * on the canvas. Returns a new, 'purged' list.
  */
-const purge = (group: Group<any>, list: (ENode | NodeGroup)[]): (ENode | NodeGroup)[] => {
+const purge = (group: Group<any>, list: (ENode | CNodeGroup)[]): (ENode | CNodeGroup)[] => {
     let newList = list;
-    if (group instanceof NodeGroup) {
+    if (group instanceof CNodeGroup) {
         // If group is a NodeGroup, we delete it from the list:
         newList = list.filter(it => it!==group);
     }
@@ -485,9 +485,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [points, setPoints] = useState<Point[]>([])
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
     const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
-    const [list, setList] = useState<(ENode | NodeGroup)[]>([])
+    const [list, setList] = useState<(ENode | CNodeGroup)[]>([])
     const [eNodeCounter, setENodeCounter] = useState(0) // used for generating keys
-    const [nodeGroupCounter, setNodeGroupCounter] = useState(0) // used for generating keys
+    const [cNodeGroupCounter, setCNodeGroupCounter] = useState(0) // used for generating keys
     const [selection, setSelection] = useState<Item[]>([]);// list of selected items; multiple occurrences are allowed    
     const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
     const [yOffset, setYOffset] = useState(0);
@@ -571,7 +571,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             pts: Point[] = points, 
             focus: Item | null = focusItem, 
             sel: Item[] = selection,
-            l: (ENode | NodeGroup)[] = list
+            l: (ENode | CNodeGroup)[] = list
         ) => {
             // Compute new origin:
             const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
@@ -584,11 +584,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 setRotation(0);
                 setScaling(100);
                 l.forEach(it => { // resetting the items for new scaling 
-                    if (it instanceof NodeGroup) {
+                    if (it instanceof CNodeGroup) {
                         it.linewidth100 = it.linewidth;
                         it.dash100 = it.dash;
                     }
-                    (it instanceof NodeGroup? it.members: [it]).forEach(item => {
+                    (it instanceof CNodeGroup? it.members: [it]).forEach(item => {
                     item.x100 = item.x;
                     item.y100 = item.y;
                     if (item instanceof ENode) {
@@ -611,7 +611,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * and updates the coordinates stored in the limit object.
      */
     const adjustLimit = useCallback((
-            l: (ENode | NodeGroup)[] = list,
+            l: (ENode | CNodeGroup)[] = list,
             yoff: number = yOffset,
             lim: Point = limit
         ) => {
@@ -619,7 +619,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 right = 0,
                 bottom = H;
             l.forEach(it => {
-                (it instanceof NodeGroup? it.members: [it]).forEach(item => {
+                (it instanceof CNodeGroup? it.members: [it]).forEach(item => {
                     if(item.y > top) {
                         top = item.y;
                     }
@@ -730,7 +730,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newPoints = [];
                     const itemToAdd = e.ctrlKey? item: highestActive(item);
                     const group = highestActive(focusItem);
-                    if (!(group instanceof Item) && (group instanceof NodeGroup || (group!==itemToAdd && !group.members.includes(itemToAdd)))) {
+                    if (!(group instanceof Item) && (group instanceof CNodeGroup || (group!==itemToAdd && !group.members.includes(itemToAdd)))) {
                         if (itemToAdd instanceof Item) {
                             newSelection=[...selection, itemToAdd];
                         }
@@ -741,12 +741,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
                                 console.log(`gs: ${group.members.length}`);
-                                if (group instanceof NodeGroup && !(itemToAdd instanceof CNode)) {
+                                if (group instanceof CNodeGroup && !(itemToAdd instanceof CNode)) {
                                     showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
-                                else if (group instanceof NodeGroup && group.members.length>=MAX_NODEGROUP_SIZE) {
-                                    showModal('Hungry 🍎 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
+                                else if (group instanceof CNodeGroup && group.members.length>=MAX_CNODEGROUP_SIZE) {
+                                    showModal('Hungry 🍎 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
                                 else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
@@ -754,7 +754,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     return;
                                 }
                                 else {
-                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    if (focusItem instanceof CNode && group instanceof CNodeGroup) {
                                         const i = group.members.indexOf(focusItem);
                                         group.members.splice(i+1, 0, itemToAdd as CNode);
                                     }
@@ -771,23 +771,23 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 }
                             }
                             else { // dissolve adding                            
-                                if (group instanceof NodeGroup && !(itemToAdd instanceof NodeGroup)) {
+                                if (group instanceof CNodeGroup && !(itemToAdd instanceof CNodeGroup)) {
                                     showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
-                                else if (group instanceof NodeGroup && group.members.length+itemToAdd.members.length>MAX_NODEGROUP_SIZE) {
-                                    showModal('Hungry 🍉 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_NODEGROUP_SIZE} nodes.`);
+                                else if (group instanceof CNodeGroup && group.members.length+itemToAdd.members.length>MAX_CNODEGROUP_SIZE) {
+                                    showModal('Hungry 🍉 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
-                                else if (group instanceof StandardGroup && itemToAdd instanceof NodeGroup) {
+                                else if (group instanceof StandardGroup && itemToAdd instanceof CNodeGroup) {
                                     showModal('Invalid target', 'A contour node can only be a member of a contour node group.');
                                     return;
                                 }
                                 else {
-                                    if (focusItem instanceof CNode && group instanceof NodeGroup) {
+                                    if (focusItem instanceof CNode && group instanceof CNodeGroup) {
                                         const i = group.members.indexOf(focusItem); // the index after which to insert
                                         const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
-                                        const nodes = (itemToAdd as NodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
+                                        const nodes = (itemToAdd as CNodeGroup).members.slice(j).concat(itemToAdd.members.slice(0,j));
                                         group.members.splice(i+1, 0, ...nodes);
                                     }
                                     else {
@@ -795,7 +795,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     }
                                     itemToAdd.members.forEach(m => {m.group = group; m.isActiveMember = true});
                                     itemToAdd.members = [];
-                                    if (itemToAdd instanceof NodeGroup) {
+                                    if (itemToAdd instanceof CNodeGroup) {
                                         // Since itemToAdd is now an empty NodeGroup, we delete it from the list:
                                         newList = purge(itemToAdd, newList);
                                     }
@@ -805,7 +805,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 }
                             }
                         }
-                        else if (group instanceof NodeGroup) { // In this case, item must already be a member of group, just like focusItem.
+                        else if (group instanceof CNodeGroup) { // In this case, item must already be a member of group, just like focusItem.
                             let i = group.members.indexOf(focusItem as CNode),
                                 j = group.members.indexOf(item as CNode),
                                 newMembers: CNode[];
@@ -822,9 +822,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     newMembers = [...group.members.slice(0, j), ...group.members.slice(i+1)];
                                     group.members = group.members.slice(j, i+1);
                                 }
-                                const newGroup = new NodeGroup(nodeGroupCounter);
+                                const newGroup = new CNodeGroup(cNodeGroupCounter);
                                 newGroup.members = newMembers;
-                                setNodeGroupCounter(prev => prev+1);
+                                setCNodeGroupCounter(prev => prev+1);
                                 newMembers.forEach(node => node.group = newGroup);   
                                 newList = [...newList, newGroup];
                             }
@@ -867,12 +867,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 // Handle dragging:
                 setDragging(true);
                 const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
-                const contourDragged = item.group instanceof NodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
+                const contourDragged = item.group instanceof CNodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
                 
                 // If we're dragging a contour, we need to determine the location of its center, which is then (in handleMouseMove) passed on to getSnapPoint.
                 let dccDx: number | undefined, 
                     dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
-                if (contourDragged && item.group instanceof NodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
+                if (contourDragged && item.group instanceof CNodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
                     const { x, y } = item.group.getNodalCenter();
                     dccDx = x - item.x;
                     dccDy = y - item.y;
@@ -895,14 +895,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     const dy = y - item.y;
                     // Finally, we move each item in the selection, if necessary:
                     if(dx!==0 || dy!==0) {
-                        const nodeGroups: NodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+                        const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
                         selectionWithoutDuplicates.forEach(item => {
                             // console.log(`moving: ${item.id}`);
-                            if (item.group instanceof NodeGroup) {
+                            if (item.group instanceof CNodeGroup) {
                                 if (!nodeGroups.includes(item.group)) {
                                     nodeGroups.push(item.group);
                                     const members = item.group.members;
-                                    (item.group as NodeGroup).groupMove(
+                                    (item.group as CNodeGroup).groupMove(
                                         selectionWithoutDuplicates.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
                                         dx, 
                                         dy
@@ -955,7 +955,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Mouse down handler for contour center divs.
      */
-    const groupMouseDown = (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => { 
+    const groupMouseDown = (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => { 
         if (group.members.length>0) {
             itemMouseDown(group.members[group.members.length-1], e, false); // the 'false' parameter prevents the preselection from being cleared after selecting,
                 // which means that the whole current preselection will again be selected if the user clicks on the center div again.
@@ -984,7 +984,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Mouse enter handler for the contour center divs.
      */
     const groupMouseEnter = useCallback((
-            group: NodeGroup, 
+            group: CNodeGroup, 
             e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
         ) => { 
             if(!dragging) {
@@ -1150,20 +1150,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const addContours = useCallback(() => { 
         if (points.length>0) {
-            let counter = nodeGroupCounter;
-            const newNodeGroups = points.map((point, i) => new NodeGroup(counter++, point.x, point.y));
-            const newList = [...list, ...newNodeGroups];
-            setNodeGroupCounter(counter);
+            let counter = cNodeGroupCounter;
+            const newCNodeGroups = points.map((point, i) => new CNodeGroup(counter++, point.x, point.y));
+            const newList = [...list, ...newCNodeGroups];
+            setCNodeGroupCounter(counter);
             setList(list => newList);
             adjustLimit(newList, yOffset, limit); 
-            const nodes = getNodes(newNodeGroups);
+            const nodes = getNodes(newCNodeGroups);
             const newFocus = nodes[nodes.length-1];
             setPoints([]);
             setSelection(nodes);
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, nodeGroupCounter, list, yOffset, limit]);
+    }, [points, cNodeGroupCounter, list, yOffset, limit]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1171,10 +1171,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const copySelection = useCallback(() => {
         if (topTbc.length>0) {
-            const copies: Record<string, ENode | NodeGroup> = {}; // This will store the keys of the copied ENodes and NodeGroups, mapped to their respective copies.
+            const copies: Record<string, ENode | CNodeGroup> = {}; // This will store the keys of the copied ENodes and NodeGroups, mapped to their respective copies.
             const cNodeCopies: Record<string, CNode> = {}; // Same, but for the members of NodeGroups.
-            const [enCounter, ngCounter] = copy(topTbc, hDisplacement, vDisplacement, copies, cNodeCopies, eNodeCounter, nodeGroupCounter);
-            const copiedList = list.reduce((acc: (ENode | NodeGroup)[], node) => { // an array that holds the copied nodes or node groups in the same 
+            const [enCounter, ngCounter] = copy(topTbc, hDisplacement, vDisplacement, copies, cNodeCopies, eNodeCounter, cNodeGroupCounter);
+            const copiedList = list.reduce((acc: (ENode | CNodeGroup)[], node) => { // an array that holds the copied nodes or node groups in the same 
                 // order as list holds the nodes or node groups that they're copies of
                 if (node.id in copies) {
                     acc.push(copies[node.id]);
@@ -1190,14 +1190,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 focusItem instanceof CNode? cNodeCopies[focusItem.id]: null as never;
             adjustLimit(newList, yOffset, limit);
             setENodeCounter(enCounter);
-            setNodeGroupCounter(ngCounter);
+            setCNodeGroupCounter(ngCounter);
             setList(newList);
             setFocusItem(prev => newFocus);
             setOrigin(true, points, newFocus, newSelection); 
             setSelection(newSelection);
             scrollTo(newFocus);
         }
-    }, [topTbc, list, hDisplacement, vDisplacement, eNodeCounter, nodeGroupCounter, selection, focusItem, yOffset, limit]);
+    }, [topTbc, list, hDisplacement, vDisplacement, eNodeCounter, cNodeGroupCounter, selection, focusItem, yOffset, limit]);
 
 
     /**
@@ -1205,12 +1205,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const deleteSelection = useCallback(() => { 
         if (deduplicatedSelection.length>0) {
-            const newList: (ENode | NodeGroup)[]  = [];
+            const newList: (ENode | CNodeGroup)[]  = [];
             for (let it of list) {
                 if (it instanceof ENode) {
                     if (!deduplicatedSelection.includes(it)) newList.push(it);
                 }
-                else if (it instanceof NodeGroup) {
+                else if (it instanceof CNodeGroup) {
                     const newMembers = it.members.filter(node => !deduplicatedSelection.includes(node));
                     if (newMembers.length>0) {
                         it.members = newMembers;
@@ -1220,13 +1220,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
             const whitelist = new Set<Group<Item | Group<any>>>();
             newList.forEach(it => { // Whitelist each group that contains (directly or indirectly) a not-to-be-deleted node.
-                if (it instanceof NodeGroup) { 
+                if (it instanceof CNodeGroup) { 
                     whitelist.add(it); // A NodeGroup is in newList only if it contains at least one not-to-be-deleted node.
                 }
                 getGroups(it)[0].forEach(g => whitelist.add(g));
             });
             whitelist.forEach(g => { // For each of those groups, filter out all the members that are either to-be-deleted nodes or non-whitelisted groups.
-                if (!(g instanceof NodeGroup)) { // We ignore NodeGroups because their members are not in newList anyway.
+                if (!(g instanceof CNodeGroup)) { // We ignore NodeGroups because their members are not in newList anyway.
                     g.members = g.members.filter(m => 
                             ((m instanceof ENode) && newList.includes(m)) || 
                             (!(m instanceof Item) && whitelist.has(m)));
@@ -1251,18 +1251,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement> | null, key: string) => {
         if (focusItem) {
             const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, key);
-            const nodeGroups: Set<NodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<NodeGroup>(): null;
+            const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<CNodeGroup>(): null;
             const nodes = range=='onlyThis'? 
                 edit(focusItem, list):
-                deduplicatedSelection.reduce((acc: (ENode | NodeGroup)[], item: Item) => {
+                deduplicatedSelection.reduce((acc: (ENode | CNodeGroup)[], item: Item) => {
                         //console.log(`Editing item ${item.key}`);
                         if (item instanceof CNode && nodeGroups) {
-                            if (nodeGroups.has(item.group as NodeGroup)) return acc;
+                            if (nodeGroups.has(item.group as CNodeGroup)) return acc;
                             else {
-                                nodeGroups.add(item.group as NodeGroup);
+                                nodeGroups.add(item.group as CNodeGroup);
                             }
                         }
-                        return edit(item, acc) as (ENode | NodeGroup)[]
+                        return edit(item, acc) as (ENode | CNodeGroup)[]
                 }, list);
             setList(prev => nodes); // for some reason, the setter function is called twice here.
             adjustLimit(list, yOffset, limit);
@@ -1370,9 +1370,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
             }
         }); 
-        const affectedNodeGroups: NodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
+        const affectedNodeGroups: CNodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
             .map(node => node.group) // An array of those NodeGroups that have members included in selection.  
-            .filter((g, i, arr) => i===arr.indexOf(g)) as NodeGroup[]; 
+            .filter((g, i, arr) => i===arr.indexOf(g)) as CNodeGroup[]; 
         affectedNodeGroups.forEach(group => {
             if (group) {
                 if (transformFlags.scaleLinewidths) group.linewidth = group.linewidth100 * newValue/100;
@@ -1433,7 +1433,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     return it.group;
                 } 
                 else return null;
-            }).filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
+            }).filter((g, i, arr) => g instanceof CNodeGroup && i===arr.indexOf(g)) as CNodeGroup[]
         ).forEach(g => {
             g.equalizeCentralAngles(g.members[0]);
             g.equalizeDistancesFromCenter(g.members[0]);
@@ -1442,14 +1442,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, []);
 
     /**
-     * Rotate all contours that have members in the supplied array by 180/n degrees, where n is the number of nodes in the respective contour.
+     * Rotate all contours that have members in the supplied array by -180/n degrees, where n is the number of nodes in the respective contour.
      */
     const rotatePolygons = useCallback((selection: Item[]) => {
         (selection.map(it => it instanceof CNode? it.group: null)
-            .filter((g, i, arr) => g instanceof NodeGroup && i===arr.indexOf(g)) as NodeGroup[]
+            .filter((g, i, arr) => g instanceof CNodeGroup && i===arr.indexOf(g)) as CNodeGroup[]
         ).forEach(g => {
             const c = g.getNodalCenter();
-            const angle = 180 / g.members.length;
+            const angle = -180 / g.members.length;
             g.members.forEach(node => {
                 ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle, ROUNDING_DIGITS));
                 ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle, ROUNDING_DIGITS));
@@ -1462,7 +1462,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Either sets or increases/decreases the shading of the selected nodes, depending on whether the third argument is true.
      */
     const setShading = useCallback((selection: Item[], val: number, inc: boolean = false) => {
-        selection.map(it => it.group instanceof NodeGroup? it.group: it)
+        selection.map(it => it.group instanceof CNodeGroup? it.group: it)
         .filter((it, i, arr) => i===arr.indexOf(it))
         .forEach(obj => {
             const newVal = Math.min(Math.max(inc? round(obj.shading + val, ROUNDING_DIGITS): val, 0), 1);
@@ -1475,7 +1475,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Either sets or increases/decreases the linewidth of the selected nodes, depending on whether the third argument is true.
      */
     const setLinewidth = useCallback((selection: Item[], val: number, inc: boolean = false) => {
-        selection.map(it => it.group instanceof NodeGroup? it.group: it)
+        selection.map(it => it.group instanceof CNodeGroup? it.group: it)
         .filter((it, i, arr) => i===arr.indexOf(it))
         .forEach(obj => {
             const newLw = Math.min(Math.max(inc? round(obj.linewidth + val, ROUNDING_DIGITS): val, 0), MAX_LINEWIDTH);
@@ -1489,29 +1489,36 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
      */
     const createGroup = useCallback(() => {
-        let group: Group<any>;
-        if (topTbc.every(m => m instanceof CNode)) {
-            group = new NodeGroup(nodeGroupCounter);
-            group.members = topTbc;
-            setNodeGroupCounter(prev => prev+1);
-            setList(prev => [...prev, group as NodeGroup]);
+        const newMembers = deduplicatedSelection.map(it => highestActive(it)).filter((ha, i, arr) => i===arr.indexOf(ha));
+        let newList = list,
+            newCNGCounter = cNodeGroupCounter,
+            group: Group<any>;
+        if (newMembers.every(m => m instanceof CNode)) {
+            group = new CNodeGroup(cNodeGroupCounter);
+            group.members = newMembers;
+            newList = [...newList, group as CNodeGroup];
+            newCNGCounter++;
         }                                                
         else {
-            group = new StandardGroup<Item | Group<any>>(topTbc);
+            group = new StandardGroup<Item | Group<any>>(newMembers);
         }
-        const oldGroups = topTbc.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
+        const oldGroups = newMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
         oldGroups.forEach(g => {
             if (g) {
-                g.members = g.members.filter(m => !topTbc.includes(m));
-                if (g.members.length==0) setList(prev => purge(g, prev));
+                g.members = g.members.filter(m => !newMembers.includes(m));
+                if (g.members.length==0) {
+                    newList = purge(g, newList);
+                }
             }
         });
-        topTbc.forEach(member => {
+        newMembers.forEach(member => {
             member.group = group;
             member.isActiveMember = true;
         });
-        if (focusItem) adjustSelection(focusItem);                                 
-    }, [topTbc, focusItem]);
+        setList(prev => newList); 
+        setCNodeGroupCounter(prev => newCNGCounter);             
+        if (focusItem) adjustSelection(focusItem);
+    }, [deduplicatedSelection, list, cNodeGroupCounter, focusItem]);
 
     const leaveGroup = useCallback(() => {
         if (focusItem) {
@@ -1573,14 +1580,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             console.log('Success!');
             return;
         }
-        let newList: (ENode | NodeGroup)[] = [], 
+        let newList: (ENode | CNodeGroup)[] = [], 
             newPixel = 0, 
             newENodeCounter = 0, 
             newNGCounter = 0;
         try {
             [newList, newPixel, newENodeCounter, newNGCounter] = replace? 
                 load(code, 0, 0): 
-                load(code, eNodeCounter, nodeGroupCounter);
+                load(code, eNodeCounter, cNodeGroupCounter);
             if (replace) {
                 setPixel(prev => newPixel);
                 setPreselection1([]);
@@ -1594,7 +1601,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
             setList(prev => newList);
             setENodeCounter(prev => newENodeCounter);
-            setNodeGroupCounter(prev => newNGCounter);            
+            setCNodeGroupCounter(prev => newNGCounter);            
             adjustLimit(newList, yOffset, limit);
         } 
         catch (e: any) {
@@ -1605,7 +1612,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, nodeGroupCounter, points, yOffset, limit]);
+    }, [list, eNodeCounter, cNodeGroupCounter, points, yOffset, limit]);
 
 
     const canCopy: boolean = useMemo(() => !(
@@ -1619,7 +1626,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
             const dedupTbcContainingNGs = tbcContainingNGs.filter((g, i) => i===tbcContainingNGs.indexOf(g));
             return dedupTbcContainingNGs.some(group => group && 
-                group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_NODEGROUP_SIZE)
+                group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_CNODEGROUP_SIZE)
         })() ||
         (hDisplacement<0 && leftMostSelected + hDisplacement < 0) ||
         (vDisplacement>0 && topMostSelected + vDisplacement > MAX_Y) ||
@@ -1662,7 +1669,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canScaleUp: boolean = useMemo(() => testScaling(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
 
     const canCreateGroup: boolean= useMemo(() => 
-        (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_NODEGROUP_SIZE &&
+        (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_CNODEGROUP_SIZE &&
             // Since creating a new NodeGroup can lead to exceeding the list size limit, we have to check whether it would.
             (list.length < MAX_LIST_SIZE ||
                 (() => { // Here we check whether creating the new NodeGroup would lead to the deletion of at least one existing NodeGroup:
@@ -1762,8 +1769,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 onMouseDown={itemMouseDown}
                                 onMouseEnter={itemMouseEnter} 
                                 onMouseLeave={(item, e) => mouseLeft()} />:
-                            it instanceof NodeGroup? 
-                            <NodeGroupComp key={it.id} id={it.id} nodeGroup={it} 
+                            it instanceof CNodeGroup? 
+                            <CNodeGroupComp key={it.id} id={it.id} nodeGroup={it} 
                                 focusItem={focusItem} 
                                 preselection={preselection2}
                                 selection={deduplicatedSelection}

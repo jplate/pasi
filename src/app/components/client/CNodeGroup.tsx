@@ -5,9 +5,9 @@ import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
 import CNode, { MIN_ROTATION, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
-import ENode from './ENode'
+import ENode from './ENode.tsx'
 import { round, toBase64, fromBase64 } from '../../util/MathTools.tsx'
-import * as Texdraw from '../../codec/Texdraw'
+import * as Texdraw from '../../codec/Texdraw.tsx'
 import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 import { encode, decode } from '../../codec/Codec1.tsx'
 import { getCyclicValue } from '../../util/MathTools.tsx'
@@ -24,7 +24,7 @@ export const CONTOUR_CENTER_DIV_MAX_HEIGHT = 40
 
 export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
-export const MAX_NODEGROUP_SIZE = 1000
+export const MAX_CNODEGROUP_SIZE = 1000
 
 
 export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians: boolean = false): number => {
@@ -35,7 +35,7 @@ export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians:
 }
 
 
-export default class NodeGroup implements Group<CNode> {
+export default class CNodeGroup implements Group<CNode> {
 
     public members: CNode[];
     public group: Group<Item | Group<any>> | null;
@@ -371,7 +371,7 @@ export default class NodeGroup implements Group<CNode> {
         if (n > 0) {
             let prev = this.members[n - 1];
             for (let cn of this.members) {
-                // We add information regarding the two angles aangle0 and aangle1, and the distances dist0 and dist1.
+                // We add information regarding the two angles angle0 and angle1, and the distances dist0 and dist1.
                 // In two cases, we also have to add information regarding the node's coordinate: namely, if the shading and linewidth are both zero, and if 
                 // the shading is zero and the lines both to and from this node are omitted.
                 const info = [cn.angle0, cn.angle1, cn.dist0, cn.dist1];
@@ -646,16 +646,16 @@ export const getLine = (node0: CNode, node1: CNode): CubicLine => {
 
 export interface ContourProps {
     id: string
-    group: NodeGroup
+    group: CNodeGroup
     yOffset: number
     bg: HSL
     primaryColor: HSL
     markColor: string
     centerDivClickable: boolean
     showCenterDiv: boolean
-    onMouseDown: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
-    onMouseEnter: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
-    onMouseLeave: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    onMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    onMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    onMouseLeave: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
 }
 
 export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, centerDivClickable, showCenterDiv,
@@ -740,9 +740,9 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
     else return null
 }
 
-interface NodeGroupCompProps {
+interface CNodeGroupCompProps {
     id: number
-    nodeGroup: NodeGroup
+    nodeGroup: CNodeGroup
     focusItem: Item | null
     preselection: Item[]
     selection: Item[]
@@ -757,13 +757,13 @@ interface NodeGroupCompProps {
         clearPreselection?: boolean
     ) => void
     itemMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    groupMouseDown: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
-    groupMouseEnter: (group: NodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    groupMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
+    groupMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
     mouseLeft: () => void
 }
 
-export const NodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
-        itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: NodeGroupCompProps) => {
+export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
+        itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: CNodeGroupCompProps) => {
     const centerDivClickable = !allNodes.some(item => {
         if (item instanceof ENode || item instanceof CNode) {
             const r = item.radius;

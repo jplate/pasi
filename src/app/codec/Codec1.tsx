@@ -1,5 +1,5 @@
 import ENode from '../components/client/ENode'
-import NodeGroup from '../components/client/NodeGroup'
+import CNodeGroup from '../components/client/CNodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
@@ -91,7 +91,7 @@ export const decode = (s: string) => {
 }
 
 
-export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
+export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
 
     // We start by constructing the 'preamble', which mainly contains information as to what groups contain which other groups.
@@ -134,14 +134,14 @@ export const getCode = (list: (ENode | NodeGroup)[], pixel: number): string => {
     return arr.join('\n');
 }
 
-const getHint = (item: ENode | NodeGroup, eMap: Map<ENode, string>, gMap: Map<Group<any>, string>) => {
+const getHint = (item: ENode | CNodeGroup, eMap: Map<ENode, string>, gMap: Map<Group<any>, string>) => {
     let result = [];
     const info = item.getInfoString();
     
     if (item instanceof ENode) {
         result.push(`${ENODE_PREFIX}${eMap.get(item)}${info.length>0? `{${info}}`: ''}`);
     }
-    else if (item instanceof NodeGroup) {
+    else if (item instanceof CNodeGroup) {
         result.push(`${NODEGROUP_PREFIX}{${info}}`);
     }
 
@@ -253,7 +253,7 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
 /** 
  * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is obtained from gMap.
  */
-const addToGroup = (item: ENode | NodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>) => {
+const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>) => {
     if (groupName) {
         let g: StandardGroup<ENode | Group<any>>;
         if (gMap.has(groupName)) {
@@ -301,19 +301,19 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     return node;
 }
 
-const parseNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, counter: number): NodeGroup => {
+const parseCNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, counter: number): CNodeGroup => {
     // The 'hint' for a NodeGroup has the following format:
     // ['K' + info] or 
     // ['K' + info + ('.' or ':') + groupName].
     const [, groupName, activeMember, info] = analyzeHint(hint);
-    const nodeGroup = new NodeGroup(counter);
+    const nodeGroup = new CNodeGroup(counter);
     nodeGroup.parse(tex, info);
     if (groupName) addToGroup(nodeGroup, groupName, activeMember!, gMap);
     return nodeGroup;
 }
 
-export const load = (code: string, eCounter: number, ngCounter: number): [(ENode | NodeGroup)[], number, number, number] => {
-    const list: (ENode | NodeGroup)[] = [];
+export const load = (code: string, eCounter: number, ngCounter: number): [(ENode | CNodeGroup)[], number, number, number] => {
+    const list: (ENode | CNodeGroup)[] = [];
     const lines = code.split(/[\r|\n]+/).filter(l => l.length>0);
     const n = lines.length;
     
@@ -367,7 +367,7 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
                         break;
                     }
                 case NODEGROUP_PREFIX: {
-                        const nodeGroup = parseNodeGroup(tex, hint, gMap, ngCounter);
+                        const nodeGroup = parseCNodeGroup(tex, hint, gMap, ngCounter);
                         ngCounter++;
                         list.push(nodeGroup);
                         break;

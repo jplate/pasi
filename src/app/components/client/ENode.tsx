@@ -4,7 +4,7 @@ import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
-import NodeGroup from './NodeGroup.tsx'
+import CNodeGroup from './CNodeGroup.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import {  ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 
@@ -54,7 +54,7 @@ export default class ENode extends Item {
         this.radius = this.radius100 = DEFAULT_RADIUS;
     }
 
-    public override getInfo(list: (ENode | NodeGroup)[]): Entry[] {
+    public override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
@@ -74,7 +74,7 @@ export default class ENode extends Item {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            key: string): [(item: Item, list: (ENode | NodeGroup)[]) => (ENode | NodeGroup)[], applyTo: Range] {
+            key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'x': if (e) {
                     const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
