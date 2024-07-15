@@ -1313,8 +1313,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
         }
-        return true
-    }, [deduplicatedSelection, origin]);
+        return itemsMoved!==null; // We use 'itemsMoved!==null' instead of 'true' to suppress a warning about an 'unnecessary dependency'
+    }, [deduplicatedSelection, origin.x, origin.y, itemsMoved]);
 
     /**
      * Returns true if setting the scaling of the selection to the specified angle doesn't violate any constraints on the placement, radius, etc. of nodes.
@@ -1388,7 +1388,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setScaling(newValue);
             setItemsMoved(prev => [...prev]);
         }
-    }, [deduplicatedSelection, origin, list, yOffset, limit, adjustLimit]);
+    }, [deduplicatedSelection, origin, list, yOffset, limit, adjustLimit, testScaling, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
 
     /**
      * Rounds the location of each selected item to the nearest pixel.
@@ -1678,13 +1678,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
         return itemsMoved && (y<MIN_Y || y>MAX_Y);
     }), [deduplicatedSelection, origin, itemsMoved]);
 
-    const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved, testRotation]);
+    const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [testRotation]);
 
-    const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved, testRotation]);
+    const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [testRotation]);
 
-    const canRotateCW: boolean = useMemo(() => testRotation(-(10**logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved, logIncrement, testRotation]);
+    const canRotateCW: boolean = useMemo(() => testRotation(-(10**logIncrement)), [logIncrement, testRotation]);
 
-    const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [deduplicatedSelection, points, focusItem, itemsMoved, logIncrement, testRotation]);
+    const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [logIncrement, testRotation]);
     
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy && !modalShown });
     useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete && !modalShown });
