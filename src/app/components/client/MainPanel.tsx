@@ -158,18 +158,19 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
     { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
     { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</>},
-    { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains the selected nodes or, where applicable, their respective {' '}
-        highest active groups. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
-    { key: 'leave', keys: 'l', rep: ['L'], descr: <>Deactivate the membership of the currently focused node or its second-highest active group {' '}
+    { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains, for each selected node, either the node itself or {' '}
+        the highest group among those with which the node is connected by a chain of active membership and that are such that all their &lsquo;leaf {' '}
+        members&rsquo; are among the selected nodes. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
+    { key: 'leave', keys: 'l', rep: ['L'], descr: <>Deactivate the membership of each selected node or its second-highest &lsquo;active&rsquo; group {' '}
         (where applicable) in its currently highest active group.</> },
-    { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of the currently focused node or its highest active group {' '}
-        (where applicable) in its currently lowest inactive group.</> },
-    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
+    { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of each selected node or (where applicable) its highest active group {' '}
+         in the next-lowest group.</> },
+    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of each selected node&apos;s highest active group.</> },
     { key: 'adding', keys: 'comma', rep: [','], descr: <>Activate the &lsquo;adding&rsquo; mode: selecting nodes will add them to the currently {' '}
         focused node&apos;s highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
     { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Activate dissolve-adding. This mode can be {' '}
         deactivated by clicking on the canvas or by activating adding.</> },
-    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete selection.</> },
+    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete all selected nodes.</> },
     { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
     { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram and display {' '}
         it in the text area below the canvas.</> },

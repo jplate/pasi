@@ -33,8 +33,8 @@ const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, restore,
             <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 mt-1 rounded-lg' 
                 disabled={false} 
                 onClick={create} 
-                tooltip={<>Creates a new group that has all elements of the current selection (or, where applicable, their highest active groups, provided that all {' '}
-                    their members are selected) as members, and removes these from their current groups.<HotkeyComp mapKey='create group' /></>}
+                tooltip={<>Creates a new group that contains all selected nodes (or, where applicable, the highest among their respective &lsquo;active&rsquo; {' '}
+                     groups that are also such that all their leaf members are selected), and removes these from their current groups.<HotkeyComp mapKey='create group' /></>}
                 tooltipPlacement='right' />
             <div className='text-center mt-3'>
                 Group level:&nbsp;&nbsp;{groups[1]+1} / {groups[0].length}
