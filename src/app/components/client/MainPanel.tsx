@@ -535,22 +535,22 @@ const MainPanel = ({dark}: MainPanelProps) => {
     );
 
     const leftMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((min, item) => (min<item.x)? min: item.x, Infinity),
+        deduplicatedSelection.reduce((min, item) => itemsMoved && (min<item.x)? min: item.x, Infinity), // added 'itemsMoved &&' to suppress a warning about 'unnecessary dependencies'
         [deduplicatedSelection, itemsMoved]
     );
 
     const topMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((max, item) => (max>item.y)? max: item.y, -Infinity),
+        deduplicatedSelection.reduce((max, item) => itemsMoved && (max>item.y)? max: item.y, -Infinity),
         [deduplicatedSelection, itemsMoved]
     );
 
     const rightMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((max, item) => (max>item.x)? max: item.x, -Infinity),
+        deduplicatedSelection.reduce((max, item) => itemsMoved && (max>item.x)? max: item.x, -Infinity),
         [deduplicatedSelection, itemsMoved]
     );
 
     const bottomMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((min, item) => (min<item.y)? min: item.y, Infinity),
+        deduplicatedSelection.reduce((min, item) => itemsMoved && (min<item.y)? min: item.y, Infinity),
         [deduplicatedSelection, itemsMoved]
     );
 
@@ -949,7 +949,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 }
                 setSelection(newSelection);
             }           
-        }, [deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, limit, scaling, adjustLimit]
+        }, 
+        [
+            deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, limit, scaling, adjustLimit, 
+            cNodeGroupCounter, deselect, grid, origin.x, origin.y, setOrigin, updateSecondaryPreselection
+        ]
     );
 
     /**
@@ -977,7 +981,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     updateSecondaryPreselection([item]); // otherwise add all the leaf members of its highest active group
                 }
             }
-        }, [dragging, preselection1, updateSecondaryPreselection]
+        }, [dragging, updateSecondaryPreselection]
     );
 
     /**
@@ -1123,7 +1127,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
             setAdding(false);
             setDissolveAdding(false);
-        }, [selection, list, yOffset, focusItem, points, origin, scaling]
+        }, [selection, list, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
     );
 
     /**
@@ -1143,7 +1147,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, eNodeCounter, list, yOffset, limit, adjustLimit]);
+    }, [points, eNodeCounter, list, yOffset, limit, adjustLimit, setOrigin]);
 
     /**
      *  OnClick handler for the 'Contour' button.
@@ -1163,7 +1167,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
         }
-    }, [points, cNodeGroupCounter, list, yOffset, limit, adjustLimit]);
+    }, [points, cNodeGroupCounter, list, yOffset, limit, adjustLimit, setOrigin]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1197,7 +1201,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(newSelection);
             scrollTo(newFocus);
         }
-    }, [topTbc, list, hDisplacement, vDisplacement, eNodeCounter, cNodeGroupCounter, selection, focusItem, yOffset, limit, adjustLimit]);
+    }, [topTbc, points, list, hDisplacement, vDisplacement, eNodeCounter, cNodeGroupCounter, selection, focusItem, yOffset, limit, adjustLimit, setOrigin, scrollTo]);
 
 
     /**
@@ -1240,7 +1244,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             adjustLimit(newList, yOffset, limit);
             setOrigin(true, points, null, []);
         }
-    }, [deduplicatedSelection, list, yOffset, limit, adjustLimit]);
+    }, [deduplicatedSelection, points, list, yOffset, limit, adjustLimit, setOrigin]);
 
 
 
@@ -1270,7 +1274,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             scrollTo(focusItem, yOffset);
             setItemsMoved(prev => [...prev]); 
         }
-    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, limit, adjustLimit]);  
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, limit, adjustLimit, setOrigin, scrollTo]);  
 
 
     const adjustSelection = useCallback((item: Item) => {
@@ -1298,7 +1302,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setOrigin(false, points, focusItem, selection, list);
         if (focusItem) scrollTo(focusItem, yOffset);
         setItemsMoved(prev => [...prev]);
-    }, [logIncrement, deduplicatedSelection, focusItem, list, yOffset, limit, points, selection, adjustLimit]);
+    }, [logIncrement, deduplicatedSelection, focusItem, list, yOffset, limit, points, selection, adjustLimit, setOrigin, scrollTo]);
 
     /**
      * Returns true if the rotation of the selection by the specified angle is within bounds.
@@ -1339,7 +1343,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             })) return false;
         }
         return true
-    }, [deduplicatedSelection, origin]);    
+    }, [deduplicatedSelection, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);    
 
     /**
      * Rotates the selection by the specified angle (in degrees).
@@ -1396,7 +1400,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         });
         setOrigin(false, points, focusItem, selection, list);
         setItemsMoved(prev => [...prev]);
-    }, [deduplicatedSelection, points, focusItem, list]);
+    }, [deduplicatedSelection, selection, points, focusItem, list, setOrigin]);
 
     const hFlip = useCallback(() => {
         deduplicatedSelection.forEach(item => {
@@ -1549,7 +1553,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         });
         setList(prev => newList); 
         if (focusItem) adjustSelection(focusItem);
-    }, [deduplicatedSelection, list, cNodeGroupCounter, focusItem, adjustSelection]);
+    }, [topTbc, list, cNodeGroupCounter, focusItem, adjustSelection]);
 
 
     const leaveGroup = useCallback(() => {
@@ -1628,7 +1632,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, cNodeGroupCounter, points, yOffset, limit, adjustLimit]);
+    }, [list, eNodeCounter, cNodeGroupCounter, points, yOffset, limit, adjustLimit, setOrigin]);
 
 
     const canCopy: boolean = useMemo(() => !(
@@ -1666,21 +1670,21 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const canHFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
         const x = 2*origin.x - item.x; // simulate hFlip on item
-        return x<0 || x>MAX_X;
-    }), [deduplicatedSelection, origin, points, itemsMoved]);
+        return itemsMoved && (x<0 || x>MAX_X); // 'itemsMoved &&' added to suppress a warning about an 'unnecessary dependency'
+    }), [deduplicatedSelection, origin, itemsMoved]);
 
     const canVFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
         const y = 2*origin.y - item.y; // simulate vFlip on item
-        return y<MIN_Y || y>MAX_Y;
-    }), [deduplicatedSelection, origin, points, itemsMoved]);
+        return itemsMoved && (y<MIN_Y || y>MAX_Y);
+    }), [deduplicatedSelection, origin, itemsMoved]);
 
-    const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [deduplicatedSelection, points, focusItem, itemsMoved, testRotation]);
 
-    const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [deduplicatedSelection, points, focusItem, itemsMoved, testRotation]);
 
-    const canRotateCW: boolean = useMemo(() => testRotation(-(10**logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const canRotateCW: boolean = useMemo(() => testRotation(-(10**logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved, logIncrement, testRotation]);
 
-    const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [deduplicatedSelection, points, focusItem, itemsMoved]);
+    const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [deduplicatedSelection, points, focusItem, itemsMoved, logIncrement, testRotation]);
     
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy && !modalShown });
     useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete && !modalShown });
