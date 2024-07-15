@@ -111,7 +111,7 @@ export default function Home() {
             </h3>
             <p>
               The following keyboard commands are available for editing the diagram displayed on the canvas. For editing the <i>texdraw</i> code in the text area, the
-              usual commands (including {key('Ctrl+Z')} and {key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
+              usual commands (including {key('Ctrl+Z')} and {isMac? key('Shift+⌘+Z'): key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
             </p>
             <table>
               <colgroup>
