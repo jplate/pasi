@@ -24,7 +24,7 @@ export const CONTOUR_CENTER_DIV_MAX_HEIGHT = 40
 
 export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
-export const MAX_CNODEGROUP_SIZE = 1000
+export const MAX_CNODEGROUP_SIZE = 500
 
 
 export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians: boolean = false): number => {

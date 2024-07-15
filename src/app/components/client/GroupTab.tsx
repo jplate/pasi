@@ -10,17 +10,15 @@ export interface GroupTabProps {
     item: Item
     adding: boolean
     dissolveAdding: boolean
-    canCreate: boolean
     create: () => void
     leave: () => void
     rejoin: () => void
-    dissolve: () => void
     restore: () => void
     changeAdding: () => void
     changeDissolveAdding: () => void
 }
 
-const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoin, dissolve, restore, 
+const GroupTab = ({item, adding, dissolveAdding, create, leave, rejoin, restore, 
         changeAdding, changeDissolveAdding}: GroupTabProps) => {
 
     const groups = getGroups(item);
@@ -33,10 +31,10 @@ const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoi
     return (
         <div className='flex flex-col h-full'>
             <BasicColoredButton id='create-button' label='Create group' style='px-2 mx-2 mt-1 rounded-lg' 
-                disabled={!canCreate} 
+                disabled={false} 
                 onClick={create} 
-                tooltip={<>Creates a new group that has all elements of the current selection (or their highest active groups, where applicable) as members, and removes these {' '}
-                    from their current groups.<HotkeyComp mapKey='create group' /></>}
+                tooltip={<>Creates a new group that has all elements of the current selection (or, where applicable, their highest active groups, provided that all {' '}
+                    their members are selected) as members, and removes these from their current groups.<HotkeyComp mapKey='create group' /></>}
                 tooltipPlacement='right' />
             <div className='text-center mt-3'>
                 Group level:&nbsp;&nbsp;{groups[1]+1} / {groups[0].length}
@@ -44,25 +42,20 @@ const GroupTab = ({item, adding, dissolveAdding, canCreate, create, leave, rejoi
             <BasicColoredButton id='leave-button' label='Leave group' style='px-2 mx-2 mt-3 rounded-lg' 
                 disabled={!canLeave} 
                 onClick={leave} 
-                tooltip={<>Deactivates the membership of the currently focused node (or of its second-highest active group) in its highest active {' '}
-                    group.<HotkeyComp mapKey='leave' /></>}
+                tooltip={<>Deactivates the membership of each selected node (or of its second-highest active group, where applicable) in its currently highest active {' '}
+                    group. Contour nodes will still be members of their contour node groups, but selecting them will no longer select the other members {' '}
+                    as well.<HotkeyComp mapKey='leave' /></>}
                 tooltipPlacement='right' />
             <BasicColoredButton id='rejoin-button' label='Rejoin' style='px-2 mx-2 mt-2 rounded-lg' 
                 disabled={!canRejoin} 
                 onClick={rejoin} 
-                tooltip={<>Reactivates the membership of the currently focused node (or its highest active group, where applicable) in the next-lowest group. {' '}
+                tooltip={<>Reactivates the membership of the each selected node (or its highest active group, where applicable) in the next-lowest group. {' '}
                     <HotkeyComp mapKey='rejoin' /></>}
-                tooltipPlacement='right' />
-            <BasicColoredButton id='dissolve-button' label='Dissolve' style='px-2 mx-2 mt-3.5 rounded-lg' 
-                disabled={!canLeave} 
-                onClick={dissolve} 
-                tooltip={<>&lsquo;Dissolves&rsquo; the highest active group of the currently focused node by deactivating the membership of each member. {' '}
-                    <HotkeyComp mapKey='dissolve' /></>}
                 tooltipPlacement='right' />
             <BasicColoredButton id='restore-button' label='Restore' style='px-2 mx-2 mt-2 rounded-lg' 
                 disabled={!canRestore} 
                 onClick={restore} 
-                tooltip={<>Reactivates the membership of each member of the currently focused node&apos;s highest active group.<HotkeyComp mapKey='restore' /></>}
+                tooltip={<>Reactivates the membership of each member of each selected node&apos;s highest active group.<HotkeyComp mapKey='restore' /></>}
                 tooltipPlacement='right' />
             <BasicColoredButton id='add-button' label='Add...' style='px-2 mx-2 mt-3.5 rounded-lg' 
                 pressed={adding} 

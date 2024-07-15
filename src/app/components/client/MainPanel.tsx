@@ -46,7 +46,7 @@ export const MIN_Y = -16*H+1 // the lowest possible Y coordinate for an Item
 export const MAX_Y = 16*H-1 // the highest possible Y coordinate for an Item 
 export const MARGIN = 0; // the width of the 'margin' at right and bottom edges of the canvas
 
-const MAX_LIST_SIZE = 5000 // maximal size of the list of ENodes and NodeGroups
+const MAX_LIST_SIZE = 1000 // maximal size of the list of ENodes and CNodeGroups
 
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb'
 export const MARK_COLOR0_DARK_MODE = '#462d0c'
@@ -160,12 +160,11 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</>},
     { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains the selected nodes or, where applicable, their respective {' '}
         highest active groups. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
-    { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of the currently focused node or its second-highest active group {' '}
+    { key: 'leave', keys: 'l', rep: ['L'], descr: <>Deactivate the membership of the currently focused node or its second-highest active group {' '}
         (where applicable) in its currently highest active group.</> },
     { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of the currently focused node or its highest active group {' '}
         (where applicable) in its currently lowest inactive group.</> },
-    { key: 'dissolve', keys: 'k', rep: ['K'], descr: <>Deactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
-    { key: 'restore', keys: 'l', rep: ['L'], descr: <>Reactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
+    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of the currently focused node&apos;s highest active group.</> },
     { key: 'adding', keys: 'comma', rep: [','], descr: <>Activate the &lsquo;adding&rsquo; mode: selecting nodes will add them to the currently {' '}
         focused node&apos;s highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
     { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Activate dissolve-adding. This mode can be {' '}
@@ -1489,15 +1488,43 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
      */
     const createGroup = useCallback(() => {
-        const newMembers = deduplicatedSelection.map(it => highestActive(it)).filter((ha, i, arr) => i===arr.indexOf(ha));
+        const newMembers = topTbc; 
+        const createCNG = newMembers.every(m => m instanceof CNode);
+        const createSG = newMembers.every(m => !(m instanceof CNode));
+
+        if (!createCNG && !createSG) {
+            showModal('Invalid group composition', `Cannot create a group that contains both contour nodes and (groups of) entity nodes.`);
+            return;
+        }
+        if (createCNG && newMembers.length > MAX_CNODEGROUP_SIZE) {
+            showModal('Too damn high!', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
+            return;
+        }
+        if (createCNG && list.length===MAX_LIST_SIZE) { // Here we check whether creating the new CNodeGroup would lead to the deletion of at least one existing CNodeGroup:
+            const affectedGroups = newMembers.map(item => item.group).filter((g, i, arr) => g && i===arr.indexOf(g)) as CNodeGroup[];
+            if (!affectedGroups.some(g => g.members.every(m => newMembers.includes(m)))) {
+                showModal('Sorry!', `Creating this new group would push our list size over the limit.`);
+                return;    
+            }
+        }
+        if (createSG) {
+            const maxDepth = newMembers.reduce((acc, it) => {
+                const d = depth(it);
+                return acc>d? acc: d;
+            }, 0);
+            if (maxDepth >= MAX_GROUP_LEVEL) {
+                showModal('Too damn high!', `The maximum group level is ${MAX_GROUP_LEVEL}.`);
+                return;    
+            }
+        }
+
         let newList = list,
-            newCNGCounter = cNodeGroupCounter,
             group: Group<any>;
-        if (newMembers.every(m => m instanceof CNode)) {
+        if (createCNG) {
             group = new CNodeGroup(cNodeGroupCounter);
             group.members = newMembers;
             newList = [...newList, group as CNodeGroup];
-            newCNGCounter++;
+            setCNodeGroupCounter(prev => prev + 1);
         }                                                
         else {
             group = new StandardGroup<Item | Group<any>>(newMembers);
@@ -1516,56 +1543,39 @@ const MainPanel = ({dark}: MainPanelProps) => {
             member.isActiveMember = true;
         });
         setList(prev => newList); 
-        setCNodeGroupCounter(prev => newCNGCounter);             
         if (focusItem) adjustSelection(focusItem);
     }, [deduplicatedSelection, list, cNodeGroupCounter, focusItem]);
 
     const leaveGroup = useCallback(() => {
-        if (focusItem) {
-            const groups = getGroups(focusItem);
-            const member = groups[1]>0? groups[0][groups[1]-1]: focusItem;
-            member.isActiveMember = false;
+        deduplicatedSelection.forEach(item => {
+            const groups = getGroups(item);
+            const member = groups[1]>0? groups[0][groups[1] - 1]: item;
+            item.isActiveMember = false;
             if (member instanceof Item) {
                 setAdding(prev => false);
                 setDissolveAdding(prev => false);
             }
-            adjustSelection(focusItem);
-        }
-    }, [focusItem]);
+        });
+        if (focusItem) adjustSelection(focusItem);
+    }, [deduplicatedSelection, focusItem]);
 
     const rejoinGroup = useCallback(() => {
-        if (focusItem) {
-            const member = highestActive(focusItem);
-            if(member.group) member.isActiveMember = true;
-            adjustSelection(focusItem);                                 
-        }
-    }, [focusItem]);
-
-    const dissolveGroup = useCallback(() => {
-        if (focusItem) {
-            const group = highestActive(focusItem);
-            if (!(group instanceof Item)) {
-                const { members } = group;
-                members.forEach(m => m.isActiveMember = false);
-            }
-            const ha = highestActive(focusItem);
-            if (ha instanceof Item) {
-                setAdding(prev => false);
-                setDissolveAdding(prev => false);
-            }
-            adjustSelection(focusItem);
-        }
-    }, [focusItem]);
+        deduplicatedSelection.forEach(item => {
+            const member = highestActive(item);
+            if (member.group) member.isActiveMember = true;
+        });
+        if (focusItem) adjustSelection(focusItem);                                 
+    }, [deduplicatedSelection, focusItem]);
 
     const restoreGroup = useCallback(() => {
-        if (focusItem) {
-            const ha = highestActive(focusItem);
+        deduplicatedSelection.forEach(item => {
+            const ha = highestActive(item);
             if (!(ha instanceof Item)) {
                 ha.members.forEach(m => m.isActiveMember=true);
             }
-            adjustSelection(focusItem);                                 
-        }
-    }, [focusItem]);
+        });
+        if (focusItem) adjustSelection(focusItem);                                 
+    }, [deduplicatedSelection, focusItem]);
 
 
     const displayCode = useCallback((pixel: number) => {
@@ -1667,24 +1677,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [deduplicatedSelection, points, focusItem, itemsMoved]);
 
     const canScaleUp: boolean = useMemo(() => testScaling(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), [deduplicatedSelection, points, focusItem, itemsMoved]);
-
-    const canCreateGroup: boolean= useMemo(() => 
-        (topTbc.every(m => m instanceof CNode) && topTbc.length<=MAX_CNODEGROUP_SIZE &&
-            // Since creating a new NodeGroup can lead to exceeding the list size limit, we have to check whether it would.
-            (list.length < MAX_LIST_SIZE ||
-                (() => { // Here we check whether creating the new NodeGroup would lead to the deletion of at least one existing NodeGroup:
-                    const affectedNGs = topTbc.map(node => node.group).filter((g, i, arr) => i==arr.indexOf(g));
-                    return affectedNGs.some(g => g && g.members.every(m => topTbc.includes(m)));
-                })()
-            )
-        ) ||
-        (topTbc.every(m => !(m instanceof CNode)) &&
-            topTbc.reduce((acc, it) => {
-                const d = depth(it);
-                return acc>d? acc: d;
-            }, 0) < MAX_GROUP_LEVEL
-        ), [topTbc]
-    );
     
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy && !modalShown });
     useHotkeys(hotkeyMap['delete'], deleteSelection, { enabled: canDelete && !modalShown });
@@ -1718,10 +1710,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['vflip'], vFlip, { enabled: canVFlip && !modalShown });
     useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
     useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
-    useHotkeys(hotkeyMap['create group'], createGroup, { enabled: canCreateGroup && !modalShown });
+    useHotkeys(hotkeyMap['create group'], createGroup, { enabled: !modalShown });
     useHotkeys(hotkeyMap['leave'], leaveGroup, { enabled: focusItem!==null && !modalShown });
     useHotkeys(hotkeyMap['rejoin'], rejoinGroup, { enabled: focusItem!==null && !modalShown });
-    useHotkeys(hotkeyMap['dissolve'], dissolveGroup, { enabled: focusItem!==null && !modalShown });
     useHotkeys(hotkeyMap['restore'], restoreGroup, { enabled: !modalShown });
     useHotkeys(hotkeyMap['adding'], () => { setAdding(prev => true); setDissolveAdding(prev => false);}, { enabled: focusItem!==null&& !modalShown });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, { enabled: focusItem!==null&& !modalShown });
@@ -1943,11 +1934,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 <TabPanel key='groups-panel' className="rounded-xl px-3 pt-3 pb-1">
                                     {focusItem &&
                                         <GroupTab item={focusItem} adding={adding} dissolveAdding={dissolveAdding} 
-                                            canCreate={canCreateGroup}
                                             create={createGroup} 
                                             leave={leaveGroup}
                                             rejoin={rejoinGroup}
-                                            dissolve={dissolveGroup}
                                             restore={restoreGroup}
                                             changeAdding={() => {
                                                 const add = !adding;
