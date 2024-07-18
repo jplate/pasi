@@ -60,7 +60,7 @@ const ItemEditor = ({info, logIncrement, onIncrementChange, onChange}: ItemEdito
                             onChange={(e) => handleChange(e, entry.key?? '')} />);
                     case 'button': return (
                         <BasicColoredButton key={i} id={`${i}`} label={entry.text} 
-                                style={clsx('mx-2 rounded-lg', entry.extraBottomMargin? 'mb-4': 'mb-2', entry.style)} 
+                                style={clsx('mx-2 rounded-lg text-sm', entry.extraBottomMargin? 'mb-4': 'mb-2', entry.style)} 
                                 disabled={false} tooltip={entry.tooltip} tooltipPlacement={entry.tooltipPlacement}
                                 onClick={() => handleChange(null, entry.key?? '')} />);
                     case 'logIncrement': return (

@@ -38,7 +38,7 @@ export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBot
     const dark = useContext(DarkModeContext)
 
     const link = (
-        <a className='text-textcolor hover:text-textcolor' href='#' 
+        <a className='text-textcolor text-sm hover:text-textcolor' href='#' 
                     onClick={(e) => {
                         e.preventDefault();
                         onChange()
@@ -108,7 +108,7 @@ export interface LabelFieldProps {
 
 export const LabelField = ({label, style=''}: LabelFieldProps) => {
     return (
-        <div className={clsx('block px-2 py-1 text-center tracking-wider font-variant-ligatures-none', style)}>
+        <div className={clsx('block px-2 py-1 text-center text-sm tracking-wider font-variant-ligatures-none', style)}>
             {label}
         </div>
     )

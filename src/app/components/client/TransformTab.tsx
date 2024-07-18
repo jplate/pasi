@@ -76,11 +76,11 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 step={1} width={'short'} lowTopMargin={true} onChange={e => 
                     setScalingIncrement(prev => logIncrements.scale = validInt(e.target.value, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT))
             } />
-            <BasicColoredButton id='hflip-button' label='Horizontal flip' style='px-2 mx-2 mt-3 rounded-lg' 
+            <BasicColoredButton id='hflip-button' label='Horizontal flip' style='px-2 mx-2 mt-3 rounded-lg text-sm' 
                 tooltip={<>Flips the current selection horizontally, using a vertical axis that runs through {originDescription}.<HotkeyComp mapKey='hflip' /></>}
                 tooltipPlacement='right'
                 disabled={!hFlipPossible} onClick={hFlip} />
-            <BasicColoredButton id='vflip-button' label='Vertical flip' style='px-2 mx-2 mt-2 mb-3 rounded-lg' 
+            <BasicColoredButton id='vflip-button' label='Vertical flip' style='px-2 mx-2 mt-2 mb-3 rounded-lg text-sm' 
                 tooltip={<>Flips the current selection vertically, using an horizontal axis that runs through {originDescription}.<HotkeyComp mapKey='vflip' /></>}
                 tooltipPlacement='right'
                 disabled={!vFlipPossible} onClick={vFlip} />

@@ -100,7 +100,7 @@ interface HotkeyInfo {
 
 const transformHotkeyDescrRump = (s1: string, s2: string, units: string, addExplanation: boolean, darkMode: boolean): JSX.Element => (
     <>
-        {s1} selection {s2} by 10<sup><i>n</i></sup> {units}, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
+        {s1} selection {s2} by 10<span className='text-xs align-top'><i>n</i></span> {units}, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
         (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}).&nbsp; 
         {addExplanation? <>The value of <i>n</i>&thinsp; can be set by using the keys &thinsp;
             {darkMode? 
@@ -1827,7 +1827,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <CopyToClipboardButton id='copy-button' iconStyle='size-6' textareaRef={codeRef} />
                     </div>
                 </div>
-                <div id='button-panels' className={clsx('flex-grow min-w-[300px] max-w-[380px] select-none')}>
+                <div id='button-panels' className={clsx('flex-grow min-w-[315px] max-w-[380px] select-none')}>
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' 
@@ -1887,7 +1887,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             tooltipPlacement='right'
                             disabled={!canCopy} onClick={copySelection} /> 
 
-                        <TabGroup className='flex-1 w-[275px] h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5' 
+                        <TabGroup className='flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5' 
                                 selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className="grid grid-cols-10 mb-0.5">
                                 <Tab key='editor-tab'className={clsx(tabClassName, 'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
@@ -1928,7 +1928,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             }} />
                                     }
                                 </TabPanel>
-                                <TabPanel key='transform-panel' className="rounded-xl px-2 py-2">
+                                <TabPanel key='transform-panel' className='rounded-xl px-2 py-2'>
                                     <TransformTab rotation={rotation} scaling={scaling} 
                                         hFlipPossible={canHFlip} vFlipPossible={canVFlip} 
                                         logIncrements={logIncrements} transformFlags={transformFlags}

@@ -7,6 +7,7 @@ import { hotkeys } from './components/client/MainPanel'
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
+const Section = dynamic(() => import('./components/client/Section.tsx'), {ssr: false,});
 
 
 
@@ -17,6 +18,33 @@ const getInitialColorScheme = () => {
   return storedMode ?? systemMode;
 }
 
+
+const LogoSpan: React.FC = () => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const triggerPoint = 300; // Adjust this value to set when the fadeout should start
+      if (window.scrollY > triggerPoint) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  return (
+      <span className={`text-xl font-light tracking-wide transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          pasi
+      </span>
+  );
+};
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
@@ -59,12 +87,11 @@ export default function Home() {
     );
   }
 
-  const sectionStyle = clsx('prose prose-lg', isDarkMode? 'prose-dark': 'prose-light', 'max-w-5xl mt-3 ml-9 mb-9');
-
+  
   return (<> {/* We're returning a fragment. */}
-    <div id='sticky-top' className={`sticky top-0 ${isDarkMode? 'bg-stone-400/20': 'bg-white/20'} z-50 px-4 py-2 shadow-md`}>
+    <div id='sticky-top' className={`sticky-top sticky top-0 bg-transparent z-40 px-4 py-2`}>
       <span className='flex items-center justify-between px-6'>
-        <span className='text-xl font-light tracking-wide'>pasi</span>
+        <LogoSpan />
         <button className='' onClick={() => {setIsDarkMode(!isDarkMode)}}>
           {isDarkMode ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"> {/* moon icon */}
@@ -84,7 +111,7 @@ export default function Home() {
             <p>Please access this application from a laptop or desktop.</p>
         </div>:
         <div id='content' className='flex-1 flex flex-col mb-[30px]'>
-          <section className={sectionStyle}>
+          <Section id='intro-section' dark={isDarkMode}>
             <p>
               <strong>------------------UNDER CONSTRUCTION------------------</strong> 
             </p>
@@ -101,14 +128,11 @@ export default function Home() {
               To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
               You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
             </p>
-          </section>
+          </Section>
 
           <MainPanel dark={isDarkMode} />
 
-          <section className={sectionStyle}>
-            <h3>
-              Keyboard shortcuts
-            </h3>
+          <Section id='hotkey-section' header='Keyboard shortcuts' dark={isDarkMode}>
             <p>
               The following keyboard commands are available for editing the diagram displayed on the canvas. For editing the <i>texdraw</i> code in the text area, the
               usual commands (including {key('Ctrl+Z')} and {isMac? key('Shift+⌘+Z'): key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
@@ -131,7 +155,7 @@ export default function Home() {
                     {/* In light mode, we use the elaborate <kbd> styling provided by tailwind typography, with its box shadows and borders (which require a greater line height). 
                         In dark mode, these shadows don't really look good and are hardly visible, so we default to monospace font. */}
                     <td className={clsx('px-4 py-2', isDarkMode? '': 'leading-7')}>{it.rep.map((keyName, j, arr) => (
-                       <React.Fragment key={j}>
+                      <React.Fragment key={j}>
                         {key(keyName)}
                         {j < arr.length - 1 && <>, </>}
                       </React.Fragment>
@@ -140,14 +164,11 @@ export default function Home() {
                     <td className='pl-4 pr-6 py-2'>{isDarkMode && it.descrDark? it.descrDark: it.descr}</td>
                   </tr>
                 ))}
-            </tbody>
-          </table>
-          </section>
+              </tbody>
+            </table>
+          </Section>
 
-          <section className={sectionStyle}>
-            <h3>
-              Alternative apps
-            </h3>
+          <Section id='alternatives-section' header='Alternative apps' dark={isDarkMode}>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>
@@ -157,8 +178,7 @@ export default function Home() {
               <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
               <li><a href='https://tpx.sourceforge.net/' target='_blank'><i>TpX</i></a>, another desktop application, superficially similar to Dia.</li>
             </ul>
-          </section>
-
+          </Section>
         </div>
       }
     </main>

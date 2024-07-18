@@ -5,7 +5,6 @@ import { WithTooltip } from './EditorComponents.tsx'
 import { useThrottle } from '../../util/Misc'
 
 
-
 interface ButtonProps {
     id: string
     label?: string
