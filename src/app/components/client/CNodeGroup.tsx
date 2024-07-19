@@ -1,6 +1,7 @@
 import React from 'react'
 //import assert from 'assert'
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Item.tsx'
+import Item from './Item'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Node.tsx'
 import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
@@ -38,7 +39,7 @@ export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians:
 export default class CNodeGroup implements Group<CNode> {
 
     public members: CNode[];
-    public group: Group<Item | Group<any>> | null;
+    public group: Group<Node | Group<any>> | null;
     public isActiveMember: boolean;
 
     public linewidth: number = DEFAULT_LINEWIDTH
@@ -746,17 +747,17 @@ interface CNodeGroupCompProps {
     focusItem: Item | null
     preselection: Item[]
     selection: Item[]
-    allNodes: Item[]
+    allNodes: Node[]
     yOffset: number
     bg: HSL
     primaryColor: HSL
     markColor: string
     itemMouseDown: (
-        item: Item, 
+        item: Node, 
         e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>, 
         clearPreselection?: boolean
     ) => void
-    itemMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    itemMouseEnter: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     groupMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
     groupMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
     mouseLeft: () => void

@@ -1,68 +1,54 @@
-import type { Entry } from './ItemEditor.tsx'
-import Group, { GroupMember } from './Group.tsx'
-import ENode from './ENode.tsx'
-import CNodeGroup from './CNodeGroup.tsx'
-import * as Texdraw from '../../codec/Texdraw.tsx'
+import Group, { GroupMember } from './Group'
+import ENode from './ENode'
+import CNodeGroup from './CNodeGroup'
+import { Entry } from './ItemEditor'
 
-export const CLOCKWISE = 0;
-export const COUNTERCLOCKWISE = 1;
+export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // This last value means that the editing function will be applied to only at most one CNode per CNodeGroup.
 
 /**
- * The highest value that item parameters should be allowed to take (to prevent crashes).
- */
-export const MAX_VALUE = 16384;     			
-/**
- * The lowest value that item parameters should be allowed to take (to prevent crashes).
- */
-export const MIN_VALUE = -MAX_VALUE; 
-export const MAX_LINEWIDTH = 500;
-export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
-export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
-
-export const DEFAULT_LINEWIDTH = 1;
-export const DEFAULT_DASH = [];
-export const DEFAULT_SHADING = 0; // 0=white (transparent), 1=black
-export const LINECAP_STYLE = 'round';
-export const LINEJOIN_STYLE = 'round';
-
-export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
-export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
-
-
-
-export interface HSL {
-    hue: number
-    sat: number
-    lgt: number
-}
-
-export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndNodeGroups'; // This last value means that the editing function will be applied to only at most one CNode per NodeGroup.
-
-
-/**
- * This class corresponds to the class IndependentItem from the 2007 applet.
+ * An Item represents a selectable and editable component on the canvas. This includes Nodes, Points, and Ornaments, but not connectors, which are not selected
+ * or edited directly but only by selecting and editing their associated ENodes.
  */
 export default class Item implements GroupMember {
+
     readonly id: string
-    x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
-    y: number
-    x100: number // These coordinates represent the item's location at 100% scaling.
-    y100: number
-    linewidth: number = DEFAULT_LINEWIDTH
-    linewidth100: number = DEFAULT_LINEWIDTH
-    shading: number = DEFAULT_SHADING
-    dash: number[] = DEFAULT_DASH
-    dash100: number[] = DEFAULT_DASH
+
     group: Group<Item | Group<any>> | null = null
     isActiveMember: boolean = false
 
+    constructor(id: string) {
+        this.id = id;
+    }
 
-    constructor(key: string, x: number, y: number) {
-        this.id = key;
-        this.x = x;
-        this.y = y;
-        this.x100 = x;
-        this.y100 = y;
+    getString() {
+        return this.id;
+    }
+
+    public getWidth() {
+        return 0;
+    }
+
+    public getHeight() {
+        return 0;
+    }
+
+    public getLeft() {
+        return 0;
+    }
+    
+    public getBottom() {
+        return 0;
+    }
+
+    public reset() {
+    }
+
+    public getTexdrawCode():string {
+        return '';
+    }
+
+    public getInfoString(): string {
+        return '';
     }
 
     public getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
@@ -75,70 +61,6 @@ export default class Item implements GroupMember {
             selection: Item[],
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
-        return [(item: Item, items) => items, 'onlyThis']
+        return [(item, items) => items, 'onlyThis']
     }
-
-    public getWidth() {
-        return 0;
-    }
-
-    public getHeight() {
-        return 0;
-    }
-
-    public getLeft() {
-        return this.x;
-    }
-    
-    public getBottom() {
-        return this.y;
-    }
-
-    public move(dx: number, dy: number): void {
-        this.x += dx;
-        this.y += dy;
-        this.x100 += dx;
-        this.y100 += dy;
-    }
-
-    public getString() {
-        return this.id;
-    }
-
-    public setLinewidth(lw: number) {
-        this.linewidth = this.linewidth100 = lw;
-    }
-
-    public setShading(sh: number) {
-        this.shading = sh;
-    }
-
-    public setDash(dash: number[]) {
-        this.dash = this.dash100 = dash;
-    }
-
-    public reset() {
-        this.linewidth = this.linewidth100 = DEFAULT_LINEWIDTH;
-        this.dash = this.dash100 = DEFAULT_DASH;
-        this.shading = DEFAULT_SHADING;
-    }
-
-    public getTexdrawCode():string {
-        return Texdraw.linewd(this.linewidth);
-    }
-
-    public getInfoString(): string {
-        return '';
-    }
-
-    /**
-	 * Invoked by Codec1#load(); should be overridden by subclasses. Parses the supplied code and info string and updates this Item's fields 
-     * accordingly.
-	 * @param code the texdraw code.
-	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
-	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
-	 */
-	public parse(code: string, info: string, name?: string): void {}
-
-
 }

@@ -2,7 +2,7 @@ import ENode from './ENode'
 import CNodeGroup from './CNodeGroup'
 import CNode from './CNode'
 import Group, { StandardGroup } from './Group'
-import Item from './Item'
+import Node from './Node'
 import { DEFAULT_DISTANCE } from './CNode'
 
 
@@ -72,13 +72,13 @@ export const copyCNodeGroup = (
  * that are ENodes). 
  */
 export const copyStandardGroup = (
-        group: StandardGroup<Item | Group<any>>, 
+        group: StandardGroup<Node | Group<any>>, 
         eNodeCounter: number, nGCounter: number,
         dx: number, dy: number, 
         copies: Record<string, ENode | CNodeGroup>,
-        cNodeCopies: Record<string, CNode>): [StandardGroup<Item | Group<any>>, newENodeCounter: number, newNGCounter: number] => {
-    const copiedGroup = new StandardGroup<Item | Group<any>>([]);
-    const members: (Item | Group<any>)[] = group.members.map(m => {
+        cNodeCopies: Record<string, CNode>): [StandardGroup<Node | Group<any>>, newENodeCounter: number, newNGCounter: number] => {
+    const copiedGroup = new StandardGroup<Node | Group<any>>([]);
+    const members: (Node | Group<any>)[] = group.members.map(m => {
         let copy;
         if (m instanceof ENode) {                
             copy = copyENode(m, eNodeCounter++, dx, dy);
@@ -103,7 +103,7 @@ export const copyStandardGroup = (
 
 
 
-export const copy = (topTbc: (Item | Group<any>)[], hDisplacement: number, vDisplacement: number, 
+export const copy = (topTbc: (Node | Group<any>)[], hDisplacement: number, vDisplacement: number, 
     copies: Record<string, ENode | CNodeGroup>, 
     cNodeCopies: Record<string, CNode>, 
     enCounter: number, 
@@ -134,7 +134,7 @@ export const copy = (topTbc: (Item | Group<any>)[], hDisplacement: number, vDisp
             copies[m.id] = group;
         }
         else if(m instanceof StandardGroup) { 
-            const [group, newCounter, newNGCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
+            const [group, newCounter, newNGCounter] = copyStandardGroup(m as StandardGroup<Node | Group<any>>, 
                     enCounter, ngCounter, hDisplacement, vDisplacement, copies, cNodeCopies);
             if (group.group) {
                 group.group.members.push(group);

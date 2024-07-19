@@ -1,6 +1,7 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL, Range } from './Item.tsx'
+import Item, { Range } from './Item'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL } from './Node.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
@@ -22,7 +23,7 @@ export const MIN_RADIUS_FOR_INNER_TITLE = 5
 export const TITLE_FONTSIZE = 9
 
 
-export default class ENode extends Item {
+export default class ENode extends Node {
 
     radius: number = DEFAULT_RADIUS;
     radius100: number = DEFAULT_RADIUS;
@@ -77,18 +78,20 @@ export default class ENode extends Item {
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'x': if (e) {
-                    const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
+                    const dmin = -(selection.filter(item => item instanceof Node) as Node[]).reduce((min, item) => min<item.x? min: item.x, this.x);
                     const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
                     const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
                     return [(item, array) => {
-                        if (dx!==0) item.move(dx, 0);                         
+                        if (item instanceof Node && dx!==0) {
+                            item.move(dx, 0);                         
+                        }
                         return array
                     }, 'wholeSelection']
                 }
             case 'y': if (e) {
                     const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
-                        if (!isNaN(dy) && dy!==0) {
+                        if (item instanceof Node && !isNaN(dy) && dy!==0) {
                             item.move(0, dy);
                         }
                         return array;
@@ -99,20 +102,20 @@ export default class ENode extends Item {
                     return array
                 }, 'wholeSelection']
             case 'lw': if (e) return [(item, array) => {
-                    item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
+                    if (item instanceof Node) item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                     return array
-                }, 'ENodesAndNodeGroups']
+                }, 'ENodesAndCNodeGroups']
             case 'dash': if (e) {
                     const dash = this.dashValidator.read(e.target);
                     return [(item, array) => {
-                        item.setDash(dash);                    
+                        if (item instanceof Node) item.setDash(dash);                    
                         return array
-                    }, 'ENodesAndNodeGroups']
+                    }, 'ENodesAndCNodeGroups']
                 }
             case 'shading': if (e) return [(item, array) => {
-                    item.setShading(validFloat(e.target.value, 0, 1)); 
+                if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1)); 
                     return array
-                }, 'ENodesAndNodeGroups']
+                }, 'ENodesAndCNodeGroups']
             case 'rank': if (e) return [(item, array) => {
                     if (item instanceof ENode) {
                         const currentPos = array.indexOf(item);

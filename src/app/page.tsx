@@ -104,7 +104,7 @@ export default function Home() {
         </button>
       </span>
     </div>
-    <main className='flex flex-col min-h-screen items-center justify-between p-12'>
+    <main className='flex flex-col min-h-screen items-center justify-between px-12'>
       {isMobile? 
         <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
             <p><strong>Mobile device not supported.</strong></p>

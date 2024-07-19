@@ -5,7 +5,8 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
-import Item, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Item.tsx'
+import Item from './Item'
+import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
@@ -247,9 +248,9 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
  * is being dragged.
  */
 const getSnapPoint = (x: number, y: number, grid: Grid, 
-        list: (Item | CNodeGroup)[], 
+        list: (Node | CNodeGroup)[], 
         focus: Item, 
-        selection: Item[],
+        selectedNodes: Node[],
         dccDx: number | undefined, 
         dccDy: number | undefined
 ) => {
@@ -259,7 +260,7 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
     if (grid.snapToContourCenters || grid.snapToNodes) {
         for (const it of list) {
             if (it instanceof CNodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
-                const overlap = it.members.filter(m => selection.includes(m));
+                const overlap = it.members.filter(m => selectedNodes.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
                     const c = it.getNodalCenter();
                     const dc = Math.sqrt(Math.pow(x-c.x, 2) + Math.pow(y-c.y, 2));
@@ -393,20 +394,15 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     }
 }
 
-const getNodes = (list: (ENode | CNodeGroup)[], test: (item: Item) => boolean = it => true): Item[] => 
-    list.flatMap((it: ENode | CNodeGroup) => 
-        it instanceof ENode? (test(it)? [it] : []): 
-        (it.members as Item[]).filter(test));
-
 /** 
- * Returns an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection and array of
- * not-to-be-copied Items.
+ * Returns an array of the highest-level Groups (or Nodes) that would need to be copied, based on the supplied selection and array of
+ * not-to-be-copied Nodes. (Items that aren't Nodes, such as Labels, can be selected, but they're not supposed to be copied, or at least not in bulk.)
  */
-const getTopToBeCopied = (selection: Item[], ntbc: Item[]) => {
-    const result: (Item | Group<any>)[] = [];
+const getTopToBeCopied = (selectedNodes: Node[], notToBeCoppied: Node[]) => {
+    const result: (Node | Group<any>)[] = [];
     const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied nodes
     const nonNtbcContaining = new Set<Group<any>>(); // already-visited groups that do NOT contain any not-to-be-copied nodes
-    selection.forEach(item => {
+    selectedNodes.forEach(item => {
         const [groups, actIndex] = getGroups(item);
         let j = -1, // The index of that group, if some such group exists; -1 otherwise.
             visited = false;
@@ -416,7 +412,7 @@ const getTopToBeCopied = (selection: Item[], ntbc: Item[]) => {
                 break;
             }
             const ml = getLeafMembers(groups[i]);
-            if (ntbc.some(item => ml.has(item))) {
+            if (notToBeCoppied.some(item => ml.has(item))) {
                 j = i;
                 ntbcContaining.add(groups[i]);
                 break;
@@ -439,11 +435,23 @@ const getTopToBeCopied = (selection: Item[], ntbc: Item[]) => {
     return result;
 }
 
-const getNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] =>
+/**
+ * Returns an array of all ENodes and CNodes in the specified list that meet the specified test condition.
+ */
+const getNodes = (list: (ENode | CNodeGroup)[], test: (node: Node) => boolean = it => true): Node[] => 
+    list.flatMap((it: ENode | CNodeGroup) => 
+        it instanceof ENode? (test(it)? [it] : []): 
+        (it.members as Node[]).filter(test));
+
+
+/**
+ * Returns an array of CNodeGroups that are contained (directly or indirectly) in the supplied array of Nodes and Groups.
+ */
+const getCNodeGroups = (array: (Node | Group<any>)[]): CNodeGroup[] =>
     array.reduce((acc: CNodeGroup[], it) => 
-        it instanceof Item? acc: 
+        it instanceof Node? acc: 
         it instanceof CNodeGroup? [...acc, it]:
-        [...acc, ...getNodeGroups(it.members)], 
+        [...acc, ...getCNodeGroups(it.members)], 
     []);
 
 /**
@@ -534,31 +542,36 @@ const MainPanel = ({dark}: MainPanelProps) => {
         [selection]
     );
 
+    const selectedNodes = useMemo(() => 
+        deduplicatedSelection.filter(item => item instanceof Node) as Node[], 
+        [deduplicatedSelection]
+    );
+
     const leftMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((min, item) => itemsMoved && (min<item.x)? min: item.x, Infinity), // added 'itemsMoved &&' to suppress a warning about 'unnecessary dependencies'
-        [deduplicatedSelection, itemsMoved]
+        selectedNodes.reduce((min, item) => itemsMoved && (min<item.x)? min: item.x, Infinity), // added 'itemsMoved &&' to suppress a warning about 'unnecessary dependencies'
+        [selectedNodes, itemsMoved]
     );
 
     const topMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((max, item) => itemsMoved && (max>item.y)? max: item.y, -Infinity),
-        [deduplicatedSelection, itemsMoved]
+        selectedNodes.reduce((max, item) => itemsMoved && (max>item.y)? max: item.y, -Infinity),
+        [selectedNodes, itemsMoved]
     );
 
     const rightMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((max, item) => itemsMoved && (max>item.x)? max: item.x, -Infinity),
-        [deduplicatedSelection, itemsMoved]
+        selectedNodes.reduce((max, item) => itemsMoved && (max>item.x)? max: item.x, -Infinity),
+        [selectedNodes, itemsMoved]
     );
 
     const bottomMostSelected = useMemo(() => 
-        deduplicatedSelection.reduce((min, item) => itemsMoved && (min<item.y)? min: item.y, Infinity),
-        [deduplicatedSelection, itemsMoved]
+        selectedNodes.reduce((min, item) => itemsMoved && (min<item.y)? min: item.y, Infinity),
+        [selectedNodes, itemsMoved]
     );
 
     const allNodes = useMemo(() => getNodes(list), [list]);
 
-    const topTbc: (Item | Group<any>)[] = useMemo(() => 
-        getTopToBeCopied(deduplicatedSelection, allNodes.filter(item => !deduplicatedSelection.includes(item))),
-        [deduplicatedSelection, allNodes]
+    const topTbc: (Node | Group<any>)[] = useMemo(() => 
+        getTopToBeCopied(selectedNodes, allNodes.filter(item => !selectedNodes.includes(item))),
+        [selectedNodes, allNodes]
     ); 
 
 
@@ -574,7 +587,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
             l: (ENode | CNodeGroup)[] = list
         ) => {
             // Compute new origin:
-            const {x, y} = (pts.length>0)? pts[pts.length-1]: (focus?? ((sel.length>0)? sel[sel.length-1]: {x: 0, y: 0}))
+            const selectedNodes = sel.filter(item => item instanceof Node) as Node[];
+            const {x, y} = pts.length > 0? pts[pts.length-1]: (focus instanceof Node? focus: 
+                ((selectedNodes.length>0)? selectedNodes[selectedNodes.length-1]: {x: 0, y: 0}))
             
             const originChanged = origin.x!==x || origin.y!==y;
             origin.x = x;
@@ -649,12 +664,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }, [yOffset, list, limit]
     );
 
-    const scrollTo = useCallback((item: Item, yoff: number = yOffset) => {
+    const scrollTo = useCallback((node: Node, yoff: number = yOffset) => {
         const canvas = canvasRef.current;
         if (canvas) { // scroll to the position of focusItem, if there has been a change in position
-            const dx = item.x - canvas.scrollLeft;
+            const dx = node.x - canvas.scrollLeft;
             const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
-            const dy = canvas.scrollTop + item.y - yoff;
+            const dy = canvas.scrollTop + node.y - yoff;
             const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
             setTimeout(() => {
                 canvas.scrollBy(scrollRight, scrollDown);
@@ -679,7 +694,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }
                 }
             }
-            const newNodes = getNodes(list, (item: Item) => !prim.includes(item) && lm.has(item));
+            const newNodes = getNodes(list, (node: Node) => !prim.includes(node) && lm.has(node));
             setPreselection2(prev => [...prim, ...newNodes]);
         }, [preselection1, list]
     );
@@ -775,7 +790,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;
                                 }
-                                else if (group instanceof CNodeGroup && group.members.length+itemToAdd.members.length>MAX_CNODEGROUP_SIZE) {
+                                else if (group instanceof CNodeGroup && group.members.length + itemToAdd.members.length>MAX_CNODEGROUP_SIZE) {
                                     showModal('Hungry 🍉 Caterpillar🐛 Alert 🍍🍒', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
                                     return;
                                 }
@@ -864,81 +879,89 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         newPoints = [];
                     }
                 }
-                // Handle dragging:
-                setDragging(true);
-                const selectionWithoutDuplicates = newSelection.filter((item, i) => i===newSelection.indexOf(item));
-                const contourDragged = item.group instanceof CNodeGroup && item.group.members.every(m => selectionWithoutDuplicates.includes(m));
-                
-                // If we're dragging a contour, we need to determine the location of its center, which is then (in handleMouseMove) passed on to getSnapPoint.
-                let dccDx: number | undefined, 
-                    dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
-                if (contourDragged && item.group instanceof CNodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
-                    const { x, y } = item.group.getNodalCenter();
-                    dccDx = x - item.x;
-                    dccDy = y - item.y;
-                }
-                const startX = e.clientX - item.x;
-                const startY = e.clientY - (H + yOffset - item.y);
-                const xMinD = item.x - selectionWithoutDuplicates.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
+                if (item instanceof Node) {
+                    // Handle dragging:
+                    setDragging(true);
+                    const selectedNodes = newSelection.filter((item, i) => item instanceof Node && i===newSelection.indexOf(item)) as Node[];
+                    const contourDragged = item.group instanceof CNodeGroup && item.group.members.every(m => selectedNodes.includes(m));
+                    
+                    // If we're dragging a contour, we need to determine the location of its center, which is then (in handleMouseMove) passed on to getSnapPoint.
+                    let dccDx: number | undefined, 
+                        dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
+                    if (contourDragged && item.group instanceof CNodeGroup) { // The second conjunct should be unnecessary, but Typescript insists.
+                        const { x, y } = item.group.getNodalCenter();
+                        dccDx = x - item.x;
+                        dccDy = y - item.y;
+                    }
+                    const startX = e.clientX - item.x;
+                    const startY = e.clientY - (H + yOffset - item.y);
+                    const xMinD = item.x - selectedNodes.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
 
-                
-                const handleMouseMove = (e: MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // First, we take into account the grid:
-                    const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, selectionWithoutDuplicates, dccDx, dccDy);
-                    // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
-                    // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
-                    const x = Math.min(Math.max(snapX, xMinD), MAX_X);
-                    const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
-                    const dx = x - item.x;
-                    const dy = y - item.y;
-                    // Finally, we move each item in the selection, if necessary:
-                    if(dx!==0 || dy!==0) {
-                        const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
-                        selectionWithoutDuplicates.forEach(item => {
-                            // console.log(`moving: ${item.id}`);
-                            if (item.group instanceof CNodeGroup) {
-                                if (!nodeGroups.includes(item.group)) {
-                                    nodeGroups.push(item.group);
-                                    const members = item.group.members;
-                                    (item.group as CNodeGroup).groupMove(
-                                        selectionWithoutDuplicates.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
-                                        dx, 
-                                        dy
-                                    );
+                    
+                    const handleMouseMove = (e: MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // First, we take into account the grid:
+                        const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, 
+                            selectedNodes, dccDx, dccDy);
+                        // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
+                        // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
+                        const x = Math.min(Math.max(snapX, xMinD), MAX_X);
+                        const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
+                        const dx = x - item.x;
+                        const dy = y - item.y;
+                        // Finally, we move each item in the selection, if necessary:
+                        if(dx!==0 || dy!==0) {
+                            const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+                            selectedNodes.forEach(item => {
+                                // console.log(`moving: ${item.id}`);
+                                if (item.group instanceof CNodeGroup) {
+                                    if (!nodeGroups.includes(item.group)) {
+                                        nodeGroups.push(item.group);
+                                        const members = item.group.members;
+                                        (item.group as CNodeGroup).groupMove(
+                                            selectedNodes.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
+                                            dx, 
+                                            dy
+                                        );
+                                    }
                                 }
-                            }
-                            else if (item instanceof Item) {
-                                item.move(dx, dy)
+                                else if (item instanceof Node) {
+                                    item.move(dx, dy)
+                                }
+                            });
+                            setItemsDragged(prev=> [...prev]);  // to trigger a re-render 
+                        }
+                    };            
+
+                    const handleMouseUp = () => {
+                        window.removeEventListener('mousemove', handleMouseMove);
+                        window.removeEventListener('mouseup', handleMouseUp);
+                        setDragging(false);
+                        adjustLimit(newList, yOffset, limit);
+                        setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
+                        // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
+                        // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
+                        if(newPoints.length>0) newSelection.forEach(item => {
+                            if (item instanceof Node) { 
+                                item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
+                                item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
                             }
                         });
-                        setItemsDragged(prev=> [...prev]);  // to trigger a re-render 
+                        // We also apply round() to get rid of tiny errors that might have been introduced during dragging.
+                        newSelection.forEach(item => {
+                            if (item instanceof Node) {
+                            item.x = item.x100 = round(item.x, ROUNDING_DIGITS);
+                            item.y = item.y100 = round(item.y, ROUNDING_DIGITS);
+                            }
+                        });
+                        setItemsMoved(prev => [...prev]); // to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
                     }
-                };            
-
-                const handleMouseUp = () => {
-                    window.removeEventListener('mousemove', handleMouseMove);
-                    window.removeEventListener('mouseup', handleMouseUp);
-                    setDragging(false);
-                    adjustLimit(newList, yOffset, limit);
-                    setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
-                    // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
-                    // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
-                    if(newPoints.length>0) newSelection.forEach(item => { 
-                        item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
-                        item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
-                    });
-                    // We also apply round() to get rid of tiny errors that might have been introduced during dragging.
-                    newSelection.forEach(item => {
-                        item.x = item.x100 = round(item.x, ROUNDING_DIGITS);
-                        item.y = item.y100 = round(item.y, ROUNDING_DIGITS);
-                    });
-                    setItemsMoved(prev => [...prev]); // to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
+                
+                    window.addEventListener('mousemove', handleMouseMove);
+                    window.addEventListener('mouseup', handleMouseUp);
                 }
-            
-                window.addEventListener('mousemove', handleMouseMove);
-                window.addEventListener('mouseup', handleMouseUp);
+                
 
                 setFocusItem(item);
                 setList(newList);
@@ -1098,9 +1121,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     } 
                     else if (e.shiftKey) { // increase selection                    
                         newSelection = [...selection, ...pres];
-                        pres.forEach(item => { // 'renormalize' the items to be added to the selection:
-                            item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
-                            item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
+                        pres.forEach(item => { // 'renormalize' the nodes to be added to the selection:
+                            if (item instanceof Node) {
+                                item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
+                                item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
+                            }
                         });
                     }
                     else {
@@ -1222,7 +1247,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }                    
                 }
             }
-            const whitelist = new Set<Group<Item | Group<any>>>();
+            const whitelist = new Set<Group<Node | Group<any>>>();
             newList.forEach(it => { // Whitelist each group that contains (directly or indirectly) a not-to-be-deleted node.
                 if (it instanceof CNodeGroup) { 
                     whitelist.add(it); // A NodeGroup is in newList only if it contains at least one not-to-be-deleted node.
@@ -1233,7 +1258,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 if (!(g instanceof CNodeGroup)) { // We ignore NodeGroups because their members are not in newList anyway.
                     g.members = g.members.filter(m => 
                             ((m instanceof ENode) && newList.includes(m)) || 
-                            (!(m instanceof Item) && whitelist.has(m)));
+                            (!(m instanceof Node) && whitelist.has(m)));
                 }
             });
             setList(newList);
@@ -1255,7 +1280,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement> | null, key: string) => {
         if (focusItem) {
             const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, key);
-            const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndNodeGroups'? new Set<CNodeGroup>(): null;
+            const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndCNodeGroups'? new Set<CNodeGroup>(): null;
             const nodes = range=='onlyThis'? 
                 edit(focusItem, list):
                 deduplicatedSelection.reduce((acc: (ENode | CNodeGroup)[], item: Item) => {
@@ -1271,7 +1296,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setList(prev => nodes); // for some reason, the setter function is called twice here.
             adjustLimit(list, yOffset, limit);
             setOrigin(false, points, focusItem, selection, list);
-            scrollTo(focusItem, yOffset);
+            if (focusItem instanceof Node) scrollTo(focusItem, yOffset);
             setItemsMoved(prev => [...prev]); 
         }
     }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, limit, adjustLimit, setOrigin, scrollTo]);  
@@ -1294,85 +1319,85 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const moveSelection = useCallback((dirX: number, dirY: number) => {
         const inc = 10 ** logIncrement;
-        deduplicatedSelection.forEach(item => {
-            if (dirX!==0) item.x = item.x100 = round(item.x + dirX * inc, ROUNDING_DIGITS);
-            if (dirY!==0) item.y = item.y100 = round(item.y + dirY * inc, ROUNDING_DIGITS);
+        selectedNodes.forEach(node => {
+            if (dirX!==0) node.x = node.x100 = round(node.x + dirX * inc, ROUNDING_DIGITS);
+            if (dirY!==0) node.y = node.y100 = round(node.y + dirY * inc, ROUNDING_DIGITS);
         });
         adjustLimit(list, yOffset, limit);
         setOrigin(false, points, focusItem, selection, list);
-        if (focusItem) scrollTo(focusItem, yOffset);
+        if (focusItem instanceof Node) scrollTo(focusItem, yOffset);
         setItemsMoved(prev => [...prev]);
-    }, [logIncrement, deduplicatedSelection, focusItem, list, yOffset, limit, points, selection, adjustLimit, setOrigin, scrollTo]);
+    }, [logIncrement, selectedNodes, focusItem, list, yOffset, limit, points, selection, adjustLimit, setOrigin, scrollTo]);
 
     /**
      * Returns true if the rotation of the selection by the specified angle is within bounds.
      */
     const testRotation = useCallback((angle: number) => {
-        for(const item of deduplicatedSelection) {
-            const {x, y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle, ROUNDING_DIGITS);
+        for(const node of selectedNodes) {
+            const {x, y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS);
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
         }
         return itemsMoved!==null; // We use 'itemsMoved!==null' instead of 'true' to suppress a warning about an 'unnecessary dependency'
-    }, [deduplicatedSelection, origin.x, origin.y, itemsMoved]);
+    }, [selectedNodes, origin.x, origin.y, itemsMoved]);
 
     /**
      * Returns true if setting the scaling of the selection to the specified angle doesn't violate any constraints on the placement, radius, etc. of nodes.
      * May display error messages.
      */
     const testScaling = useCallback((val: number) => {
-        for (const item of deduplicatedSelection) {
-            const {x, y} = scalePoint(item.x100, item.y100, origin.x, origin.y, val/100)
+        for (const node of selectedNodes) {
+            const {x, y} = scalePoint(node.x100, node.y100, origin.x, origin.y, val/100)
             if (!isFinite(x) || !isFinite(y)) {
                 showModal('Buzz Lightyear Alert', 
                     `Nodes cannot be sent to ${x==-Infinity || y==-Infinity? '(negative) ':''}infinity, or beyond.`);
             }
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
-            if (transformFlags.scaleENodes && item instanceof ENode) {
-                const v = item.radius100 * val/100;
+            if (transformFlags.scaleENodes && node instanceof ENode) {
+                const v = node.radius100 * val/100;
                 if(v<0 || v>MAX_RADIUS) return false;
             }
             if (transformFlags.scaleLinewidths) {
-                const v = item.linewidth100 * val/100;
+                const v = node.linewidth100 * val/100;
                 if(v<0 || v>MAX_LINEWIDTH) return false;
             }
-            if (transformFlags.scaleDash && item.dash100.some(l => {
+            if (transformFlags.scaleDash && node.dash100.some(l => {
                 const v = l * val/100;
                 return v<0 || v>MAX_DASH_VALUE;
             })) return false;
         }
         return true
-    }, [deduplicatedSelection, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);    
+    }, [selectedNodes, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);    
 
     /**
      * Rotates the selection by the specified angle (in degrees).
      */
     const rotateSelection = useCallback((angle: number) => {
-        deduplicatedSelection.forEach(item => {
-            ({x: item.x, y: item.y} = rotatePoint(item.x, item.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
-            ({x: item.x100, y: item.y100} = rotatePoint(item.x100, item.y100, origin.x, origin.y, angle, ROUNDING_DIGITS))                              
+        selectedNodes.forEach(node => {
+            ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
+            ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS))                              
         });
         adjustLimit(list, yOffset, limit);
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection, origin, list, yOffset, limit, adjustLimit]);
+    }, [selectedNodes, origin, list, yOffset, limit, adjustLimit]);
 
     /**
      * Sets the scaling of the current selection to the indicated value, as a percentage of the respective 'original' size of the selected items.
      */
     const scaleSelection = useCallback((newValue: number) => {
         if (testScaling(newValue)) {
-            deduplicatedSelection.forEach(item => {
-                ({x: item.x, y: item.y} = scalePoint(item.x100, item.y100, origin.x, origin.y, newValue/100));
-                if (item instanceof CNode) {
-                    item.dist0 = round(item.dist0_100 * newValue/100, ROUNDING_DIGITS);
-                    item.dist1 = round(item.dist1_100 * newValue/100, ROUNDING_DIGITS);
+            selectedNodes.forEach(node => {
+                ({x: node.x, y: node.y} = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue/100));
+                if (node instanceof CNode) {
+                    node.dist0 = round(node.dist0_100 * newValue/100, ROUNDING_DIGITS);
+                    node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
                 }
-                else if (item instanceof ENode) {
-                    if (transformFlags.scaleENodes) item.radius = item.radius100 * newValue/100;
-                    if (transformFlags.scaleLinewidths) item.linewidth = item.linewidth100 * newValue/100;
-                    if (transformFlags.scaleDash) item.dash = item.dash100.map(l => l * newValue/100);
+                else if (node instanceof ENode) {
+                    if (transformFlags.scaleENodes) node.radius = node.radius100 * newValue/100;
+                    if (transformFlags.scaleLinewidths) node.linewidth = node.linewidth100 * newValue/100;
+                    if (transformFlags.scaleDash) node.dash = node.dash100.map(l => l * newValue/100);
                 }
             }); 
             const affectedNodeGroups: CNodeGroup[] = deduplicatedSelection.filter(it => it instanceof CNode)
@@ -1388,50 +1413,50 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setScaling(newValue);
             setItemsMoved(prev => [...prev]);
         }
-    }, [deduplicatedSelection, origin, list, yOffset, limit, adjustLimit, testScaling, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
+    }, [selectedNodes, origin, list, yOffset, limit, adjustLimit, testScaling, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
 
     /**
      * Rounds the location of each selected item to the nearest pixel.
      */
     const roundLocations = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
-            item.x = item.x100 = Math.round(item.x);
-            item.y = item.y100 = Math.round(item.y);            
+        selectedNodes.forEach(node => {
+            node.x = node.x100 = Math.round(node.x);
+            node.y = node.y100 = Math.round(node.y);            
         });
         setOrigin(false, points, focusItem, selection, list);
         setItemsMoved(prev => [...prev]);
-    }, [deduplicatedSelection, selection, points, focusItem, list, setOrigin]);
+    }, [selectedNodes, selection, points, focusItem, list, setOrigin]);
 
     const hFlip = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
-            item.x = 2*origin.x - item.x;
-            item.x100 = 2*origin.x - item.x100;
-            if (item instanceof CNode) {
-                item.angle0 = -item.angle0;
-                item.angle1 = -item.angle1;
+        selectedNodes.forEach(node => {
+            node.x = 2*origin.x - node.x;
+            node.x100 = 2*origin.x - node.x100;
+            if (node instanceof CNode) {
+                node.angle0 = -node.angle0;
+                node.angle1 = -node.angle1;
             }
         });
         adjustLimit();
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection, origin, adjustLimit]);
+    }, [selectedNodes, origin, adjustLimit]);
 
     const vFlip = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
-            item.y = 2*origin.y - item.y;
-            item.y100 = 2*origin.y - item.y100;
-            if (item instanceof CNode) {
-                item.angle0 = -item.angle0;
-                item.angle1 = -item.angle1;
+        selectedNodes.forEach(node => {
+            node.y = 2*origin.y - node.y;
+            node.y100 = 2*origin.y - node.y100;
+            if (node instanceof CNode) {
+                node.angle0 = -node.angle0;
+                node.angle1 = -node.angle1;
             }
         });
         adjustLimit();
         setItemsMoved(prev => [...prev]);                                     
-    }, [deduplicatedSelection, origin, adjustLimit]);
+    }, [selectedNodes, origin, adjustLimit]);
 
     /**
      * Turn all contours that have members in the supplied array into regular polygons.
      */
-    const turnIntoRegularPolygons = useCallback((selection: Item[]) => {
+    const turnIntoRegularPolygons = useCallback((selection: Node[]) => {
         (selection.map(it => {
                 if (it instanceof CNode) {
                     it.angle0 = it.angle1 = 0;
@@ -1451,7 +1476,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Rotate all contours that have members in the supplied array by -180/n degrees, where n is the number of nodes in the respective contour.
      */
-    const rotatePolygons = useCallback((selection: Item[]) => {
+    const rotatePolygons = useCallback((selection: Node[]) => {
         (selection.map(it => it instanceof CNode? it.group: null)
             .filter((g, i, arr) => g instanceof CNodeGroup && i===arr.indexOf(g)) as CNodeGroup[]
         ).forEach(g => {
@@ -1469,7 +1494,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Either sets or increases/decreases the shading of the selected nodes, depending on whether the third argument is true.
      */
-    const setShading = useCallback((selection: Item[], val: number, inc: boolean = false) => {
+    const setShading = useCallback((selection: Node[], val: number, inc: boolean = false) => {
         selection.map(it => it.group instanceof CNodeGroup? it.group: it)
         .filter((it, i, arr) => i===arr.indexOf(it))
         .forEach(obj => {
@@ -1482,7 +1507,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Either sets or increases/decreases the linewidth of the selected nodes, depending on whether the third argument is true.
      */
-    const setLinewidth = useCallback((selection: Item[], val: number, inc: boolean = false) => {
+    const setLinewidth = useCallback((selection: Node[], val: number, inc: boolean = false) => {
         selection.map(it => it.group instanceof CNodeGroup? it.group: it)
         .filter((it, i, arr) => i===arr.indexOf(it))
         .forEach(obj => {
@@ -1536,7 +1561,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setCNodeGroupCounter(prev => prev + 1);
         }                                                
         else {
-            group = new StandardGroup<Item | Group<any>>(newMembers);
+            group = new StandardGroup<Node | Group<any>>(newMembers);
         }
         const oldGroups = newMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
         oldGroups.forEach(g => {
@@ -1557,32 +1582,32 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
 
     const leaveGroup = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
+        const affected = deduplicatedSelection.map(item => {
             const groups = getGroups(item);
-            const member = groups[1]>0? groups[0][groups[1] - 1]: item;
-            item.isActiveMember = false;
-            if (member instanceof Item) {
-                setAdding(prev => false);
-                setDissolveAdding(prev => false);
-            }
-        });
+            return groups[1]>0? groups[0][groups[1] - 1]: item;
+        }).filter((item, i, arr) => i===arr.indexOf(item));
+        affected.forEach(m => m.isActiveMember = false);
+        if (affected instanceof Item) {
+            setAdding(prev => false);
+            setDissolveAdding(prev => false);
+        }
         if (focusItem) adjustSelection(focusItem);
     }, [deduplicatedSelection, focusItem, adjustSelection]);
 
     const rejoinGroup = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
-            const member = highestActive(item);
-            if (member.group) member.isActiveMember = true;
+        const affected = deduplicatedSelection.map(item => highestActive(item))
+        .filter((item, i, arr) => item.group && i===arr.indexOf(item));
+        affected.forEach(item => {
+            item.isActiveMember = true;
         });
         if (focusItem) adjustSelection(focusItem);                                 
     }, [deduplicatedSelection, focusItem, adjustSelection]);
 
     const restoreGroup = useCallback(() => {
-        deduplicatedSelection.forEach(item => {
-            const ha = highestActive(item);
-            if (!(ha instanceof Item)) {
-                ha.members.forEach(m => m.isActiveMember=true);
-            }
+        const affected = deduplicatedSelection.map(item => highestActive(item))
+        .filter((item, i, arr) => !(item instanceof Item) && i===arr.indexOf(item)) as Group<any>[];
+        affected.forEach(g => {
+            g.members.forEach(m => m.isActiveMember=true);
         });
         if (focusItem) adjustSelection(focusItem);                                 
     }, [deduplicatedSelection, focusItem, adjustSelection]);
@@ -1640,7 +1665,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
             list.length + 
                 deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
-                getNodeGroups(topTbc).length > MAX_LIST_SIZE
+                getCNodeGroups(topTbc).length > MAX_LIST_SIZE
         ) ||
         (() => {
             const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
@@ -1668,15 +1693,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const canMoveDown: boolean = bottomMostSelected - 10 ** logIncrement >= MIN_Y;
 
-    const canHFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
+    const canHFlip: boolean = useMemo(() => !selectedNodes.some(item => {
         const x = 2*origin.x - item.x; // simulate hFlip on item
         return itemsMoved && (x<0 || x>MAX_X); // 'itemsMoved &&' added to suppress a warning about an 'unnecessary dependency'
-    }), [deduplicatedSelection, origin, itemsMoved]);
+    }), [selectedNodes, origin, itemsMoved]);
 
-    const canVFlip: boolean = useMemo(() => !deduplicatedSelection.some(item => {
+    const canVFlip: boolean = useMemo(() => !selectedNodes.some(item => {
         const y = 2*origin.y - item.y; // simulate vFlip on item
         return itemsMoved && (y<MIN_Y || y>MAX_Y);
-    }), [deduplicatedSelection, origin, itemsMoved]);
+    }), [selectedNodes, origin, itemsMoved]);
 
     const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [testRotation]);
 
@@ -1699,25 +1724,25 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0), { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1), { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2), { enabled: !modalShown });
-    useHotkeys(hotkeyMap['dec sh'], () => setShading(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['inc sh'], () => setShading(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['sh 0'], () => setShading(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['sh 1'], () => setShading(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(deduplicatedSelection, -0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(deduplicatedSelection, 0.1, true), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(deduplicatedSelection, 0), { enabled: deduplicatedSelection.length>0 && !modalShown });
-    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(deduplicatedSelection, 1), { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['dec sh'], () => setShading(selectedNodes, -0.1, true), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['inc sh'], () => setShading(selectedNodes, 0.1, true), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['sh 0'], () => setShading(selectedNodes, 0), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['sh 1'], () => setShading(selectedNodes, 1), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(selectedNodes, -0.1, true), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(selectedNodes, 0.1, true), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(selectedNodes, 0), { enabled: selectedNodes.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(selectedNodes, 1), { enabled: selectedNodes.length>0 && !modalShown });
     useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg && !modalShown });
     useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg && !modalShown });
     useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW && !modalShown });
     useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW && !modalShown });
     useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)), { enabled: !modalShown });
-    useHotkeys(hotkeyMap['round'], roundLocations, { enabled: deduplicatedSelection.length>0 && !modalShown });
+    useHotkeys(hotkeyMap['round'], roundLocations, { enabled: selectedNodes.length>0 && !modalShown });
     useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: !modalShown });
     useHotkeys(hotkeyMap['hflip'], hFlip, { enabled: canHFlip && !modalShown });
     useHotkeys(hotkeyMap['vflip'], vFlip, { enabled: canVFlip && !modalShown });
-    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
-    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(deduplicatedSelection), { enabled: deduplicatedSelection.some(i => i instanceof CNode) && !modalShown });
+    useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(selectedNodes), { enabled: selectedNodes.some(i => i instanceof CNode) && !modalShown });
+    useHotkeys(hotkeyMap['rotate by 180/n deg'], () => rotatePolygons(selectedNodes), { enabled: selectedNodes.some(i => i instanceof CNode) && !modalShown });
     useHotkeys(hotkeyMap['create group'], createGroup, { enabled: !modalShown });
     useHotkeys(hotkeyMap['leave'], leaveGroup, { enabled: focusItem!==null && !modalShown });
     useHotkeys(hotkeyMap['rejoin'], rejoinGroup, { enabled: focusItem!==null && !modalShown });
@@ -1746,8 +1771,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const sorry = () => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}
 
-    console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem && focusItem.x},${focusItem && focusItem.y})`,
-        `ha=${focusItem && highestActive(focusItem).getString()}`));
+    console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`+
+        `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`));
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
 
     return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
@@ -1814,7 +1839,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 x={limitCompX(limit.x, canvasRef.current)} 
                                 y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)} 
                                 primaryColor={DEFAULT_HSL_LIGHT_MODE}
-                                markColor='red' visible={true} /> 
+                                markColor='red' visible={false} /> 
                         }
                     </div>
                     <div id='code-panel' className='relative mt-[25px] ring-offset-red-500'> 

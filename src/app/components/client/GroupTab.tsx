@@ -1,6 +1,7 @@
 import React from 'react';
 
-import Item from './Item.tsx'
+import Item from './Item'
+import Node from './Node.tsx'
 import { getGroups } from './Group.tsx'
 import { BasicColoredButton } from './Button.tsx'
 import { HotkeyComp } from './MainPanel.tsx'

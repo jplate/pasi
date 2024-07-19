@@ -1,9 +1,10 @@
 import clsx from 'clsx/lite'
-import Item, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, Range } from './Item.tsx'
+import Item, { Range } from './Item'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
 import CNodeGroup, { angle } from './CNodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
 import { getCyclicValue } from '../../util/MathTools.tsx'
 
@@ -23,7 +24,7 @@ const MAX_DISTANCE = 9999
 export const DEFAULT_DISTANCE = 10
 
 
-export default class CNode extends Item {
+export default class CNode extends Node {
 
     radius: number = CNODE_RADIUS;
     fixedAngles: boolean = true;
@@ -172,38 +173,38 @@ export default class CNode extends Item {
                     }, 'wholeSelection']
                 }
             case 'x': if (e) {
-                    const dmin = -selection.reduce((min, item) => min<item.x? min: item.x, this.x);
+                    const dmin = -(selection.filter(item => item instanceof Node) as Node[]).reduce((min, item) => min<item.x? min: item.x, this.x);
                     const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
                     const dx = delta>dmin? delta: 0; // this is to avoid items from being moved beyond the left border of the canvas                        
                     return [(item, array) => {
-                        if (dx!==0) item.move(dx, 0); 
+                        if (item instanceof Node && dx!==0) item.move(dx, 0); 
                         return array
                     }, 'wholeSelection']
                 }
             case 'y': if (e) {
                     const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                     return [(item, array) => {
-                        if (!isNaN(dy) && dy!==0) {
+                        if (item instanceof Node && !isNaN(dy) && dy!==0) {
                             item.move(0, dy);
                         }
                         return array
                     }, 'wholeSelection']
                 }
             case 'lw': if (e) return [(item, array) => {
-                    item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
+                    if (item instanceof Node) item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                     return array
-                }, 'ENodesAndNodeGroups']
+                }, 'ENodesAndCNodeGroups']
             case 'dash': if (e) {
                     const dash = (this.group as CNodeGroup).dashValidator.read(e.target);
                     return [(item, array) => {
-                        item.setDash(dash); 
+                        if (item instanceof Node) item.setDash(dash); 
                         return array
-                    }, 'ENodesAndNodeGroups']
+                    }, 'ENodesAndCNodeGroups']
                 }
             case 'shading': if (e) return [(item, array) => {
-                    item.setShading(validFloat(e.target.value, 0, 1)); 
+                    if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1)); 
                     return array
-                }, 'ENodesAndNodeGroups']
+                }, 'ENodesAndCNodeGroups']
             case 'rank': if (e) return [(item, array) => {
                     if (item.group instanceof CNodeGroup) {
                         const currentPos = array.indexOf(item.group);
@@ -228,13 +229,13 @@ export default class CNode extends Item {
                     item.group.equalizeCentralAngles(item as CNode);
                 }
                 return array
-            }, 'ENodesAndNodeGroups']
+            }, 'ENodesAndCNodeGroups']
             case 'distances': return [(item, array) => {
                 if (item.group instanceof CNodeGroup) {
                     item.group.equalizeDistancesFromCenter(item as CNode);
                 }
                 return array
-            }, 'ENodesAndNodeGroups']
+            }, 'ENodesAndCNodeGroups']
             default: 
                 return [(item, array) => array, 'onlyThis']        
         }
@@ -251,9 +252,9 @@ export interface CNodeCompProps {
     selected: boolean
     preselected: boolean
     arrow: boolean // indicates whether an arrow to the next CNodeComp should be displayed
-    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseDown: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseEnter: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseLeave: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }
 
 export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, preselected, arrow, onMouseDown, onMouseEnter, onMouseLeave}: CNodeCompProps) => {

@@ -1,3 +1,4 @@
+import Item from '../components/client/Item'
 import ENode from '../components/client/ENode'
 import CNodeGroup from '../components/client/CNodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
@@ -255,12 +256,12 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
  */
 const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>) => {
     if (groupName) {
-        let g: StandardGroup<ENode | Group<any>>;
+        let g: StandardGroup<Item | Group<any>>;
         if (gMap.has(groupName)) {
-            g = gMap.get(groupName) as StandardGroup<ENode | Group<any>>;
+            g = gMap.get(groupName) as StandardGroup<Item | Group<any>>;
         }
         else {
-            g = new StandardGroup<ENode | Group<any>>([]);
+            g = new StandardGroup<Item | Group<any>>([]);
             gMap.set(groupName, g);
         }
         g.members.push(item);
