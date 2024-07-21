@@ -1183,7 +1183,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
             setAdding(false);
             setDissolveAdding(false);
-        }, [allItems, selection, list, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
+        }, [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
     );
 
     /**

@@ -167,7 +167,7 @@ const getGroupMap = (str: string, sgCounter: number) => {
             g = map.get(sp[0]) as StandardGroup<ENode | Group<any>>;
         }
         else {
-            g = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+            g = new StandardGroup<Item | Group<any>>(sgCounter, []);
             sgCounter++;
             map.set(sp[0], g);
         }
@@ -192,7 +192,7 @@ const getGroupMap = (str: string, sgCounter: number) => {
                 }
             }
             else {
-                m = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+                m = new StandardGroup<Item | Group<any>>(sgCounter, []);
                 sgCounter++;
                 map.set(ms, m);
             }
@@ -264,7 +264,7 @@ const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: b
             g = gMap.get(groupName) as StandardGroup<Item | Group<any>>;
         }
         else {
-            g = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+            g = new StandardGroup<Item | Group<any>>(sgCounter, []);
             sgCounter++;
             gMap.set(groupName, g);
         }
