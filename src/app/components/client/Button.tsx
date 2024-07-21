@@ -29,19 +29,16 @@ export const BasicButton = forwardRef((
         const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
         const [active, setActive] = useState(false);
 
-        const handleKeyDown = useCallback(
-            useThrottle(
-                (e: React.KeyboardEvent<HTMLButtonElement>) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault(); 
-                        e.stopPropagation();
-                        buttonElement?.click(); 
-                        setActive(prev => true);
-                    }
-                }, 
-                500
-            ),
-            [buttonElement]
+        const handleKeyDown = useThrottle(
+            (e: React.KeyboardEvent<HTMLButtonElement>) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    e.stopPropagation();
+                    buttonElement?.click(); 
+                    setActive(prev => true);
+                }
+            }, 
+            500
         );
 
         const button = (

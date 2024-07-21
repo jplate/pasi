@@ -155,6 +155,8 @@ export default class Label extends Ornament {
         const [width, setWidth] = useState(0);
         const [height, setHeight] = useState(0);
 
+        const text = this.text;
+
         useEffect(() => {
             if (textElementRef.current) {
                 const { width: w, height: h } = textElementRef.current.getBBox(); // Get the bounding box of the text
@@ -165,7 +167,7 @@ export default class Label extends Ornament {
                 this.width = width;
                 this.height = height;
             }
-        }, [this.text]);
+        }, [text]);
 
         const fontSize = DISPLAY_FONT_SIZE;
 
@@ -198,7 +200,7 @@ export default class Label extends Ornament {
                     <text ref={textElementRef} x={`${left}`} y={`${top + fontSize}`} 
                             className={`${merriweather.className}`} fontSize={`${fontSize}`} 
                             fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}>
-                        {this.text.length > MAX_TEXT_LENGTH? `${this.text.slice(0, MAX_TEXT_LENGTH-3)}...`: this.text}
+                        {text.length > MAX_TEXT_LENGTH? `${text.slice(0, MAX_TEXT_LENGTH-3)}...`: text}
                     </text>
                     <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill='none' />
                     <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill='none' />

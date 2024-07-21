@@ -1225,6 +1225,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }, [points, cngCounter, list, adjustLimit, setOrigin]);
 
+    const sorry = () => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}
+
     /** 
      * OnClick handler for the 'Create' button.
      */
@@ -1240,7 +1242,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 default: sorry();
             }
         }
-    }, [selectedNodes, depItemIndex]);
+    }, [selectedNodes, depItemIndex, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1464,7 +1466,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         adjustLimit();
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
         setItemsMoved(prev => [...prev]);                                     
-    }, [selectedNodes, origin, list, adjustLimit]);
+    }, [selectedNodes, origin, adjustLimit]);
 
     /**
      * Sets the scaling of the current selection to the indicated value, as a percentage of the respective 'original' size of the selected items.
@@ -1496,7 +1498,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setScaling(newValue);
             setItemsMoved(prev => [...prev]);
         }
-    }, [selectedNodes, origin, list, limit, adjustLimit, testScaling, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
+    }, [selectedNodes, origin, list, limit, adjustLimit, testScaling, deduplicatedSelection, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
 
     /**
      * Rounds the location of each selected item to the nearest pixel.
@@ -1743,7 +1745,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, cngCounter, points, adjustLimit, setOrigin]);
+    }, [list, eNodeCounter, cngCounter, sgCounter, points, adjustLimit, setOrigin]);
 
 
     const canCopy: boolean = useMemo(() => !(
@@ -1894,8 +1896,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
         'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
-
-    const sorry = () => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}
 
     console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`+
         `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`));

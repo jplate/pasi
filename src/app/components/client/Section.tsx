@@ -35,7 +35,7 @@ const Section = ({ id, header, dark, children }: SectionProps) => {
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, []);
+    }, [header]);
 
     return (
         <section id={id} ref={sectionRef} className={clsx('prose prose-lg max-w-fit lg:max-w-5xl mt-3 ml-9 mb-9',
