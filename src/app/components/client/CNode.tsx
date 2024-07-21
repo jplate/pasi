@@ -1,5 +1,5 @@
 import clsx from 'clsx/lite'
-import Item, { Range } from './Item'
+import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
 import CNodeGroup, { angle } from './CNodeGroup.tsx'
@@ -7,6 +7,8 @@ import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
 import { getCyclicValue } from '../../util/MathTools.tsx'
+import { MIN_ROTATION, MAX_ROTATION_INPUT } from './ItemEditor'
+
 
 const CNODE_RADIUS = 7
 const CNODE_ARROW_DIV_RADIUS = 10
@@ -16,17 +18,18 @@ const CNODE_ARROW_DISTANCE_MIN = 15
 const CNODE_ARROW_DISTANCE_MAX = 40
 const CNODE_ARROW_POINTS = '6,10 5,7 15,10 5,13, 6,10'
 const CNODE_ARROW_MITER_LIMIT = 5
-export const MIN_ROTATION = -180
-const MAX_ROTATION_INPUT = 9999
 const MIN_DISTANCE = -9999
 const MAX_DISTANCE = 9999
 
 export const DEFAULT_DISTANCE = 10
 
-
+/**
+ * CNodes ('contour nodes') are members of CNodeGroups ('contour node groups'). They define the shape and beheavior of contours. Although each CNode inherits
+ * its own shading, linewidth, and dash pattern from the superclass, these values don't matter in practice. The relevant setter functions instead affect the 
+ * values of the node's CNodeGroup.
+ */
 export default class CNode extends Node {
 
-    radius: number = CNODE_RADIUS;
     fixedAngles: boolean = true;
     omitLine: boolean = false;
     angle0: number = 0; // angle to control point 0
@@ -40,28 +43,29 @@ export default class CNode extends Node {
 
     constructor(id: string, x: number, y: number, a0: number, a1: number, group: CNodeGroup) {
         super(id, x, y);
+        this.radius = this.radius100 = CNODE_RADIUS;
         this.angle0 = a0;
         this.angle1 = a1;
         this.group = group;
         this.isActiveMember = true;
     }
 
-    public override setLinewidth(lw: number) {
+    override setLinewidth(lw: number) {
         const group = this.group as CNodeGroup;
         group.linewidth = group.linewidth100 = lw;
     }
 
-    public override setShading(sh: number) {
+    override setShading(sh: number) {
         const group = this.group as CNodeGroup;
         group.shading = sh;
     }
 
-    public override setDash(dash: number[]) {
+    override setDash(dash: number[]) {
         const group = this.group as CNodeGroup;
         group.dash = group.dash100 = dash;
     }
 
-    public override reset() {
+    override reset() {
         const group = this.group as CNodeGroup;
         super.reset();
         this.fixedAngles = true;
@@ -73,7 +77,7 @@ export default class CNode extends Node {
         group.shading = DEFAULT_SHADING;
     }
 
-    public override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         const group = this.group as CNodeGroup;
         return [
             {type: 'checkbox', key: 'fixed', text: 'Dragging preserves angles', value: this.fixedAngles,
@@ -112,7 +116,7 @@ export default class CNode extends Node {
         ]
     }
 
-    public override handleEditing(
+    override handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
@@ -247,21 +251,26 @@ export interface CNodeCompProps {
     id: string
     cnode: CNode
     yOffset: number
+    primaryColor: HSL // needed for ornaments of CNodes
     markColor: string
-    focus: boolean
+    focusItem: Item | null
     selected: boolean
     preselected: boolean
+    selection: Item[]  // needed for ornaments of CNodes
+    preselection: Item[] // ditto
     arrow: boolean // indicates whether an arrow to the next CNodeComp should be displayed
-    onMouseDown: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseEnter: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseLeave: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }
 
-export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, preselected, arrow, onMouseDown, onMouseEnter, onMouseLeave}: CNodeCompProps) => {
+export const CNodeComp = ({ id, cnode, yOffset, primaryColor, markColor, focusItem, selected, preselected, selection, preselection, arrow, 
+    onMouseDown, onMouseEnter, onMouseLeave }: CNodeCompProps
+) => {
     const x = cnode.x;
     const y = cnode.y;
     const radius = CNODE_RADIUS;
-
+    const focus = focusItem===cnode;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
     const top = MARK_LINEWIDTH;
@@ -318,6 +327,8 @@ export const CNodeComp = ({id, cnode, yOffset, markColor, focus, selected, prese
                     <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
                 </svg>
             </div>
+            {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, primaryColor, markColor, 
+                focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave))}
             {arrowDiv}
         </>
     )

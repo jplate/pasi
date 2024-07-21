@@ -3,6 +3,12 @@ import ENode from './ENode'
 import CNodeGroup from './CNodeGroup'
 import { Entry } from './ItemEditor'
 
+export interface HSL {
+    hue: number
+    sat: number
+    lgt: number
+}
+
 export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // This last value means that the editing function will be applied to only at most one CNode per CNodeGroup.
 
 /**
@@ -18,45 +24,51 @@ export default class Item implements GroupMember {
 
     constructor(id: string) {
         this.id = id;
-    }
+    }    
 
     getString() {
         return this.id;
     }
 
-    public getWidth() {
+    getWidth() {
         return 0;
     }
 
-    public getHeight() {
+    getHeight() {
         return 0;
     }
 
-    public getLeft() {
-        return 0;
+    getBottomLeftCorner() {
+        return { bottom: 0, left: 0 };
     }
     
-    public getBottom() {
-        return 0;
+    reset() {
     }
 
-    public reset() {
-    }
-
-    public getTexdrawCode():string {
+    getTexdrawCode():string {
         return '';
     }
 
-    public getInfoString(): string {
+    getInfoString(): string {
         return '';
     }
 
-    public getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    /**
+	 * Invoked by Codec1#load(); should be overridden by subclasses. Parses the supplied code and info string and updates this Item's fields 
+     * accordingly.
+	 * @param code the texdraw code.
+	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
+	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
+	 */
+	parse(code: string, info: string, name?: string): void {}
+
+
+    getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return []
     }
 
-    public handleEditing(
-            e: React.ChangeEvent<HTMLInputElement> | null, 
+    handleEditing(
+            e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, 
             logIncrement: number, 
             selection: Item[],
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {

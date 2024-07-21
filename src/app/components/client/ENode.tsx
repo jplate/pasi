@@ -1,7 +1,7 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { Range } from './Item'
-import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, HSL } from './Node.tsx'
+import Item, { HSL, Range } from './Item'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
@@ -25,37 +25,48 @@ export const TITLE_FONTSIZE = 9
 
 export default class ENode extends Node {
 
-    radius: number = DEFAULT_RADIUS;
-    radius100: number = DEFAULT_RADIUS;
+
     private dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
 
     constructor(i: number, x: number, y: number) {
         super(`E${i}`, x, y);
+        this.radius = this.radius100 = DEFAULT_RADIUS;
     }
 
-    public override getWidth() {
+    getSelectedPositions = (selection: Item[]) => {
+        let result: number[] = [];
+        let index = 0;
+        selection.forEach(element => {
+            if (element===this) {
+                result = [...result, index];
+            }
+            if (element instanceof ENode) { // if the element isn't an ENode, we're not counting it.
+                index++;
+            }
+        });
+        return result;
+    }
+
+
+    override getWidth() {
         return this.radius * 2;
     }
 
-    public override getHeight() {
+    override getHeight() {
         return this.radius * 2;
     }
 
-    public override getLeft() {
-        return this.x - this.radius;
+    override getBottomLeftCorner() {
+        return { bottom: this.y - this.radius, left: this.x - this.radius };
     }
 
-    public override getBottom() {
-        return this.y - this.radius;
-    }
-
-    public override reset() {
+    override reset() {
         super.reset();
         this.radius = this.radius100 = DEFAULT_RADIUS;
     }
 
-    public override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
@@ -71,7 +82,7 @@ export default class ENode extends Node {
         ]
     }
 
-    public override handleEditing(
+    override handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
@@ -140,12 +151,12 @@ export default class ENode extends Node {
        }
     }
 
-    public override getInfoString() {
+    override getInfoString() {
         return (this.linewidth>0 || this.shading>0)? '': 
             `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
     }
 
-    public override getTexdrawCode() {
+    override getTexdrawCode() {
 		return [
             super.getTexdrawCode(),
             (this.shading>0 || this.linewidth>0? Texdraw.move(this.x, this.y): ''),
@@ -256,31 +267,33 @@ export default class ENode extends Node {
 
 
 
-export interface ENodeProps {
+export interface ENodeCompProps {
     id: string
     enode: ENode
     yOffset: number
     bg: HSL
     primaryColor: HSL
-    markColor: string
+    markColor0: string
+    markColor1: string
     titleColor: string
-    focus: boolean
-    selected: number[]
-    preselected: boolean
+    focusItem: Item | null
+    selection: Item[]
+    preselection: Item[]
     onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, titleColor, focus = false, selected = [], preselected = false, 
-        onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeProps) => {
+export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, 
+        onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeCompProps) => {
 
     const x = enode.x;
     const y = enode.y;
     const radius = enode.radius;
     const linewidth = enode.linewidth;
     const shading = enode.shading;
+    const selectedPositions = enode.getSelectedPositions(selection);
 
     const width = radius * 2;
     const height = radius * 2;
@@ -289,51 +302,57 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor, tit
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
     const top = MARK_LINEWIDTH + extraHeight;
     const left = MARK_LINEWIDTH;
-    const mW = width + linewidth; // width and...
-    const mH = height + linewidth; // ...height relevant for drawing the 'mark border'
+    const mW = width + MARK_LINEWIDTH; // width and...
+    const mH = height + MARK_LINEWIDTH; // ...height relevant for drawing the 'mark border'
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = hidden ? 0.9 * l : 0;
 
     //console.log(`Rendering ${id}... (${x}, ${y})  yOffset=${yOffset}`);
 
     return (
-        <div className={focus ? 'focused' : selected.length > 0 ? 'selected' : preselected? 'preselected': 'unselected'}
-            id={id}
-            //onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => onMouseDown(enode, e)}
-            onMouseEnter={(e) => onMouseEnter(enode, e)}
-            onMouseLeave={(e) => onMouseLeave(enode, e)}
-            style={{
-                position: 'absolute',
-                left: `${x - radius - MARK_LINEWIDTH - linewidth / 2}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
-                cursor: 'pointer'
-            }}>
-            <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
-                <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
-                    cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
-                    fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
-                        `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
-                        `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
-                        `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
-                    stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
-                    strokeWidth={linewidth}
-                    strokeDasharray={enode.dash.join(' ')} 
-                    strokeLinecap={LINECAP_STYLE}
-                    strokeLinejoin={LINEJOIN_STYLE} />
-                <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-                <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
-            </svg>
-            {selected.length > 0 && // Add a 'title'
-                <div style={{
-                    position: 'absolute', left: '0', top: '0', width: `${mW + MARK_LINEWIDTH * 2}px`, color: titleColor, textAlign: 'center',
-                    fontSize: `${TITLE_FONTSIZE}px`, textWrap: 'nowrap', overflow: 'hidden', userSelect: 'none', pointerEvents: 'none', cursor: 'default'
+        <React.Fragment key={id}>
+            <div className={focusItem===enode ? 'focused' : selectedPositions.length > 0 ? 'selected' : preselection.includes(enode)? 'preselected': 'unselected'}
+                id={id}
+                //onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => onMouseDown(enode, e)}
+                onMouseEnter={(e) => onMouseEnter(enode, e)}
+                onMouseLeave={(e) => onMouseLeave(enode, e)}
+                style={{
+                    position: 'absolute',
+                    left: `${x - radius - MARK_LINEWIDTH - linewidth / 2}px`,
+                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
+                    cursor: 'pointer'
                 }}>
-                    {selected.map(i => i + 1).join(', ')}
-                </div>}
-        </div>
+                <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
+                    <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
+                        cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
+                        fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
+                            `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
+                            `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
+                            `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                        stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
+                        strokeWidth={linewidth}
+                        strokeDasharray={enode.dash.join(' ')} 
+                        strokeLinecap={LINECAP_STYLE}
+                        strokeLinejoin={LINEJOIN_STYLE} />
+                    <polyline stroke={markColor1} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
+                    <polyline stroke={markColor1} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
+                    <polyline stroke={markColor1} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
+                    <polyline stroke={markColor1} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+                </svg>
+                {selectedPositions.length > 0 && // Add a 'title'
+                    <div style={{
+                        position: 'absolute', left: '0', top: '0', width: `${mW + MARK_LINEWIDTH * 2}px`, color: titleColor, textAlign: 'center',
+                        fontSize: `${TITLE_FONTSIZE}px`, textWrap: 'nowrap', overflow: 'hidden', userSelect: 'none', pointerEvents: 'none', cursor: 'default'
+                    }}>
+                        {selectedPositions.map(i => i + 1).join(', ')}
+                    </div>}
+            </div>
+            {enode.ornaments.map((o, i) => {
+                return o.getComponent(i, yOffset, primaryColor, markColor0, 
+                    focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave);
+            })}
+        </React.Fragment>
     )
 }
 

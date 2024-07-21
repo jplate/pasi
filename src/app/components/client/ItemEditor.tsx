@@ -2,11 +2,14 @@ import react from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { BasicColoredButton } from './Button.tsx'
-import { LabelField, GlossField, CheckBoxField, InputField, Width, validInt } from './EditorComponents.tsx'
+import { LabelField, GlossField, CheckBoxField, InputField, Textarea, Slider, Width, validInt } from './EditorComponents.tsx'
 import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel'
 
+export const MIN_ROTATION = -180
+export const MAX_ROTATION_INPUT = 9999
 
-type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button' | 'logIncrement';
+
+type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button' | 'logIncrement' | 'textarea';
 
 export type Entry = {
     type: Type,
@@ -21,19 +24,20 @@ export type Entry = {
     tooltipPlacement?: Placement,
     width?: Width,
     extraBottomMargin?: boolean,
+    fullHeight?: boolean
 }
 
 interface ItemEditorProps {
     info: Entry[],
     logIncrement: number,
     onIncrementChange: (val: number) => void,
-    onChange: (e: React.ChangeEvent<HTMLInputElement> | null, key: string) => void,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, key: string) => void,
 }
 
 const ItemEditor = ({info, logIncrement, onIncrementChange, onChange}: ItemEditorProps) => {
 
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement> | null, key: string) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, key: string) => {
         // console.log(`change event: ${e?.nativeEvent}`);
         onChange(e, key);
     }
@@ -72,6 +76,9 @@ const ItemEditor = ({info, logIncrement, onIncrementChange, onChange}: ItemEdito
                                     onIncrementChange(val);
                                 }
                             }} />);
+                    case 'textarea': return (
+                        <Textarea key={i} fullHeight={entry.fullHeight} value={entry.value} onChange={(e) => handleChange(e, entry.key?? '')} />
+                    );
                     default: return null;
                 }
             })}

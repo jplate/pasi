@@ -2,7 +2,7 @@ import react, { useContext } from 'react'
 import clsx from 'clsx/lite'
 import Tippy from '@tippyjs/react'
 import { Placement } from 'tippy.js'
-import { getCyclicValue } from '../../util/MathTools'
+import { getCyclicValue, round } from '../../util/MathTools'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
@@ -13,18 +13,11 @@ import { DarkModeContext } from './MainPanel.tsx'
 const ACCENT_LIGHT = 'accent-slate-50';
 const ACCENT_DARK = 'accent-amber-600 dark';
 
-export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
-    let timeout: ReturnType<typeof setTimeout>;
-    return function(...args: Parameters<T>) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-};
 
 
 export type Width = 'short' | 'medium' | 'long'
 
-export interface CheckBoxFieldProps {
+interface CheckBoxFieldProps {
     label: string,
     style?: string,
     value: boolean,
@@ -55,7 +48,7 @@ export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBot
     )
 }
 
-export interface GlossFieldProps {
+interface GlossFieldProps {
     text: string;
     style?: string;
 }
@@ -70,7 +63,7 @@ export const GlossField = ({text, style=''}: GlossFieldProps) => {
     )
 }
 
-export interface InputFieldProps {
+interface InputFieldProps {
     label: string,
     value: any,
     type?: string,
@@ -85,8 +78,8 @@ export interface InputFieldProps {
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
 }
 
-export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', 
-        lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange}: InputFieldProps) => {
+export const InputField = ({ label, value, type = 'number', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', 
+        lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange }: InputFieldProps) => {
 
     const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-24 w-24';
     const labelComp = (<span>{label}</span>);
@@ -101,7 +94,38 @@ export const InputField = ({label, value, type = 'number', min = Number.MIN_SAFE
     );      
 }
 
-export interface LabelFieldProps {
+interface SliderProps {
+    value: number
+    min: number
+    max: number
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+}
+
+export const Slider = ({ value, min, max, onChange }: SliderProps) => {
+    return (
+        <input type='range' value={value} min={min} max={max} onChange={onChange} />
+    );
+}
+
+
+interface TextareaProps {
+    value: string,
+    fullHeight?: boolean,
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void,
+}
+
+export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps) => {
+    return (
+        <textarea 
+            className={clsx('bg-textfieldbg text-textfieldcolor rounded-md p-2 m-2 shadow-inner text-sm focus:outline-none resize-none', fullHeight? 'h-full': 'h-48')}
+            spellCheck={false}
+            value={value}
+            onChange={onChange} />
+    );
+}
+
+
+interface LabelFieldProps {
     label: string;
     style?: string;
 }
@@ -149,9 +173,11 @@ export const parseInputValue = (input: string, min: number, max: number, oldValu
         return NaN;
     } else {
         const raw = getRawValue(oldValue, val, logIncrement);
-        const v0 = Math.min(Math.max(min, raw), max);
-        const factor = 10 ** roundingDigits; // we want to round the number to prevent long runs of 9s or 0s.
-        return Math.round(v0 * factor) / factor;
+        const v0 = Math.min(Math.max(min, round(raw, roundingDigits)), max);
+        const factor = 10 ** roundingDigits; 
+        const result = Math.floor(round(v0 * factor, 1)) / factor;
+        console.log(`v0: ${v0} factor: ${factor} result: ${result}`);
+        return result;
     }
 }
 

@@ -1,7 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 
 @layer utilities {
   .text-balance {
@@ -9,26 +9,16 @@
   }
 }
 
-html { /* We have to insist on a fixed font-size, so as to make sure that there won't be any resizing due to hover effects within the MainPanel */
-  font-size: 16px; 
-}
-
-section { /* We're going with slightly bigger font for the surrounding sections. */
-  font-size: 18px; 
-}
-
-p:not(.pasi p) {
-    margin-bottom: 12px;
-}
-
-li {
-    margin-bottom: 8px;
-}
+/*****************************************************
+* COLORS
+*****************************************************/
 
 .light {
   --foreground-rgb: 30, 41, 59; /* slate-800 */
   --background-start-rgb: 205, 210, 220;
   --background-end-rgb: 235, 240, 250;
+  --link-rgb: 190, 18, 60; /* pink-700 */
+  --link-hover-rgb: 244, 63, 94; /* pink-500 */
   
   --btnbg: 248, 250, 252; /* slate-50 */
   --btncolor: 71, 85, 105; /* slate-600 */
@@ -46,25 +36,15 @@ li {
   --tabselected: 226, 232, 240; /* slate-200 */
   --textfieldbg: 248, 250, 252; /* slate-50 */
   --textfieldcolor: 30, 41, 59; /* slate-800 */
-
-  a:not(.pasi a) {
-    color: theme('colors.pink.700'); 
-    text-decoration: none; /* Remove the underline */
-    transition: color 0.1s; /* Add a smooth color transition on hover */
-  }
-  
-  a:not(.pasi a):hover {
-    color: theme('colors.pink.500'); 
-    text-decoration: none; /* Remove the underline */
-    transition: color 0.1s; /* Add a smooth color transition on hover */
-  }
-  
 }
 
 .dark {
   --foreground-rgb: 190, 169, 150; /* moderately redder than stone-400 */
   --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
   --background-end-rgb: 20, 17, 13; /* slightly darker */
+  --link-rgb: 185, 28, 28; /* red-700 */
+  --link-hover-rgb: 239, 68, 68; /* red-500 */
+
 
   --btnbg: 66, 50, 40; 
   --btncolor: 190, 169, 150; /* moderately redder than stone-400 */
@@ -82,19 +62,14 @@ li {
   --tabselected: 240, 232, 226; /* a slightly orange beige */ 
   --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
   --textfieldcolor: 217, 119, 6; /* amber-600 */
+}
 
-  a:not(.pasi a) {
-    color: theme('colors.red.700'); 
-    text-decoration: none; /* Remove the underline */
-    transition: color 0.1s; /* Add a smooth color transition on hover */
-  }
-  
-  a:not(.pasi a):hover {
-    color: theme('colors.red.500'); 
-    text-decoration: none; /* Remove the underline */
-    transition: color 0.1s; /* Add a smooth color transition on hover */
-  }
+/*****************************************************
+* HTML TAGS
+*****************************************************/
 
+html { /* We have to insist on a fixed font-size, to make sure that there won't be any resizing due to hover effects within the MainPanel */
+  font-size: 16px; 
 }
 
 body {
@@ -109,16 +84,91 @@ body {
     rgb(var(--background-start-rgb));
 }
 
-.codepanel {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-feature-settings: 'none'; /* Ligatures in the code panel would look silly, so we turn them off. */
-  background-color: rgb(var(--codepanelbg));
-  color: rgb(var(--codepanelcolor));
-  outline-color: black;
-  border-color: black;
-
+section { /* We're going with slightly bigger font for the surrounding sections. */
+  font-size: 18px; 
 }
 
+h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 1.25em 0;
+}
+
+h3 {
+  -webkit-backdrop-filter: blur(15px); /* for Safari */
+  backdrop-filter: blur(15px);
+  font-size: 1.25em;
+  font-weight: bold;
+  margin: 1.25em 0;
+  padding-top: 0.25em;
+  padding-bottom: 0.25em;
+}
+
+p:not(.pasi p) {
+    margin-bottom: 12px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+a:not(.pasi a):not(.ReactModal__Body--open a) {
+  color: rgb(var(--link-rgb)); 
+  text-decoration: none; 
+  transition: color 0.5s; /* Add a smooth color transition on hover */
+}
+
+a:not(.pasi a):not(.ReactModal__Body--open a):hover {
+  color: rgb(var(--link-hover-rgb)); 
+  text-decoration: none; 
+  transition: color 0.1s; /* Add a smooth color transition on hover */
+}
+
+
+/*****************************************************
+* REACT-MODAL
+*****************************************************/
+
+.ReactModal__Overlay {
+  opacity: 0;
+  transition: opacity 750ms ease-in-out;
+}
+.ReactModal__Overlay--after-open {
+  opacity: 1;
+}
+.ReactModal__Overlay--before-close {
+  opacity: 0;
+}
+
+/* Disable pointer events (and turn off link coloring) if modal dialog is open... */
+.ReactModal__Body--open {
+  pointer-events: none;
+  a {
+    text-decoration: none;
+    transition: color 500ms ease-in-out;
+  }
+}
+/* ...but allow them on the modal dialog itself and on the overlay. */
+.ReactModal__Content {
+  pointer-events: auto;
+}
+.ReactModal__Overlay {
+  pointer-events: auto;
+}
+/* Using a custom class, we gradually turn link coloring back on while the modal dialog is closing: */
+.modal-closing {
+  pointer-events: none;
+  a {
+    color: rgb(var(--link-rgb)); 
+    text-decoration: none;
+    transition: color 500ms ease-in-out;
+  }
+}
+
+
+/*****************************************************
+* SCROLLBARS
+*****************************************************/
 
 /* For browsers that support `scrollbar-*` properties */
 @supports (scrollbar-color: auto) {
@@ -189,17 +239,19 @@ body {
   }
 }
 
-.ReactModal__Overlay {
-  opacity: 0;
-  transition: opacity 750ms ease-in-out;
-}
 
-.ReactModal__Overlay--after-open {
-  opacity: 1;
-}
+/*****************************************************
+* OTHER CLASSES
+*****************************************************/
 
-.ReactModal__Overlay--before-close {
-  opacity: 0;
+.codepanel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-feature-settings: 'none'; /* Ligatures in the code panel (in monospace font!) would look silly, so we turn them off. */
+  background-color: rgb(var(--codepanelbg));
+  color: rgb(var(--codepanelcolor));
+  outline-color: black;
+  border-color: black;
+
 }
 
 .menu {
@@ -209,23 +261,5 @@ body {
 
 .checkbox.dark {
   filter: brightness(0.85); 
-}
-
-h2 {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 1.25em 0;
-}
-
-h3 {
-  position: sticky;
-  top: 0;
-  -webkit-backdrop-filter: blur(15px); /* for Safari */
-  backdrop-filter: blur(15px);
-  font-size: 1.25em;
-  font-weight: bold;
-  margin: 1.25em 0;
-  padding-top: 0.25em;
-  padding-bottom: 0.25em;
 }
 

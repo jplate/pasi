@@ -153,7 +153,7 @@ const getHint = (item: ENode | CNodeGroup, eMap: Map<ENode, string>, gMap: Map<G
     return result.join('');
 }
 
-const getGroupMap = (str: string) => {
+const getGroupMap = (str: string, sgCounter: number) => {
     const map = new Map<string, Group<any>>();
     str.split(' ').forEach(s => {
         const sp = s.split(/[\.:]/); // The dot/colon distinction is used to indicate whether a group member's membership is active.
@@ -162,12 +162,13 @@ const getGroupMap = (str: string) => {
         }
         // Now that all group names are guaranteed to be reasonably short, we won't have to bother with truncating them in our error messages.
 
-        let g: StandardGroup<ENode | Group<any>>;
+        let g: StandardGroup<Item | Group<any>>;
         if (map.has(sp[0])) {
             g = map.get(sp[0]) as StandardGroup<ENode | Group<any>>;
         }
         else {
-            g = new StandardGroup<ENode | Group<any>>([]);
+            g = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+            sgCounter++;
             map.set(sp[0], g);
         }
         if (g.members.length>0) {
@@ -191,7 +192,8 @@ const getGroupMap = (str: string) => {
                 }
             }
             else {
-                m = new StandardGroup<ENode | Group<any>>([]);
+                m = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+                sgCounter++;
                 map.set(ms, m);
             }
             m.group = g;
@@ -252,25 +254,30 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
 }
 
 /** 
- * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is obtained from gMap.
+ * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is either obtained from gMap or created.
+ * Returns an updated StandardGroup counter.
  */
-const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>) => {
+const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>, sgCounter: number) => {
     if (groupName) {
         let g: StandardGroup<Item | Group<any>>;
         if (gMap.has(groupName)) {
             g = gMap.get(groupName) as StandardGroup<Item | Group<any>>;
         }
         else {
-            g = new StandardGroup<Item | Group<any>>([]);
+            g = new StandardGroup<Item | Group<any>>(sgCounter.toString(), []);
+            sgCounter++;
             gMap.set(groupName, g);
         }
         g.members.push(item);
         item.group = g;
         item.isActiveMember = activeMember;
     }
+    return sgCounter;
 }
 
-const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean]>, gMap: Map<string, Group<any>>, counter: number): ENode => {
+const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean]>, 
+    gMap: Map<string, Group<any>>, counter: number, sgCounter: number
+): [ENode, number] => {
     // The 'hint' for an ENode has the following format:
     // ['E' + name] or 
     // ['E' + name + ('.' or ':') + groupName] or 
@@ -296,24 +303,32 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     else {
         node = new ENode(counter, 0, 0);
     }
-    if (groupName) addToGroup(node, groupName, activeMember!, gMap);
+    let result = sgCounter;
+    if (groupName) {
+        sgCounter = addToGroup(node, groupName, activeMember!, gMap, sgCounter);
+    }
     node.parse(tex, info, name);
     eMap.set(name, [node, true]);
-    return node;
+    return [node, sgCounter];
 }
 
-const parseCNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, counter: number): CNodeGroup => {
+const parseCNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, 
+    counter: number, sgCounter: number
+): [CNodeGroup, number] => {
     // The 'hint' for a NodeGroup has the following format:
     // ['K' + info] or 
     // ['K' + info + ('.' or ':') + groupName].
     const [, groupName, activeMember, info] = analyzeHint(hint);
     const nodeGroup = new CNodeGroup(counter);
     nodeGroup.parse(tex, info);
-    if (groupName) addToGroup(nodeGroup, groupName, activeMember!, gMap);
-    return nodeGroup;
+    if (groupName) {
+        sgCounter = addToGroup(nodeGroup, groupName, activeMember!, gMap, sgCounter);
+    }
+    return [nodeGroup, sgCounter];
 }
 
-export const load = (code: string, eCounter: number, ngCounter: number): [(ENode | CNodeGroup)[], number, number, number] => {
+export const load = (code: string, eCounter: number, cngCounter: number, sgCounter: number
+): [(ENode | CNodeGroup)[], number, number, number, number] => {
     const list: (ENode | CNodeGroup)[] = [];
     const lines = code.split(/[\r|\n]+/).filter(l => l.length>0);
     const n = lines.length;
@@ -340,7 +355,8 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
     if (pixel<0) {
         throw new ParseError(<span>Argument to <code>\setunitscale</code> should not be negative.</span>);
     }
-    const gMap = split1.length>1? getGroupMap(split1[1]): new Map<string, Group<any>>();
+    const gMap = split1.length>1? getGroupMap(split1[1], sgCounter): new Map<string, Group<any>>();
+    
 
     // We now have to parse the remaining lines, except for the last one, which should just be identical with Texdraw.end.
 
@@ -362,15 +378,17 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
             const prefix = hint.slice(0, 1);
             switch (prefix) {
                 case ENODE_PREFIX: {
-                        const node = parseENode(tex, hint, eMap, gMap, eCounter);
+                        let node: ENode;
+                        [node, sgCounter] = parseENode(tex, hint, eMap, gMap, eCounter, sgCounter);
                         eCounter++;
                         list.push(node);
                         break;
                     }
                 case NODEGROUP_PREFIX: {
-                        const nodeGroup = parseCNodeGroup(tex, hint, gMap, ngCounter);
-                        ngCounter++;
-                        list.push(nodeGroup);
+                        let cng: CNodeGroup;
+                        [cng, sgCounter] = parseCNodeGroup(tex, hint, gMap, cngCounter, sgCounter);
+                        cngCounter++;
+                        list.push(cng);
                         break;
                     }
                 default: { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
@@ -388,5 +406,5 @@ export const load = (code: string, eCounter: number, ngCounter: number): [(ENode
         throw new ParseError(<span>The last line should read <code>{Texdraw.end}</code>. Incomplete code?</span>);
     }
 
-    return [list, pixel, eCounter, ngCounter];
+    return [list, pixel, eCounter, cngCounter, sgCounter];
 }

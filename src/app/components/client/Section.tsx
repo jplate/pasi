@@ -38,10 +38,12 @@ const Section = ({ id, header, dark, children }: SectionProps) => {
     }, []);
 
     return (
-        <section id={id} ref={sectionRef} className={clsx('prose prose-lg max-w-5xl z-50 mt-3 ml-9 mb-9',
+        <section id={id} ref={sectionRef} className={clsx('prose prose-lg max-w-fit lg:max-w-5xl mt-3 ml-9 mb-9',
                 dark? 'prose-dark': 'prose-light')}>
             {header && 
-                <h3 ref={headerRef} className={clsx(scrolledPast && 'font-normal font-lg max-w-6xl transform -translate-x-12', 'transition duration-500')}>
+                <h3 ref={headerRef} className={clsx(scrolledPast && 
+                        'md:sticky md:top-0 md:font-normal lg:max-w-6xl lg:transform lg:-translate-x-12', 
+                        'transition duration-500')}>
                     {header}
                 </h3>
             }

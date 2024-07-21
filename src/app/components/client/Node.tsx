@@ -1,8 +1,5 @@
 import Item from './Item'
-import { Entry } from './ItemEditor.tsx'
-import Group, { GroupMember } from './Group.tsx'
-import ENode from './ENode.tsx'
-import CNodeGroup from './CNodeGroup.tsx'
+import Ornament from './depItem/Ornament.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 
 /**
@@ -28,27 +25,26 @@ export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 
 
 
-export interface HSL {
-    hue: number
-    sat: number
-    lgt: number
-}
-
-
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
- * Nodes are Items with a specified center, linewidth, and shading.
+ * Nodes are Items with a specified center, linewidth, dash pattern, and shading.
  */
 export default class Node extends Item {
     x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number
     x100: number // These coordinates represent the item's location at 100% scaling.
     y100: number
+    radius: number = 0;
+    radius100: number = 0;
     linewidth: number = DEFAULT_LINEWIDTH
     linewidth100: number = DEFAULT_LINEWIDTH
     shading: number = DEFAULT_SHADING
     dash: number[] = DEFAULT_DASH
     dash100: number[] = DEFAULT_DASH
+
+    ornaments: Ornament[] = [];
+
+    private ornamentCounter = 0; // for generating IDs for Ornaments
 
 
     constructor(id: string, x: number, y: number) {
@@ -59,60 +55,50 @@ export default class Node extends Item {
         this.y100 = y;
     }
 
-    public override getString() {
+    override getString() {
         return this.id;
     }
 
-    public override getLeft() {
-        return this.x;
-    }
-    
-    public override getBottom() {
-        return this.y;
+    override getBottomLeftCorner() {
+        return { bottom: this.y, left: this.x };
     }
 
-    public override reset() {
+    override reset() {
         this.linewidth = this.linewidth100 = DEFAULT_LINEWIDTH;
         this.dash = this.dash100 = DEFAULT_DASH;
         this.shading = DEFAULT_SHADING;
     }
 
-    public override getTexdrawCode():string {
+    override getTexdrawCode():string {
         return Texdraw.linewd(this.linewidth);
     }
 
-    public override getInfoString(): string {
+    override getInfoString(): string {
         return '';
     }
 
-    public move(dx: number, dy: number): void {
+    move(dx: number, dy: number): void {
         this.x += dx;
         this.y += dy;
         this.x100 += dx;
         this.y100 += dy;
     }
 
-    public setLinewidth(lw: number) {
+    setLinewidth(lw: number) {
         this.linewidth = this.linewidth100 = lw;
     }
 
-    public setShading(sh: number) {
+    setShading(sh: number) {
         this.shading = sh;
     }
 
-    public setDash(dash: number[]) {
+    setDash(dash: number[]) {
         this.dash = this.dash100 = dash;
     }
 
-
-    /**
-	 * Invoked by Codec1#load(); should be overridden by subclasses. Parses the supplied code and info string and updates this Item's fields 
-     * accordingly.
-	 * @param code the texdraw code.
-	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
-	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
-	 */
-	public parse(code: string, info: string, name?: string): void {}
+    getNewOrnamentID() {
+        return `${this.id}-${this.ornamentCounter++}`;
+    }
 
 
 }

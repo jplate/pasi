@@ -1,17 +1,17 @@
 import React from 'react'
 //import assert from 'assert'
-import Item from './Item'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE, HSL } from './Node.tsx'
+import Item, { HSL } from './Item'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './Node.tsx'
 import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
-import CNode, { MIN_ROTATION, CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
+import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
 import ENode from './ENode.tsx'
-import { round, toBase64, fromBase64 } from '../../util/MathTools.tsx'
+import { MIN_ROTATION } from './ItemEditor'
+import { round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 import { encode, decode } from '../../codec/Codec1.tsx'
-import { getCyclicValue } from '../../util/MathTools.tsx'
 
 const STANDARD_CONTOUR_HEIGHT = 80
 const STANDARD_CONTOUR_WIDTH = 120
@@ -747,35 +747,35 @@ interface CNodeGroupCompProps {
     focusItem: Item | null
     preselection: Item[]
     selection: Item[]
-    allNodes: Node[]
+    allItems: Item[]
     yOffset: number
     bg: HSL
     primaryColor: HSL
     markColor: string
     itemMouseDown: (
-        item: Node, 
+        item: Item, 
         e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>, 
         clearPreselection?: boolean
     ) => void
-    itemMouseEnter: (item: Node, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    itemMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     groupMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
     groupMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void
     mouseLeft: () => void
 }
 
-export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allNodes, yOffset, bg, primaryColor, markColor, 
+export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allItems, yOffset, bg, primaryColor, markColor, 
         itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: CNodeGroupCompProps) => {
-    const centerDivClickable = !allNodes.some(item => {
-        if (item instanceof ENode || item instanceof CNode) {
-            const r = item.radius;
-            const c = nodeGroup.getNodalCenter(); // the location of the center div
-            const [cdW, cdH] = nodeGroup.centerDivDimensions();            
-            const { x, y } = item;
-            return Math.abs(c.x - x) + r < cdW/2 && Math.abs(c.y - y) + r < cdH/2;
-        }
-        else {
-            return false;
-        }
+    const centerDivClickable = !allItems.some(item => {
+        const c = nodeGroup.getNodalCenter(); // the location of the center div
+        const [cdW, cdH] = nodeGroup.centerDivDimensions();
+        const w2 = item.getWidth() / 2;
+        const h2 = item.getHeight() / 2;
+        const { bottom, left } = item.getBottomLeftCorner();
+        const icx = left + w2;
+        const icy = bottom + h2;
+        // Return true iff the item is covered by the center div:
+        return Math.abs(c.x - icx) + w2 < cdW/2 && 
+            Math.abs(c.y - icy) + h2 < cdH/2;
     });
     // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
     // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.
@@ -813,7 +813,7 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
     }
     return (
         <React.Fragment key={nodeGroup.id}>
-            <Contour key={nodeGroup.id} id={nodeGroup.id+'Contour'} group={nodeGroup} yOffset={yOffset} 
+            <Contour id={nodeGroup.id+'Contour'} group={nodeGroup} yOffset={yOffset} 
                 bg={bg} 
                 primaryColor={primaryColor} 
                 markColor={markColor} 
@@ -824,10 +824,13 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
                 onMouseLeave={(group, e) => mouseLeft()} />
             {nodeGroup.members.map((node, i) => {
                 return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
+                    primaryColor={primaryColor}
                     markColor={markColor}
-                    focus={focusItem===node}
+                    focusItem={focusItem}
                     selected={selectedNodes[i]}
                     preselected={preselectedNodes[i]}
+                    selection={selection}
+                    preselection={preselection}
                     arrow={arrowNodes[i]}
                     onMouseDown={itemMouseDown}
                     onMouseEnter={itemMouseEnter} 
