@@ -147,7 +147,7 @@ export default class CNodeGroup implements Group<CNode> {
         return [cdW, cdH];
     }
 
-    public getString = () => `NG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
+    public getString = () => `CNG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
 
     /**
      * A function called in order to change the locations of one or more members. Member nodes that have the 'fixed Angles' property propagate their movement

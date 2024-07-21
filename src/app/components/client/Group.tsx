@@ -94,14 +94,19 @@ export const getLeafMembers = (group: Group<any>, onlyActiveMembers: boolean = f
 
 export class StandardGroup<T extends GroupMember> implements GroupMember, Group<T> {
     
-    constructor(
-        public id: string,
-        public members: T[], 
-        public group: Group<T> | null = null,
-        public isActiveMember: boolean = false
-    ) {}
+    id: string
+    members: T[]
+    group: Group<T> | null
+    isActiveMember: boolean
+
+    constructor(id: number, members: T[], group: Group<T> | null = null, isActiveMember: boolean = false) {
+        this.id = `SG${id}`;
+        this.members = members;
+        this.group = group;
+        this.isActiveMember = isActiveMember;
+    }
  
-    public getString = () => `SG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
+    public getString = () => `${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
 
     /**
      * Returns true iff this group directly or indirectly (via a chain of membership-relationships involving StandardGroups) contains the supplied object.

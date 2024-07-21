@@ -729,9 +729,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }
                 }
             }
-            const newItems = getItems(list, false, item => !prim.includes(item) && lm.has(item));
-            setPreselection2(prev => [...prim, ...newItems]);
-        }, [preselection1, list]
+            const addition = allItems.filter(item => !prim.includes(item) && lm.has(item));
+            setPreselection2(prev => [...prim, ...addition]);
+        }, [preselection1, allItems]
     );
 
 
@@ -786,7 +786,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         }
                         else {
                             const lm = getLeafMembers(itemToAdd);
-                            newSelection=[...selection, item, ...getItems(list, false, it => it!==item && !selection.includes(it) && lm.has(it))];
+                            newSelection=[...selection, item, ...allItems.filter(it => it!==item && !selection.includes(it) && lm.has(it))];
                         }
                         if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
@@ -1005,7 +1005,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }           
         }, 
         [
-            deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, scaling, adjustLimit, 
+            allItems, deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, scaling, adjustLimit, 
             cngCounter, deselect, grid, origin.x, origin.y, setOrigin, updateSecondaryPreselection
         ]
     );
@@ -1109,7 +1109,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             changed = changed || !result;
                             return result
                         }),
-                        ...getItems(list, false, item => {
+                        ...allItems.filter(item => {
                             const result = lasso.contains(item, yOffset) && !pres.includes(item) && (!deselect || selection.includes(item));
                             changed = changed || result;
                             return result
@@ -1183,7 +1183,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
             setAdding(false);
             setDissolveAdding(false);
-        }, [selection, list, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
+        }, [allItems, selection, list, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
     );
 
     /**
@@ -1225,7 +1225,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
     }, [points, cngCounter, list, adjustLimit, setOrigin]);
 
-    const sorry = () => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}
+    const sorry = useCallback(() => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}, []);
 
     /** 
      * OnClick handler for the 'Create' button.
@@ -1252,7 +1252,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         if (topTbc.length>0) {
             const copies = new Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>(); // This will store the keys of the copied Items, 
                 // CNodeGroups, and StandardGroups, mapped to their respective copies.
-            const [newENodeCounter, newCNGCounter, newSGCounter] = copy(topTbc, hDisplacement, vDisplacement, 
+            const [newENodeCounter, newCNGCounter, newSGCounter] = copy(topTbc, deduplicatedSelection, hDisplacement, vDisplacement, 
                 copies, eNodeCounter, cngCounter, sgCounter);
             const copiedList = list.reduce((acc: (ENode | CNodeGroup)[], it) => { // an array that holds the copied nodes or node groups in the same 
                 // order as list holds the nodes or node groups that they're copies of
@@ -1291,7 +1291,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 scrollTo(newFocus);
             }
         }
-    }, [topTbc, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, adjustLimit, setOrigin, scrollTo]);
+    }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, adjustLimit, setOrigin, scrollTo]);
 
 
     /**
@@ -1394,9 +1394,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         }
         else {
             const lm = getLeafMembers(ha, true);
-            setSelection([item, ...getItems(list, false, it => it!==item && lm.has(it))]);
+            setSelection([item, ...allItems.filter(it => it!==item && lm.has(it))]);
         }
-    }, [list]);
+    }, [allItems]);
 
     /**
      * Moves the selection in one of the four cardinal directions, by an amount determined by itemEditorConfig.logIncrement.
@@ -1498,7 +1498,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setScaling(newValue);
             setItemsMoved(prev => [...prev]);
         }
-    }, [selectedNodes, origin, list, limit, adjustLimit, testScaling, deduplicatedSelection, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
+    }, [selectedNodes, origin, adjustLimit, testScaling, deduplicatedSelection, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
 
     /**
      * Rounds the location of each selected item to the nearest pixel.
@@ -1646,7 +1646,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setCNGCounter(prev => prev + 1);
         }                                                
         else {
-            group = new StandardGroup<Item | Group<any>>(sgCounter.toString(), newMembers);
+            group = new StandardGroup<Item | Group<any>>(sgCounter, newMembers);
             setSGCounter(prev => prev + 1);
         }
         const oldGroups = newMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
