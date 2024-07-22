@@ -790,7 +790,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         }
                         if (group!==itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
-                                console.log(`gs: ${group.members.length}`);
                                 if (group instanceof CNodeGroup && !(itemToAdd instanceof CNode)) {
                                     showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
                                     return;

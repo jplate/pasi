@@ -21,9 +21,6 @@ const copyOrnament = (
 ): Ornament => {    
     const copy = o.clone(o.node);
     copy.angle = getCyclicValue(o.angle + ANGULAR_COPY_DISPLACEMENT, MIN_ROTATION, 360, ROUNDING_DIGITS);
-    if (o.group) {
-        o.group.members.push(o);
-    }
     copies.set(o.id, copy);
     return copy;
 }
@@ -154,33 +151,41 @@ export const copyStandardGroup = (
 
     const copiedGroup = new StandardGroup<Item | Group<any>>(sgCounter, []);    
     sgCounter++;
+    copies.set(group.id, copiedGroup);
 
-    const members = group.members.reduce((acc: (Item | Group<any>)[], m) => {
-        let copy: Item | CNodeGroup | StandardGroup<Item | Group<any>> | undefined;
+    for (let m of group.members) {
+        //console.log(`M: ${m.getString()}`);
+        let copy: Item | CNodeGroup | StandardGroup<Item | Group<any>> | undefined = undefined;
         switch (true) {
-            case m instanceof ENode:                
-                copy = copyENode(m, enCounter++, hDisplacement, vDisplacement, topTbc, copies);
+            case m instanceof ENode: {
+                copy = copyENode(m, enCounter++, hDisplacement, vDisplacement, topTbc, copies); // Note that this may push Ornaments onto copiedGroup.members.
                 copies.set(m.id, copy);
                 break;
-            case m instanceof CNodeGroup: 
-                copy = copyCNodeGroup(m, cngCounter++, hDisplacement, vDisplacement, topTbc, copies);
+            }
+            case m instanceof CNodeGroup: {
+                copy = copyCNodeGroup(m, cngCounter++, hDisplacement, vDisplacement, topTbc, copies); // Ditto.
                 copies.set(m.id.toString(), copy);
                 break;
-            case m instanceof StandardGroup: 
-                [copy, enCounter, cngCounter, sgCounter] = copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies);
+            }
+            case m instanceof StandardGroup: {
+                [copy, enCounter, cngCounter, sgCounter] = 
+                    copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies); // Ditto.
                 break;
+            }
             case m instanceof Ornament: {
                 const nodeShouldBeCopied = selection.includes(m.node);
                 if (!nodeShouldBeCopied) { 
                     copy = copyOrnament(m, copies);
                 } 
-                else if (copies.has(m.id)) { 
+                else if (copies.has(m.id)) { // This will be the case if previously a Node has been copied to which m is attached.
                     const c = copies.get(m.id);
                     if (c instanceof Ornament) {
-                        copy = copies.get(m.id);
+                        if (c.group===m.group) { // In this case the copy's group still needs to be updated.
+                            copy = c;
+                        }
                     }
                     else {
-                        console.warn(`ID ${m.id} mapped to an object that is not an Ornament.`);
+                        console.warn(`ID ${m.id} is mapped to an object that is not an Ornament.`);
                     }
                 } // Otherwise we rely on copyENode/copyCNode to make sure that the copied Ornament is made a member of the appropriate group.
                 break;
@@ -188,17 +193,13 @@ export const copyStandardGroup = (
             default: return null as never;
         }
         if (copy) {
+            //console.log(`Setting group for ${copy.getString()}: ${copiedGroup.getString()}`);
             copy.group = copiedGroup;
-            return [...acc, copy];
-        } else {
-            return acc;
+            copiedGroup.members.push(copy);
         }
-    }, []);
-    copiedGroup.members = members;
+    }
     copiedGroup.group = group.group;
     copiedGroup.isActiveMember = group.isActiveMember;
-
-    copies.set(group.id, copiedGroup);
 
     return [copiedGroup, enCounter, cngCounter, sgCounter];
 }
@@ -218,13 +219,18 @@ export const copy = (
     topTbc.forEach(m => {
         switch (true) {
             case m instanceof Ornament: {
+                //console.log(`O: ${m.id}`);
                 const nodeShouldBeCopied = selection.includes(m.node);
                 if (!nodeShouldBeCopied) {
-                    copyOrnament(m, copies);
+                    const copy = copyOrnament(m, copies);
+                    if (m.group) {
+                        m.group.members.push(copy);
+                    }                
                 }
                 break;
             }
             case m instanceof ENode: {
+                //console.log(`E: ${m.id}`);
                 const copy = copyENode(m, enCounter++, hDisplacement, vDisplacement, topTbc, copies);
                 if (m.group) {
                     m.group.members.push(copy);
@@ -233,6 +239,7 @@ export const copy = (
                 break;
             }
             case m instanceof CNode: {
+                //console.log(`C: ${m.id}`);
                 const copy = copyCNode(m, hDisplacement, vDisplacement, 0, 0, topTbc, copies);
                 if (m.group) {
                     m.group.members.splice(m.group.members.indexOf(m) + 1, 0, copy);
@@ -243,14 +250,16 @@ export const copy = (
                 break;
             }
             case m instanceof CNodeGroup: {
-                const cng = copyCNodeGroup(m, cngCounter++, hDisplacement, vDisplacement, topTbc, copies);
-                if (cng.group) {
-                    cng.group.members.push(cng);
+                //console.log(`CG: ${m.getString()}`);
+                const copy = copyCNodeGroup(m, cngCounter++, hDisplacement, vDisplacement, topTbc, copies);
+                if (copy.group) {
+                    copy.group.members.push(copy);
                 }
-                copies.set(m.id.toString(), cng);
+                copies.set(m.id.toString(), copy);
                 break;
             }
             case m instanceof StandardGroup: {
+                //console.log(`SG: ${m.getString()}`);
                 let sg: StandardGroup<Item | Group<any>>;
                 [sg, enCounter, cngCounter, sgCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
                         enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies);
