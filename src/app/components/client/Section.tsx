@@ -22,7 +22,7 @@ const Section = ({ id, header, dark, children }: SectionProps) => {
                     // But the resulting new width of the header depends on the actual width of the section, which means that we can't 
                     // use tailwind. So we do the following:
                     const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
-                    headerRef.current.style.width = `${sectionRef.current.clientWidth + (3 * fontSize)}px`;
+                    headerRef.current.style.width = `${sectionRef.current.clientWidth + (2 * fontSize)}px`;
                 } else {
                     setScrolledPast(false);
                     headerRef.current.style.width = `${sectionRef.current.clientWidth}px`;
@@ -42,8 +42,8 @@ const Section = ({ id, header, dark, children }: SectionProps) => {
                 dark? 'prose-dark': 'prose-light')}>
             {header && 
                 <h3 ref={headerRef} className={clsx(scrolledPast && 
-                        'md:sticky md:top-0 md:font-normal lg:max-w-6xl lg:transform lg:-translate-x-12', 
-                        'transition duration-500')}>
+                        'md:sticky md:top-0 md:font-normal lg:max-w-6xl lg:transform lg:-translate-x-8', 
+                        'transition duration-200')}>
                     {header}
                 </h3>
             }

@@ -28,7 +28,10 @@ export default class Label extends Ornament {
     text: string = ''
     centered: boolean = false;
 
-
+    /**
+     * Creates a new Label, which is added (via the superclass constructor) to the supplied Node's array of Ornaments. 
+     * It also receives a unique ID.
+     */
     constructor(node: Node, text: string) {
         super(node);
         this.text = text;

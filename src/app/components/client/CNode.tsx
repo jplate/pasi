@@ -1,6 +1,6 @@
 import clsx from 'clsx/lite'
 import Item, { HSL, Range } from './Item'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, getMarkBorder } from './Node.tsx'
 import ENode from './ENode.tsx'
 import CNodeGroup, { angle } from './CNodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
@@ -66,12 +66,14 @@ export default class CNode extends Node {
     }
 
     override reset() {
-        const group = this.group as CNodeGroup;
         super.reset();
+        
         this.fixedAngles = true;
         this.omitLine = false;
         this.angle0 = this.angle1 = 0;
         this.dist0 = this.dist0_100 = this.dist1 = this.dist1_100 = DEFAULT_DISTANCE;
+
+        const group = this.group as CNodeGroup;
         group.linewidth = group.linewidth100 = DEFAULT_LINEWIDTH;
         group.dash = group.dash100 = DEFAULT_DASH;
         group.shading = DEFAULT_SHADING;
@@ -108,7 +110,7 @@ export default class CNode extends Node {
             {type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: group.linewidth, step: 0.1},
             {type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: group.dashValidator.write(group.dash)},
             {type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: group.shading, min: 0, max: 1, step: 0.1},
-            {type: 'number input', key: 'rank', text: 'Rank (akin to Z-index)', value: list.indexOf(group), step: 1, extraBottomMargin: true},
+            {type: 'number input', key: 'rank', text: 'Rank in paint-order', value: list.indexOf(group), step: 1, extraBottomMargin: true},
             {type: 'button', key: 'defaults', text: 'Defaults'},
             {type: 'button', key: 'angles', text: 'Equalize central angles', style: 'text-sm'},
             {type: 'button', key: 'distances', text:'Equalize distances\n from center', style: 'text-sm'},
@@ -302,8 +304,7 @@ export const CNodeComp = ({ id, cnode, yOffset, primaryColor, markColor, focusIt
                 </svg>
             </div>
         );
-    }
-    
+    }   
 
     //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
@@ -321,10 +322,7 @@ export const CNodeComp = ({ id, cnode, yOffset, primaryColor, markColor, focusIt
                     cursor: 'pointer'
                 }}>
                 <svg width={mW + MARK_LINEWIDTH * 2} height={mH + MARK_LINEWIDTH * 2} xmlns="http://www.w3.org/2000/svg">
-                    <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+                    {getMarkBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
             {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, primaryColor, markColor, 

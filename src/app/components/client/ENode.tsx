@@ -1,7 +1,7 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
-import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node.tsx'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, getMarkBorder } from './Node.tsx'
 import { Entry } from './ItemEditor.tsx'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
@@ -335,10 +335,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, ma
                         strokeDasharray={enode.dash.join(' ')} 
                         strokeLinecap={LINECAP_STYLE}
                         strokeLinejoin={LINEJOIN_STYLE} />
-                    <polyline stroke={markColor1} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />
-                    <polyline stroke={markColor1} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-                    <polyline stroke={markColor1} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-                    <polyline stroke={markColor1} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+                    {getMarkBorder(left, top, l, m, mW, mH, markColor1)}
                 </svg>
                 {selectedPositions.length > 0 && // Add a 'title'
                     <div style={{

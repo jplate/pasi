@@ -2,17 +2,10 @@ import Item from './Item'
 import Ornament from './depItem/Ornament.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 
-/**
- * The highest value that item parameters should be allowed to take (to prevent crashes).
- */
-export const MAX_VALUE = 16384;     			
-/**
- * The lowest value that item parameters should be allowed to take (to prevent crashes).
- */
-export const MIN_VALUE = -MAX_VALUE; 
 export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
 export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
+export const MAX_NUMBER_OF_ORNAMENTS = 500;
 
 export const DEFAULT_LINEWIDTH = 1;
 export const DEFAULT_DASH = [];
@@ -24,6 +17,14 @@ export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
 export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 
 
+export const getMarkBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
+    <>
+        <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />    
+        <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
+        <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
+        <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+    </>
+);
 
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
@@ -67,6 +68,7 @@ export default class Node extends Item {
         this.linewidth = this.linewidth100 = DEFAULT_LINEWIDTH;
         this.dash = this.dash100 = DEFAULT_DASH;
         this.shading = DEFAULT_SHADING;
+        // We don't reset the radius to zero because the subclasses have their own default values.
     }
 
     override getTexdrawCode():string {
@@ -99,6 +101,5 @@ export default class Node extends Item {
     getNewOrnamentID() {
         return `${this.id}-${this.ornamentCounter++}`;
     }
-
 
 }

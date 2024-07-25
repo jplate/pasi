@@ -8,7 +8,7 @@ import { round } from '../util/MathTools'
 
 export const versionString = 'pasiCodecV1';
 
-const CODE = '0123456789aáàäâbcdeéèêfghiíìîjklmnoóòöôpqrstuúùüûvwxyýzAÁÀÄÂBCDEÉÈÊFGHIÍÌÎJKLMNOÓÒÖÔPQRSTUÚÙÜÛVWXYÝZ';
+const CODE = '0123456789!#$&*+/<=>?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
 const ENCODE_BASE = CODE.length;
 const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
@@ -43,9 +43,9 @@ const decodeInt = (str: string) => {
  * minus sign appears whenever the number is negative, the dot only if the number is positive and there's a fractional part.
  */
 export const encode = (val: number) => {
-    if (isNaN(val)) return '?';
-    else if (val===-Infinity) return '_';
-    else if (val===Infinity) return '^';
+    if (isNaN(val)) return 'î';
+    else if (val===-Infinity) return 'â';
+    else if (val===Infinity) return 'ô';
     else {
         const isNegative = val<0;
         const abs = Math.abs(val);
@@ -73,9 +73,9 @@ export const encode = (val: number) => {
  * Returns the number represented by the supplied string. This may be NaN. NaN is also returned if the string contains a syntax error.
  */
 export const decode = (s: string) => {
-    if (s==='' || s==='?') return NaN;
-    else if (s==='_') return -Infinity;
-    else if (s==='^') return Infinity;
+    if (s==='' || s==='î') return NaN;
+    else if (s==='â') return -Infinity;
+    else if (s==='ô') return Infinity;
     else {
         const isNegative = s.includes('-');
         const fpPos = s.search(/[\.-]/);
@@ -232,7 +232,7 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
     if(i >= 0) {
         info = extractString(hint, '\\{(.*?)\\}', i);
         if (!info) { 
-            throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
+            throw new ParseError(<span>Ill-formed directive (expected closing bracket): <code>{truncate(hint)}</code>.</span>);
         }
     }
     let j = hint.indexOf(':', info? i + info.length + 1: 0);
@@ -248,7 +248,7 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
     const name = i < 0 && j < 0? hint.slice(1): hint.slice(1, i<0? j: i);
     const groupName = j < 0? null: hint.slice(j+1);
     if (j+1===hint.length) { // In this case the hint ends with a '.' or ':', which makes no sense.
-        throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
+        throw new ParseError(<span>Directive should not end with a period or colon: <code>{truncate(hint)}</code>.</span>);
     }
     return [name.length===0? null: name, groupName, activeMember, info];
 }
@@ -330,7 +330,7 @@ const parseCNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>
 export const load = (code: string, eCounter: number, cngCounter: number, sgCounter: number
 ): [(ENode | CNodeGroup)[], number, number, number, number] => {
     const list: (ENode | CNodeGroup)[] = [];
-    const lines = code.split(/[\r|\n]+/).filter(l => l.length>0);
+    const lines = code.split(/[\r\n]+/).filter(l => l.length>0);
     const n = lines.length;
     
     if (n<3) {
@@ -392,7 +392,7 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
                         break;
                     }
                 default: { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
-                    throw new ParseError(<span>Ill-formed directive: <code>{truncate(hint)}</code>.</span>);
+                    throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
                 }
             }
         } 

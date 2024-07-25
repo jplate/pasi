@@ -6,7 +6,7 @@ import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
 import Item from './Item'
-import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Node.tsx'
+import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
@@ -128,6 +128,7 @@ const scaleUpHotkeyDescr = (darkMode: boolean): JSX.Element => (
 export const hotkeys: HotkeyInfo[] = [
     { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
     { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
+    { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Add a label to each selected node.</> },
     { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection. (Tip: by copying individual members of a group, new members can be added to that group.)</> },
     { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
     { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
@@ -164,7 +165,7 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains, for each selected node, either the node itself or {' '}
         the highest group among those with which the node is connected by a chain of active membership and that are such that all their &lsquo;leaf {' '}
         members&rsquo; are among the selected nodes. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
-    { key: 'leave', keys: 'l', rep: ['L'], descr: <>Deactivate the membership of each selected node or its second-highest &lsquo;active&rsquo; group {' '}
+    { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of each selected node or its second-highest &lsquo;active&rsquo; group {' '}
         (where applicable) in its currently highest active group.</> },
     { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of each selected node or (where applicable) its highest active group {' '}
          in the next-lowest group.</> },
@@ -1244,6 +1245,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, [selectedNodes, depItemIndex, sorry]);
 
     /**
+     * Adds labels to all selected Nodes. (Hotkey-activated)
+     */
+    const addLabels = useCallback(() => {
+        selectedNodes.forEach(node => {
+            new Label(node, '$$');
+        });
+        setList(prev => [...prev]);
+    }, [selectedNodes]);
+
+    /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
      * the purposes of the 'Create Group' button in the GroupTab.
      */
@@ -1768,9 +1779,23 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
     const canDelete: boolean = selection.length>0;
 
-    const canAddENodes: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
+    const canAddENodes: boolean = points.length>0 && list.length < MAX_LIST_SIZE;
 
-    const canAddContours: boolean = points.length>0 && list.length<MAX_LIST_SIZE;
+    const canAddContours: boolean = points.length>0 && list.length < MAX_LIST_SIZE;
+
+    const canAddOrnaments: boolean = useMemo(() => 
+        selectedNodes.length > 0 && 
+        deduplicatedSelection.every(it => !(it instanceof Node) || it.ornaments.length <= MAX_NUMBER_OF_ORNAMENTS), 
+        [selectedNodes, deduplicatedSelection]
+    );
+
+    const canCreateDepItem: boolean = useMemo(() => {
+        const info = depItemInfos[depItemIndex]
+        return selectedNodes.length >= info.min && (
+            (info.min===1 && canAddOrnaments) || // If info.min===1, we are going to add Ornaments, and otherwise ENodes.
+            (info.min > 1) && list.length + selectedNodes.length < MAX_LIST_SIZE
+        )
+    }, [list, selectedNodes, depItemIndex, canAddOrnaments]);
 
     const canMoveLeft: boolean = leftMostSelected - 10 ** logIncrement >= 0;
 
@@ -1808,6 +1833,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         { enabled: canAddENodes && !modalShown });
     useHotkeys(hotkeyMap['add contours'], addContours, 
         { enabled: canAddContours && !modalShown });
+    useHotkeys(hotkeyMap['add labels'], addLabels, 
+        { enabled: canAddOrnaments && !modalShown });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), 
         { enabled: canMoveUp && !modalShown, preventDefault: true });
     useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), 
@@ -2034,7 +2061,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </Transition>
                             </Menu>                
                             <BasicColoredButton id='create-button' label='Create' style='rounded-md' 
-                                disabled={selectedNodes.length < depItemInfos[depItemIndex].min}
+                                disabled={!canCreateDepItem}
                                 onClick={createDepItem} /> 
                         </div>
                         <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-4' 
