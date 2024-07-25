@@ -326,7 +326,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, ma
                 <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
                     <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                         cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
-                        fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
+                        fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
                             `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
                             `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
                             `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}

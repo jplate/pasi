@@ -90,6 +90,7 @@ const SCROLL_X_OFFSET = 20 // How close to the left edge of the viewport the lim
 const SCROLL_Y_OFFSET = 20 // How close to the top edge of the viewport the limit point may be before we resize the canvas
 const CANVAS_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 100} // to be passed to ENodes
 const CANVAS_HSL_DARK_MODE = {hue: 29.2, sat: 78.6, lgt: 47.65} 
+const BLACK = {hue: 0, sat: 0, lgt: 0}
 const LASSO_DESELECT_LIGHT_MODE = 'rgba(255, 255, 255, 0.5)'
 const LASSO_DESELECT_DARK_MODE = 'rgba(0, 0, 0, 0.1)'
 
@@ -534,6 +535,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
     const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}) // for the transform tab
     const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
+    const [trueBlack, setTrueBlack] = useState(false); // indicates whether entity nodes and contours should use black as their primary and (when shading is set to 1) 
+        // background color.
 
     const [adding, setAdding] = useState(false)
     const [dissolveAdding, setDissolveAdding] = useState(false)
@@ -1905,6 +1908,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
         { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement)&& !modalShown });
     useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), 
         { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
+    // 'Secret' hotkey:
+    useHotkeys('mod+b', useThrottle(() => setTrueBlack(prev => !trueBlack), 100));
 
     const showModal = (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
         setDialog(prev => ({ contentLabel, title, content, extraWide }));
@@ -1937,7 +1942,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             it instanceof ENode?
                             <ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} 
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
-                                primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
+                                primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor0={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
                                 markColor1={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
                                 titleColor={dark && it.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
@@ -1953,8 +1958,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 preselection={preselection2}
                                 selection={deduplicatedSelection}
                                 allItems={allItems}
-                                yOffset={yOffset} bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
-                                primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
+                                yOffset={yOffset} 
+                                bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
+                                primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
                                 itemMouseDown={itemMouseDown}
                                 itemMouseEnter={itemMouseEnter}
@@ -2010,11 +2016,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton id='node-button' label='Node' style='rounded-xl mr-1.5' 
-                                tooltip={<>Add entity nodes at the selected locations.<HotkeyComp mapKey='add nodes' /></>}
+                                tooltip={<>Create entity nodes at the selected locations.<HotkeyComp mapKey='add nodes' /></>}
                                 tooltipPlacement='top'
                                 disabled={!canAddENodes} onClick={addEntityNodes} />
                             <BasicColoredButton id='contour-button' label='Contour' style='rounded-xl' 
-                                tooltip={<>Add contours at the selected locations.<HotkeyComp mapKey='add contours' /></>}
+                                tooltip={<>Create contours at the selected locations.<HotkeyComp mapKey='add contours' /></>}
                                 tooltipPlacement='top'
                                 disabled={!canAddContours} onClick={addContours} />  
                         </div>                    
