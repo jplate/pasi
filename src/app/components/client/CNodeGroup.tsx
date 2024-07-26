@@ -38,19 +38,17 @@ export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians:
 
 export default class CNodeGroup implements Group<CNode> {
 
-    public members: CNode[];
-    public group: Group<Node | Group<any>> | null;
-    public isActiveMember: boolean;
+    members: CNode[];
+    group: Group<Node | Group<any>> | null;
+    isActiveMember: boolean;
+    linewidth: number = DEFAULT_LINEWIDTH;
+    linewidth100: number = DEFAULT_LINEWIDTH;
+    shading: number = DEFAULT_SHADING;
+    dash: number[] = DEFAULT_DASH;
+    dash100: number[] = DEFAULT_DASH;
+    dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
-    public linewidth: number = DEFAULT_LINEWIDTH
-    public linewidth100: number = DEFAULT_LINEWIDTH
-    public shading: number = DEFAULT_SHADING
-    public dash: number[] = DEFAULT_DASH
-    public dash100: number[] = DEFAULT_DASH
-
-    public dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
-    
-    public readonly id: number;
+    readonly id: number;
     
     constructor(i: number, x?: number, y?: number) {
         this.id = i;
@@ -76,14 +74,14 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
     
-    public getLines = (): CubicLine[] => {
+    getLines = (): CubicLine[] => {
         const l = this.members.length;
         return this.members.map((node, i) => getLine(node, this.members[i+1<l? i+1: 0]));
     }
 
     /** Returns the bounds of this NodeGroup, taking into account also the control points of the various (non-omitted) lines connecting the nodes.
      */
-    public getBounds = (
+    getBounds = (
         lines: CubicLine[] = this.getLines(), 
     ): { minX: number, maxX: number, minY: number, maxY: number } => {
         const n = this.members.length;
@@ -109,7 +107,7 @@ export default class CNodeGroup implements Group<CNode> {
 
     /** Returns the bounds of this NodeGroup, taking into account only the coordinates of its members.
      */
-    public getNodalBounds = () => {
+    getNodalBounds = () => {
         let minX = Infinity,
             maxX = -Infinity,
             minY = Infinity,
@@ -125,7 +123,7 @@ export default class CNodeGroup implements Group<CNode> {
 
     /** Returns the geometric center of this NodeGroup, i.e., the average of the locations of its members nodes.
      */
-    public getNodalCenter = () => {
+    getNodalCenter = () => {
         const n = this.members.length;
         let xSum = 0,
             ySum = 0;
@@ -140,20 +138,20 @@ export default class CNodeGroup implements Group<CNode> {
      * Returns an array [w, h], with w and h being the width and height of the 'center div' for this group. The center div acts in part as an
      * alternative handle by which the group's nodes can be selected and moved around the canvas.
      */
-    public centerDivDimensions = () => {
+    centerDivDimensions = () => {
         const { minX: nodalMinX, maxX: nodalMaxX, minY: nodalMinY, maxY: nodalMaxY } = this.getNodalBounds();
         const cdW = Math.min((nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
         const cdH = Math.min((nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
         return [cdW, cdH];
     }
 
-    public getString = () => `CNG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
+    getString = () => `CNG${this.id}[${this.members.map(member => member.getString()+(member.isActiveMember? '(A)': '')).join(', ')}]`;
 
     /**
      * A function called in order to change the locations of one or more members. Member nodes that have the 'fixed Angles' property propagate their movement
      * to neighboring nodes.
      */
-    public groupMove = (nodes: CNode[], dx: number, dy: number) => {
+    groupMove = (nodes: CNode[], dx: number, dy: number) => {
         const members = this.members;
         const n = members.length;
         const bd = BUMP_DISTANCE;
@@ -232,7 +230,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    public equalizeCentralAngles = (node: CNode) => {
+    equalizeCentralAngles = (node: CNode) => {
         const n = this.members.length;
         if (n<3) return; // Nothing to do if n is less than 3.
         const index = this.members.indexOf(node);
@@ -304,7 +302,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    public equalizeDistancesFromCenter = (node: CNode) => {
+    equalizeDistancesFromCenter = (node: CNode) => {
         const n = this.members.length;
         if (n<3) return; // Nothing to do if n is less than 3.
        
@@ -320,7 +318,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    public getInfoString(): string {
+    getInfoString(): string {
         // The info string contains the following items, separated by semicolons and whitespace:
         // - A number (the 'index') indicating the first node from which a line is drawn, if any. If there is none, this will be zero.
         // - EITHER three strings, each of which is either (i) '*' or (ii) '~' or (iii) a base64-string, encoding the omitLine, fixedAngles, and isActiveMember properties, 
@@ -387,7 +385,7 @@ export default class CNodeGroup implements Group<CNode> {
         return result.join('; ');
     }
 
-    public getTexdrawCode(): string {
+    getTexdrawCode(): string {
         const drawnLines: Texdraw.CubicCurve[] = [];
         const filledLines: Texdraw.CubicCurve[] = [];
         let foundGap = false;
@@ -437,7 +435,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    public parse(tex: string, info: string | null): void {
+    parse(tex: string, info: string | null, name?: string): void {
         if(info===null) {	        	
             throw new ParseError(<span>Incomplete definition of contour node group: info string required.</span>);
         }

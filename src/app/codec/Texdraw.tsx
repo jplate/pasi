@@ -396,7 +396,7 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
 }
 
 
-const getTexts = (code: string): Text[] => {
+export const getTexts = (code: string): Text[] => {
     const list: Text[] = [];
     let match: RegExpExecArray | null;
     while (match = textPattern.exec(code)) {
@@ -448,6 +448,8 @@ export const start = '\\begin{texdraw}';
 export const end = '\\end{texdraw}';
 
 export const dimCmd = '\\drawdim pt \\setunitscale';
+
+export const htext = (x: number, y: number, text: string) => `\\htext(${encodeFloat(x)} ${encodeFloat(y)}){${text}}`;
 
 export const linewd = (lw: number) => `\\linewd ${encodeFloat(lw)} `;
 

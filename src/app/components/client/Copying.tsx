@@ -5,11 +5,10 @@ import CNodeGroup from './CNodeGroup'
 import CNode from './CNode'
 import Group, { StandardGroup } from './Group'
 import { DEFAULT_DISTANCE } from './CNode'
-import Ornament, { ROUNDING_DIGITS } from './depItem/Ornament'
+import Ornament, { INCREMENT, ROUNDING_DIGITS } from './depItem/Ornament'
 import { getCyclicValue } from '../../util/MathTools'
 import { MIN_ROTATION } from './ItemEditor'
 
-export const ANGULAR_COPY_DISPLACEMENT = 30;
 
 
 /**
@@ -20,7 +19,7 @@ const copyOrnament = (
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
 ): Ornament => {    
     const copy = o.clone(o.node);
-    copy.angle = getCyclicValue(o.angle + ANGULAR_COPY_DISPLACEMENT, MIN_ROTATION, 360, ROUNDING_DIGITS);
+    copy.angle = getCyclicValue(o.angle + INCREMENT, MIN_ROTATION, 360, ROUNDING_DIGITS);
     copies.set(o.id, copy);
     return copy;
 }

@@ -45,7 +45,7 @@ export default class Item implements GroupMember {
     reset() {
     }
 
-    getTexdrawCode():string {
+    getTexdrawCode(): string {
         return '';
     }
 
@@ -60,7 +60,7 @@ export default class Item implements GroupMember {
 	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
 	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
 	 */
-	parse(code: string, info: string, name?: string): void {}
+	parse(code: string, info: string | null, name?: string): void {}
 
 
     getInfo(list: (ENode | CNodeGroup)[]): Entry[] {

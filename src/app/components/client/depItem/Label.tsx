@@ -10,6 +10,9 @@ import { Entry } from '../ItemEditor.tsx'
 import { parseInputValue, parseCyclicInputValue } from '../EditorComponents.tsx'
 import { MIN_ROTATION } from '../ItemEditor'
 import { getCyclicValue, round } from '../../../util/MathTools'
+import * as Texdraw from '../../../codec/Texdraw.tsx'
+import { ParseError } from '../../../codec/Texdraw.tsx'
+import { encode, decode } from '../../../codec/Codec1.tsx'
 
 export const MIN_WIDTH = 5;
 export const MAX_WIDTH = 300;
@@ -32,15 +35,14 @@ export default class Label extends Ornament {
      * Creates a new Label, which is added (via the superclass constructor) to the supplied Node's array of Ornaments. 
      * It also receives a unique ID.
      */
-    constructor(node: Node, text: string) {
+    constructor(node: Node) {
         super(node);
-        this.text = text;
         this.width = MIN_WIDTH;
         this.height = DISPLAY_FONT_SIZE;
     }
 
     override clone(node: Node) {
-        const clone = new Label(node, this.text);
+        const clone = new Label(node);
         this.copyValuesTo(clone);
         return clone;
     }
@@ -48,6 +50,7 @@ export default class Label extends Ornament {
     protected override copyValuesTo(target: Label) {
         super.copyValuesTo(target);
         target.centered = this.centered;
+        target.text = this.text;
     }
 
     override getWidth() {
@@ -66,8 +69,7 @@ export default class Label extends Ornament {
     #getTopLeftCorner(w: number, h: number) {
         const angle = this.angle;
         const angleRad = angle / 180 * Math.PI;
-        const hPos = angle < -90 || angle > 90? -1: angle===-90 || angle==90? 0: 1;
-        const vPos = angle > 0 && angle < 180? 1: angle===0 || angle===180? 0: -1;
+        const [hPos, vPos] = this.#getPositioning(); 
         const r = this.node.radius + this.gap;
         return { 
             left: this.node.x + (this.centered || hPos===0? 
@@ -79,6 +81,12 @@ export default class Label extends Ornament {
                 r * Math.sin(angleRad) + (vPos > 0? h: 0)
             )
         };
+    }
+
+    #getPositioning() {
+        const angle = this.angle;
+        return [angle < -90 || angle > 90? -1: angle===-90 || angle==90? 0: 1,
+            angle > 0 && angle < 180? 1: angle===0 || angle===180? 0: -1];            
     }
 
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
@@ -135,8 +143,57 @@ export default class Label extends Ornament {
             default: 
                 return [(item, array) => array, 'onlyThis']
         }
+
     }
 
+    override getInfoString() {
+        return [this.gap, this.angle].map(encode).join(' ');
+    }
+
+    override getTexdrawCode() {
+        const centered = this.centered;
+        const [hPos, vPos] = this.#getPositioning();
+        const { bottom, left } = this.getBottomLeftCorner();
+        const w = this.getWidth();
+        const h = this.getHeight();
+        const x = centered || hPos===0? this.node.x: hPos===-1? left + w: left;
+        const y = centered || vPos===0? this.node.y: vPos===-1? bottom + h: bottom;
+        return [
+            Texdraw.textref(
+                centered || hPos===0? Texdraw.CENTER: hPos>0? Texdraw.LEFT: Texdraw.RIGHT,
+                centered || vPos===0? Texdraw.CENTER: vPos>0? Texdraw.BOTTOM: Texdraw.TOP),
+            Texdraw.htext(x, y, this.text)            
+        ].join('');	        
+    }
+
+    override parse(tex: string, info: string | null, name?: string) {
+        // The 'name' in this case is a string that identifies the node to which this Label is supposed to be attached.
+        const texts = Texdraw.getTexts(tex);
+	    if(texts.length < 1) {
+	        throw new ParseError(<>Missing text element in definition of label for {name}.</>);
+	    }
+	    if(texts[0].href===Texdraw.CENTER && texts[0].vref===Texdraw.CENTER) {
+	        this.centered = true;
+	    }
+	    this.text = texts[0].text;
+        if (info) {
+            const split = info.split(/\s+/).filter(s => s.length > 0);
+            if (split.length!==2) {
+                throw new ParseError(<span>Info string should contain exactly two elements, not {split.length}.</span>);
+            }
+            const [gap, angle] = split.map(decode);
+
+            if (gap < MIN_GAP) {
+                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {gap} below minimum value.</span>); 
+            }
+            else if (gap > MAX_GAP) {
+                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {gap} exceeds maximum value.</span>); 
+            }
+
+            this.gap = gap;
+            this.angle = getCyclicValue(angle, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
+        }
+    }
 
     override getComponent(key: number, yOffset: number, primaryColor: HSL, markColor: string, 
         focus: boolean, selected: boolean, preselected: boolean, 
@@ -150,7 +207,7 @@ export default class Label extends Ornament {
                 onMouseDown={onMouseDown} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
         );
     }
-
+    
     protected Component = ({ yOffset, primaryColor, markColor, focus, selected, preselected, 
             onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ) => {

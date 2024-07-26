@@ -2,8 +2,11 @@ import react from 'react'
 import Item from '../Item'
 import Node from '../Node'
 import { HSL } from '../Item'
+import { MIN_ROTATION } from '../ItemEditor'
+import { getCyclicValue } from '../../../util/MathTools'
 
-export const DEFAULT_PREFERRED_ANGLE = 10;
+export const DEFAULT_ANGLE = 10;
+export const INCREMENT = 30; // the angle (in degrees) by which the angle of a new Ornament is increased when added to the same node.
 export const DEFAULT_GAP = 2;
 export const MIN_GAP = -9999
 export const MAX_GAP = 9999
@@ -16,7 +19,7 @@ export const ROUNDING_DIGITS = 3
 export default class Ornament extends Item {
 
     readonly node: Node // The node to which this Ornament is attached
-    angle: number = DEFAULT_PREFERRED_ANGLE // the preferred angle at which this Ornament is attached to this.node
+    angle: number = DEFAULT_ANGLE // the preferred angle at which this Ornament is attached to this.node
     gap: number = DEFAULT_GAP
     gap100: number = DEFAULT_GAP
 
@@ -32,6 +35,8 @@ export default class Ornament extends Item {
         super(id);
         this.node = node;
         node.ornaments.push(this);
+        const angle = DEFAULT_ANGLE + (node.ornaments.length - 1) * INCREMENT;
+        this.angle = getCyclicValue(angle, MIN_ROTATION, 360, ROUNDING_DIGITS);
     }
 
     /**

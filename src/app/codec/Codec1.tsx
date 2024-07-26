@@ -5,16 +5,25 @@ import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
 import { round } from '../util/MathTools'
+import Ornament from '../components/client/depItem/Ornament'
+import Label from '../components/client/depItem/Label'
+import Node from '../components/client/Node'
+import BidirectionalMap from '../util/BidirectionalMap'
+import { getItems } from '../components/client/MainPanel'
 
 export const versionString = 'pasiCodecV1';
 
-const CODE = '0123456789!#$&*+/<=>?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
+const CODE = '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
 const ENCODE_BASE = CODE.length;
 const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 const ENODE_PREFIX = 'E';
-const NODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what a contour is most naturally taken to represent.
+const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what a contour is most naturally taken to represent.
 
+
+const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => any>([
+    ['L', Label]
+]);
 
 
 const encodeInt = (num: number) => {
@@ -91,15 +100,14 @@ export const decode = (s: string) => {
     }
 }
 
-
 export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
 
     // We start by constructing the 'preamble', which mainly contains information as to what groups contain which other groups.
     
-    const gMap = new Map<Group<any>, string>(); // maps groups (except for NodeGroups, which are unnamed) to their names
+    const gMap = new Map<Group<any>, string>(); // maps groups (including CNodeGroups) to their names
     let groupCounter = 0;
-    for (const it of list) {
+    for (const it of getItems(list)) {
         const groups = getGroups(it)[0];
         for (const g of groups) {
             if (gMap.has(g)) break;
@@ -109,11 +117,11 @@ export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => 
 
     const groupInfo = [...gMap.entries()].reduce(
         (acc: string[], [g, name]) => {
-            const list = g.members.reduce(
+            const groupInfoList = g.members.reduce(
                 (acc: string[], m) => m instanceof StandardGroup? [...acc, `${m.isActiveMember? ':': '.'}${gMap.get(m)}`]: acc, 
                 []
             );
-            return list.length>0? [...acc, `${name}${list.join('')}`]: acc; 
+            return groupInfoList.length>0? [...acc, `${name}${groupInfoList.join('')}`]: acc; 
         }, []
     ).join(' ');
 
@@ -121,37 +129,44 @@ export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => 
 
     // Next, we construct the main part of the code.
 
-    const eMap = new Map<ENode, string>(); // maps enodes to their names (cnode groups don't need names)
-    let enodeCounter = 0;
+    const nodeMap = new Map<Node, string>(); // maps enodes to their names (cnode groups don't need names)
+    let eNodeCounter = 0;
     for (const it of list) {
-        if (it instanceof ENode) {
-            eMap.set(it, encode(enodeCounter++));
-        }
         const code = it.getTexdrawCode();
-        arr.push(`${code}%${getHint(it, eMap, gMap)}`); 
+        let cngName: string | undefined = undefined;
+        if (it instanceof CNodeGroup) {
+            cngName = gMap.get(it);
+            arr.push(`${code}%${CNODEGROUP_PREFIX}${cngName}{${it.getInfoString()}}${getGroupInfo(it, gMap)}`); 
+        }
+        
+        // We now have to add the codes for any ornaments.
+        const nodes: Node[] = it instanceof CNodeGroup? it.members: [it];
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
+            let nodeName: string;
+            if (node instanceof ENode) {
+                nodeName = encodeInt(eNodeCounter++);
+                const info = node.getInfoString();
+                arr.push(`${code}%${ENODE_PREFIX}${nodeName}${info.length>0? `{${info}}`: ''}${getGroupInfo(node, gMap)}`); 
+            } 
+            else { // Otherwise we're dealing with a CNode:
+                nodeName = `${cngName}-${i}`;
+            }
+            nodeMap.set(node, nodeName);
+            for (const o of node.ornaments) {
+                const code = o.getTexdrawCode();
+                const prefix = ornamentPrefixMap.getByValue(o.constructor as new (node: Node) => any);
+                const info = o.getInfoString();
+                arr.push(`${code}%${prefix}${nodeName}{${info}}${getGroupInfo(o, gMap)}`); 
+            }
+        }
     }
 
     arr.push(Texdraw.end);
     return arr.join('\n');
 }
 
-const getHint = (item: ENode | CNodeGroup, eMap: Map<ENode, string>, gMap: Map<Group<any>, string>) => {
-    let result = [];
-    const info = item.getInfoString();
-    
-    if (item instanceof ENode) {
-        result.push(`${ENODE_PREFIX}${eMap.get(item)}${info.length>0? `{${info}}`: ''}`);
-    }
-    else if (item instanceof CNodeGroup) {
-        result.push(`${NODEGROUP_PREFIX}{${info}}`);
-    }
-
-    if (item.group) {
-        result.push(`${item.isActiveMember? ':': '.'}${gMap.get(item.group)}`);
-    }
-
-    return result.join('');
-}
+const getGroupInfo = (it: CNodeGroup | Item, gMap: Map<Group<any>, string>) => it.group? `${it.isActiveMember? ':': '.'}${gMap.get(it.group)}`: '';
 
 const getGroupMap = (str: string, sgCounter: number) => {
     const map = new Map<string, Group<any>>();
@@ -225,7 +240,10 @@ const extractString = (s: string, pattern: string, offset: number): string | nul
  * This function analyzes the 'hint', returning an array that contains the relevant item's name, the name of its group, 
  * a boolean indicating whether it is an active member of that group, and an info string.
  */
-const analyzeHint = (hint: string): [name: string | null, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
+const analyzeHint = (
+    hint: string, 
+    allowFractionalName: boolean = false// indicates whether we allow the 'name' to represent a floating point number.
+): [name: string, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
     let info: string | null = null,
         activeMember: boolean | undefined = undefined;
     const i =  hint.indexOf('{'); // the beginning of the info string, if present.
@@ -250,14 +268,24 @@ const analyzeHint = (hint: string): [name: string | null, groupName: string | nu
     if (j+1===hint.length) { // In this case the hint ends with a '.' or ':', which makes no sense.
         throw new ParseError(<span>Directive should not end with a period or colon: <code>{truncate(hint)}</code>.</span>);
     }
-    return [name.length===0? null: name, groupName, activeMember, info];
+    const tooLong = name && name.length > 2 * MAX_NAME_LENGTH + 1;
+    const isInt = name && !tooLong && !isNaN(decodeInt(name));
+    if(!name || tooLong ||
+        (isInt && name.length > MAX_NAME_LENGTH) || 
+        (!allowFractionalName && !isInt) || 
+        (groupName && 
+            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) {
+        throw new ParseError(<span>Missing and/or illegal item identifier: <code>{truncate(name)}</code>.</span>);
+    }
+
+    return [name, groupName, activeMember, info];
 }
 
 /** 
  * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is either obtained from gMap or created.
  * Returns an updated StandardGroup counter.
  */
-const addToGroup = (item: ENode | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>, sgCounter: number) => {
+const addToGroup = (item: Item | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>, sgCounter: number) => {
     if (groupName) {
         let g: StandardGroup<Item | Group<any>>;
         if (gMap.has(groupName)) {
@@ -287,23 +315,21 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
 
     //console.log(` name: ${name}  groupName: ${groupName}  active: ${activeMember}  info: ${info}  in map: ${eMap.has(name)}`);
 
-    if(!name || name.length > MAX_NAME_LENGTH || isNaN(decodeInt(name)) ||         
-        (groupName && 
-            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) {
-        throw new ParseError(<span>Missing and/or illegal names in directive: <code>{truncate(hint)}</code>.</span>);
-    }
     let node: ENode;
     if (eMap.has(name)) {
-        let defined: boolean;
-        [node, defined] = eMap.get(name) as [ENode, boolean];
+        const [it, defined] = eMap.get(name) as [ENode, boolean];
+        if (!(it instanceof ENode)) {
+            throw new ParseError(<span><code>{name}</code> used as a name of both a contour node group and an entity node.</span>);
+        }
         if (defined) {
             throw new ParseError(<span>Duplicate definition of entity node <code>{name}</code>.</span>);
         }
+        node = it;
     }
     else {
         node = new ENode(counter, 0, 0);
     }
-    let result = sgCounter;
+
     if (groupName) {
         sgCounter = addToGroup(node, groupName, activeMember!, gMap, sgCounter);
     }
@@ -312,19 +338,98 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     return [node, sgCounter];
 }
 
-const parseCNodeGroup = (tex: string, hint: string, gMap: Map<string, Group<any>>, 
+const parseCNodeGroup = (tex: string, hint: string, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
     counter: number, sgCounter: number
 ): [CNodeGroup, number] => {
     // The 'hint' for a NodeGroup has the following format:
     // ['K' + info] or 
     // ['K' + info + ('.' or ':') + groupName].
-    const [, groupName, activeMember, info] = analyzeHint(hint);
-    const nodeGroup = new CNodeGroup(counter);
-    nodeGroup.parse(tex, info);
-    if (groupName) {
-        sgCounter = addToGroup(nodeGroup, groupName, activeMember!, gMap, sgCounter);
+    const [name, groupName, activeMember, info] = analyzeHint(hint);
+
+    let cng: CNodeGroup;
+    if (cngMap.has(name)) {
+        const [it, defined] = cngMap.get(name) as [ENode | CNodeGroup, boolean];
+        if (!(it instanceof CNodeGroup)) {
+            throw new ParseError(<span><code>{name}</code> used as a name of both an entity node and a contour node group.</span>);
+        }
+        if (defined) {
+            throw new ParseError(<span>Duplicate definition of contour node group <code>{name}</code>.</span>);
+        }
+        cng = it;
     }
-    return [nodeGroup, sgCounter];
+    else {
+        cng = new CNodeGroup(counter);
+    }
+    if (groupName) {
+        sgCounter = addToGroup(cng, groupName, activeMember!, gMap, sgCounter);
+    }
+    cng.parse(tex, info);
+    cngMap.set(name, [cng, true]); 
+    return [cng, sgCounter];
+}
+
+const parseOrnament = (tex: string, hint: string, oClass: new (node: Node) => any, 
+    eMap: Map<string, [ENode, boolean]>, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
+    sgCounter:number
+): [Ornament, number] => {
+    // The 'hint' for an Ornament has (roughly) the following format:
+    // [prefix + nodeName + info] or 
+    // [prefix + nodeName + info + ('.' or ':') + groupName].
+    const [name, groupName, activeMember, info] = analyzeHint(hint, true);
+    // The 'name' should here have the format [eNodeName] OR [cngName + '-' + nodeIndex].
+    const split = name.split('-');
+    let o: Ornament, 
+        nodeIdentifier = ''; // This will be passed on to Ornapment.parse() for the purpose of constructing error messages.
+    if (split.length===1) {
+        let node: Node | undefined = undefined,
+            defined = false;
+        const enName = split[0];
+        const eNodeIndex = decode(enName);
+        if (!isFinite(eNodeIndex)) {
+            throw new ParseError(<span>Invalid entity node identifier: <code>{name}</code>.</span>);
+        }
+        if (eMap.has(enName)) {
+            [node, defined] = eMap.get(enName) as [ENode, boolean];
+        }
+        if (!node || !defined) {
+            throw new ParseError(<span>Entity node <code>{enName}</code> should be defined before the definition of any ornaments attached to it.</span>);
+        }
+        nodeIdentifier = `entity node ${eNodeIndex}`;
+        o = new oClass(node);
+    }
+    else {
+        let cng: CNodeGroup | undefined = undefined,
+            defined = false;
+        const cngName = split[0];
+        const cngIndex = decode(cngName);
+        const cnIndex = split.length>1? decode(split[1]): 0;
+        if (split.length!==2 || !isFinite(cngIndex) || !isFinite(cnIndex)) {
+            throw new ParseError(<span>Invalid contour node identifier: <code>{name}</code>.</span>);
+        }
+        if (cngMap.has(cngName)) {
+            [cng, defined] = cngMap.get(cngName) as [CNodeGroup, boolean];
+        }
+        if (!cng || !defined) {
+            throw new ParseError(<span>Contour node group <code>{cngName}</code> should be defined before the definition of any ornaments attached to it.</span>);
+        }
+        if (cnIndex > cng.members.length - 1) {
+            throw new ParseError(<span>Node index out of bounds: {cnIndex}.</span>);
+        }
+        nodeIdentifier = `node ${cnIndex} of contour node group ${cngIndex}`;
+        const cn = cng.members[cnIndex];
+        o = new oClass(cn);
+    }
+
+    //console.log(`info: ${info}`);
+    if (info===null) {	        	
+        throw new ParseError(<span>Incomplete definition of ornament for {nodeIdentifier}: info string required.</span>);
+    }
+
+    if (groupName) {
+        sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
+    }
+    o.parse(tex, info, nodeIdentifier);
+    return [o, sgCounter];
 }
 
 export const load = (code: string, eCounter: number, cngCounter: number, sgCounter: number
@@ -360,9 +465,11 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
 
     // We now have to parse the remaining lines, except for the last one, which should just be identical with Texdraw.end.
 
-    const eMap = new Map<string, [ENode, boolean]>(); // This maps names of ENodes to arrays holding (i) the respective ENode and (ii) a boolean indicating whether that
-        // node has already been configured by parseENode. (ENodes will be added to this map as soon as their names are used, which can happen before their respective
-        // definitions have been encountered in the texdraw code.)
+    const eMap = new Map<string, [ENode, boolean]>();     // These two maps map names of ENodes or CNodeGroups to arrays holding (i) the respective ENode or
+    const cngMap = new Map<string, [CNodeGroup, boolean]>(); // CNodeGroup and (ii) a boolean indicating whether that node or group has already been configured 
+        // by parseENode or parseCNodeGroup. (ENodes and CNodeGroups will be added to the respective map as soon as their names are used, which can happen before  
+        // their definitions have been encountered in the texdraw code. However, the definition of any ornament has to come later than the definition of the
+        // node to which it is attached.)
     let tex = '',
         cont = false; // indicates whether the current texdraw command has started on a previous line
     for (let i = 2; i<lines.length-1; i++) {
@@ -384,15 +491,22 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
                         list.push(node);
                         break;
                     }
-                case NODEGROUP_PREFIX: {
+                case CNODEGROUP_PREFIX: {
                         let cng: CNodeGroup;
-                        [cng, sgCounter] = parseCNodeGroup(tex, hint, gMap, cngCounter, sgCounter);
+                        [cng, sgCounter] = parseCNodeGroup(tex, hint, cngMap, gMap, cngCounter, sgCounter);
                         cngCounter++;
                         list.push(cng);
                         break;
                     }
-                default: { // In this case the specialized parse functions have all returned null, which only happens if there's an error in the 'hint'.
-                    throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
+                default: { // In this case we're probably dealing with an Ornament:
+                    const oClass = ornamentPrefixMap.getByKey(prefix);
+                    let o: Ornament;
+                    if (oClass) {
+                        [o, sgCounter] = parseOrnament(tex, hint, oClass, eMap, cngMap, gMap, sgCounter);
+                    }
+                    else { // In this case the prefix has not been recognized.
+                        throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
+                    }
                 }
             }
         } 

@@ -8,6 +8,7 @@ import { validFloat, parseInputValue, DashValidator } from './EditorComponents.t
 import CNodeGroup from './CNodeGroup.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import {  ParseError, makeParseError } from '../../codec/Texdraw.tsx'
+import { encode, decode } from '../../codec/Codec1.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -152,8 +153,7 @@ export default class ENode extends Node {
     }
 
     override getInfoString() {
-        return (this.linewidth>0 || this.shading>0)? '': 
-            `${Texdraw.encodeFloat(this.radius)} ${Texdraw.encodeFloat(this.x)} ${Texdraw.encodeFloat(this.y)}`;
+        return (this.linewidth>0 || this.shading>0)? '': [this.radius, this.x, this.y].map(encode).join(' ');
     }
 
     override getTexdrawCode() {
@@ -172,7 +172,7 @@ export default class ENode extends Node {
      *  The calling function should make sure that this name is of reasonable length so that we don't have to worry about truncating it in our
      *  error messages.
      */
-    public override parse(tex: string, info: string | null, name: string) {
+    override parse(tex: string, info: string | null, name?: string) {
         const stShapes =  Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
@@ -210,7 +210,7 @@ export default class ENode extends Node {
             // console.log(`info: ${info}`);
             this.linewidth = this.linewidth100 = 0;
             this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
-            [this.radius, this.x, this.y] = info.split(/\s+/).map(s => Texdraw.decodeFloat(s));            
+            [this.radius, this.x, this.y] = info.split(/\s+/).map(decode);            
             if (isNaN(this.radius) || isNaN(this.x) || isNaN(this.y)) {
                 throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);
             }
@@ -297,7 +297,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, ma
 
     const width = radius * 2;
     const height = radius * 2;
-    const extraHeight = radius<MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
+    const extraHeight = radius < MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
     const top = MARK_LINEWIDTH + extraHeight;
@@ -323,7 +323,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, ma
                     top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
                     cursor: 'pointer'
                 }}>
-                <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
+                <svg width={width + MARK_LINEWIDTH * 2 + linewidth + 1} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight + 1} xmlns="http://www.w3.org/2000/svg">
                     <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                         cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
                         fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.

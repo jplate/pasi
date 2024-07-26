@@ -248,15 +248,14 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
 
 /**
  * Returns the point to 'snap' to from the supplied coordinates, given the supplied grid, list, and selection. Since this is called from within a mouseMove handler while
- * dragging, members of the selection (which is being dragged) have to be ignored. Same for the centers and members of NodeGroups containing the main ('focus') item that
- * is being dragged.
+ * dragging, members of the selection (which is being dragged) have to be ignored. Same for the center and members of any CNodeGroup containing the focusItem.
  */
 const getSnapPoint = (x: number, y: number, grid: Grid, 
         list: (Node | CNodeGroup)[], 
         focus: Item, 
         selectedNodes: Node[],
-        dccDx: number | undefined, 
-        dccDy: number | undefined
+        dccDx: number | undefined, // The X-coordinate of the center of the contour group (if any) that contains the focusItem
+        dccDy: number | undefined // The Y-coordinate of the center of the contour group (if any) that contains the focusItem
 ) => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
         d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
@@ -439,7 +438,7 @@ const getTopToBeCopied = (selection: Item[]) => {
  * Returns an array of all ENodes in the specified list, as well as any CNodes in any CNodeGroups in that same list, and, if the supplied boolean is false,
  * also all Ornaments attached to any such nodes, that meet the specified test condition.
  */
-const getItems = (list: (ENode | CNodeGroup)[], onlyNodes: boolean = false, test: (it: Item) => boolean = it => true): Item[] => 
+export const getItems = (list: (ENode | CNodeGroup)[], onlyNodes: boolean = false, test: (it: Item) => boolean = it => true): Item[] => 
     list.flatMap((it: ENode | CNodeGroup) => {
         let result: Item[];
         if (it instanceof ENode) { 
@@ -1238,7 +1237,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const key = depItemKeys[depItemIndex];
             switch (key) {
                 case 'lbl': selectedNodes.forEach(node => {
-                            new Label(node, '$$');
+                            const label = new Label(node);
+                            label.text = '$$';
                         });
                         setList(prev => [...prev]); // This will indirectly update also any functions that depend on allItems.
                         break;
@@ -1252,7 +1252,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const addLabels = useCallback(() => {
         selectedNodes.forEach(node => {
-            new Label(node, '$$');
+            const label = new Label(node);
+            label.text = '$$';
         });
         setList(prev => [...prev]);
     }, [selectedNodes]);
@@ -1975,7 +1976,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE} />
                         )}
-                        <style> {/* we're using polylines for the 'mark borders' of items */}
+                        <style> {/* We're using polylines for the 'mark borders' of items. Here is where we're animating them: */}
                             @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
                             polyline {'{'} stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'} 
                             .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
@@ -2239,7 +2240,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 style={clsx('w-20 rounded-xl', dialog.title? 'mt-6 mb-4': 'mt-4 mb-2')} 
                                 disabled={false}                              
                                 onClick={() => {
-                                    document.body.classList.add('modal-closing');
+                                    document.body.classList.add('modal-closing'); // This will tell any anchor elements visible under the Overlay to return to 
+                                        // their original color.
                                     setModalShown(false)}
                                  } />
                         </div>
