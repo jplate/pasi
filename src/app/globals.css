@@ -89,6 +89,11 @@ section { /* We're going with slightly bigger font for the surrounding sections.
   font-size: 18px; 
 }
 
+textarea { /* We're going with slightly bigger font for the surrounding sections. */
+  font-family: 'Raleway', sans-serif;
+  font-feature-settings: 'none'; /* Ligatures in an editable text area seem out of place. */
+}
+
 h2 {
   font-size: 1.5em;
   font-weight: bold;

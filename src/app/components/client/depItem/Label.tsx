@@ -35,7 +35,7 @@ const italicFont = Lora({
 
 const fontSizes = Array.from(Texdraw.fontSizes.values());
 const fontSizeCmds = Array.from(Texdraw.fontSizes.keys()).map(label => `\\${label}`);
-const fontSizeCmdReps = fontSizeCmds.map(cmd => <code>{cmd}</code>);
+const fontSizeCmdReps = fontSizeCmds.map((cmd, i) => <code key={i}>{cmd}</code>);
 const normalFontSize = Texdraw.fontSizes.getByKey(Texdraw.NORMAL_SIZE_STRING) as number;
 const fontSizePattern = new RegExp(`.*?\\\\(${Array.from(Texdraw.fontSizes.keys()).join('|')}) `);
 const mathPattern = /^\s*\$(.*)\$\s*$/;

@@ -144,8 +144,9 @@ interface TextareaProps {
 export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps) => {
     return (
         <textarea 
-            className={clsx('bg-textfieldbg text-textfieldcolor rounded-md p-2 m-2 shadow-inner text-sm focus:outline-none font-variant-ligatures-none resize-none', 
+            className={clsx('bg-textfieldbg text-textfieldcolor rounded-md p-2 m-2 shadow-inner text-sm focus:outline-none resize-none', 
                 fullHeight? 'h-full': 'h-48')}
+            style={{ fontVariantLigatures: 'none'}}
             spellCheck={false}
             value={value}
             onChange={onChange} />

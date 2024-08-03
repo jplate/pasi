@@ -1298,7 +1298,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setOrigin(true, [], newFocus, newSelection);
             adjustLimit(); 
         }
-    }, [selectedNodes, depItemIndex, setOrigin, adjustLimit, sorry]);
+    }, [selectedNodes, setOrigin, adjustLimit, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
