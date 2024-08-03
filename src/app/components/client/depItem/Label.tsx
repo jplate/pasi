@@ -1,6 +1,6 @@
-import react, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx/lite'
-import { Noto_Serif, Lora } from 'next/font/google'  
+import { Lora } from 'next/font/google'  
 import Item, { HSL, Range } from '../Item'
 import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament'
 import Node from '../Node'
@@ -16,18 +16,20 @@ import { ParseError } from '../../../codec/Texdraw.tsx'
 import { encode, decode } from '../../../codec/Codec1.tsx'
 
 export const MIN_WIDTH = 5;
+export const MIN_HEIGHT = 5;
 export const MAX_WIDTH = 300;
 export const MAX_TEXT_LENGTH = 30;
 export const DISPLAY_FONT_SIZE_RATIO = 0.9;
 
-
-const normalFont = Noto_Serif({
+const NORMAL_FONT = 'Lora';
+const normalFont = Lora({
     weight: ['400'], 
     subsets: ['latin'], 
     style: ['normal']
 });
 
-const italicFont = Lora({
+const MATH_FONT = 'Lora';
+const mathFont = Lora({
     weight: ['400'], 
     subsets: ['latin'], 
     style: ['italic']
@@ -73,6 +75,10 @@ export default class Label extends Ornament {
         super.copyValuesTo(target);
         target.centered = this.centered;
         target.text = this.text;
+        target.fontSize = this.fontSize;
+        target.mathMode = this.mathMode;
+        target.vphantG = this.vphantG;
+        target.vphantL = this.vphantL;
     }
 
     override getWidth() {
@@ -114,7 +120,7 @@ export default class Label extends Ornament {
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'checkbox', key: 'centered', text: 'Centered', value: this.centered},
-            {type: 'number input', key: 'angle', text: 'Angle', width: 'long', value: this.angle, step: 0, disabled: this.centered},
+            {type: 'number input', key: 'angle', text: 'Angle', negativeTopMargin: true, width: 'long', value: this.angle, step: 0, disabled: this.centered},
             {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0, disabled: this.centered},
             {type: 'checkbox', key: 'mathMode', text: 'Math mode', value: this.mathMode},
             {type: 'checkbox', key: 'vphantG', text: <>Include <code>\vphantom{'\{'}g{'\}'}</code></>, value: this.vphantG},
@@ -175,7 +181,6 @@ export default class Label extends Ornament {
                     if (item instanceof Label) {
                         const fontSize = fontSizes[index]
                         item.fontSize = fontSize;
-                        item.height = fontSize * DISPLAY_FONT_SIZE_RATIO; 
                     }
                     return array;
                 }, 'wholeSelection']                
@@ -329,22 +334,50 @@ export default class Label extends Ornament {
         const textElementRef =  useRef<SVGTextElement>(null);
         const [width, setWidth] = useState(0);
         const [height, setHeight] = useState(0);
+        const [ascenderHeight, setAscenderHeight] = useState(0);
 
         const text = this.text;
         const fontSize = this.fontSize * DISPLAY_FONT_SIZE_RATIO;
         const mathMode = this.mathMode;
+        const vphantG = this.vphantG;
+        const vphantL = this.vphantL;
 
         useEffect(() => {
             if (textElementRef.current) {
-                const { width: w, height: h } = textElementRef.current.getBBox(); // Get the bounding box of the text
+                const { width: w } = textElementRef.current.getBBox();
+                let h = 0,
+                    asc = 0;
+                const canvas = document.getElementById('real-canvas') as HTMLCanvasElement | null;
+                if (canvas) { // Here we determine the (approximate) height of the text:
+                    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+                    const fontString = `400 ${mathMode? 'italic': 'normal'} ${this.fontSize}px ${mathMode? MATH_FONT: NORMAL_FONT} serif`;
+                    ctx.font = fontString;
+                    const textToMeasure = vphantG && vphantL? `gl${text}`: vphantG? `g${text}`: vphantL? `l${text}`: text===''? 'a': text;
+                    const textMetrics = ctx.measureText(textToMeasure);
+                    asc = textMetrics.actualBoundingBoxAscent;
+                    const desc = textMetrics.actualBoundingBoxDescent;
+                    h = asc + desc;
+
+                    const { width: cw, height: ch } = canvas;
+                    if (false) { // For debugging purposes (requires the 'real-canvas' element to not be hidden).
+                        if (canvas) ctx.clearRect(0, 0, cw, ch);
+                        ctx.fillText(text, 0, 50);
+                        console.log(`h: ${h} asc: ${asc} desc: ${desc} canvas-font: ${ctx.font} should be: ${fontString}`);
+                    }
+                }
+                else { // This shouldn't normally happen.
+                    h = fontSize;
+                    asc = fontSize * 0.75; // Rough estimate
+                }
                 const width = Math.max(MIN_WIDTH, w);
-                const height = Math.max(fontSize, h);
+                const height = Math.max(MIN_HEIGHT, h);
                 setWidth(prev => width);
                 setHeight(prev => height);
+                setAscenderHeight(prev => Math.max(MIN_HEIGHT, asc));
                 this.width = width;
                 this.height = height;
             }
-        }, [text, fontSize, mathMode]);
+        }, [text, fontSize, mathMode, vphantG, vphantL]);
 
 
         // Compute the positioning of the div:
@@ -373,8 +406,8 @@ export default class Label extends Ornament {
                         cursor: 'pointer'
                     }}>
                 <svg width={width + MARK_LINEWIDTH * 4} height={height + MARK_LINEWIDTH * 4} xmlns="http://www.w3.org/2000/svg">
-                    <text ref={textElementRef} x={`${left}`} y={`${top + fontSize}`} 
-                            className={mathMode? italicFont.className: normalFont.className} 
+                    <text ref={textElementRef} x={`${left}`} y={`${top + ascenderHeight}`} 
+                            className={mathMode? mathFont.className: normalFont.className} 
                             fontSize={`${fontSize}`} 
                             fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}>
                         {text.length > MAX_TEXT_LENGTH? `${text.slice(0, MAX_TEXT_LENGTH-3)}...`: text}

@@ -25,6 +25,7 @@ export type Entry = {
     tooltipPlacement?: Placement,
     values?: react.ReactNode[], // the values of a menu
     width?: Width,
+    negativeTopMargin?: boolean,
     lowTopMargin?: boolean,
     extraBottomMargin?: boolean,
     onMenuChange?: (index: number) => void, // callback for menu change
@@ -64,6 +65,7 @@ const ItemEditor = ({info, logIncrement, onIncrementChange, onChange}: ItemEdito
                     case 'number input': return (
                         <InputField key={i} label={entry.text?? ''} width={entry.width} value={entry.value} min={entry.min} max={entry.max} step={entry.step} 
                             lowTopMargin={entry.lowTopMargin}
+                            negativeTopMargin={entry.negativeTopMargin}
                             extraBottomMargin={entry.extraBottomMargin} 
                             tooltip={entry.tooltip} 
                             tooltipPlacement={entry.tooltipPlacement}
@@ -72,6 +74,7 @@ const ItemEditor = ({info, logIncrement, onIncrementChange, onChange}: ItemEdito
                     case 'string input': return (
                         <InputField key={i} type='string' label={entry.text?? ''} width={entry.width} value={entry.value} 
                             lowTopMargin={entry.lowTopMargin}
+                            negativeTopMargin={entry.negativeTopMargin}
                             extraBottomMargin={entry.extraBottomMargin} 
                             tooltip={entry.tooltip} 
                             tooltipPlacement={entry.tooltipPlacement}

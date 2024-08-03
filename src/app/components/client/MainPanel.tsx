@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, createContext } from 'react'
 import Modal from 'react-modal'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem } from '@headlessui/react'
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
 import Item from './Item'
 import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
-import { CheckBoxField, validFloat } from './EditorComponents.tsx'
+import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
@@ -54,7 +54,7 @@ const MAX_LIST_SIZE = 1000 // maximal size of the list of ENodes and CNodeGroups
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb'
 export const MARK_COLOR0_DARK_MODE = '#462d0c'
 export const MARK_COLOR1_LIGHT_MODE = '#b0251a'
-export const MARK_COLOR1_DARK_MODE = '#000000'
+export const MARK_COLOR1_DARK_MODE = '#5b0b00'
 export const MARK_LINEWIDTH = 1.0
 export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)'
 export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)'
@@ -2045,6 +2045,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 markColor='red' visible={false} /> 
                         }
                     </div>
+                    <canvas id='real-canvas' className='w-72 h-24 hidden'> 
+                        {/* This canvas element helps Label components to determine the 'true' height of a given piece of text. */}                    
+                    </canvas>
                     <div id='code-panel' className='relative mt-[25px] min-w-[900px] max-w-[1200px] h-[190px]'> 
                         <textarea 
                             className='codepanel w-full h-full p-2 shadow-inner text-sm focus:outline-none resize-none'
@@ -2070,46 +2073,32 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                         <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'>
                             <Menu>
-                                <MenuButton className='group inline-flex items-center gap-2 mb-2 rounded-md bg-btnbg/85 px-4 py-1.5 text-sm text-btncolor shadow-inner 
-                                            focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'>
-                                    <div className='flex-none text-left mr-2'>
+                                <MenuButton className={clsx('py-1.5', menuButtonClassName)}>
+                                    <div className='flex-none mx-2'>
                                         {depItemInfos[depItemIndex].getImageComp(dark)}
                                     </div>
                                     <div className='flex-1'>
                                         {depItemInfos[depItemIndex].label}
                                     </div>
-                                    <div className='flex-none w-[28px] ml-2 text-right'> 
-                                        <svg className='size-4' // source: https://heroicons.com/
-                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                        </svg>                             
-                                    </div> 
+                                    <div className='flex-none w-[28px] mx-2'>
+                                        <ChevronSVG />
+                                    </div>
                                 </MenuButton>
-                                <Transition
-                                        enter='transition ease-out duration-75'
-                                        enterFrom='opacity-0 scale-95'
-                                        enterTo='opacity-100 scale-100'
-                                        leave='transition ease-in duration-100'
-                                        leaveFrom='opacity-100 scale-100'
-                                        leaveTo='opacity-0 scale-95'>
-                                    <MenuItems
-                                            anchor='bottom end'
-                                            className='menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
-                                        {depItemInfos.map((label, index) => 
-                                            <MenuItem key={'di-'+index}>
-                                                <button className='group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor'
-                                                        onClick={() => setDepItemIndex(index)}>
-                                                    <div className='inline mr-2'>
-                                                        {label.getImageComp(dark)}
-                                                    </div>
-                                                    {label.label}
-                                                </button>
-                                            </MenuItem>
-                                        )}
-                                    </MenuItems>
-                                </Transition>
+                                <MenuItemList>
+                                    {depItemInfos.map((label, index) => 
+                                        <MenuItem key={'di-'+index}>
+                                            <button className={menuItemButtonClassName}
+                                                    onClick={() => setDepItemIndex(index)}>
+                                                <div className='inline mr-2'>
+                                                    {label.getImageComp(dark)}
+                                                </div>
+                                                {label.label}
+                                            </button>
+                                        </MenuItem>
+                                    )}
+                                </MenuItemList>
                             </Menu>                
-                            <BasicColoredButton id='create-button' label='Create' style='rounded-md' 
+                            <BasicColoredButton id='create-button' label='Create' style='mt-2 rounded-md' 
                                 disabled={!canCreateDepItem}
                                 onClick={() => createDepItem(depItemIndex)} /> 
                         </div>
@@ -2120,7 +2109,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
                         <TabGroup className='flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5' 
                                 selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
-                            <TabList className="grid grid-cols-10 mb-0.5">
+                            <TabList className='grid grid-cols-10 mb-0.5'>
                                 <Tab key='editor-tab'className={clsx(tabClassName, 'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0', 
                                         tabIndex===1 && 'rounded-br-xl', tabIndex===2 && 'border-r-0')}>
                                     Editor
