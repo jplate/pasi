@@ -1,6 +1,20 @@
 import clsx from 'clsx/lite'
 
 import { round } from '../util/MathTools'
+import BidirectionalMap from '../util/BidirectionalMap'
+
+export const fontSizes = new BidirectionalMap([
+    ['tiny', 8],
+    ['scriptsize', 9],
+    ['footnotesize', 10],
+    ['small', 12],
+    ['normalsize', 16],
+    ['large', 20],
+    ['Large', 24],
+    ['LARGE', 28],
+    ['huge', 32]
+]);
+export const NORMAL_SIZE_STRING = 'normalsize';
 
 export const ROUNDING_DIGITS = 4;
 const PRECISION = 10**ROUNDING_DIGITS; 

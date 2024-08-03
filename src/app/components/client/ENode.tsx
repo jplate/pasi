@@ -3,9 +3,10 @@ import React from 'react';
 import Item, { HSL, Range } from './Item'
 import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, getMarkBorder } from './Node.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from './MainPanel.tsx'
 import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
 import CNodeGroup from './CNodeGroup.tsx'
+import CNode from './CNode'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import {  ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 import { encode, decode } from '../../codec/Codec1.tsx'
@@ -128,21 +129,9 @@ export default class ENode extends Node {
                 if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1)); 
                     return array
                 }, 'ENodesAndCNodeGroups']
-            case 'rank': if (e) return [(item, array) => {
-                    if (item instanceof ENode) {
-                        const currentPos = array.indexOf(item);
-                        const newPos = parseInt(e.target.value);
-                        let result = array;
-                        if(newPos>currentPos && currentPos+1<array.length) { // move the item up in the Z-order (i.e., towards the end of the array), but only by one
-                            [result[currentPos], result[currentPos+1]] = [result[currentPos+1], result[currentPos]];
-                        } 
-                        else if(newPos<currentPos && currentPos>0) { // move the item down in the Z-order, but only by one
-                            [result[currentPos], result[currentPos-1]] = [result[currentPos-1], result[currentPos]];
-                        }
-                        return result
-                    }
-                    else return array
-                }, 'onlyThis']
+            case 'rank': if (e) {
+                    return [getRankMover(e.target.value, selection), 'onlyThis'];
+                }
             case 'defaults': return [(item, array) => {
                     item.reset();
                     return array

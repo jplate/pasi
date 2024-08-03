@@ -68,7 +68,7 @@ export default class Item implements GroupMember {
     }
 
     handleEditing(
-            e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, 
+            e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, 
             logIncrement: number, 
             selection: Item[],
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {

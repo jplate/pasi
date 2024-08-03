@@ -7,7 +7,7 @@ import { useThrottle } from '../../util/Misc'
 
 interface ButtonProps {
     id: string
-    label?: string
+    label?: React.ReactNode
     icon?: JSX.Element
     style?: string
     activeStyle?: string  // the activeStyle and inactiveStyle props are used to style the button depending on whether it is 'pressed'. 
@@ -64,12 +64,7 @@ export const BasicButton = forwardRef((
                             {label?? ''}
                         </span>
                     ]: 
-                    label? label.split('\n').map((line, index) => 
-                        <React.Fragment key={index}>
-                            {line}
-                            <br />
-                        </React.Fragment>
-                    ): ''
+                    label
                 }
             </button>
         );

@@ -1,4 +1,5 @@
 export default class BidirectionalMap<K, V> {
+
     private keyToValue: Map<K, V> = new Map();
     private valueToKey: Map<V, K> = new Map();
 
@@ -39,5 +40,13 @@ export default class BidirectionalMap<K, V> {
             return true;
         }
         return false;
+    }
+
+    keys() {
+        return this.keyToValue.keys();
+    }
+
+    values() {
+        return this.valueToKey.keys();
     }
 }

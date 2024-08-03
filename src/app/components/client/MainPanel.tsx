@@ -466,6 +466,50 @@ const getCNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] =>
     []);
 
 /**
+ * Returns a function that moves the ENodes and CNodeGroups in the array that is supplied to that function up or down in that same array.
+ * To be called by implementations of Item.handleEditing().
+ */
+export const getRankMover = (val: string, selection: Item[]) => (item: Item, array: (ENode | CNodeGroup)[]) => {                        
+    const n = array.length;
+    const selectedListMembers = selection.reduce((acc: (ENode | CNodeGroup)[], it) => 
+        it instanceof ENode? [...acc, it]:
+        it instanceof CNode? [...acc, it.group as CNodeGroup]:
+        acc, 
+    []).filter((it, i, arr) => i===arr.indexOf(it));
+    const currentPositions: [ENode | CNodeGroup, number][] = selectedListMembers.map(m => [m, array.indexOf(m)]);
+    const currentPosMap = new Map<ENode | CNodeGroup, number>(currentPositions);
+    const focusPos = item instanceof ENode? currentPosMap.get(item): item instanceof CNode? currentPosMap.get(item.group as CNodeGroup): null;
+    let result = array;
+    if (typeof focusPos === 'number') {
+        const newPos = parseInt(val);
+        let incr = 0;
+        if(newPos > focusPos && currentPositions.every(([, pos]) => pos + 1 < n)) { 
+            // move the item up in the Z-order (i.e., towards the end of the array), but only by one
+            incr = 1;
+        } 
+        else if(newPos < focusPos && currentPositions.every(([, pos]) => pos > 0)) { 
+            // move the item down in the Z-order, but only by one
+            incr = -1;
+        }
+        if (incr!==0) {
+            const newPosMap = new Map<number, ENode | CNodeGroup>(currentPositions.map(([it, pos]) => [pos + incr, it]));
+            const unselectedListMembers = array.filter(it => !currentPosMap.has(it));
+            result = new Array<ENode | CNodeGroup>(n);
+            for (let i = 0, j = 0; i < n; i++) {
+                if (newPosMap.has(i)) {
+                    const it = newPosMap.get(i);
+                    if (it) result[i] = it;
+                }
+                else {
+                    result[i] = unselectedListMembers[j++];
+                }                                    
+            }
+        }
+    }
+    return result
+}
+
+/**
  * A function to be called on groups that have just been emptied of all their members. The second argument is the list of items to be displayed
  * on the canvas. Returns a new, 'purged' list.
  */
@@ -1232,31 +1276,29 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /** 
      * OnClick handler for the 'Create' button.
      */
-    const createDepItem = useCallback(() => {
-        if (selectedNodes.length > 0) {
-            const key = depItemKeys[depItemIndex];
+    const createDepItem = useCallback((index: number) => {
+        if (selectedNodes.length > 0 && index >= 0 && index < depItemKeys.length) {
+            let newSelection: Item[] = [];
+            const key = depItemKeys[index];
             switch (key) {
-                case 'lbl': selectedNodes.forEach(node => {
-                            const label = new Label(node);
-                            label.text = '$$';
-                        });
-                        setList(prev => [...prev]); // This will indirectly update also any functions that depend on allItems.
-                        break;
+                case 'lbl':         
+                    newSelection = selectedNodes.map(node => {
+                        const label = new Label(node);
+                        label.text = 'a';
+                        return label;
+                    });
+                    break;
                 default: sorry();
             }
+            const newFocus = newSelection[newSelection.length - 1];
+            setPoints([]);
+            setList(prev => [...prev]); // This will update allItems.
+            setSelection(prev => newSelection);
+            setFocusItem(newFocus);
+            setOrigin(true, [], newFocus, newSelection);
+            adjustLimit(); 
         }
-    }, [selectedNodes, depItemIndex, sorry]);
-
-    /**
-     * Adds labels to all selected Nodes. (Hotkey-activated)
-     */
-    const addLabels = useCallback(() => {
-        selectedNodes.forEach(node => {
-            const label = new Label(node);
-            label.text = '$$';
-        });
-        setList(prev => [...prev]);
-    }, [selectedNodes]);
+    }, [selectedNodes, depItemIndex, setOrigin, adjustLimit, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1374,7 +1416,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers for its various child components. 
      * In particular, these handlers will call itemChange with an input element (or null) and a key that is obtained from the focusItem through Item.getInfo().
      */
-    const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, key: string) => {
+    const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
         if (focusItem) {
             const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, key);
             const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndCNodeGroups'? new Set<CNodeGroup>(): null;
@@ -1837,7 +1879,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         { enabled: canAddENodes && !modalShown });
     useHotkeys(hotkeyMap['add contours'], addContours, 
         { enabled: canAddContours && !modalShown });
-    useHotkeys(hotkeyMap['add labels'], addLabels, 
+    useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')),
         { enabled: canAddOrnaments && !modalShown });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), 
         { enabled: canMoveUp && !modalShown, preventDefault: true });
@@ -1937,7 +1979,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'> 
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
-                    <div id='canvas' ref={canvasRef} className='bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
+                    <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
                             onMouseDown={canvasMouseDown} >
                         {list.map((it, i) => 
                             it instanceof ENode?
@@ -2069,7 +2111,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </Menu>                
                             <BasicColoredButton id='create-button' label='Create' style='rounded-md' 
                                 disabled={!canCreateDepItem}
-                                onClick={createDepItem} /> 
+                                onClick={() => createDepItem(depItemIndex)} /> 
                         </div>
                         <BasicColoredButton id='combi-button' label='Copy selection' style='rounded-xl mb-4' 
                             tooltip={<>Copy selection.<HotkeyComp mapKey='copy' /></>}

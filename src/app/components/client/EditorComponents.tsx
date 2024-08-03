@@ -2,6 +2,7 @@ import react, { useContext } from 'react'
 import clsx from 'clsx/lite'
 import Tippy from '@tippyjs/react'
 import { Placement } from 'tippy.js'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { getCyclicValue, round } from '../../util/MathTools'
 import 'tippy.js/dist/tippy.css'
 import 'tippy.js/themes/light.css'
@@ -18,16 +19,26 @@ const ACCENT_DARK = 'accent-amber-600 dark';
 export type Width = 'short' | 'medium' | 'long'
 
 interface CheckBoxFieldProps {
-    label: string,
+    label: react.ReactNode,
     style?: string,
     value: boolean,
     extraBottomMargin?: boolean,
     tooltip?: react.ReactNode,
     tooltipPlacement?: Placement,
+    disabled?: boolean,
     onChange: () => void,
 }
 
-export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBottomMargin, tooltip, tooltipPlacement, onChange}: CheckBoxFieldProps) => {
+export const CheckBoxField = ({
+        label, 
+        style = 'px-4 py-1 text-sm', 
+        value, 
+        extraBottomMargin, 
+        tooltip, 
+        tooltipPlacement, 
+        disabled = false, 
+        onChange
+}: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext)
 
     const link = (
@@ -41,30 +52,30 @@ export const CheckBoxField = ({label, style='px-4 py-1 text-sm', value, extraBot
     );
 
     return (
-        <span className={clsx(style, extraBottomMargin? 'mb-4': '')}>
-            <input type='checkbox' className={clsx('checkbox mr-2', dark? ACCENT_DARK: ACCENT_LIGHT)} checked={value} onChange={()=>{onChange()}} /> 
+        <span className={clsx(style, extraBottomMargin? 'mb-4': '', disabled? 'opacity-50': '')}>
+            <input type='checkbox' className={clsx('checkbox mr-2', dark? ACCENT_DARK: ACCENT_LIGHT)} checked={value} disabled={disabled} onChange={()=>{onChange()}} /> 
             {tooltip? <WithTooltip comp={link} tooltip={tooltip} placement={tooltipPlacement} />: link}
         </span>
     )
 }
 
 interface GlossFieldProps {
-    text: string;
+    label: React.ReactNode;
     style?: string;
 }
 
-export const GlossField = ({text, style=''}: GlossFieldProps) => {
+export const GlossField = ({label, style=''}: GlossFieldProps) => {
     return (
         <div className={clsx('block px-2 py-1', style)}>
             <p>
-                {text}
+                {label}
             </p>
         </div>
     )
 }
 
 interface InputFieldProps {
-    label: string,
+    label: react.ReactNode,
     value: any,
     type?: string,
     step?: number,
@@ -75,19 +86,35 @@ interface InputFieldProps {
     extraBottomMargin?: boolean,
     tooltip?: react.ReactNode,
     tooltipPlacement?: Placement,
+    disabled?: boolean,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
 }
 
-export const InputField = ({ label, value, type = 'number', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, step = 1, width = 'medium', 
-        lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange }: InputFieldProps) => {
+export const InputField = ({ 
+    label, 
+    value, 
+    type = 'number', 
+    min = Number.MIN_SAFE_INTEGER, 
+    max = Number.MAX_SAFE_INTEGER, 
+    step = 1, 
+    width = 'medium', 
+    lowTopMargin = false, 
+    extraBottomMargin = false, 
+    tooltip, 
+    tooltipPlacement,
+    disabled = false,
+    onChange 
+}: InputFieldProps) => {
 
     const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-24 w-24';
     const labelComp = (<span>{label}</span>);
     const inputComp = (<input className={clsx(w, type==='number'? 'text-right': '',
-            'ml-2 pl-2 border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor')}
-            value={value} type={type} step={step==0? 'any': step} min={min} max={max} onChange={onChange} />);
+            'ml-2 pl-2 border border-btnborder rounded-md focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor')}
+            value={value} type={type} step={step==0? 'any': step} min={min} max={max} 
+            disabled={disabled} 
+            onChange={onChange} />);
     return ( 
-        <span className={clsx('flex items-center justify-end px-2 py-1 text-sm', lowTopMargin? 'mt-[-4px]': '', extraBottomMargin? 'mb-4': '')}>
+        <span className={clsx('flex items-center justify-end px-2 py-1 text-sm', lowTopMargin? 'mt-[-4px]': '', extraBottomMargin? 'mb-4': '', disabled? 'opacity-50': '')}>
             {tooltip? <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />: labelComp}
             {inputComp}
         </span>
@@ -117,7 +144,8 @@ interface TextareaProps {
 export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps) => {
     return (
         <textarea 
-            className={clsx('bg-textfieldbg text-textfieldcolor rounded-md p-2 m-2 shadow-inner text-sm focus:outline-none resize-none', fullHeight? 'h-full': 'h-48')}
+            className={clsx('bg-textfieldbg text-textfieldcolor rounded-md p-2 m-2 shadow-inner text-sm focus:outline-none font-variant-ligatures-none resize-none', 
+                fullHeight? 'h-full': 'h-48')}
             spellCheck={false}
             value={value}
             onChange={onChange} />
@@ -125,8 +153,66 @@ export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps)
 }
 
 
+interface MenuFieldProps {
+    label: react.ReactNode,
+    values: react.ReactNode[],
+    value: number, // the index of the currently selected value in values
+    lowTopMargin?: boolean,
+    extraBottomMargin?: boolean,
+    tooltip?: react.ReactNode,
+    tooltipPlacement?: Placement,
+    onChange: (index: number) => void
+}
+
+export const MenuField = ({ label, value, values, lowTopMargin = false, extraBottomMargin = false, tooltip, tooltipPlacement, onChange }: MenuFieldProps) => {
+    const labelComp = (<span className='pl-1 whitespace-nowrap'>{label}</span>);
+    const menuComp = (
+            <Menu>
+                <MenuButton className={clsx('group inline-flex w-full ml-2 px-2 py-1 mr-0.5 items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner',
+                            'focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor data-[focus]:outline-1 data-[focus]:outline-btnhoverbg')}>
+                    <div className='flex-1 text-left'>
+                        {values[value]}
+                    </div>
+                    <div className='flex-none w-6 text-right'> 
+                        <svg className='size-4' // source: https://heroicons.com/
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>                             
+                    </div> 
+                </MenuButton>
+                <Transition
+                        enter='transition ease-out duration-75'
+                        enterFrom='opacity-0 scale-95'
+                        enterTo='opacity-100 scale-100'
+                        leave='transition ease-in duration-100'
+                        leaveFrom='opacity-100 scale-100'
+                        leaveTo='opacity-0 scale-95'>
+                    <MenuItems
+                            anchor='bottom end'
+                            className='menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor [--anchor-gap:var(--spacing-1)] focus:outline-none'>
+                        {values.map((val, i) => 
+                            <MenuItem key={i}>
+                                <button className='group flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor'
+                                        onClick={() => onChange(i)}>
+                                    {values[i]}
+                                </button>
+                            </MenuItem>
+                        )}
+                    </MenuItems>
+                </Transition>
+            </Menu>
+    );
+    return ( 
+        <span className={clsx('flex items-center justify-end px-2 py-1 text-sm', lowTopMargin? 'mt-[-4px]': '', extraBottomMargin? 'mb-4': '')}>
+            {tooltip? <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />: labelComp}
+            {menuComp}
+        </span>
+    );      
+}
+
+
 interface LabelFieldProps {
-    label: string;
+    label: React.ReactNode;
     style?: string;
 }
 

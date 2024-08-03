@@ -1,5 +1,6 @@
 import react, { useEffect, useRef, useState } from 'react'
-import { Merriweather } from 'next/font/google'  
+import clsx from 'clsx/lite'
+import { Noto_Serif, Lora } from 'next/font/google'  
 import Item, { HSL, Range } from '../Item'
 import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament'
 import Node from '../Node'
@@ -17,19 +18,40 @@ import { encode, decode } from '../../../codec/Codec1.tsx'
 export const MIN_WIDTH = 5;
 export const MAX_WIDTH = 300;
 export const MAX_TEXT_LENGTH = 30;
-export const DISPLAY_FONT_SIZE = 12;
+export const DISPLAY_FONT_SIZE_RATIO = 0.9;
 
 
-const merriweather = Merriweather({
+const normalFont = Noto_Serif({
     weight: ['400'], 
     subsets: ['latin'], 
+    style: ['normal']
 });
+
+const italicFont = Lora({
+    weight: ['400'], 
+    subsets: ['latin'], 
+    style: ['italic']
+});
+
+const fontSizes = Array.from(Texdraw.fontSizes.values());
+const fontSizeCmds = Array.from(Texdraw.fontSizes.keys()).map(label => `\\${label}`);
+const fontSizeCmdReps = fontSizeCmds.map(cmd => <code>{cmd}</code>);
+const normalFontSize = Texdraw.fontSizes.getByKey(Texdraw.NORMAL_SIZE_STRING) as number;
+const fontSizePattern = new RegExp(`.*?\\\\(${Array.from(Texdraw.fontSizes.keys()).join('|')}) `);
+const mathPattern = /^\s*\$(.*)\$\s*$/;
+const vphantGPattern = /^.?\\vphantom\{g\}/;
+const vphantLPattern = /^.?\\vphantom\{l\}/;
+const vphantJLPattern = /^.?\\vphantom\{gl\}/;
 
 
 export default class Label extends Ornament {
 
     text: string = ''
     centered: boolean = false;
+    mathMode: boolean = true;
+    vphantG: boolean = false;
+    vphantL: boolean = false;
+    fontSize: number = normalFontSize;
 
     /**
      * Creates a new Label, which is added (via the superclass constructor) to the supplied Node's array of Ornaments. 
@@ -38,7 +60,7 @@ export default class Label extends Ornament {
     constructor(node: Node) {
         super(node);
         this.width = MIN_WIDTH;
-        this.height = DISPLAY_FONT_SIZE;
+        this.height = this.fontSize * DISPLAY_FONT_SIZE_RATIO;
     }
 
     override clone(node: Node) {
@@ -92,8 +114,15 @@ export default class Label extends Ornament {
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'checkbox', key: 'centered', text: 'Centered', value: this.centered},
-            {type: 'number input', key: 'angle', text: 'Angle', width: 'long', value: this.angle, step: 0},
-            {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0},
+            {type: 'number input', key: 'angle', text: 'Angle', width: 'long', value: this.angle, step: 0, disabled: this.centered},
+            {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0, disabled: this.centered},
+            {type: 'checkbox', key: 'mathMode', text: 'Math mode', value: this.mathMode},
+            {type: 'checkbox', key: 'vphantG', text: <>Include <code>\vphantom{'\{'}g{'\}'}</code></>, value: this.vphantG},
+            {type: 'checkbox', key: 'vphantL', text: <>Include <code>\vphantom{'\{'}l{'\}'}</code></>, value: this.vphantL},
+            {type: 'menu', key: 'fontSize', text: 'Font size', values: fontSizeCmdReps, value: fontSizes.indexOf(this.fontSize), step: 1,
+                tooltip: <>Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>).</>,
+                tooltipPlacement: 'left'
+            },
             {type: 'textarea', key: 'text', fullHeight: true, value: this.text}
         ];
     }
@@ -114,7 +143,7 @@ export default class Label extends Ornament {
                     return array
                 }, 'wholeSelection']
             }
-            case 'gap':  if (e) {
+            case 'gap': if (e) {
                 const d = parseInputValue(e.target.value, MIN_GAP, MAX_GAP, this.gap, 0, ROUNDING_DIGITS) - this.gap;
                 return [(item, array) => {
                     if (!isNaN(d) && d!==0 && item instanceof Ornament) {
@@ -140,10 +169,44 @@ export default class Label extends Ornament {
                     return array
                 }, 'wholeSelection']
             }
+            case 'fontSize': if (typeof e==='number') {
+                const index = e;
+                return [(item, array) => {
+                    if (item instanceof Label) {
+                        const fontSize = fontSizes[index]
+                        item.fontSize = fontSize;
+                        item.height = fontSize * DISPLAY_FONT_SIZE_RATIO; 
+                    }
+                    return array;
+                }, 'wholeSelection']                
+            }
+            case 'vphantG':
+                const vphantG = !this.vphantG;
+                return [(item, array) => {
+                    if (item instanceof Label) {
+                        item.vphantG = vphantG;
+                    }
+                    return array
+                }, 'wholeSelection']
+            case 'vphantL':
+                const vphantL = !this.vphantL;
+                return [(item, array) => {
+                    if (item instanceof Label) {
+                        item.vphantL = vphantL;
+                    }
+                    return array
+                }, 'wholeSelection']
+            case 'mathMode':
+                const mathMode = !this.mathMode;
+                return [(item, array) => {
+                    if (item instanceof Label) {
+                        item.mathMode = mathMode;
+                    }
+                    return array
+                }, 'wholeSelection']
             default: 
                 return [(item, array) => array, 'onlyThis']
         }
-
     }
 
     override getInfoString() {
@@ -151,7 +214,15 @@ export default class Label extends Ornament {
     }
 
     override getTexdrawCode() {
+        const vphantomCmd = this.vphantG? this.vphantL? '\\vphantom{gl}': '\\vphantom{g}': this.vphantL? '\\vphantom{l}': '';
+        const textWithVphantom = `${vphantomCmd}${this.text}`;
+        const textWithoutSizeCmds = this.mathMode? `$${textWithVphantom}$`: textWithVphantom;
         const centered = this.centered;
+        const fontSizeIndex = fontSizes.indexOf(this.fontSize);
+        if (fontSizeIndex===-1) {
+            console.warn(`Invalid font size: ${this.fontSize}`);
+            return '';
+        }
         const [hPos, vPos] = this.#getPositioning();
         const { bottom, left } = this.getBottomLeftCorner();
         const w = this.getWidth();
@@ -162,7 +233,10 @@ export default class Label extends Ornament {
             Texdraw.textref(
                 centered || hPos===0? Texdraw.CENTER: hPos>0? Texdraw.LEFT: Texdraw.RIGHT,
                 centered || vPos===0? Texdraw.CENTER: vPos>0? Texdraw.BOTTOM: Texdraw.TOP),
-            Texdraw.htext(x, y, this.text)            
+            Texdraw.htext(x, y, clsx(
+                this.fontSize!==normalFontSize && fontSizeCmds[fontSizeIndex], 
+                textWithoutSizeCmds
+            ))
         ].join('');	        
     }
 
@@ -175,7 +249,48 @@ export default class Label extends Ornament {
 	    if(texts[0].href===Texdraw.CENTER && texts[0].vref===Texdraw.CENTER) {
 	        this.centered = true;
 	    }
-	    this.text = texts[0].text;
+        let text = texts[0].text;
+        const fontSizeMatch = text.match(fontSizePattern);
+        if (fontSizeMatch) {
+            //console.log(`fsm: "${fontSizeMatch[0]}"`);
+            const detectedFontSize = Texdraw.fontSizes.getByKey(fontSizeMatch[1]);
+            if (detectedFontSize) {
+                this.fontSize = detectedFontSize;
+            }
+            text = text.slice(fontSizeMatch[0].length);
+        }
+
+        const mathMatch = text.match(mathPattern);
+        if (mathMatch) {
+            this.mathMode = true;
+            text = mathMatch[1];
+        }
+        else {
+            this.mathMode = false;
+        }
+    
+        const vphantJLMatch = text.match(vphantJLPattern);
+        if (vphantJLMatch) {
+            this.vphantG = true;
+            this.vphantL = true;
+            text = text.slice(vphantJLMatch[0].length);
+        }
+        else {
+            const vphantJMatch = text.match(vphantGPattern);
+            if (vphantJMatch) {
+                this.vphantG = true;
+                text = text.slice(vphantJMatch[0].length);
+            }
+            else {
+                const vphantLMatch = text.match(vphantLPattern);
+                if (vphantLMatch) {
+                    this.vphantL = true;
+                    text = text.slice(vphantLMatch[0].length);
+                }
+            }
+        }
+        
+	    this.text = text;
         if (info) {
             const split = info.split(/\s+/).filter(s => s.length > 0);
             if (split.length!==2) {
@@ -216,20 +331,21 @@ export default class Label extends Ornament {
         const [height, setHeight] = useState(0);
 
         const text = this.text;
+        const fontSize = this.fontSize * DISPLAY_FONT_SIZE_RATIO;
+        const mathMode = this.mathMode;
 
         useEffect(() => {
             if (textElementRef.current) {
                 const { width: w, height: h } = textElementRef.current.getBBox(); // Get the bounding box of the text
                 const width = Math.max(MIN_WIDTH, w);
-                const height = Math.max(DISPLAY_FONT_SIZE, h);
+                const height = Math.max(fontSize, h);
                 setWidth(prev => width);
                 setHeight(prev => height);
                 this.width = width;
                 this.height = height;
             }
-        }, [text]);
+        }, [text, fontSize, mathMode]);
 
-        const fontSize = DISPLAY_FONT_SIZE;
 
         // Compute the positioning of the div:
         const { left: labelLeft, top: labelTop } = this.#getTopLeftCorner(width, height);
@@ -258,7 +374,8 @@ export default class Label extends Ornament {
                     }}>
                 <svg width={width + MARK_LINEWIDTH * 4} height={height + MARK_LINEWIDTH * 4} xmlns="http://www.w3.org/2000/svg">
                     <text ref={textElementRef} x={`${left}`} y={`${top + fontSize}`} 
-                            className={`${merriweather.className}`} fontSize={`${fontSize}`} 
+                            className={mathMode? italicFont.className: normalFont.className} 
+                            fontSize={`${fontSize}`} 
                             fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}>
                         {text.length > MAX_TEXT_LENGTH? `${text.slice(0, MAX_TEXT_LENGTH-3)}...`: text}
                     </text>

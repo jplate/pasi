@@ -4,7 +4,7 @@ import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, 
 import ENode from './ENode.tsx'
 import CNodeGroup, { angle } from './CNodeGroup.tsx'
 import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from './MainPanel.tsx'
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from './MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
 import { getCyclicValue } from '../../util/MathTools.tsx'
 import { MIN_ROTATION, MAX_ROTATION_INPUT } from './ItemEditor'
@@ -113,7 +113,7 @@ export default class CNode extends Node {
             {type: 'number input', key: 'rank', text: 'Rank in paint-order', value: list.indexOf(group), step: 1, extraBottomMargin: true},
             {type: 'button', key: 'defaults', text: 'Defaults'},
             {type: 'button', key: 'angles', text: 'Equalize central angles', style: 'text-sm'},
-            {type: 'button', key: 'distances', text:'Equalize distances\n from center', style: 'text-sm'},
+            {type: 'button', key: 'distances', text:<>Equalize distances<br/> from center</>, style: 'text-sm'},
             {type: 'label', text: '', style: 'flex-1'}, // a filler to ensure that there's some margin at the bottom
         ]
     }
@@ -211,21 +211,9 @@ export default class CNode extends Node {
                     if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1)); 
                     return array
                 }, 'ENodesAndCNodeGroups']
-            case 'rank': if (e) return [(item, array) => {
-                    if (item.group instanceof CNodeGroup) {
-                        const currentPos = array.indexOf(item.group);
-                        const newPos = parseInt(e.target.value);
-                        let result = array;
-                        if (newPos>currentPos && currentPos+1<array.length) { // move group up in the Z-order (i.e., towards the end of the array), but only by one
-                            [result[currentPos], result[currentPos+1]] = [result[currentPos+1], result[currentPos]];
-                        } 
-                        else if (newPos<currentPos && currentPos>0) { // move group down in the Z-order, but only by one
-                            [result[currentPos], result[currentPos-1]] = [result[currentPos-1], result[currentPos]];
-                        }
-                        return result
-                    }
-                    else return array
-                }, 'onlyThis']
+            case 'rank': if (e) {
+                    return [getRankMover(e.target.value, selection), 'onlyThis'];
+                }
             case 'defaults': return [(item, array) => {
                     item.reset();
                     return array
