@@ -549,7 +549,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl'))
-    const [pixel, setPixel] = useState(DEFAULT_UNITSCALE)
+    const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
     const [points, setPoints] = useState<Point[]>([])
@@ -1296,7 +1296,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newSelection = selectedNodes.map(node => {
                         const label = new Label(node);
                         label.text = 'a';
-                        label.updateLines(pixel, displayFontFactor);
+                        label.updateLines(unitscale, displayFontFactor);
                         return label;
                     });
                     break;
@@ -1312,7 +1312,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setOrigin(true, [], newFocus, newSelection);
             adjustLimit(); 
         }
-    }, [selectedNodes, setOrigin, adjustLimit, sorry]);
+    }, [selectedNodes, unitscale, displayFontFactor, setOrigin, adjustLimit, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1432,7 +1432,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
         if (focusItem) {
-            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, pixel, displayFontFactor, key);
+            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, unitscale, displayFontFactor, key);
             const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndCNodeGroups'? new Set<CNodeGroup>(): null;
             const nodes = range=='onlyThis'? 
                 edit(focusItem, list):
@@ -1454,7 +1454,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             adjustLimit();
             setItemsMoved(prev => [...prev]); 
         }
-    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, adjustLimit, setOrigin, scrollTo]);  
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo]);  
 
 
     const adjustSelection = useCallback((item: Item) => {
@@ -1797,7 +1797,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 load(code, displayFontFactor, 0, 0, 0): 
                 load(code, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
             if (replace) {
-                setPixel(prev => newPixel);
+                setUnitscale(prev => newPixel);
                 setPreselection1([]);
                 setPreselection2([]);
                 setSelection([]);
@@ -1821,7 +1821,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, cngCounter, sgCounter, points, adjustLimit, setOrigin]);
+    }, [list, displayFontFactor, eNodeCounter, cngCounter, sgCounter, points, adjustLimit, setOrigin]);
 
 
     const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc + 1: acc, 0), [deduplicatedSelection]);
@@ -1988,7 +1988,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         { enabled: focusItem!==null&& !modalShown });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, 
         { enabled: focusItem!==null&& !modalShown });
-    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(pixel), 500), 
+    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(unitscale), 500), 
         { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement)&& !modalShown });
     useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), 
         { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
@@ -2026,7 +2026,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             it instanceof ENode?
                             <ENodeComp key={it.id} id={it.id} enode={it} 
                                 yOffset={yOffset} 
-                                unitscale={pixel}
+                                unitscale={unitscale}
                                 displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
@@ -2046,7 +2046,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 selection={deduplicatedSelection}
                                 allItems={allItems}
                                 yOffset={yOffset} 
-                                unitscale={pixel}
+                                unitscale={unitscale}
                                 displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
@@ -2264,15 +2264,15 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
                             tooltip={<>Generate and display <i>texdraw</i> code.<HotkeyComp mapKey='generate code' /></>}
                             tooltipPlacement='right'
-                            onClick={() => displayCode(pixel)} />
+                            onClick={() => displayCode(unitscale)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                                type='number' min={MIN_UNITSCALE} step={0.01} value={pixel}
+                                type='number' min={MIN_UNITSCALE} step={0.01} value={unitscale}
                                 onChange={(e) => {
                                     const val = parseFloat(e.target.value);
                                     if (isFinite(val)) {
-                                        setPixel(Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE));
+                                        setUnitscale(Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE));
                                     }
                                 }}/>
                             pt
