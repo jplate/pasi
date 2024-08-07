@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -288,6 +288,10 @@ a:not(.pasi a):not(.ReactModal__Body--open a):hover {
 /*****************************************************
 * OTHER CLASSES
 *****************************************************/
+
+.pasi {
+  font-weight: 500; /* medium font for the app, which also matches the button style. */
+}
 
 .codepanel {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

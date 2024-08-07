@@ -507,7 +507,7 @@ export default class Label extends Ornament {
                 this.width = Math.max(MIN_WIDTH, textElementRef.current.getBBox().width);
             }
             setWidth(prev => this.width);
-        }, [lines]);
+        }, [parbox, lines]);
 
 
         // Compute the positioning of the div:
