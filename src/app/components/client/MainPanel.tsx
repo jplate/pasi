@@ -1840,7 +1840,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if (it instanceof Ornament) {
                 return deduplicatedSelection.includes(it.node)? []: [it.node];
             }
-            else {
+            else if (it instanceof StandardGroup) {
                 const lm = getLeafMembers(it);
                 return Array.from(lm).filter(m => m instanceof Ornament && !deduplicatedSelection.includes(m.node)).map(o => (o as Ornament).node);
             }
