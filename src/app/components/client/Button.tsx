@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, forwardRef, CSSProperties } from 'react'
+import React, { useState, useEffect, forwardRef, CSSProperties } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { WithTooltip } from './EditorComponents.tsx'
@@ -80,10 +80,10 @@ export const BasicColoredButton = forwardRef((
     ) => {
         return (
             <BasicButton id={id} label={label} icon={icon} pressed={pressed} 
-                activeStyle='bg-btnactivebg' 
-                inactiveStyle='bg-btnbg/85 enabled:hover:bg-btnhoverbg'
-                style={clsx('text-btncolor border-btnborder/50 enabled:hover:text-btnhovercolor',
-                    'enabled:active:bg-btnactivebg enabled:active:text-btnactivecolor focus:ring-btnfocusring', style)} 
+                activeStyle='bg-btnactivebg text-btnactivecolor ' 
+                inactiveStyle='bg-btnbg/85 text-btncolor enabled:hover:bg-btnhoverbg'
+                style={clsx('border-btnborder/50 enabled:hover:text-btnhovercolor',
+                    'focus:ring-btnfocusring', style)} 
                 tooltip={tooltip} tooltipPlacement={tooltipPlacement} disabled={disabled} onClick={onClick} ref={ref} />
         );
     }

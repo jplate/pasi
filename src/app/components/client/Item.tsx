@@ -45,7 +45,11 @@ export default class Item implements GroupMember {
     reset() {
     }
 
-    getTexdrawCode(): string {
+    /** 
+     * Returns the texdraw code for this Item. The supplied optional argument indicates the factor by which dimensions passed to LaTeX code (e.g., in \parbox
+     * commands) should be multiplied.
+     */
+    getTexdrawCode(unitscale: number = 1): string {
         return '';
     }
 
@@ -58,9 +62,11 @@ export default class Item implements GroupMember {
      * accordingly.
 	 * @param code the texdraw code.
 	 * @param info the info string contained in the 'hint' in the comment to the texdraw code.
+     * @param unitscale the ratio given to the \setunitscale command.
+     * @param displayFontFactor
 	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
 	 */
-	parse(code: string, info: string | null, name?: string): void {}
+	parse(code: string, info: string | null, unitscale?: number, ndisplayFontFactor?: number, ame?: string): void {}
 
 
     getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
@@ -71,6 +77,8 @@ export default class Item implements GroupMember {
             e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, 
             logIncrement: number, 
             selection: Item[],
+            unitscale: number,
+            displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         // The function returned by handleEditing should take an Item and an array, modify the Item if desired, and return a (possibly) modified version of the array.
         return [(item, items) => items, 'onlyThis']

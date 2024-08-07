@@ -122,6 +122,8 @@ export default class CNode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
+            unitscale: number,
+            displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'fixed':
@@ -241,6 +243,8 @@ export interface CNodeCompProps {
     id: string
     cnode: CNode
     yOffset: number
+    unitscale: number
+    displayFontFactor: number
     primaryColor: HSL // needed for ornaments of CNodes
     markColor: string
     focusItem: Item | null
@@ -254,7 +258,8 @@ export interface CNodeCompProps {
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }
 
-export const CNodeComp = ({ id, cnode, yOffset, primaryColor, markColor, focusItem, selected, preselected, selection, preselection, arrow, 
+export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor, 
+    primaryColor, markColor, focusItem, selected, preselected, selection, preselection, arrow, 
     onMouseDown, onMouseEnter, onMouseLeave }: CNodeCompProps
 ) => {
     const x = cnode.x;
@@ -313,7 +318,7 @@ export const CNodeComp = ({ id, cnode, yOffset, primaryColor, markColor, focusIt
                     {getMarkBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
-            {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, primaryColor, markColor, 
+            {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, unitscale, displayFontFactor, primaryColor, markColor, 
                 focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave))}
             {arrowDiv}
         </>

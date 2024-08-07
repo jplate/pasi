@@ -154,7 +154,7 @@ export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => 
             }
             nodeMap.set(node, nodeName);
             for (const o of node.ornaments) {
-                const code = o.getTexdrawCode();
+                const code = o.getTexdrawCode(pixel);
                 const prefix = ornamentPrefixMap.getByValue(o.constructor as new (node: Node) => any);
                 const info = o.getInfoString();
                 arr.push(`${code}%${prefix}${nodeName}{${info}}${getGroupInfo(o, gMap)}`); 
@@ -333,7 +333,7 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     if (groupName) {
         sgCounter = addToGroup(node, groupName, activeMember!, gMap, sgCounter);
     }
-    node.parse(tex, info, name);
+    node.parse(tex, info, 1, 1, name);
     eMap.set(name, [node, true]);
     return [node, sgCounter];
 }
@@ -370,7 +370,7 @@ const parseCNodeGroup = (tex: string, hint: string, cngMap: Map<string, [CNodeGr
 
 const parseOrnament = (tex: string, hint: string, oClass: new (node: Node) => any, 
     eMap: Map<string, [ENode, boolean]>, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
-    sgCounter:number
+    sgCounter:number, unitscale: number, displayFontFactor: number
 ): [Ornament, number] => {
     // The 'hint' for an Ornament has (roughly) the following format:
     // [prefix + nodeName + info] or 
@@ -428,11 +428,11 @@ const parseOrnament = (tex: string, hint: string, oClass: new (node: Node) => an
     if (groupName) {
         sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
     }
-    o.parse(tex, info, nodeIdentifier);
+    o.parse(tex, info, unitscale, displayFontFactor, nodeIdentifier);
     return [o, sgCounter];
 }
 
-export const load = (code: string, eCounter: number, cngCounter: number, sgCounter: number
+export const load = (code: string, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
 ): [(ENode | CNodeGroup)[], number, number, number, number] => {
     const list: (ENode | CNodeGroup)[] = [];
     const lines = code.split(/[\r\n]+/).filter(l => l.length>0);
@@ -453,11 +453,11 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
     if (!split1[0].startsWith(Texdraw.dimCmd)) {
         throw new ParseError(<span>Second line should start with <code>{Texdraw.dimCmd}</code>.</span>);
     }
-    const pixel = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
-    if (isNaN(pixel)) {
+    const unitscale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
+    if (isNaN(unitscale)) {
         throw new ParseError(<span>Number format error in argument to <code>\setunitscale</code>.</span>);
     }
-    if (pixel<0) {
+    if (unitscale<0) {
         throw new ParseError(<span>Argument to <code>\setunitscale</code> should not be negative.</span>);
     }
     const gMap = split1.length>1? getGroupMap(split1[1], sgCounter): new Map<string, Group<any>>();
@@ -502,7 +502,7 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
                     const oClass = ornamentPrefixMap.getByKey(prefix);
                     let o: Ornament;
                     if (oClass) {
-                        [o, sgCounter] = parseOrnament(tex, hint, oClass, eMap, cngMap, gMap, sgCounter);
+                        [o, sgCounter] = parseOrnament(tex, hint, oClass, eMap, cngMap, gMap, sgCounter, unitscale, displayFontFactor);
                     }
                     else { // In this case the prefix has not been recognized.
                         throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
@@ -520,5 +520,5 @@ export const load = (code: string, eCounter: number, cngCounter: number, sgCount
         throw new ParseError(<span>The last line should read <code>{Texdraw.end}</code>. Incomplete code?</span>);
     }
 
-    return [list, pixel, eCounter, cngCounter, sgCounter];
+    return [list, unitscale, eCounter, cngCounter, sgCounter];
 }

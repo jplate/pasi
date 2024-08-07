@@ -71,7 +71,6 @@ export const copyENode = (node: ENode, i: number, hDisplacement: number, vDispla
 
     const copy = new ENode(i, node.x + hDisplacement, node.y + vDisplacement);
     copyNodeValuesTo(node, copy, topTbc, copies);
-    copy.group = node.group;
     copy.radius = node.radius;
     copy.radius100 = node.radius100;
     copy.linewidth = node.linewidth;
@@ -124,13 +123,7 @@ export const copyCNodeGroup = (
         return copy
     });    
 
-    copiedGroup.linewidth = group.linewidth;
-    copiedGroup.linewidth100 = group.linewidth100;
-    copiedGroup.shading = group.shading;
-    copiedGroup.dash = group.dash;
-    copiedGroup.dash100 = group.dash100;
-    copiedGroup.group = group.group;
-    copiedGroup.isActiveMember = group.isActiveMember;
+    copiedGroup.copyNonMemberValuesFrom(group);
 
     return copiedGroup;
 }
@@ -179,7 +172,7 @@ export const copyStandardGroup = (
                 else if (copies.has(m.id)) { // This will be the case if previously a Node has been copied to which m is attached.
                     const c = copies.get(m.id);
                     if (c instanceof Ornament) {
-                        if (c.group===m.group) { // In this case the copy's group still needs to be updated.
+                        if (c.group===null) { // In this case the copy's group still needs to be updated.
                             copy = c;
                         }
                     }
@@ -197,7 +190,6 @@ export const copyStandardGroup = (
             copiedGroup.members.push(copy);
         }
     }
-    copiedGroup.group = group.group;
     copiedGroup.isActiveMember = group.isActiveMember;
 
     return [copiedGroup, enCounter, cngCounter, sgCounter];
@@ -232,7 +224,8 @@ export const copy = (
                 //console.log(`E: ${m.id}`);
                 const copy = copyENode(m, enCounter++, hDisplacement, vDisplacement, topTbc, copies);
                 if (m.group) {
-                    m.group.members.push(copy);
+                    copy.group = m.group;
+                    copy.group.members.push(copy);
                 }
                 copies.set(m.id, copy);            
                 break;
@@ -251,7 +244,8 @@ export const copy = (
             case m instanceof CNodeGroup: {
                 //console.log(`CG: ${m.getString()}`);
                 const copy = copyCNodeGroup(m, cngCounter++, hDisplacement, vDisplacement, topTbc, copies);
-                if (copy.group) {
+                if (m.group) {
+                    copy.group = m.group;
                     copy.group.members.push(copy);
                 }
                 copies.set(m.id.toString(), copy);
@@ -259,11 +253,12 @@ export const copy = (
             }
             case m instanceof StandardGroup: {
                 //console.log(`SG: ${m.getString()}`);
-                let sg: StandardGroup<Item | Group<any>>;
-                [sg, enCounter, cngCounter, sgCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
+                let copy: StandardGroup<Item | Group<any>>;
+                [copy, enCounter, cngCounter, sgCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
                         enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies);
-                if (sg.group) {
-                    sg.group.members.push(sg);
+                if (m.group) {
+                    copy.group = m.group;
+                    copy.group.members.push(copy);
                 }
                 break;
             }

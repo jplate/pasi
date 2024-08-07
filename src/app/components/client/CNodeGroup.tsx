@@ -6,7 +6,6 @@ import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
 import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
-import ENode from './ENode.tsx'
 import { MIN_ROTATION } from './ItemEditor'
 import { round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
@@ -46,6 +45,7 @@ export default class CNodeGroup implements Group<CNode> {
     shading: number = DEFAULT_SHADING;
     dash: number[] = DEFAULT_DASH;
     dash100: number[] = DEFAULT_DASH;
+
     dashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
     readonly id: number;
@@ -73,10 +73,29 @@ export default class CNodeGroup implements Group<CNode> {
         }
     }
 
+    /**
+     * Copies values (excluding the members array and the group field) from the supplied sources, for those fields among 'linewidth', 'shading', 
+     * 'dash', and 'isActiveMember' on which they all agree. The fields 'linewidth100' and 'dash100' are set to the resulting values of 
+     * 'linewidth' and 'dash', respectively.
+     */
+    copyNonMemberValuesFrom(...sources: CNodeGroup[]) {
+        if (sources.length > 0) {
+            const keys: (keyof CNodeGroup)[] = ['linewidth', 'shading', 'dash', 'isActiveMember'];
+            keys.forEach(<T extends keyof CNodeGroup>(key: T) => {
+                const src0 = sources[0];
+                if (sources.every(src => src[key]===src0[key])) {
+                    (this as CNodeGroup)[key] = src0[key];
+                } 
+            });
+        }
+        this.linewidth100 = this.linewidth;
+        this.dash100 = this.dash;
+    }
+
     
     getLines = (): CubicLine[] => {
-        const l = this.members.length;
-        return this.members.map((node, i) => getLine(node, this.members[i+1<l? i+1: 0]));
+        const n = this.members.length;
+        return this.members.map((node, i) => getLine(node, this.members[i + 1 < n? i + 1: 0]));
     }
 
     /** Returns the bounds of this NodeGroup, taking into account also the control points of the various (non-omitted) lines connecting the nodes.
@@ -435,7 +454,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    parse(tex: string, info: string | null, name?: string): void {
+    parse(tex: string, info: string | null): void {
         if(info===null) {	        	
             throw new ParseError(<span>Incomplete definition of contour node group: info string required.</span>);
         }
@@ -533,9 +552,8 @@ export default class CNodeGroup implements Group<CNode> {
 
         // We now have to create and configure the individual nodes, and add them as members, to replace any old ones:
         this.members = new Array<CNode>(n);
-        const coordinateIndex = 4; // indicates where to find the x-coordinate info in the config array for an individual node
-        // Construct the array of curves from which we'll get information about the coordinates of our nodes:
-        const curves = (fillLevel > 0? 
+        const coordinateIndex = 4; // This indicates where to find the x-coordinate info in the config array for an individual node.
+        const curves = (fillLevel > 0? // Construct the array of curves from which we'll get information about the coordinates of our nodes:
             (stShapes[0].shape instanceof Texdraw.Path? stShapes[0].shape.shapes: [stShapes[0].shape]):
             stShapes.flatMap(sh => sh.shape instanceof Texdraw.Path? sh.shape.shapes: [sh.shape])) as Texdraw.CubicCurve[];
         let curveIndex = 0,
@@ -551,7 +569,7 @@ export default class CNodeGroup implements Group<CNode> {
             let x, 
                 y;
             // If either (i) fillLevel and linewidth are both zero or (ii) fillLevel is zero and and the lines from the previous node and to the next are 
-            // both omitted, then we try get the coordinates from the info array:
+            // both omitted, then we try to get the coordinates from the info array:
             if (fillLevel===0 && (this.linewidth===0 || (prevOmit && omitLine[k]))) {
                 if (nodeInfo.length < coordinateIndex + 2) {
                     throw makeParseError('Incomplete configuration string for contour node', nodeInfoString);
@@ -565,7 +583,7 @@ export default class CNodeGroup implements Group<CNode> {
                     curveIndex++;
                 }
             }
-            if (fillLevel===0) { /* If fillLevel is non-zero, then all the curves should be present in the texdraw code (whether or not they are 
+            if (fillLevel===0) { /* If fillLevel is not zero, then all the curves should be present in the texdraw code (whether or not they are 
                     'omitted'), and so we should keep looking at their starting points, rather than to switch back and forth between start and end points.
                     On the other hand, if fillLevel *is* zero, then we *do* have to switch back and forth, because the information in the code may
                     not be redundant. So we have to start by looking at the starting point of whatever curve curveIndex points to, and then switch to 
@@ -747,6 +765,8 @@ interface CNodeGroupCompProps {
     selection: Item[]
     allItems: Item[]
     yOffset: number
+    unitscale: number
+    displayFontFactor: number
     bg: HSL
     primaryColor: HSL
     markColor: string
@@ -761,7 +781,7 @@ interface CNodeGroupCompProps {
     mouseLeft: () => void
 }
 
-export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allItems, yOffset, bg, primaryColor, markColor, 
+export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allItems, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor, 
         itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: CNodeGroupCompProps) => {
     const centerDivClickable = !allItems.some(item => {
         const c = nodeGroup.getNodalCenter(); // the location of the center div
@@ -821,7 +841,10 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
                 onMouseEnter={groupMouseEnter} 
                 onMouseLeave={(group, e) => mouseLeft()} />
             {nodeGroup.members.map((node, i) => {
-                return <CNodeComp key={node.id} id={node.id} cnode={node} yOffset={yOffset} 
+                return <CNodeComp key={node.id} id={node.id} cnode={node} 
+                    yOffset={yOffset} 
+                    unitscale={unitscale}
+                    displayFontFactor={displayFontFactor}
                     primaryColor={primaryColor}
                     markColor={markColor}
                     focusItem={focusItem}

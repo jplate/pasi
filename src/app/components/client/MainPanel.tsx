@@ -77,6 +77,12 @@ export const MAX_TRANSLATION_LOG_INCREMENT = 2
 const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
+const MIN_UNITSCALE = 0.1
+const MAX_UNITSCALE = 100
+const DEFAULT_UNITSCALE = 0.75
+const MIN_DISPLAY_FONT_FACTOR = 0.1
+const MAX_DISPLAY_FONT_FACTOR = 100
+const DEFAULT_DISPLAY_FONT_FACTOR = 0.8
 export const ROUNDING_DIGITS = 3 // used for rounding values resulting from rotations of points, etc.
 
 export const MAX_SCALING = 1E6
@@ -543,7 +549,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
     const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl'))
-    const [pixel, setPixel] = useState(0.75)
+    const [pixel, setPixel] = useState(DEFAULT_UNITSCALE)
+    const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
     const [points, setPoints] = useState<Point[]>([])
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
@@ -680,7 +687,10 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             node.radius100 = node.radius;
                             node.linewidth100 = node.linewidth;
                             node.dash100 = node.dash;
-                            }
+                            node.ornaments.forEach(o => {
+                                o.gap100 = o.gap;
+                            });
+                        }
                         else if (node instanceof CNode) {
                             node.dist0_100 = node.dist0;
                             node.dist1_100 = node.dist1;
@@ -919,6 +929,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     group.members = group.members.slice(j, i+1);
                                 }
                                 const newGroup = new CNodeGroup(cngCounter);
+                                newGroup.copyNonMemberValuesFrom(group);
                                 newGroup.members = newMembers;
                                 setCNGCounter(prev => prev+1);
                                 newMembers.forEach(node => node.group = newGroup);   
@@ -1285,10 +1296,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     newSelection = selectedNodes.map(node => {
                         const label = new Label(node);
                         label.text = 'a';
+                        label.updateLines(pixel, displayFontFactor);
                         return label;
                     });
                     break;
-                default: sorry();
+                default: 
+                    sorry();
+                    return;
             }
             const newFocus = newSelection[newSelection.length - 1];
             setPoints([]);
@@ -1418,7 +1432,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      */
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
         if (focusItem) {
-            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, key);
+            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, pixel, displayFontFactor, key);
             const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndCNodeGroups'? new Set<CNodeGroup>(): null;
             const nodes = range=='onlyThis'? 
                 edit(focusItem, list):
@@ -1433,11 +1447,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         return edit(item, acc) as (ENode | CNodeGroup)[]
                 }, list);
             setList(prev => nodes); // for some reason, the setter function is called twice here.
-            adjustLimit();
             setOrigin(false, points, focusItem, selection, list);
             if (focusItem instanceof Node) { 
                 scrollTo(focusItem, yOffset);
             }
+            adjustLimit();
             setItemsMoved(prev => [...prev]); 
         }
     }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, adjustLimit, setOrigin, scrollTo]);  
@@ -1536,7 +1550,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
                 }
                 else if (node instanceof ENode) {
-                    if (transformFlags.scaleENodes) node.radius = node.radius100 * newValue/100;
+                    if (transformFlags.scaleENodes) {
+                        node.radius = node.radius100 * newValue/100;
+                        node.ornaments.forEach(o => {
+                            o.gap = o.gap100 * newValue/100;
+                        });
+                    }
                     if (transformFlags.scaleLinewidths) node.linewidth = node.linewidth100 * newValue/100;
                     if (transformFlags.scaleDash) node.dash = node.dash100.map(l => l * newValue/100);
                 }
@@ -1693,11 +1712,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
         }
 
+        const oldGroups = newMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
         let newList = list,
             group: Group<any>;
         if (createCNG) {
             group = new CNodeGroup(cngCounter);
             group.members = newMembers;
+            (group as CNodeGroup).copyNonMemberValuesFrom(...oldGroups as CNodeGroup[]);
             newList = [...newList, group as CNodeGroup];
             setCNGCounter(prev => prev + 1);
         }                                                
@@ -1705,7 +1726,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
             group = new StandardGroup<Item | Group<any>>(sgCounter, newMembers);
             setSGCounter(prev => prev + 1);
         }
-        const oldGroups = newMembers.map(m => m.group).filter((g, i, arr) => g && i===arr.indexOf(g));
         oldGroups.forEach(g => {
             if (g) {
                 g.members = g.members.filter(m => !newMembers.includes(m));
@@ -1763,7 +1783,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const loadDiagram = useCallback((code: string, replace: boolean) => {
 
         if (false) { // for debugging purposes
-            load(code, 0, 0, 0); 
+            load(code, displayFontFactor, 0, 0, 0); 
             console.log('Success!');
             return;
         }
@@ -1774,8 +1794,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             newSGCounter = 0;
         try {
             [newList, newPixel, newENodeCounter, newCNGCounter, newSGCounter] = replace? 
-                load(code, 0, 0, 0): 
-                load(code, eNodeCounter, cngCounter, sgCounter);
+                load(code, displayFontFactor, 0, 0, 0): 
+                load(code, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
             if (replace) {
                 setPixel(prev => newPixel);
                 setPreselection1([]);
@@ -1804,26 +1824,47 @@ const MainPanel = ({dark}: MainPanelProps) => {
     }, [list, eNodeCounter, cngCounter, sgCounter, points, adjustLimit, setOrigin]);
 
 
-    const canCopy: boolean = useMemo(() => !(
-        deduplicatedSelection.length<1 || 
-        (list.length + deduplicatedSelection.length > MAX_LIST_SIZE && // If this isn't satisfied, we don't need to go into the details.
-            list.length + 
-                deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc+1: acc, 0) +
-                getCNodeGroups(topTbc).length > MAX_LIST_SIZE
-        ) ||
-        (() => {
-            const tbcContainingNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
-            const dedupTbcContainingNGs = tbcContainingNGs.filter((g, i) => i===tbcContainingNGs.indexOf(g));
-            return dedupTbcContainingNGs.some(group => group && 
-                group.members.length + tbcContainingNGs.reduce((acc, g) => g===group? acc+1: acc, 0) > MAX_CNODEGROUP_SIZE)
-        })() ||
-        (hDisplacement<0 && leftMostSelected + hDisplacement < 0) ||
-        (vDisplacement>0 && topMostSelected + vDisplacement > MAX_Y) ||
-        (hDisplacement>0 && rightMostSelected + hDisplacement > MAX_X) ||
-        (vDisplacement<0 && bottomMostSelected + vDisplacement < MIN_Y)
-    ), [hDisplacement, vDisplacement, deduplicatedSelection, list, topTbc, leftMostSelected, rightMostSelected, topMostSelected, bottomMostSelected]);
+    const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc + 1: acc, 0), [deduplicatedSelection]);
 
-    const canDelete: boolean = selection.length>0;
+    const numberOfTbcCNGs = useMemo(() => getCNodeGroups(topTbc).length, [topTbc]);
+
+    const copyingWouldConflictWithMaxCNGSize = useMemo(() => {
+        const tbcContainingCNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
+        const dedupTbcContainingCNGs = tbcContainingCNGs.filter((g, i, arr) => i===arr.indexOf(g));
+        return dedupTbcContainingCNGs.some(group => group && 
+            group.members.length + tbcContainingCNGs.reduce((acc, g) => g===group? acc + 1: acc, 0) > MAX_CNODEGROUP_SIZE)
+    }, [topTbc]);
+
+    const copyingWouldConflictWithMaxNumberOfOrnaments = useMemo(() => {
+        const nonTbcNodesWithTbcOrnaments = topTbc.filter(it => it instanceof Ornament || it instanceof StandardGroup).flatMap(it => {
+            if (it instanceof Ornament) {
+                return deduplicatedSelection.includes(it.node)? []: [it.node];
+            }
+            else {
+                const lm = getLeafMembers(it);
+                return Array.from(lm).filter(m => m instanceof Ornament && !deduplicatedSelection.includes(m.node)).map(o => (o as Ornament).node);
+            }
+        });
+        const dedupNonTbcNodesWithTbcOrnaments = nonTbcNodesWithTbcOrnaments.filter((g, i, arr) => i===arr.indexOf(g));
+        return dedupNonTbcNodesWithTbcOrnaments.some(node => node && 
+            node.ornaments.length + nonTbcNodesWithTbcOrnaments.reduce((acc, n) => n===node? acc + 1: acc, 0) > MAX_NUMBER_OF_ORNAMENTS);
+    }, [topTbc, deduplicatedSelection]);
+
+    const canCopy: boolean = useMemo(() => (
+        deduplicatedSelection.length > 0 &&
+        list.length + numberOfTbcENodes + numberOfTbcCNGs <= MAX_LIST_SIZE &&
+        !copyingWouldConflictWithMaxCNGSize &&
+        !copyingWouldConflictWithMaxNumberOfOrnaments &&
+        (hDisplacement >= 0 || leftMostSelected + hDisplacement >= 0) &&
+        (vDisplacement <= 0 || topMostSelected + vDisplacement <= MAX_Y) &&
+        (hDisplacement <= 0 || rightMostSelected + hDisplacement <= MAX_X) &&
+        (vDisplacement >= 0 || bottomMostSelected + vDisplacement >= MIN_Y)
+    ), [
+        deduplicatedSelection, list, numberOfTbcENodes, numberOfTbcCNGs, copyingWouldConflictWithMaxCNGSize, copyingWouldConflictWithMaxNumberOfOrnaments, 
+        hDisplacement, vDisplacement, leftMostSelected, rightMostSelected, topMostSelected, bottomMostSelected
+    ]);
+
+    const canDelete: boolean = selection.length > 0;
 
     const canAddENodes: boolean = points.length>0 && list.length < MAX_LIST_SIZE;
 
@@ -1873,7 +1914,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         { enabled: canCopy && !modalShown });
     useHotkeys(hotkeyMap['delete'], deleteSelection, 
         { enabled: canDelete && !modalShown });
-    useHotkeys(hotkeyMap['clear points'], () => setPoints(prev => []), 
+    useHotkeys(hotkeyMap['clear points'], () => {setPoints(prev => []); setOrigin(true, []);}, 
         { enabled: !modalShown, preventDefault: true });
     useHotkeys(hotkeyMap['add nodes'], addEntityNodes, 
         { enabled: canAddENodes && !modalShown });
@@ -1975,20 +2016,23 @@ const MainPanel = ({dark}: MainPanelProps) => {
         `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`));
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
 
-    return ( // We give this div the 'pasi' class to prevent certain css styles from taking effect:
+    return ( 
         <DarkModeContext.Provider value={dark}>
-            <div id='main-panel' className='pasi flex my-8 p-6'> 
+            <div id='main-panel' className='pasi flex my-8 p-6'> {/* We give this div the 'pasi' class to prevent certain css styles from taking effect. */}
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
                     <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
                             onMouseDown={canvasMouseDown} >
                         {list.map((it, i) => 
                             it instanceof ENode?
-                            <ENodeComp key={it.id} id={it.id} enode={it} yOffset={yOffset} 
+                            <ENodeComp key={it.id} id={it.id} enode={it} 
+                                yOffset={yOffset} 
+                                unitscale={pixel}
+                                displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor0={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
                                 markColor1={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
-                                titleColor={dark && it.shading<0.5? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  // a little hack to ensure that the 'titles' of nodes remain visible when the nodes become heavily shaded
+                                titleColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  
                                 focusItem={focusItem} 
                                 selection={selection} 
                                 preselection={preselection2}
@@ -2002,6 +2046,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 selection={deduplicatedSelection}
                                 allItems={allItems}
                                 yOffset={yOffset} 
+                                unitscale={pixel}
+                                displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
                                 markColor={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
@@ -2046,7 +2092,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         }
                     </div>
                     <canvas id='real-canvas' className='w-72 h-24 hidden'> 
-                        {/* This canvas element helps Label components to determine the 'true' height of a given piece of text. */}                    
+                        {/* This canvas element helps Label components determine the 'true' height of a given piece of text. */}                    
                     </canvas>
                     <div id='code-panel' className='relative mt-[25px] min-w-[900px] max-w-[1200px] h-[190px]'> 
                         <textarea 
@@ -2058,6 +2104,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <CopyToClipboardButton id='copy-button' iconStyle='size-6' textareaRef={codeRef} />
                     </div>
                 </div>
+
                 <div id='button-panels' className={clsx('flex-grow min-w-[315px] max-w-[380px] select-none')}>
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
@@ -2069,8 +2116,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 tooltip={<>Create contours at the selected locations.<HotkeyComp mapKey='add contours' /></>}
                                 tooltipPlacement='top'
                                 disabled={!canAddContours} onClick={addContours} />  
-                        </div>                    
-
+                        </div> 
                         <div id='di-panel' className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'>
                             <Menu>
                                 <MenuButton className={clsx('py-1.5', menuButtonClassName)}>
@@ -2106,7 +2152,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             tooltip={<>Copy selection.<HotkeyComp mapKey='copy' /></>}
                             tooltipPlacement='right'
                             disabled={!canCopy} onClick={copySelection} /> 
-
                         <TabGroup className='flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5' 
                                 selectedIndex={tabIndex} onChange={setUserSelectedTabIndex}>
                             <TabList className='grid grid-cols-10 mb-0.5'>
@@ -2132,7 +2177,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             logIncrement={logIncrement}
                                             onIncrementChange={(val) => setLogIncrement(val)}
                                             onChange={itemChange} />:
-                                        <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement}
+                                        <CanvasEditor grid={grid} hDisp={hDisplacement} vDisp={vDisplacement} displayFontFactor={displayFontFactor}
                                             changeHGap={(e) => setGrid(prevGrid => ({...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
                                             changeVGap={(e) => setGrid(prevGrid => ({...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP)}))} 
                                             changeHShift={(e) => setGrid(prevGrid => ({...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT)}))} 
@@ -2141,6 +2186,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             changeSnapToCC={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
                                             changeHDisp={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
                                             changeVDisp={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
+                                            changeDFF={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (isFinite(val)) {
+                                                    setDisplayFontFactor(Math.min(Math.max(MIN_DISPLAY_FONT_FACTOR, val), MAX_DISPLAY_FONT_FACTOR));
+                                                }
+                                            }}
                                             reset={() => {
                                                 setGrid(createGrid());
                                                 setHDisplacement(DEFAULT_HDISPLACEMENT);
@@ -2180,7 +2231,6 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </TabPanel>
                             </TabPanels>
                         </TabGroup>
-
                         <div id='undo-panel' className='grid grid-cols-3'>
                             <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
                                 disabled={false}
@@ -2209,6 +2259,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                     </svg>} />
                         </div>
                     </div>
+
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
                             tooltip={<>Generate and display <i>texdraw</i> code.<HotkeyComp mapKey='generate code' /></>}
@@ -2217,8 +2268,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                                type='number' step='0.1' value={pixel}
-                                onChange={(e) => setPixel(Math.max(0, parseFloat(e.target.value)))}/>
+                                type='number' min={MIN_UNITSCALE} step={0.01} value={pixel}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (isFinite(val)) {
+                                        setPixel(Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE));
+                                    }
+                                }}/>
                             pt
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-2 py-2' disabled={false} 
@@ -2227,6 +2283,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>
+
                     <Modal isOpen={modalShown} closeTimeoutMS={750}
                             onAfterOpen={() => setTimeout(() => okButtonRef.current?.focus(), 500)}
                             style={{

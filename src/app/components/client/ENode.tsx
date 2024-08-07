@@ -87,6 +87,8 @@ export default class ENode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
+            unitscale: number,
+            displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'x': if (e) {
@@ -160,7 +162,7 @@ export default class ENode extends Node {
      *  The calling function should make sure that this name is of reasonable length so that we don't have to worry about truncating it in our
      *  error messages.
      */
-    override parse(tex: string, info: string | null, name?: string) {
+    override parse(tex: string, info: string | null, unitscale?: number, displayFontFactor?: number, name?: string) {
         const stShapes =  Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
@@ -259,6 +261,8 @@ export interface ENodeCompProps {
     id: string
     enode: ENode
     yOffset: number
+    unitscale: number
+    displayFontFactor: number
     bg: HSL
     primaryColor: HSL
     markColor0: string
@@ -273,8 +277,10 @@ export interface ENodeCompProps {
     hidden?: boolean
 }
 
-export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, 
-        onMouseDown, onMouseEnter, onMouseLeave, hidden = false }: ENodeCompProps) => {
+export const ENodeComp = ({ id, enode, yOffset, unitscale, displayFontFactor, 
+        bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, 
+        onMouseDown, onMouseEnter, onMouseLeave, hidden = false 
+}: ENodeCompProps) => {
 
     const x = enode.x;
     const y = enode.y;
@@ -334,7 +340,7 @@ export const ENodeComp = ({ id, enode, yOffset, bg, primaryColor, markColor0, ma
                     </div>}
             </div>
             {enode.ornaments.map((o, i) => {
-                return o.getComponent(i, yOffset, primaryColor, markColor0, 
+                return o.getComponent(i, yOffset, unitscale, displayFontFactor, primaryColor, markColor0, 
                     focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave);
             })}
         </React.Fragment>

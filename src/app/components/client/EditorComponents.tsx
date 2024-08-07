@@ -110,9 +110,12 @@ export const InputField = ({
 
     const w = width=='short'? 'min-w-10 w-10': width=='medium'? 'min-w-16 w-16': 'min-w-24 w-24';
     const labelComp = (<span className='pointer-events-auto'>{label}</span>);
-    const inputComp = (<input className={clsx(w, type==='number'? 'text-right': '',
+    const inputComp = (<input className={clsx(w, type==='number'? 'text-right': 'pr-2', // string inputs need extra padding on the right; 
+                // whereas number inputs have space reserved on the right for the arrow buttons, which is already a sort of padding.
             'ml-2 pl-2 border border-btnborder rounded-md pointer-events-auto focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor')}
-            value={value} type={type} step={step==0? 'any': step} min={min} max={max} 
+            value={value} type={type} step={step===0? 'any': step} min={min} max={max}
+            style={{ fontVariantLigatures: 'none'}} 
+            spellCheck={false}
             disabled={disabled} 
             onChange={onChange} />);
     return ( 
@@ -209,7 +212,7 @@ export const MenuField = ({ label, value, values, lowTopMargin = false, extraBot
     const labelComp = (<span className='pl-1 mr-2 whitespace-nowrap'>{label}</span>);
     const menuComp = (
             <Menu>
-                <MenuButton className={clsx('w-full px-3 py-0.5', menuButtonClassName)}>
+                <MenuButton className={clsx('w-full px-3', menuButtonClassName)}>
                     <div className='flex-1 text-left'>
                         {values[value]}
                     </div>

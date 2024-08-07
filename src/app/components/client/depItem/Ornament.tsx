@@ -56,7 +56,9 @@ export default class Ornament extends Item {
         target.gap100 = this.gap100;
     }
 
-    getComponent(key: number, yOffset: number, primaryColor: HSL, markColor: string, focus: boolean, selected: boolean, preselected: boolean, 
+    getComponent(key: number, yOffset: number, unitscale: number, displayFontFactor: number, 
+        primaryColor: HSL, markColor: string, 
+        focus: boolean, selected: boolean, preselected: boolean, 
         onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
         onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
         onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
@@ -68,6 +70,8 @@ export default class Ornament extends Item {
 
 export interface OrnamentCompProps {    
     yOffset: number
+    unitscale: number
+    displayFontFactor: number
     primaryColor: HSL
     markColor: string
     focus: boolean
