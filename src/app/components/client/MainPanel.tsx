@@ -2027,9 +2027,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setDialog(prev => ({ contentLabel, title, content, extraWide }));
         setModalShown(true);
     }
+
+    const transformTabDisabled = selectedNodes.length===0;
+
+    const groupTabDisabled = !focusItem;    
     
-    
-    const tabIndex = selection.length==0? 0: userSelectedTabIndex;
+    const tabIndex = (userSelectedTabIndex===1 && transformTabDisabled) || (userSelectedTabIndex===2 && groupTabDisabled)? 0: userSelectedTabIndex;
 
      // The delete button gets some special colors:
     const deleteButtonStyle = clsx('rounded-xl', 
@@ -2189,12 +2192,12 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                 </Tab>
                                 <Tab key='transform-tab' className={clsx(tabClassName, 'col-span-4 data-[selected]:border-x-0', 
                                             tabIndex===0 && 'border-l-[1px] rounded-bl-xl border-l-0', tabIndex==2 && 'border-r-[1px] rounded-br-xl border-r-0')} 
-                                        disabled={selectedNodes.length===0}>
+                                        disabled={transformTabDisabled}>
                                     Transform
                                 </Tab>
                                 <Tab key='group-tab' className={clsx(tabClassName, 'col-span-3 border-r-0 rounded-tr-xl data-[selected]:border-l-0', 
                                             tabIndex===0 && 'border-l-0', tabIndex===1 && 'rounded-bl-xl')} 
-                                        disabled={!focusItem}>
+                                        disabled={groupTabDisabled}>
                                     Groups
                                 </Tab>
                             </TabList>

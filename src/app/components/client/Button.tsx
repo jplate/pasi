@@ -171,12 +171,11 @@ export const CopyToClipboardButton = ({ id, iconSize, textareaRef }: CopyToClipb
         top: '0.25rem',
         right: `${0.25 + scrollbarWidth}rem`,
         padding: '0.25rem',
-        borderRadius: '0.125rem',
         fontWeight: '600',
     };
 
     const button = (
-        <button id={id} ref={buttonRef} className='copy-button rounded-lg' style={buttonStyle} // For much of the styling, we're relying on global.css.
+        <button id={id} ref={buttonRef} className='copy-button rounded-md' style={buttonStyle} // For much of the styling, we're relying on global.css.
             disabled={copied}
             onClick={async () => {
                 if (textareaRef.current) {
@@ -193,7 +192,7 @@ export const CopyToClipboardButton = ({ id, iconSize, textareaRef }: CopyToClipb
                             }
                         }, 2000); // Show check-marked clipboard icon for 2 seconds
                     } catch (err) {
-                        
+                        console.warn('Copy to clipboard failed');
                     }
                 }
             }} >

@@ -202,10 +202,13 @@ export default class ENode extends Node {
             // console.log(`info: ${info}`);
             this.linewidth = this.linewidth100 = 0;
             this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
-            [this.radius, this.x, this.y] = info.split(/\s+/).map(v => dimRatio * decode(v));
-            if (isNaN(this.radius) || isNaN(this.x) || isNaN(this.y)) {
-                throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);
-            }
+            [this.radius, this.x, this.y] = info.split(/\s+/).map(s => {
+                const val = decode(s);
+                if(!isFinite(val)) {
+                    throw makeParseError('Unexpected token in entity node configuration string', s);
+                }
+                return dimRatio * val;
+            });
         }
         if (this.linewidth < 0) {
             throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.</span>);

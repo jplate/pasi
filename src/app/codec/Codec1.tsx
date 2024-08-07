@@ -19,7 +19,8 @@ const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which w
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 const ENODE_PREFIX = 'E';
 const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what a contour is most naturally taken to represent.
-
+const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hints' for the decoding of Ornament information. This infix
+    // must *not* overlap with CODE.
 
 const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => any>([
     ['L', Label]
@@ -105,7 +106,7 @@ export const decode = (s: string) => {
     }
 }
 
-export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => {
+export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
 
     // We start by constructing the 'preamble', which mainly contains information as to what groups contain which other groups.
@@ -130,7 +131,7 @@ export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => 
         }, []
     ).join(' ');
 
-    arr.push(`${Texdraw.dimCmd} ${pixel} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
+    arr.push(`${Texdraw.dimCmd} ${unitscale} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
 
     // Next, we construct the main part of the code.
 
@@ -155,11 +156,11 @@ export const getCode = (list: (ENode | CNodeGroup)[], pixel: number): string => 
                 arr.push(`${code}%${ENODE_PREFIX}${nodeName}${info.length>0? `{${info}}`: ''}${getGroupInfo(node, gMap)}`); 
             } 
             else { // Otherwise we're dealing with a CNode:
-                nodeName = `${cngName}-${i}`;
+                nodeName = `${cngName}${CNODE_NAME_INFIX}${i}`;
             }
             nodeMap.set(node, nodeName);
             for (const o of node.ornaments) {
-                const code = o.getTexdrawCode(pixel);
+                const code = o.getTexdrawCode(unitscale);
                 const prefix = ornamentPrefixMap.getByValue(o.constructor as new (node: Node) => any);
                 const info = o.getInfoString();
                 arr.push(`${code}%${prefix}${nodeName}{${info}}${getGroupInfo(o, gMap)}`); 
@@ -381,11 +382,11 @@ const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new 
     // [prefix + nodeName + info] or 
     // [prefix + nodeName + info + ('.' or ':') + groupName].
     const [name, groupName, activeMember, info] = analyzeHint(hint, true);
-    // The 'name' should here have the format [eNodeName] OR [cngName + '-' + nodeIndex].
-    const split = name.split('-');
+    // The 'name' should here have the format [eNodeName] OR [cngName + CNODE_NAME_INFIX + nodeIndex].
+    const split = name.split(CNODE_NAME_INFIX);
     let o: Ornament, 
         nodeIdentifier = ''; // This will be passed on to Ornapment.parse() for the purpose of constructing error messages.
-    if (split.length===1) {
+    if (split.length===1) { // In this case we're dealing with an Ornament attached to an ENode.
         let node: Node | undefined = undefined,
             defined = false;
         const enName = split[0];
@@ -402,7 +403,7 @@ const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new 
         nodeIdentifier = `entity node ${eNodeIndex}`;
         o = new oClass(node);
     }
-    else {
+    else { // In this case we're dealing with an Ornament attached to a CNode.
         let cng: CNodeGroup | undefined = undefined,
             defined = false;
         const cngName = split[0];

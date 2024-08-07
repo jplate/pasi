@@ -265,7 +265,11 @@ export default class Label extends Ornament {
     }
 
     override getInfoString() {
-        return [this.gap, this.angle].map(encode).join(' ');
+        return [
+            this.gap, 
+            this.angle, 
+            (this.parbox && this.mathMode) || (!this.parbox && this.centeredText)? 1: 0
+        ].map(encode).join(' ');
     }
 
     override getTexdrawCode(unitscale: number) {
@@ -374,20 +378,36 @@ export default class Label extends Ornament {
 
         if (info) {
             const split = info.split(/\s+/).filter(s => s.length > 0);
-            if (split.length!==2) {
-                throw new ParseError(<span>Info string should contain exactly two elements, not {split.length}.</span>);
+            if (split.length!==3) {
+                throw new ParseError(<span>Label configuration string should contain exactly three elements, not {split.length}.</span>);
             }
-            const [gap, angle] = split.map(decode);
+            const [gap, angle, specialBit] = split.map(s => {
+                const val = decode(s);
+                console.log(`s: "${s}" val: ${val}`);
+                if (!isFinite(val)) {
+                    throw Texdraw.makeParseError('Unexpected token in label configuration string', s);
+                }
+                return val;
+            });
+            const scaledGap = dimRatio * gap;
 
-            if (gap < MIN_GAP) {
-                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {gap} below minimum value.</span>); 
+            if (scaledGap < MIN_GAP) {
+                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {scaledGap} below minimum value.</span>); 
             }
-            else if (gap > MAX_GAP) {
-                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {gap} exceeds maximum value.</span>); 
+            else if (scaledGap > MAX_GAP) {
+                throw new ParseError(<span>Illegal data in definition of label for {name}: gap {scaledGap} exceeds maximum value.</span>); 
             }
 
-            this.gap = gap;
+            this.gap = scaledGap;
             this.angle = getCyclicValue(angle, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
+            if (specialBit!==0) { // The 'special bit' encodes a bit of information that we weren't able to put into the texdraw code.
+                if (this.parbox) {
+                    this.mathMode = true;
+                }
+                else {
+                    this.centeredText = true;
+                }
+            }
         }
     }
 
@@ -539,7 +559,7 @@ export default class Label extends Ornament {
                         style={{overflow: 'visible'}}>
                     {(() => {
                         if (lines.length > 0) {
-                            const fontClassName = mathMode? mathFont.className: normalFont.className;
+                            const fontClassName = !parbox && mathMode? mathFont.className: normalFont.className;
                             const fillColor = `hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`;
                             const firstAsc = Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc);
                             if (parbox) {                                

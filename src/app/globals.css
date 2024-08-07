@@ -149,7 +149,7 @@ a:not(.pasi a):not(.ReactModal__Body--open a):hover {
 /* Disable pointer events (and turn off link coloring) if modal dialog is open... */
 .ReactModal__Body--open {
   pointer-events: none;
-  a {
+  a:not(.pasi a) {
     text-decoration: none;
     transition: color 500ms ease-in-out;
   }
@@ -161,10 +161,10 @@ a:not(.pasi a):not(.ReactModal__Body--open a):hover {
 .ReactModal__Overlay {
   pointer-events: auto;
 }
-/* Using a custom class, we gradually turn link coloring back on while the modal dialog is closing: */
+/* Using a custom class, we gradually turn link coloring (for links in the surrounding text) back on while the modal dialog is closing: */
 .modal-closing {
   pointer-events: none;
-  a {
+  a:not(.pasi a) {
     color: rgb(var(--link-rgb)); 
     text-decoration: none;
     transition: color 500ms ease-in-out;

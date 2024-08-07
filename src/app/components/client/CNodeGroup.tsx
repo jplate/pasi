@@ -574,7 +574,13 @@ export default class CNodeGroup implements Group<CNode> {
                 if (nodeInfo.length < coordinateIndex + 2) {
                     throw makeParseError('Incomplete configuration string for contour node', nodeInfoString);
                 }
-                [x, y] = nodeInfo.slice(coordinateIndex).map(s => round(dimRatio * decode(s), Texdraw.ROUNDING_DIGITS));
+                [x, y] = nodeInfo.slice(coordinateIndex).map(s => {
+                    const val = decode(s);
+                    if (!isFinite(val)) {
+                        throw makeParseError('Unexpected token in contour node configuration string', s);
+                    }
+                    return round(dimRatio * decode(s), Texdraw.ROUNDING_DIGITS);
+                });
             }
             else {
                 const curve = curves[curveIndex];
@@ -612,7 +618,7 @@ export default class CNodeGroup implements Group<CNode> {
     
             let [a0, a1, d0, d1] = nodeInfo.slice(0, coordinateIndex).map(s => {
                 const val = decode(s);
-                if (isNaN(val)) {
+                if (!isFinite(val)) {
                     throw makeParseError('Unexpected token in contour node configuration string', s);
                 }
                 return val;
