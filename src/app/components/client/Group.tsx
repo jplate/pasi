@@ -1,4 +1,4 @@
-import Node from './Node.tsx'
+import Node from './items/Node.tsx'
 
 export const MAX_GROUP_LEVEL = 32
 

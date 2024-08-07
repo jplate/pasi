@@ -1,11 +1,11 @@
 import React from 'react'
 //import assert from 'assert'
-import Item, { HSL } from './Item'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './Node.tsx'
+import Item, { HSL } from './items/Item.tsx'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './items/Node.tsx'
 import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
-import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './CNode.tsx'
+import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
 import { MIN_ROTATION } from './ItemEditor'
 import { round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
@@ -454,7 +454,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
 
-    parse(tex: string, info: string | null): void {
+    parse(tex: string, info: string | null, dimRatio: number): void {
         if(info===null) {	        	
             throw new ParseError(<span>Incomplete definition of contour node group: info string required.</span>);
         }
@@ -525,13 +525,13 @@ export default class CNodeGroup implements Group<CNode> {
 
         // Extract information about linewidth and dash pattern:
         if (stShapes.length==0) {
-            this.linewidth = this.linewidth100 = Texdraw.extractLinewidth(tex);
+            this.linewidth = this.linewidth100 = dimRatio * Texdraw.extractLinewidth(tex);
             this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
         }
         else {
             const stroke = stShapes[stShapes.length - 1].stroke;
-            this.linewidth = this.linewidth100 = stroke.linewidth;
-            this.dash = this.dash100 = stroke.pattern;
+            this.linewidth = this.linewidth100 = dimRatio * stroke.linewidth;
+            this.dash = this.dash100 = stroke.pattern.map(v => dimRatio * v);
         }
         if (this.linewidth < 0) {
             throw new ParseError(<span>Illegal data in definition of contour node group: line width should not be negative.</span>);
@@ -574,11 +574,12 @@ export default class CNodeGroup implements Group<CNode> {
                 if (nodeInfo.length < coordinateIndex + 2) {
                     throw makeParseError('Incomplete configuration string for contour node', nodeInfoString);
                 }
-                [x, y] = nodeInfo.slice(coordinateIndex).map(decode);
+                [x, y] = nodeInfo.slice(coordinateIndex).map(s => round(dimRatio * decode(s), Texdraw.ROUNDING_DIGITS));
             }
             else {
                 const curve = curves[curveIndex];
-                ({ x, y } = lookingAtEndPoint? curve.getEndPoint(): curve.getStartingPoint());
+                const { x: rawX, y: rawY } = lookingAtEndPoint? curve.getEndPoint(): curve.getStartingPoint();
+                [x, y] = [rawX, rawY].map(v => round(dimRatio * v, Texdraw.ROUNDING_DIGITS));
                 if (lookingAtEndPoint || fillLevel > 0) {
                     curveIndex++;
                 }
@@ -618,8 +619,8 @@ export default class CNodeGroup implements Group<CNode> {
             });
             a0 = getCyclicValue(a0, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
             a1 = getCyclicValue(a1, MIN_ROTATION, 360, Texdraw.ROUNDING_DIGITS);
-            d0 = round(d0, Texdraw.ROUNDING_DIGITS);
-            d1 = round(d1, Texdraw.ROUNDING_DIGITS);
+            d0 = round(dimRatio * d0, Texdraw.ROUNDING_DIGITS);
+            d1 = round(dimRatio * d1, Texdraw.ROUNDING_DIGITS);
 
             // We could try to 'validate' d0 and d1, too, but there is no real point in doing so, since very high or low values wouldn't break anything in this case.
 

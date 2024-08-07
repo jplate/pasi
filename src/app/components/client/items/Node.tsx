@@ -1,6 +1,6 @@
 import Item from './Item'
-import Ornament from './depItem/Ornament.tsx'
-import * as Texdraw from '../../codec/Texdraw.tsx'
+import Ornament from './Ornament.tsx'
+import * as Texdraw from '../../../codec/Texdraw.tsx'
 
 export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
@@ -17,20 +17,21 @@ export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
 export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 
 
-export const getMarkBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
-    <>
-        <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />    
-        <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
-        <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
-        <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
-    </>
-);
-
 /**
  * This class corresponds to the class IndependentItem from the 2007 applet.
  * Nodes are Items with a specified center, linewidth, dash pattern, and shading.
  */
 export default class Node extends Item {
+
+    static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
+        <>
+            <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />    
+            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
+            <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />
+            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill='none' />
+        </>
+    );
+
     x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number
     x100: number // These coordinates represent the item's location at 100% scaling.

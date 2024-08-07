@@ -1,16 +1,16 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx/lite'
 import { Lora } from 'next/font/google'  
-import Item, { HSL, Range } from '../Item'
-import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament'
-import Node from '../Node'
-import ENode from '../ENode'
-import CNodeGroup from '../CNodeGroup'
-import { H, MARK_LINEWIDTH } from '../MainPanel'
+import Item, { HSL, Range } from './Item.tsx'
+import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament.tsx'
+import Node from './Node.tsx'
+import ENode from './ENode.tsx'
+import CNodeGroup from '../CNodeGroup.tsx'
+import { H, MARK_LINEWIDTH } from '../MainPanel.tsx'
 import { Entry } from '../ItemEditor.tsx'
 import { parseInputValue, parseCyclicInputValue, validInt } from '../EditorComponents.tsx'
-import { MIN_ROTATION } from '../ItemEditor'
-import { getCyclicValue, round } from '../../../util/MathTools'
+import { MIN_ROTATION } from '../ItemEditor.tsx'
+import { getCyclicValue, round } from '../../../util/MathTools.tsx'
 import * as Texdraw from '../../../codec/Texdraw.tsx'
 import { ParseError } from '../../../codec/Texdraw.tsx'
 import { encode, decode } from '../../../codec/Codec1.tsx'
@@ -18,7 +18,7 @@ import { encode, decode } from '../../../codec/Codec1.tsx'
 export const MIN_WIDTH = 5;
 export const MIN_HEIGHT = 5;
 export const MAX_WIDTH = 300;
-export const DISPLAY_FONTSIZE_RATIO = 0.9;
+export const DISPLAY_FONTSIZE_RATIO = 0.88;
 export const DISPLAY_LINE_SPACING = 1.2;
 export const MIN_PARBOX_WIDTH = 0;
 export const MAX_PARBOX_WIDTH = 9999;
@@ -69,7 +69,7 @@ export default class Label extends Ornament {
     parboxWidth: number = DEFAULT_PARBOX_WIDTH;
     centeredText: boolean = false;
 
-    lines: Line[] = [];
+    private lines: Line[] = [];
 
     /**
      * Creates a new Label, which is added (via the superclass constructor) to the supplied Node's array of Ornaments. 
@@ -144,13 +144,13 @@ export default class Label extends Ornament {
             {type: 'number input', key: 'parbox width', text: 'Width', negativeTopMargin: true, width: 'long', value: this.parboxWidth, step: 0, disabled: !this.parbox},
             {type: 'checkbox', key: 'centered text', text: 'Centered content', value: this.centeredText, disabled: !this.parbox},
             {type: 'checkbox', key: 'mathMode', text: 'Math mode', value: this.mathMode, disabled: this.parbox},
-            {type: 'menu', key: 'fontSize', text: 'Font size', values: fontSizeCmdReps, value: fontSizes.indexOf(this.fontSize), step: 1,
-                tooltip: <>Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>).</>,
-                tooltipPlacement: 'left'
-            },
             {type: 'string input', key: 'vphant', text: <><code>\vphantom</code></>, value: this.vphant, width: 'long',
                 tooltip: <>Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will {' '}
                     be inserted both at the end and at the beginning of the text.)</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'menu', key: 'fontSize', text: 'Font size', values: fontSizeCmdReps, value: fontSizes.indexOf(this.fontSize), step: 1,
+                tooltip: <>Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>).</>,
                 tooltipPlacement: 'left'
             },
             {type: 'textarea', key: 'text', fullHeight: true, value: this.text}
@@ -299,7 +299,7 @@ export default class Label extends Ornament {
         ].join('');	        
     }
 
-    override parse(tex: string, info: string | null, unitscale: number, displayFontFactor: number, name?: string) {
+    override parse(tex: string, info: string | null, dimRatio: number, unitscale: number, displayFontFactor: number, name?: string) {
         // The 'name' in this case is a string that identifies the node to which this Label is supposed to be attached.
         const texts = Texdraw.getTexts(tex);
 	    if(texts.length < 1) {
@@ -326,7 +326,7 @@ export default class Label extends Ornament {
             if (isNaN(val) || val < 0) {
                 throw new ParseError(<span>Invalid <code>\parbox</code> width: <code>{parboxMatch[1]}</code></span>);
             }
-            this.parboxWidth = round(val / unitscale, ROUNDING_DIGITS);
+            this.parboxWidth = round(dimRatio * val / unitscale, ROUNDING_DIGITS);
             text = parboxMatch[2];
         }
         else {
@@ -370,7 +370,8 @@ export default class Label extends Ornament {
         }
         
 	    this.text = text;
-        this.updateLines(unitscale, displayFontFactor);
+        this.updateLines(unitscale / dimRatio, displayFontFactor);
+
         if (info) {
             const split = info.split(/\s+/).filter(s => s.length > 0);
             if (split.length!==2) {
@@ -460,7 +461,7 @@ export default class Label extends Ornament {
                     textH = asc;
                 }
                 if (i < n - 1) {
-                    textH += this.fontSize * DISPLAY_LINE_SPACING;
+                    textH += DISPLAY_FONTSIZE_RATIO * measureFontSize * DISPLAY_LINE_SPACING;
                 }
                 else {
                     textH += desc;
@@ -482,6 +483,7 @@ export default class Label extends Ornament {
         this.lines = lines;
         this.width = Math.max(MIN_WIDTH, this.parbox? this.parboxWidth: textW);
         this.height = Math.max(MIN_HEIGHT, textH);
+        console.log(`n: ${lines.length} height: ${this.height}`);
     }
 
 
@@ -495,12 +497,9 @@ export default class Label extends Ornament {
         const text = this.text;
         const lines = this.lines;
         const height = this.height;
-        const fontSize = this.fontSize * DISPLAY_FONTSIZE_RATIO * displayFontFactor / unitscale;
+        const fontSize = DISPLAY_FONTSIZE_RATIO * this.fontSize * displayFontFactor / unitscale;
         const mathMode = this.mathMode;
-        const vphant = this.vphant;
         const parbox = this.parbox;
-        const parboxWidth = this.parboxWidth;
-
 
         useEffect(() => { 
             if (!parbox && textElementRef.current) { // If parbox is false, we try to get a width measurement from the text element itself. This will 
@@ -508,7 +507,7 @@ export default class Label extends Ornament {
                 this.width = Math.max(MIN_WIDTH, textElementRef.current.getBBox().width);
             }
             setWidth(prev => this.width);
-        }, [text, fontSize, mathMode, vphant, parbox, parboxWidth]);
+        }, [lines]);
 
 
         // Compute the positioning of the div:
@@ -517,8 +516,8 @@ export default class Label extends Ornament {
         const divTop = H + yOffset - labelTop - MARK_LINEWIDTH;
 
         // Compute the coordinates (and dimensions) of the inner rectangle, relative to the div:
-        const top = MARK_LINEWIDTH;
-        const left = MARK_LINEWIDTH;
+        const top = MARK_LINEWIDTH / 2;
+        const left = MARK_LINEWIDTH / 2;
         const mW = width + MARK_LINEWIDTH; // width and...
         const mH = height + MARK_LINEWIDTH * 2; // ...height relevant for drawing the 'mark border'
         const l = Math.min(Math.max(5, mW / 5), 25);
@@ -563,7 +562,7 @@ export default class Label extends Ornament {
                                     );
                                 });
                             }
-                            else { // Really, lines.length should *always* be positive.
+                            else { 
                                 return (
                                     <text ref={textElementRef} 
                                             x={left} 
@@ -578,10 +577,7 @@ export default class Label extends Ornament {
                             }
                         }
                     })()}
-                    <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`} fill='none' />
-                    <polyline stroke={markColor} points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`} fill='none' />
+                    {Ornament.markBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
         );

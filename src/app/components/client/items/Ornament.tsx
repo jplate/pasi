@@ -1,7 +1,7 @@
 import react from 'react'
-import Item from '../Item'
-import Node from '../Node'
-import { HSL } from '../Item'
+import Item from './Item'
+import Node from './Node'
+import { HSL } from './Item'
 import { MIN_ROTATION } from '../ItemEditor'
 import { getCyclicValue } from '../../../util/MathTools'
 
@@ -17,6 +17,15 @@ export const ROUNDING_DIGITS = 3
  * An Ornament is an object representing an 'ornament', such as a label, attached to a Node. Ornaments do not have their own Z-indices.
  */
 export default class Ornament extends Item {
+
+    static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
+        <>
+            <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill='none' />
+            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill='none' />
+            <polyline stroke={markColor} points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`} fill='none' />
+            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`} fill='none' />
+        </>
+    );
 
     readonly node: Node // The node to which this Ornament is attached
     angle: number = DEFAULT_ANGLE // the preferred angle at which this Ornament is attached to this.node

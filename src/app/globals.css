@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -247,6 +247,45 @@ a:not(.pasi a):not(.ReactModal__Body--open a):hover {
 
 
 /*****************************************************
+* COPY-TO-CLIPBOARD BUTTON
+*****************************************************/
+
+.copy-button {
+  background-color: rgba(var(--btnbg), 0.6);
+  color: rgba(var(--btncolor), 0.6);
+  transition: all 0.2s ease-in-out;
+}
+
+.copy-icon {
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.original-icon {
+  opacity: 1;
+}
+
+.copied {
+  .original-icon {
+    opacity: 0;
+  }
+  .copied-icon {
+    opacity: 1;
+  }
+}
+
+.copy-button:not(.copied):not(:active):hover {
+  background-color: rgba(var(--btnhoverbg));
+  color: rgba(var(--btnhovercolor));
+}
+
+.copy-button:not(.copied):active {
+  background-color: rgba(var(--btnactivebg));
+  color: rgba(var(--btnactivecolor))
+}
+
+
+/*****************************************************
 * OTHER CLASSES
 *****************************************************/
 
@@ -271,4 +310,5 @@ a:not(.pasi a):not(.ReactModal__Body--open a):hover {
 .checkbox.dark {
   filter: brightness(0.85); 
 }
+
 

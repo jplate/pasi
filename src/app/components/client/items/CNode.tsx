@@ -1,13 +1,13 @@
 import clsx from 'clsx/lite'
 import Item, { HSL, Range } from './Item'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH, getMarkBorder } from './Node.tsx'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
-import CNodeGroup, { angle } from './CNodeGroup.tsx'
-import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from './MainPanel.tsx'
-import { validFloat, parseInputValue, parseCyclicInputValue } from './EditorComponents.tsx'
-import { getCyclicValue } from '../../util/MathTools.tsx'
-import { MIN_ROTATION, MAX_ROTATION_INPUT } from './ItemEditor'
+import CNodeGroup, { angle } from '../CNodeGroup.tsx'
+import { Entry } from '../ItemEditor.tsx'
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel.tsx'
+import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents.tsx'
+import { getCyclicValue } from '../../../util/MathTools.tsx'
+import { MIN_ROTATION, MAX_ROTATION_INPUT } from '../ItemEditor.tsx'
 
 
 const CNODE_RADIUS = 7
@@ -268,8 +268,8 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
     const focus = focusItem===cnode;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
-    const top = MARK_LINEWIDTH;
-    const left = MARK_LINEWIDTH;
+    const top = MARK_LINEWIDTH / 2;
+    const left = MARK_LINEWIDTH / 2;
     const mW = 2 * radius; // width and...
     const mH = 2 * radius; // ...height relevant for drawing the 'mark border'
     const l = Math.min(Math.max(5, mW / 5), 25);
@@ -278,7 +278,7 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
     let arrowDiv = null;
     if (arrow && cnode.group) {
         const index = cnode.group.members.indexOf(cnode);
-        const next = (cnode.group as CNodeGroup).members[index==cnode.group.members.length-1? 0: index+1];
+        const next = (cnode.group as CNodeGroup).members[index==cnode.group.members.length - 1? 0: index + 1];
         const d = Math.sqrt((cnode.x - next.x) ** 2 + (cnode.y - next.y) ** 2);
         const factor = Math.min(Math.max(d * CNODE_ARROW_DISTANCE_RATIO, CNODE_ARROW_DISTANCE_MIN), CNODE_ARROW_DISTANCE_MAX) / d;
         const r = CNODE_ARROW_DIV_RADIUS;
@@ -286,8 +286,8 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
             <div className={focus || selected? 'selected': 'preselected'}
                 style={{
                     position: 'absolute',
-                    left: `${x + (next.x-x) * factor - r}px`,
-                    top: `${H + yOffset - (y + (next.y-y) * factor + r)}px`,
+                    left: `${x + (next.x - x) * factor - r}px`,
+                    top: `${H + yOffset - (y + (next.y - y) * factor + r)}px`,
                     pointerEvents: 'none'
                 }}>
                 <svg width={2*r} height={2*r} xmlns="http://www.w3.org/2000/svg">
@@ -310,12 +310,12 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
                 onMouseLeave={(e) => onMouseLeave(cnode, e)}
                 style={{
                     position: 'absolute',
-                    left: `${x - radius - MARK_LINEWIDTH}px`,
-                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH}px`,
+                    left: `${x - radius - MARK_LINEWIDTH / 2}px`,
+                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH / 2}px`,
                     cursor: 'pointer'
                 }}>
-                <svg width={mW + MARK_LINEWIDTH * 2} height={mH + MARK_LINEWIDTH * 2} xmlns="http://www.w3.org/2000/svg">
-                    {getMarkBorder(left, top, l, m, mW, mH, markColor)}
+                <svg width={mW + MARK_LINEWIDTH} height={mH + MARK_LINEWIDTH} xmlns="http://www.w3.org/2000/svg">
+                    {Node.markBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
             {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, unitscale, displayFontFactor, primaryColor, markColor, 

@@ -5,25 +5,25 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
-import Item from './Item'
-import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './Node.tsx'
+import Item from './items/Item.tsx'
+import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './items/Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
-import ENode, { ENodeComp, MAX_RADIUS } from './ENode.tsx'
-import Point, { PointComp } from './Point.tsx'
+import ENode, { ENodeComp, MAX_RADIUS } from './items/ENode.tsx'
+import Point, { PointComp } from './items/Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { DEFAULT_DISTANCE  } from './CNode.tsx'
+import CNode, { DEFAULT_DISTANCE  } from './items/CNode.tsx'
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup.tsx'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
 import { useThrottle } from '../../util/Misc'
-import Ornament from './depItem/Ornament'
-import Label from './depItem/Label'
+import Ornament from './items/Ornament.tsx'
+import Label from './items/Label.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -1484,6 +1484,34 @@ const MainPanel = ({dark}: MainPanelProps) => {
         setItemsMoved(prev => [...prev]);
     }, [logIncrement, selectedNodes, focusItem, list, yOffset, points, selection, adjustLimit, setOrigin, scrollTo]);
 
+    const changeUnitscale = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseFloat(e.target.value);
+        if (isFinite(val)) {
+            const newVal = Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE);
+            setUnitscale(prev => newVal); 
+            allItems.forEach(it => {
+                if (it instanceof Label) {
+                    it.updateLines(newVal, displayFontFactor);
+                }
+            });
+            adjustLimit();
+        }
+    }, [allItems, displayFontFactor, adjustLimit]);
+
+    const changeDisplayFontFactor = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseFloat(e.target.value);
+        if (isFinite(val)) {
+            const newVal = Math.min(Math.max(MIN_DISPLAY_FONT_FACTOR, val), MAX_DISPLAY_FONT_FACTOR);
+            setDisplayFontFactor(prev => newVal);
+            allItems.forEach(it => {
+                if (it instanceof Label) {
+                    it.updateLines(unitscale, newVal);
+                }
+            });
+            adjustLimit();
+        }
+    }, [allItems, unitscale, adjustLimit]);
+
     /**
      * Returns true if the rotation of the selection by the specified angle is within bounds.
      */
@@ -1783,7 +1811,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const loadDiagram = useCallback((code: string, replace: boolean) => {
 
         if (false) { // for debugging purposes
-            load(code, displayFontFactor, 0, 0, 0); 
+            load(code, unitscale, displayFontFactor, 0, 0, 0); 
             console.log('Success!');
             return;
         }
@@ -1794,8 +1822,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             newSGCounter = 0;
         try {
             [newList, newPixel, newENodeCounter, newCNGCounter, newSGCounter] = replace? 
-                load(code, displayFontFactor, 0, 0, 0): 
-                load(code, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
+                load(code, undefined, displayFontFactor, 0, 0, 0): 
+                load(code, unitscale, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
             if (replace) {
                 setUnitscale(prev => newPixel);
                 setPreselection1([]);
@@ -1821,7 +1849,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, displayFontFactor, eNodeCounter, cngCounter, sgCounter, points, adjustLimit, setOrigin]);
+    }, [list, eNodeCounter, cngCounter, sgCounter, points, unitscale, displayFontFactor, adjustLimit, setOrigin]);
 
 
     const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc + 1: acc, 0), [deduplicatedSelection]);
@@ -2101,7 +2129,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             value={code}
                             spellCheck={false}
                             onChange={(e) => setCode(e.target.value)} />
-                        <CopyToClipboardButton id='copy-button' iconStyle='size-6' textareaRef={codeRef} />
+                        <CopyToClipboardButton id='copy-button' iconSize={6} textareaRef={codeRef} />
                     </div>
                 </div>
 
@@ -2186,12 +2214,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                                             changeSnapToCC={() => setGrid(prevGrid => ({...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters}))} 
                                             changeHDisp={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
                                             changeVDisp={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))} 
-                                            changeDFF={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                if (isFinite(val)) {
-                                                    setDisplayFontFactor(Math.min(Math.max(MIN_DISPLAY_FONT_FACTOR, val), MAX_DISPLAY_FONT_FACTOR));
-                                                }
-                                            }}
+                                            changeDFF={changeDisplayFontFactor}
                                             reset={() => {
                                                 setGrid(createGrid());
                                                 setHDisplacement(DEFAULT_HDISPLACEMENT);
@@ -2269,12 +2292,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             1 pixel = 
                             <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
                                 type='number' min={MIN_UNITSCALE} step={0.01} value={unitscale}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    if (isFinite(val)) {
-                                        setUnitscale(Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE));
-                                    }
-                                }}/>
+                                onChange={changeUnitscale}/>
                             pt
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-2 py-2' disabled={false} 

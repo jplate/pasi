@@ -1,14 +1,14 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
-import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, getMarkBorder } from './Node.tsx'
-import { Entry } from './ItemEditor.tsx'
-import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from './MainPanel.tsx'
-import { validFloat, parseInputValue, DashValidator } from './EditorComponents.tsx'
-import CNodeGroup from './CNodeGroup.tsx'
-import * as Texdraw from '../../codec/Texdraw.tsx'
-import {  ParseError, makeParseError } from '../../codec/Texdraw.tsx'
-import { encode, decode } from '../../codec/Codec1.tsx'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node.tsx'
+import { Entry } from '../ItemEditor.tsx'
+import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel.tsx'
+import { validFloat, parseInputValue, DashValidator } from '../EditorComponents.tsx'
+import CNodeGroup from '../CNodeGroup.tsx'
+import * as Texdraw from '../../../codec/Texdraw.tsx'
+import {  ParseError, makeParseError } from '../../../codec/Texdraw.tsx'
+import { encode, decode } from '../../../codec/Codec1.tsx'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -162,7 +162,7 @@ export default class ENode extends Node {
      *  The calling function should make sure that this name is of reasonable length so that we don't have to worry about truncating it in our
      *  error messages.
      */
-    override parse(tex: string, info: string | null, unitscale?: number, displayFontFactor?: number, name?: string) {
+    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string) {
         const stShapes =  Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
@@ -183,15 +183,17 @@ export default class ENode extends Node {
         
         if (n > 0) {
             this.shading = circles[0].fillLevel;
-            this.linewidth = this.linewidth100 = stShapes[n-1].stroke.linewidth;
+            this.linewidth = this.linewidth100 = dimRatio * stShapes[n-1].stroke.linewidth;
             if (this.linewidth > 0) { // In this case the dash pattern can be got from the same shape.
-                this.dash = this.dash100 = stShapes[n-1].stroke.pattern;
+                this.dash = this.dash100 = stShapes[n-1].stroke.pattern.map(v => dimRatio * v);
             }
             else { // If linewidth is zero, then there will be only one stroked shape (n will be equal to 1), and we have to extract the dash pattern ourselves:
-                this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
+                this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
             }
-            this.radius = circles[0].radius;
-            ({ x: this.x, y: this.y } = circles[0].location);
+            this.radius = dimRatio * circles[0].radius;
+            const { x, y } = circles[0].location;
+            this.x = dimRatio * x;
+            this.y = dimRatio * y;
         }
         else { // In this case there are no shapes, so we have to rely in part on the info string, assuming there is one.
             if(info===null) {	        	
@@ -199,8 +201,8 @@ export default class ENode extends Node {
 	        }
             // console.log(`info: ${info}`);
             this.linewidth = this.linewidth100 = 0;
-            this.dash = this.dash100 = Texdraw.extractDashArray(tex) || [];
-            [this.radius, this.x, this.y] = info.split(/\s+/).map(decode);            
+            this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
+            [this.radius, this.x, this.y] = info.split(/\s+/).map(v => dimRatio * decode(v));
             if (isNaN(this.radius) || isNaN(this.x) || isNaN(this.y)) {
                 throw new ParseError(<span>Corrupt data in info string for entity node <code>{name}</code>.</span>);
             }
@@ -294,10 +296,10 @@ export const ENodeComp = ({ id, enode, yOffset, unitscale, displayFontFactor,
     const extraHeight = radius < MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
-    const top = MARK_LINEWIDTH + extraHeight;
-    const left = MARK_LINEWIDTH;
-    const mW = width + MARK_LINEWIDTH; // width and...
-    const mH = height + MARK_LINEWIDTH; // ...height relevant for drawing the 'mark border'
+    const top = MARK_LINEWIDTH / 2 + extraHeight;
+    const left = MARK_LINEWIDTH / 2;
+    const mW = width + linewidth + MARK_LINEWIDTH; // width and...
+    const mH = height + linewidth + MARK_LINEWIDTH; // ...height relevant for drawing the 'mark border'
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = hidden ? 0.9 * l : 0;
 
@@ -317,7 +319,7 @@ export const ENodeComp = ({ id, enode, yOffset, unitscale, displayFontFactor,
                     top: `${H + yOffset - y - radius - MARK_LINEWIDTH - linewidth / 2 - extraHeight}px`,
                     cursor: 'pointer'
                 }}>
-                <svg width={width + MARK_LINEWIDTH * 2 + linewidth + 1} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight + 1} xmlns="http://www.w3.org/2000/svg">
+                <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
                     <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                         cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
                         fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
@@ -329,7 +331,7 @@ export const ENodeComp = ({ id, enode, yOffset, unitscale, displayFontFactor,
                         strokeDasharray={enode.dash.join(' ')} 
                         strokeLinecap={LINECAP_STYLE}
                         strokeLinejoin={LINEJOIN_STYLE} />
-                    {getMarkBorder(left, top, l, m, mW, mH, markColor1)}
+                    {Node.markBorder(left, top, l, m, mW, mH, markColor1)}
                 </svg>
                 {selectedPositions.length > 0 && // Add a 'title'
                     <div style={{

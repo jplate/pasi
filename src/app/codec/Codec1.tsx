@@ -1,13 +1,13 @@
-import Item from '../components/client/Item'
-import ENode from '../components/client/ENode'
+import Item from '../components/client/items/Item'
+import ENode from '../components/client/items/ENode'
 import CNodeGroup from '../components/client/CNodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
 import { round } from '../util/MathTools'
-import Ornament from '../components/client/depItem/Ornament'
-import Label from '../components/client/depItem/Label'
-import Node from '../components/client/Node'
+import Ornament from '../components/client/items/Ornament'
+import Label from '../components/client/items/Label'
+import Node from '../components/client/items/Node'
 import BidirectionalMap from '../util/BidirectionalMap'
 import { getItems } from '../components/client/MainPanel'
 
@@ -53,28 +53,30 @@ const decodeInt = (str: string) => {
  */
 export const encode = (val: number) => {
     if (isNaN(val)) return 'î';
-    else if (val===-Infinity) return 'â';
-    else if (val===Infinity) return 'ô';
-    else {
-        const isNegative = val<0;
-        const abs = Math.abs(val);
-        const integerPart = Math.floor(abs);
-        const fractionalPart = abs - integerPart;
-    
-        const integerString = encodeInt(integerPart);
-        let fractionalString = '';
-    
-        let fraction = fractionalPart;
-        for (let i = 0; i < ENCODE_PRECISION; i++) {
-            fraction *= ENCODE_BASE;
-            const digit = Math.floor(fraction);
-            fractionalString += encodeInt(digit);
-            fraction = round(fraction - digit, 2 * (ENCODE_PRECISION - i));
-    
-            if (fraction===0) break;
+    else switch (val) {
+        case -Infinity: return 'â';
+        case Infinity: return 'ô';
+        default: {
+            const isNegative = val<0;
+            const abs = Math.abs(val);
+            const integerPart = Math.floor(abs);
+            const fractionalPart = abs - integerPart;
+        
+            const integerString = encodeInt(integerPart);
+            let fractionalString = '';
+        
+            let fraction = fractionalPart;
+            for (let i = 0; i < ENCODE_PRECISION; i++) {
+                fraction *= ENCODE_BASE;
+                const digit = Math.floor(fraction);
+                fractionalString += encodeInt(digit);
+                fraction = round(fraction - digit, 2 * (ENCODE_PRECISION - i));
+        
+                if (fraction===0) break;
+            }
+        
+            return `${integerString}${isNegative? '-': fractionalPart? '.': ''}${fractionalPart ? fractionalString: ''}`;
         }
-    
-        return `${integerString}${isNegative? '-': fractionalPart? '.': ''}${fractionalPart ? fractionalString: ''}`;
     }
 }
 
@@ -82,21 +84,24 @@ export const encode = (val: number) => {
  * Returns the number represented by the supplied string. This may be NaN. NaN is also returned if the string contains a syntax error.
  */
 export const decode = (s: string) => {
-    if (s==='' || s==='î') return NaN;
-    else if (s==='â') return -Infinity;
-    else if (s==='ô') return Infinity;
-    else {
-        const isNegative = s.includes('-');
-        const fpPos = s.search(/[\.-]/);
-        const integerPart = fpPos>=0? s.slice(0, fpPos): s;
-        const fractionalPart = fpPos>=0? s.slice(fpPos+1): '';
-        let val = integerPart===''? 0: decodeInt(integerPart);
-        for (let i = 0, k = ENCODE_BASE; i<fractionalPart.length; i++, k*=ENCODE_BASE) {
-            const digit = CODE.indexOf(fractionalPart[i]);
-            if (digit<0) return NaN;
-            val += digit / k;
+    switch (s) {
+        case '':
+        case 'î': return NaN;
+        case 'â': return -Infinity;
+        case 'ô': return Infinity;
+        default: {
+            const isNegative = s.includes('-');
+            const fpPos = s.search(/[\.-]/);
+            const integerPart = fpPos>=0? s.slice(0, fpPos): s;
+            const fractionalPart = fpPos>=0? s.slice(fpPos+1): '';
+            let val = integerPart===''? 0: decodeInt(integerPart);
+            for (let i = 0, k = ENCODE_BASE; i<fractionalPart.length; i++, k*=ENCODE_BASE) {
+                const digit = CODE.indexOf(fractionalPart[i]);
+                if (digit<0) return NaN;
+                val += digit / k;
+            }
+            return (isNegative? -1: 1) * val;
         }
-        return (isNegative? -1: 1) * val;
     }
 }
 
@@ -303,7 +308,7 @@ const addToGroup = (item: Item | CNodeGroup, groupName: string, activeMember: bo
     return sgCounter;
 }
 
-const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean]>, 
+const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<string, [ENode, boolean]>, 
     gMap: Map<string, Group<any>>, counter: number, sgCounter: number
 ): [ENode, number] => {
     // The 'hint' for an ENode has the following format:
@@ -333,12 +338,12 @@ const parseENode = (tex: string, hint: string, eMap: Map<string, [ENode, boolean
     if (groupName) {
         sgCounter = addToGroup(node, groupName, activeMember!, gMap, sgCounter);
     }
-    node.parse(tex, info, 1, 1, name);
+    node.parse(tex, info, dimRatio, 1, 1, name);
     eMap.set(name, [node, true]);
     return [node, sgCounter];
 }
 
-const parseCNodeGroup = (tex: string, hint: string, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
+const parseCNodeGroup = (tex: string, hint: string, dimRatio: number, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
     counter: number, sgCounter: number
 ): [CNodeGroup, number] => {
     // The 'hint' for a NodeGroup has the following format:
@@ -363,12 +368,12 @@ const parseCNodeGroup = (tex: string, hint: string, cngMap: Map<string, [CNodeGr
     if (groupName) {
         sgCounter = addToGroup(cng, groupName, activeMember!, gMap, sgCounter);
     }
-    cng.parse(tex, info);
+    cng.parse(tex, info, dimRatio);
     cngMap.set(name, [cng, true]); 
     return [cng, sgCounter];
 }
 
-const parseOrnament = (tex: string, hint: string, oClass: new (node: Node) => any, 
+const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new (node: Node) => any, 
     eMap: Map<string, [ENode, boolean]>, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
     sgCounter:number, unitscale: number, displayFontFactor: number
 ): [Ornament, number] => {
@@ -428,11 +433,11 @@ const parseOrnament = (tex: string, hint: string, oClass: new (node: Node) => an
     if (groupName) {
         sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
     }
-    o.parse(tex, info, unitscale, displayFontFactor, nodeIdentifier);
+    o.parse(tex, info, dimRatio, unitscale, displayFontFactor, nodeIdentifier);
     return [o, sgCounter];
 }
 
-export const load = (code: string, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
+export const load = (code: string, unitscale: number | undefined, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
 ): [(ENode | CNodeGroup)[], number, number, number, number] => {
     const list: (ENode | CNodeGroup)[] = [];
     const lines = code.split(/[\r\n]+/).filter(l => l.length>0);
@@ -453,11 +458,11 @@ export const load = (code: string, displayFontFactor: number, eCounter: number, 
     if (!split1[0].startsWith(Texdraw.dimCmd)) {
         throw new ParseError(<span>Second line should start with <code>{Texdraw.dimCmd}</code>.</span>);
     }
-    const unitscale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
-    if (isNaN(unitscale)) {
+    const loadedUnitscale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
+    if (isNaN(loadedUnitscale)) {
         throw new ParseError(<span>Number format error in argument to <code>\setunitscale</code>.</span>);
     }
-    if (unitscale<0) {
+    if (loadedUnitscale<0) {
         throw new ParseError(<span>Argument to <code>\setunitscale</code> should not be negative.</span>);
     }
     const gMap = split1.length>1? getGroupMap(split1[1], sgCounter): new Map<string, Group<any>>();
@@ -467,9 +472,9 @@ export const load = (code: string, displayFontFactor: number, eCounter: number, 
 
     const eMap = new Map<string, [ENode, boolean]>();     // These two maps map names of ENodes or CNodeGroups to arrays holding (i) the respective ENode or
     const cngMap = new Map<string, [CNodeGroup, boolean]>(); // CNodeGroup and (ii) a boolean indicating whether that node or group has already been configured 
-        // by parseENode or parseCNodeGroup. (ENodes and CNodeGroups will be added to the respective map as soon as their names are used, which can happen before  
-        // their definitions have been encountered in the texdraw code. However, the definition of any ornament has to come later than the definition of the
-        // node to which it is attached.)
+        // by parseENode or parseCNodeGroup. (ENodes and CNodeGroups will be added to the respective map as soon as their names are used, which can happen   
+        // before their definitions have been encountered in the texdraw code. However, the definition of any ornament has to come later than the definition 
+        // of the node to which it is attached.)
     let tex = '',
         cont = false; // indicates whether the current texdraw command has started on a previous line
     for (let i = 2; i<lines.length-1; i++) {
@@ -483,17 +488,18 @@ export const load = (code: string, displayFontFactor: number, eCounter: number, 
 
             //console.log(` t="${tex}" h="${hint}" m=${match[0].length}`);
             const prefix = hint.slice(0, 1);
+            const dimRatio = unitscale===undefined? 1: loadedUnitscale / unitscale;
             switch (prefix) {
                 case ENODE_PREFIX: {
                         let node: ENode;
-                        [node, sgCounter] = parseENode(tex, hint, eMap, gMap, eCounter, sgCounter);
+                        [node, sgCounter] = parseENode(tex, hint, dimRatio, eMap, gMap, eCounter, sgCounter);
                         eCounter++;
                         list.push(node);
                         break;
                     }
                 case CNODEGROUP_PREFIX: {
                         let cng: CNodeGroup;
-                        [cng, sgCounter] = parseCNodeGroup(tex, hint, cngMap, gMap, cngCounter, sgCounter);
+                        [cng, sgCounter] = parseCNodeGroup(tex, hint, dimRatio, cngMap, gMap, cngCounter, sgCounter);
                         cngCounter++;
                         list.push(cng);
                         break;
@@ -502,7 +508,7 @@ export const load = (code: string, displayFontFactor: number, eCounter: number, 
                     const oClass = ornamentPrefixMap.getByKey(prefix);
                     let o: Ornament;
                     if (oClass) {
-                        [o, sgCounter] = parseOrnament(tex, hint, oClass, eMap, cngMap, gMap, sgCounter, unitscale, displayFontFactor);
+                        [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedUnitscale, displayFontFactor);
                     }
                     else { // In this case the prefix has not been recognized.
                         throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
@@ -520,5 +526,5 @@ export const load = (code: string, displayFontFactor: number, eCounter: number, 
         throw new ParseError(<span>The last line should read <code>{Texdraw.end}</code>. Incomplete code?</span>);
     }
 
-    return [list, unitscale, eCounter, cngCounter, sgCounter];
+    return [list, loadedUnitscale, eCounter, cngCounter, sgCounter];
 }

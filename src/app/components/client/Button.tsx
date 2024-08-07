@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, CSSProperties } from 'react'
+import React, { useState, useEffect, useRef, forwardRef, CSSProperties } from 'react'
 import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { WithTooltip } from './EditorComponents.tsx'
@@ -91,18 +91,38 @@ export const BasicColoredButton = forwardRef((
 // Set the displayName property for debugging purposes
 BasicColoredButton.displayName = 'BasicColoredButton';
 
+
+export type IconSize = 4 | 6 | 8;
+
+type IconStyleDict = {
+    [K in IconSize]: [string, string]
+}
+
+/**
+ * This maps icon sizes to tuples consisting of (i) a suitable class name for the SVG that holds the icon and (ii) a suitable class name for the 
+ * div that holds that same SVG.
+ */
+const iconStyles: IconStyleDict = {
+    4: ['size-4', 'w-4 h-4'],
+    6: ['size-6', 'w-6 h-6'],
+    8: ['size-8', 'w-8 h-8']
+}
   
 interface CopyToClipboardButtonProps {
     id: string
-    iconStyle: string
+    iconSize: IconSize
     textareaRef: React.RefObject<HTMLTextAreaElement>
 }
 
-export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClipboardButtonProps) => {
-    const [isHovered, setIsHovered] = useState(false);
-    const [isActive, setIsActive] = useState(false);
+export const CopyToClipboardButton = ({ id, iconSize, textareaRef }: CopyToClipboardButtonProps) => {
     const [scrollbarWidth, setScrollbarWidth] = useState(0); // width of the vertical scrollbar in rem.
     const [copied, setCopied] = useState(false);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    const iconClassName = clsx('absolute', iconStyles[iconSize][0]);
+    const divClassName = iconStyles[iconSize][1];
+    const originalIconClassName = clsx('copy-icon original-icon', iconClassName);
+    const copiedIconClassName = clsx('copy-icon copied-icon', iconClassName);
 
     useEffect(() => {
 
@@ -146,62 +166,45 @@ export const CopyToClipboardButton = ({ id, iconStyle, textareaRef }: CopyToClip
     }, [textareaRef]);
 
 
-    const baseStyle: CSSProperties = {
+    const buttonStyle: CSSProperties = {
         position: 'absolute',
         top: '0.25rem',
         right: `${0.25 + scrollbarWidth}rem`,
         padding: '0.25rem',
         borderRadius: '0.125rem',
-        backgroundColor: 'rgba(var(--btnbg), 0.5)',
-        color: 'rgba(var(--btncolor), 0.6)',
         fontWeight: '600',
-        transition: 'all 0.2s ease-in-out'
-    };
-
-    const hoverStyle: CSSProperties = {
-        backgroundColor: 'rgba(var(--btnhoverbg))',
-        color: 'rgba(var(--btnhovercolor))',
-    };
-
-    const activeStyle: CSSProperties = {
-        backgroundColor: 'rgba(var(--btnactivebg))',
-        color: 'rgba(var(--btnactivecolor))',
-    };
-
-    // Combine base style with conditional hover/active styles
-    const style: CSSProperties = {
-        ...baseStyle,
-        ...(isHovered && !isActive && !copied? hoverStyle: {}),
-        ...(isActive? activeStyle: {}),
     };
 
     const button = (
-        <button id={id} style={style}
+        <button id={id} ref={buttonRef} className='copy-button rounded-lg' style={buttonStyle} // For much of the styling, we're relying on global.css.
             disabled={copied}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            onMouseDown={() => setIsActive(true)}
-            onMouseUp={() => setIsActive(false)}
-            onBlur={() => setIsActive(false)} 
             onClick={async () => {
                 if (textareaRef.current) {
                     try {
                         await navigator.clipboard.writeText(textareaRef.current.value);
                         setCopied(true);
-                        setTimeout(() => setCopied(false), 2000); // Show check-marked clipboard icon for 2 seconds
+                        if (buttonRef.current) {
+                            buttonRef.current.classList.add('copied');
+                        }
+                        setTimeout(() => {
+                            setCopied(false);
+                            if (buttonRef.current) {
+                                buttonRef.current.classList.remove('copied');
+                            }
+                        }, 2000); // Show check-marked clipboard icon for 2 seconds
                     } catch (err) {
                         
                     }
                 }
             }} >
-        {copied ? /* icon source: heroicons.com */
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={iconStyle}>
+        <div className={clsx('relative', divClassName)}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={copiedIconClassName}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0 1 18 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3 1.5 1.5 3-3.75" />
-            </svg>: 
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={iconStyle}>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={originalIconClassName}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
             </svg>
-        }
+        </div>
     </button>);
 
     return <WithTooltip comp={button} tooltip={'Copy to clipboard'} placement={'left'} />;
