@@ -693,7 +693,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
         const { minX, maxX, minY, maxY } = group.getBounds();
         if (!isFinite(minX)) return null;
         const h = maxY-minY;
-        const lwc = linewidth; // linewidth correction
+        const lwc = linewidth / 2; // linewidth correction
         const mlw = MARK_LINEWIDTH;
         const mlw2 = mlw / 2;
 
@@ -749,8 +749,8 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                             onMouseLeave={(e) => onMouseLeave(group, e)}
                             style={{                
                                 position: 'absolute',
-                                left: `${c.x - cdW/2}px`,
-                                top: `${H + yOffset - c.y - cdH/2}px`,
+                                left: `${c.x - cdW/2 - mlw2}px`,
+                                top: `${H + yOffset - c.y - cdH/2 - mlw2}px`,
                                 cursor: centerDivClickable? 'pointer': 'auto',
                                 pointerEvents: centerDivClickable? 'auto': 'none'
                         }}>

@@ -1389,7 +1389,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             }
         }
     }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
-        unitscale, displayFontFactor, canvasWidth, adjustLimit, setOrigin, scrollTo
+        unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo
     ]);
 
 
@@ -1515,7 +1515,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             scrollTo(focusItem);
         }
         setItemsMoved(prev => [...prev]);
-    }, [logIncrement, selectedNodes, focusItem, list, yOffset, points, selection, adjustLimit, setOrigin, scrollTo]);
+    }, [logIncrement, selectedNodes, focusItem, list, points, selection, adjustLimit, setOrigin, scrollTo]);
 
     const changeUnitscale = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseFloat(e.target.value);
