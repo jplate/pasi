@@ -665,7 +665,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             pts: Point[] = points, 
             focus: Item | null = focusItem, 
             sel: Item[] = selection,
-            l: (ENode | CNodeGroup)[] = list
+            li: (ENode | CNodeGroup)[] = list
         ) => {
             // Compute new origin:
             const selectedNodes = sel.filter(item => item instanceof Node) as Node[];
@@ -679,7 +679,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             if(resetTransform && originChanged) {
                 setRotation(0);
                 setScaling(100);
-                l.forEach(it => { // resetting the items for new scaling 
+                li.forEach(it => { // resetting the items for new scaling 
                     if (it instanceof CNodeGroup) {
                         it.linewidth100 = it.linewidth;
                         it.dash100 = it.dash;
@@ -712,7 +712,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * This function should be called whenever items have moved or new items have been added to the canvas. It adjusts both the yOffset state
      * and updates the coordinates stored in the limit object.
      */
-    const adjustLimit = useCallback((items: Item[] = allItems, yoff: number = yOffset, lim: Point = limit) => {
+    const adjustLimit = useCallback((items: Item[] = allItems) => {
             let top = 0,
                 right = 0,
                 bottom = H;
@@ -735,19 +735,18 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const canvas = canvasRef.current;
             if (canvas) {
                 const { scrollTop } = canvas;
-                const delta1 = Math.max(0, top - H) - yoff;
+                const delta1 = Math.max(0, top - H) - yOffset;
                 const delta2 = Math.ceil((delta1%H===0? delta1-1: delta1) / H) * H;
-                const adjust = top<H? -yoff: (yoff + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2>0)? delta2: Math.max(-scrollTop, delta2);
+                const adjust = top<H? -yOffset: (yOffset + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2>0)? delta2: Math.max(-scrollTop, delta2);
                 if (adjust !== 0) {
-                    setYOffset(yoff + adjust);
+                    setYOffset(yOffset + adjust);
                     setTimeout(() => {
                         canvas.scrollBy(0, adjust);
                     }, 0);
                 }
             }
-            const newLimit = new Point(right, bottom);
-            if (lim.x!==newLimit.x || lim.y!==newLimit.y) {
-                setLimit(prev => newLimit); // set the new bottom-right limit
+            if (limit.x!==right || limit.y!==bottom) {
+                setLimit(prev => new Point(right, bottom)); // set the new bottom-right limit
             }
         }, [allItems, yOffset, limit]
     );
@@ -1349,8 +1348,16 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     }
                     return acc;
                 }
-                return [...acc, copy];
+                else {
+                    acc.push(copy);
+                    return acc;
+                }
             }, []);
+            for (let it of copies.values()) {
+                if (it instanceof Label) {
+                    it.updateLines(unitscale, displayFontFactor);
+                }
+            }
             const newList = [...list, ...copiedList];
             const newFocus = focusItem && (copies.get(focusItem.id) || null) as Item | null;
             setENodeCounter(newENodeCounter);
@@ -1365,7 +1372,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                 scrollTo(newFocus);
             }
         }
-    }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, adjustLimit, setOrigin, scrollTo]);
+    }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
+        unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo
+    ]);
 
 
     /**

@@ -290,7 +290,7 @@ export default class Label extends Ornament {
         const w = this.getWidth();
         const h = this.getHeight();
         const x = centered || hPos===0? this.node.x: hPos===-1? left + w: left;
-        const lineH = this.fontSize; // This is needed to correct a texdraw quirk in connection with '\begin{center}...\end{center}' in parboxes.
+        const lineH = this.fontSize; // This is needed to compensate for a texdraw quirk in connection with '\begin{center}...\end{center}' in parboxes.
         const y = centered || vPos===0? this.node.y: (vPos===-1? bottom + h: bottom) - (centeredText? vPos * lineH: 0);
         return [
             Texdraw.textref(
@@ -455,6 +455,11 @@ export default class Label extends Ornament {
         return result;
     }
 
+    /**
+     * Updates this.lines, as well as this.width and this.height. This function is called from a number of places, including the MainPanel 
+     * and the functions returned by Item.handleEditing() (and hence from the callBacks constructed by ItemEditor). It would have been more in the 
+     * declarative spirit to do these things at render, but that would be too late for the purposes of MainPanel.adjustLimit().
+     */
     updateLines(unitscale: number, displayFontFactor: number): void {
         const lines: Line[] = [];
         let textW = 0,
@@ -522,8 +527,8 @@ export default class Label extends Ornament {
         const parbox = this.parbox;
 
         useEffect(() => { 
-            if (!parbox && textElementRef.current) { // If parbox is false, we try to get a width measurement from the text element itself. This will 
-                    // hopefully be more accurate than what can be done with updateLines().
+            if (!parbox && textElementRef.current) { // If parbox is false, we try to get a width measurement directly from the text element itself. This may
+                    // be a good deal more accurate than what can be done with updateLines().
                 this.width = Math.max(MIN_WIDTH, textElementRef.current.getBBox().width);
             }
             setWidth(prev => this.width);

@@ -18,7 +18,6 @@ const getInitialColorScheme = () => {
   return storedMode ?? systemMode;
 }
 
-
 const LogoSpan: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -39,12 +38,28 @@ const LogoSpan: React.FC = () => {
     };
   }, []);
 
-  return ( // In the case of small screens, there is a danger of the logo overlapping the site's content, so we add a breakpoint.
-      <span className={`text-xl font-light tracking-wide hidden 2xl:inline transition-opacity duration-500 ${isVisible? 'opacity-100': 'opacity-0'}`}>
+  return ( 
+      <span className={`pasi-logo text-xl tracking-wide hidden 2xl:inline transition-opacity duration-500 ${isVisible? 'opacity-100': 'opacity-0'}`}>
+        {/* There's a danger of the logo overlapping the site's content, so we hide the logo on screens under 2xl. 
+            The 'pasi-logo' class is added in order to let the logo appear in the same font-family as the MainPanel. */}
           pasi
       </span>
   );
 };
+
+
+interface PasiProps {
+  children: React.ReactNode
+}
+
+
+const Pasi = ({ children }: PasiProps) => {
+  return (
+    <span className='pasi text-base'>
+      {children}
+    </span>
+  );
+}
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
@@ -135,11 +150,11 @@ export default function Home() {
             </p>
             <p>
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below<span className='xl:hidden'>{' '}
-              (if none is visible, you may need to zoom out or increase your screen size)</span>, and then click either the <strong>Node</strong> or 
-              the <strong>Contour</strong> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
-              with arrows, etc. When you’re done, click the <strong>Generate</strong> button to have the LaTeX code displayed in the text area below the canvas. 
+              (if none is visible, you may need to zoom out or increase your screen size)</span>, and then click either the <Pasi>Node</Pasi> or 
+              the <Pasi>Contour</Pasi> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
+              with arrows, etc. When you’re done, click the <Pasi>Generate</Pasi> button to have the LaTeX code displayed in the text area below the canvas. 
               To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
-              You can also load diagrams from previously generated code, using the <strong>Load</strong> button.
+              You can also load diagrams from previously generated code, using the <Pasi>Load</Pasi> button.
             </p>
           </Section>
 
