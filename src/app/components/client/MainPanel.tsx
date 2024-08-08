@@ -770,7 +770,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Scrolls to the center point of the specified item.
      */
-    const scrollTo = useCallback((item: Item, yoff: number = yOffset, canvasWidth: number) => {
+    const scrollTo = useCallback((item: Item) => {
         const canvas = canvasRef.current;
         if (canvas) { 
             const w = item.getWidth();
@@ -780,13 +780,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const icy = bottom + h/2; // item center Y
             const dx = icx - canvas.scrollLeft;
             const scrollRight = Math.floor((dx % canvasWidth===0? dx-1: dx) / canvasWidth) * canvasWidth;
-            const dy = canvas.scrollTop + icy - yoff;
+            const dy = canvas.scrollTop + icy - yOffset;
             const scrollDown = -Math.floor((dy % H===0? dy+1: dy) / H) * H;
             setTimeout(() => {
                 canvas.scrollBy(scrollRight, scrollDown);
             }, 0);
         }
-    }, [yOffset]);
+    }, [yOffset, canvasWidth]);
 
 
     const updateSecondaryPreselection = useCallback((
@@ -1385,11 +1385,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
             adjustLimit(getItems(newList));
             setSelection(newSelection);
             if (newFocus) {
-                scrollTo(newFocus, yOffset, canvasWidth);
+                scrollTo(newFocus);
             }
         }
     }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
-        unitscale, displayFontFactor, canvasWidth, yOffset, adjustLimit, setOrigin, scrollTo
+        unitscale, displayFontFactor, canvasWidth, adjustLimit, setOrigin, scrollTo
     ]);
 
 
@@ -1479,15 +1479,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setList(prev => nodes); // for some reason, the setter function is called twice here.
             setOrigin(false, points, focusItem, selection, list);
             if (focusItem instanceof Node) { 
-                scrollTo(focusItem, yOffset, canvasWidth);
+                scrollTo(focusItem);
             }
             adjustLimit();
             setItemsMoved(prev => [...prev]); 
         }
-    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, canvasWidth, unitscale, displayFontFactor, 
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, unitscale, displayFontFactor, 
         adjustLimit, setOrigin, scrollTo
     ]);  
-
 
     const adjustSelection = useCallback((item: Item) => {
         const ha = highestActive(item);
@@ -1513,7 +1512,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         adjustLimit();
         setOrigin(false, points, focusItem, selection, list);
         if (focusItem instanceof Node) {
-            scrollTo(focusItem, yOffset, canvasWidth);
+            scrollTo(focusItem);
         }
         setItemsMoved(prev => [...prev]);
     }, [logIncrement, selectedNodes, focusItem, list, yOffset, points, selection, adjustLimit, setOrigin, scrollTo]);
