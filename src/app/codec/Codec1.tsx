@@ -445,7 +445,7 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
     const n = lines.length;
     
     if (n<3) {
-        throw new ParseError(`Need at least three lines of texdraw code, got ${n===0? 'zero': n===1? 'one': 'two'}.`);
+        throw new ParseError(<span>Need at least three lines of <i>texdraw</i> code, got {n===0? 'zero': n===1? 'one': 'two'}.</span>);
     }
     
     // first line

@@ -191,9 +191,15 @@ export default function Home() {
               <li><a href='https://sourceforge.net/projects/dia-installer/?source=directory' target='_blank'><i>Dia</i></a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
               <li><a href='https://inkscape.org/' target='_blank'><i>Inkscape</i></a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
               <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
-              <li><a href='https://tpx.sourceforge.net/' target='_blank'><i>TpX</i></a>, another desktop application, superficially similar to Dia.</li>
+              <li><a href='https://tpx.sourceforge.net/' target='_blank'><i>TpX</i></a>, another desktop application, superficially similar to <i>Dia</i>.</li>
             </ul>
-            Web-based diagram editors that do not (as of this writing) export to LaTeX include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a> and <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>.
+            Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a> and{' '}
+            <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>. {' '}
+            While it&apos;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram <i>from LaTeX code</i>{' '} 
+            is that this approach allows the diagram to contain text processed by LaTeX. {' '}
+            In the case of <i>pasi</i>, this means that you may feel free to use any command you&apos;ve defined in your document in the text of a label. The <i>dis</i>&#8202;advantage{' '}
+            of this approach, but I think it&apos;s relatively minor, is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
+            by LaTeX.
           </Section>
         </div>
       }

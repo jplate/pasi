@@ -31,7 +31,7 @@ const CanvasEditor = ({grid, hDisp, vDisp, displayFontFactor, changeHGap, change
                 <span className='col-span-2 my-1.5'>
                     <InputField label='Fontsize correction' value={displayFontFactor} step={0.01} onChange={changeDFF} 
                         tooltip={<>Adjust this value to increase or decrease the fontsize of any labels displayed on the canvas. (Some {' '}
-                            adjustment may be needed to make the labels&apos; appearance match your LaTeX output.)</>}
+                            adjustment may be needed to make the labels&apos; appearance match the LaTeX output more closely.)</>}
                         tooltipPlacement='left' />
                 </span> 
                 <LabelField label='Grid width' style='col-span-2' />

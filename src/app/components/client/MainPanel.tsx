@@ -442,34 +442,38 @@ const getTopToBeCopied = (selection: Item[]) => {
 
 /**
  * Returns an array of all ENodes in the specified list, as well as any CNodes in any CNodeGroups in that same list, and, if the supplied boolean is false,
- * also all Ornaments attached to any such nodes, that meet the specified test condition.
+ * also all Ornaments attached to any such nodes, that meet the specified test condition (or *any* condition if none is specified).
  */
-export const getItems = (list: (ENode | CNodeGroup)[], onlyNodes: boolean = false, test: (it: Item) => boolean = it => true): Item[] => 
-    list.flatMap((it: ENode | CNodeGroup) => {
-        let result: Item[];
-        if (it instanceof ENode) { 
-            const orn = onlyNodes? []: it.ornaments.filter(test);         
-            result = test(it)? [it, ...orn]: orn;
-        }
-        else {
-            result = it.members.flatMap(cn => {
-                const orn = onlyNodes? []: cn.ornaments.filter(test);
-                return test(cn)? [cn, ...orn]: orn;
-            });
-        }
-        return result;
-    });
+export const getItems = (
+    list: (ENode | CNodeGroup)[], 
+    onlyNodes: boolean = false, 
+    test: (it: Item) => boolean = it => true
+): Item[] => 
+list.flatMap((it: ENode | CNodeGroup) => {
+    let result: Item[];
+    if (it instanceof ENode) { 
+        const orn = onlyNodes? []: it.ornaments.filter(test);         
+        result = test(it)? [it, ...orn]: orn;
+    }
+    else {
+        result = it.members.flatMap(cn => {
+            const orn = onlyNodes? []: cn.ornaments.filter(test);
+            return test(cn)? [cn, ...orn]: orn;
+        });
+    }
+    return result;
+});
 
 
 /**
  * Returns an array of CNodeGroups that are contained (directly or indirectly) in the supplied array of Nodes and Groups.
  */
-const getCNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] =>
-    array.reduce((acc: CNodeGroup[], it) => 
-        it instanceof Item? acc: 
-        it instanceof CNodeGroup? [...acc, it]:
-        [...acc, ...getCNodeGroups(it.members)], 
-    []);
+const getCNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] => 
+array.reduce((acc: CNodeGroup[], it) => 
+    it instanceof Item? acc: 
+    it instanceof CNodeGroup? [...acc, it]:
+    [...acc, ...getCNodeGroups(it.members)], 
+[]);
 
 /**
  * Returns a function that moves the ENodes and CNodeGroups in the array that is supplied to that function up or down in that same array.
@@ -708,11 +712,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
      * This function should be called whenever items have moved or new items have been added to the canvas. It adjusts both the yOffset state
      * and updates the coordinates stored in the limit object.
      */
-    const adjustLimit = useCallback((yoff: number = yOffset, lim: Point = limit) => {
+    const adjustLimit = useCallback((items: Item[] = allItems, yoff: number = yOffset, lim: Point = limit) => {
             let top = 0,
                 right = 0,
                 bottom = H;
-            allItems.forEach(item => {
+            items.forEach(item => {
                 const w = item.getWidth();
                 const h = item.getHeight();
                 const { bottom: iBottom, left: iLeft } = item.getBottomLeftCorner();
@@ -1258,9 +1262,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(nodes);
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
-            adjustLimit(); 
+            // No need to call adjustLimit, since we're basically just replacing the points with nodes.
         }
-    }, [points, eNodeCounter, list, adjustLimit, setOrigin]);
+    }, [points, eNodeCounter, list, setOrigin]);
 
     /**
      *  OnClick handler for the 'Contour' button.
@@ -1278,7 +1282,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(nodes);
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, nodes);
-            adjustLimit(); 
+            adjustLimit(getItems(newList)); 
         }
     }, [points, cngCounter, list, adjustLimit, setOrigin]);
 
@@ -1310,9 +1314,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setSelection(prev => newSelection);
             setFocusItem(newFocus);
             setOrigin(true, [], newFocus, newSelection);
-            adjustLimit(); 
+            // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
         }
-    }, [selectedNodes, unitscale, displayFontFactor, setOrigin, adjustLimit, sorry]);
+    }, [selectedNodes, unitscale, displayFontFactor, setOrigin, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1355,7 +1359,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setList(newList);
             setFocusItem(prev => newFocus);
             setOrigin(true, points, newFocus, newSelection); 
-            adjustLimit();
+            adjustLimit(getItems(newList));
             setSelection(newSelection);
             if (newFocus) {
                 scrollTo(newFocus);
@@ -1420,7 +1424,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setPreselection1([]);
             setPreselection2([]);
             setFocusItem(null);
-            adjustLimit();
+            adjustLimit(getItems(newList));
             setOrigin(true, points, null, []);
         }
     }, [deduplicatedSelection, points, list, adjustLimit, setOrigin]);
@@ -1839,7 +1843,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setENodeCounter(prev => newENodeCounter);
             setCNGCounter(prev => newCNGCounter);
             setSGCounter(prev => newSGCounter);            
-            adjustLimit();
+            adjustLimit(getItems(newList));
         } 
         catch (e: any) {
             if (e.msg) {
