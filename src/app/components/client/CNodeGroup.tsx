@@ -21,6 +21,7 @@ const CONTOUR_CENTER_DIV_MIN_WIDTH = 7
 const CONTOUR_CENTER_DIV_MIN_HEIGHT = 7
 export const CONTOUR_CENTER_DIV_MAX_WIDTH = 40
 export const CONTOUR_CENTER_DIV_MAX_HEIGHT = 40
+const CONTOUR_CENTER_DIV_MARGIN = 4
 
 export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
@@ -694,6 +695,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
         const h = maxY-minY;
         const lwc = linewidth; // linewidth correction
         const mlw = MARK_LINEWIDTH;
+        const mlw2 = mlw / 2;
 
         const linePath = `M ${lines[0].x0-minX+lwc} ${h-lines[0].y0+minY+lwc} ` + 
             lines.map((line, i) => 
@@ -747,14 +749,14 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                             onMouseLeave={(e) => onMouseLeave(group, e)}
                             style={{                
                                 position: 'absolute',
-                                left: `${c.x - cdW/2 - mlw/2}px`,
-                                top: `${H + yOffset - c.y - cdH/2 - mlw/2}px`,
+                                left: `${c.x - cdW/2}px`,
+                                top: `${H + yOffset - c.y - cdH/2}px`,
                                 cursor: centerDivClickable? 'pointer': 'auto',
                                 pointerEvents: centerDivClickable? 'auto': 'none'
-
                         }}>
-                        <svg width={cdW + 2*mlw} height={cdH + 2*mlw} opacity={0.5}>
-                            <polyline points={`${mlw},${mlw} ${cdW},${mlw} ${cdW},${cdH} ${mlw},${cdH} ${mlw},${mlw} ${3},${mlw}`} stroke={markColor} fill='none' />
+                        <svg width={cdW + mlw} height={cdH + mlw} opacity={0.5}>
+                            <polyline points={`${mlw2},${mlw2} ${cdW+mlw2},${mlw2} ${cdW+mlw2},${cdH+mlw2} ${mlw2},${cdH+mlw2} ${mlw2},${mlw2} ${3},${mlw2}`}  
+                                stroke={markColor} fill='none' />
                         </svg>
                     </div>
                 }
@@ -798,9 +800,9 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
         const { bottom, left } = item.getBottomLeftCorner();
         const icx = left + w2;
         const icy = bottom + h2;
-        // Return true iff the item is covered by the center div:
-        return Math.abs(c.x - icx) + w2 < cdW/2 && 
-            Math.abs(c.y - icy) + h2 < cdH/2;
+        // Return true iff the item is just about covered by the center div:
+        return Math.abs(c.x - icx) + w2 < cdW/2 + CONTOUR_CENTER_DIV_MARGIN && 
+            Math.abs(c.y - icy) + h2 < cdH/2 + CONTOUR_CENTER_DIV_MARGIN;
     });
     // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
     // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.

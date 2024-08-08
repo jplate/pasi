@@ -299,10 +299,10 @@ export const ENodeComp = ({ id, enode, yOffset, unitscale, displayFontFactor,
     const extraHeight = radius < MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:
-    const top = MARK_LINEWIDTH / 2 + extraHeight;
-    const left = MARK_LINEWIDTH / 2;
-    const mW = width + linewidth + MARK_LINEWIDTH; // width and...
-    const mH = height + linewidth + MARK_LINEWIDTH; // ...height relevant for drawing the 'mark border'
+    const top = MARK_LINEWIDTH + extraHeight;
+    const left = MARK_LINEWIDTH;
+    const mW = width + linewidth; // width and...
+    const mH = height + linewidth; // ...height relevant for drawing the 'mark border'
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = hidden ? 0.9 * l : 0;
 

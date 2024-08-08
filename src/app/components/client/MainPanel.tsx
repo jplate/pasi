@@ -42,8 +42,9 @@ import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
 export const H = 650; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
-export const W = 900; // the width of the canvas
-export const MAX_X = 32*W-1 // the highest possible X coordinate for an Item
+const CANVAS_WIDTH_BASE = 850; // the 'standard' width of the canvas
+const CANVAS_WIDTH_LARGE = 1000; // the width of the canvas for larger screens
+export const MAX_X = 32*CANVAS_WIDTH_BASE-1 // the highest possible X coordinate for an Item
 export const MIN_X = 0 // the lowest possible X coordinate for an Item
 export const MIN_Y = -16*H+1 // the lowest possible Y coordinate for an Item 
 export const MAX_Y = 16*H-1 // the highest possible Y coordinate for an Item 
@@ -366,12 +367,12 @@ const highestActive = (item: Item): Item | Group<any> => {
 /**
  * Used for computing the X coordinate of the limit component.
  */
-const limitCompX = (limitX: number, canvas: HTMLDivElement | null) => {
+const limitCompX = (limitX: number, canvas: HTMLDivElement | null, canvasWidth: number) => {
     if (canvas) {
         const { scrollLeft } = canvas;
-        const x = Math.min(Math.ceil(limitX/W)*W, MAX_X);
-        return x<=W || x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft+W) + 
-            (limitX>W? MARGIN: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+        const x = Math.min(Math.ceil(limitX / canvasWidth) * canvasWidth, MAX_X);
+        return x <= canvasWidth || x<scrollLeft+SCROLL_X_OFFSET? x: Math.max(x, scrollLeft + canvasWidth) + 
+            (limitX > canvasWidth? MARGIN: -40)  // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } 
     else {
         return 0;
@@ -567,6 +568,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
     const [yOffset, setYOffset] = useState(0);
     const [limit, setLimit] = useState<Point>(new Point(0,H)) // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+    const [canvasWidth, setCanvasWidth] = useState(CANVAS_WIDTH_BASE);
 
     const [grid, setGrid] = useState(createGrid())
     const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT)
@@ -604,6 +606,20 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useEffect(() => {
         const element = document.getElementById('content');
         if(element) Modal.setAppElement(element)
+    }, []);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 1536) {
+                setCanvasWidth(CANVAS_WIDTH_BASE);
+            }
+            else {
+                setCanvasWidth(CANVAS_WIDTH_LARGE);
+            }
+        };    
+        window.addEventListener('resize', handleResize);    
+        handleResize();    
+        return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     const deduplicatedSelection = useMemo(() => 
@@ -754,7 +770,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     /**
      * Scrolls to the center point of the specified item.
      */
-    const scrollTo = useCallback((item: Item, yoff: number = yOffset) => {
+    const scrollTo = useCallback((item: Item, yoff: number = yOffset, canvasWidth: number) => {
         const canvas = canvasRef.current;
         if (canvas) { 
             const w = item.getWidth();
@@ -763,9 +779,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
             const icx = left + w/2; // item center X
             const icy = bottom + h/2; // item center Y
             const dx = icx - canvas.scrollLeft;
-            const scrollRight = Math.floor((dx%W===0? dx-1: dx) / W) * W;
+            const scrollRight = Math.floor((dx % canvasWidth===0? dx-1: dx) / canvasWidth) * canvasWidth;
             const dy = canvas.scrollTop + icy - yoff;
-            const scrollDown = -Math.floor((dy%H===0? dy+1: dy) / H) * H;
+            const scrollDown = -Math.floor((dy % H===0? dy+1: dy) / H) * H;
             setTimeout(() => {
                 canvas.scrollBy(scrollRight, scrollDown);
             }, 0);
@@ -1369,11 +1385,11 @@ const MainPanel = ({dark}: MainPanelProps) => {
             adjustLimit(getItems(newList));
             setSelection(newSelection);
             if (newFocus) {
-                scrollTo(newFocus);
+                scrollTo(newFocus, yOffset, canvasWidth);
             }
         }
     }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
-        unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo
+        unitscale, displayFontFactor, canvasWidth, yOffset, adjustLimit, setOrigin, scrollTo
     ]);
 
 
@@ -1440,8 +1456,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
 
 
     /**
-     * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers for its various child components. 
-     * In particular, these handlers will call itemChange with an input element (or null) and a key that is obtained from the focusItem through Item.getInfo().
+     * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers 
+     * for its various child components. In particular, these handlers will call itemChange with an input element (or null) and a key that is obtained 
+     * from the focusItem through Item.getInfo().
      */
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
         if (focusItem) {
@@ -1462,12 +1479,14 @@ const MainPanel = ({dark}: MainPanelProps) => {
             setList(prev => nodes); // for some reason, the setter function is called twice here.
             setOrigin(false, points, focusItem, selection, list);
             if (focusItem instanceof Node) { 
-                scrollTo(focusItem, yOffset);
+                scrollTo(focusItem, yOffset, canvasWidth);
             }
             adjustLimit();
             setItemsMoved(prev => [...prev]); 
         }
-    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo]);  
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, yOffset, canvasWidth, unitscale, displayFontFactor, 
+        adjustLimit, setOrigin, scrollTo
+    ]);  
 
 
     const adjustSelection = useCallback((item: Item) => {
@@ -1493,7 +1512,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
         });
         adjustLimit();
         setOrigin(false, points, focusItem, selection, list);
-        if (focusItem instanceof Node) scrollTo(focusItem, yOffset);
+        if (focusItem instanceof Node) {
+            scrollTo(focusItem, yOffset, canvasWidth);
+        }
         setItemsMoved(prev => [...prev]);
     }, [logIncrement, selectedNodes, focusItem, list, yOffset, points, selection, adjustLimit, setOrigin, scrollTo]);
 
@@ -2063,7 +2084,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
     return ( 
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'> {/* We give this div the 'pasi' class to prevent certain css styles from taking effect. */}
-                <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox min-w-[900px] max-w-[1200px] '>
+                <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox'
+                        style={{minWidth: canvasWidth}}>
                     <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
                             onMouseDown={canvasMouseDown} >
                         {list.map((it, i) => 
@@ -2127,9 +2149,9 @@ const MainPanel = ({dark}: MainPanelProps) => {
                             </svg>
                         }
                         {/* Finally we add an invisible bottom-right 'limit point', which is needed to block automatic adjustment of canvas scrollbars during dragging: */}
-                        {(yOffset!==0 || limit.x>=W || limit.y<=0) &&
+                        {(yOffset!==0 || limit.x >= canvasWidth || limit.y <= 0) &&
                             <PointComp key={limit.id} 
-                                x={limitCompX(limit.x, canvasRef.current)} 
+                                x={limitCompX(limit.x, canvasRef.current, canvasWidth)} 
                                 y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)} 
                                 primaryColor={DEFAULT_HSL_LIGHT_MODE}
                                 markColor='red' visible={false} /> 
@@ -2138,7 +2160,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
                     <canvas id='real-canvas' className='w-72 h-24 hidden'> 
                         {/* This canvas element helps Label components determine the 'true' height of a given piece of text. */}                    
                     </canvas>
-                    <div id='code-panel' className='relative mt-[25px] min-w-[900px] max-w-[1200px] h-[190px]'> 
+                    <div id='code-panel' className='relative mt-[25px] h-[190px]' style={{minWidth: canvasWidth}}> 
                         <textarea 
                             className='codepanel w-full h-full p-2 shadow-inner text-sm focus:outline-none resize-none'
                             ref={codeRef}

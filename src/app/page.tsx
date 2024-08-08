@@ -39,7 +39,7 @@ const LogoSpan: React.FC = () => {
   }, []);
 
   return ( 
-      <span className={`pasi-logo text-xl tracking-wide hidden 2xl:inline transition-opacity duration-500 ${isVisible? 'opacity-100': 'opacity-0'}`}>
+      <span className={`pasi-logo text-xl tracking-wide transition-opacity duration-500 ${isVisible? 'opacity-100': 'opacity-0'}`}>
         {/* There's a danger of the logo overlapping the site's content, so we hide the logo on screens under 2xl. 
             The 'pasi-logo' class is added in order to let the logo appear in the same font-family as the MainPanel. */}
           pasi
@@ -111,12 +111,13 @@ export default function Home() {
     );
   }
 
+  const hyphens = <>-----<span className='hidden md:inline'>-------------</span></>;
   
   return (<> {/* We're returning a fragment. */}
-    <div id='sticky-top' className={`sticky-top sticky top-0 bg-transparent z-40 px-4 py-2`}>
-      <span className='flex items-center justify-between px-6'>
+    <div id='sticky-top' className={`sticky-top sticky top-0 bg-transparent z-40 hidden sm:block`}>
+      <span className='flex items-center justify-between px-2 lg:px-4 2xl:px-6 py-1 lg:py-2'>
         <LogoSpan />
-        <button className='hidden 2xl:inline' // make the button transparent on smaller screens, so it doesn't overlap the content.
+        <button className='opacity-60'
             onClick={() => {setIsDarkMode(!isDarkMode)}}>
           {isDarkMode ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"> {/* moon icon */}
@@ -137,10 +138,10 @@ export default function Home() {
             <p><strong>Mobile device not supported.</strong></p>
             <p>Please access this application from a laptop or desktop.</p>
         </div>:
-        <div id='content' className='flex-1 flex flex-col mb-9'>
+        <div id='content' className='flex-1 flex flex-col items-center mb-9'>
           <Section id='intro-section' dark={isDarkMode}>
             <p>
-              <strong>------------------UNDER CONSTRUCTION------------------</strong> 
+              <strong>{hyphens}UNDER CONSTRUCTION{hyphens}</strong> 
             </p>
             <p>
               Suppose you’re writing a paper in LaTeX and want to make a quick diagram to include in your text.
@@ -213,7 +214,7 @@ export default function Home() {
             While it&apos;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram <i>from LaTeX code</i>{' '} 
             is that this approach allows the diagram to contain text processed by LaTeX. {' '}
             In the case of <i>pasi</i>, this means that you may feel free to use any command you&apos;ve defined in your document in the text of a label. The <i>dis</i>&#8202;advantage{' '}
-            of this approach, but I think it&apos;s relatively minor, is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
+            of this approach (but I think it&apos;s relatively minor) is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
             by LaTeX.
           </Section>
         </div>

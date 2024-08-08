@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -182,7 +182,6 @@ em, i {
 }
 
 
-
 /*****************************************************
 * COPY-TO-CLIPBOARD BUTTON
 *****************************************************/
@@ -190,7 +189,7 @@ em, i {
 .copy-button {
   background-color: rgba(var(--btnbg), 0.6);
   color: rgba(var(--btncolor), 0.6);
-  transition: all 0.2s ease-in-out;
+  transition: all 0.1s ease-in-out;
 }
 
 .copy-icon {
