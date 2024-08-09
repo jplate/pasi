@@ -1,21 +1,21 @@
 import React from 'react'
-import Item from './Item'
-import { HSL } from './Item.tsx'
-import { H } from '../MainPanel.tsx'
+import { HSL } from './items/Item.tsx'
+import { H } from './MainPanel.tsx'
 
 export const POINT_RADIUS = 4;
 
-export default class Point extends Item {
+export default class Point {
 
     x: number // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number
 
+    id: string
+
     constructor(x: number, y: number) {
-        super(`x${x}y${y}`);
+        this.id = (`x${x}y${y}`);
         this.x = x;
         this.y = y;
     }
-
 }
 
 interface PointProps {

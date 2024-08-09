@@ -13,8 +13,8 @@ export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // T
     // at most one CNode per CNodeGroup.
     
 /**
- * An Item represents any kind of component that has a persistent location on the canvas. This includes Nodes, Points, Ornaments, and Connectors,
- * but not the Lasso.
+ * An Item represents a component located on the canvas that is either selectable or contributes texdraw code. This includes Nodes, Ornaments, and Connectors,
+ * but neither CNodeGroups (which represent multiple components) nor Points (which are neither selectable nor contribute texdraw code).
  * @abstract
  */
 export default abstract class Item implements GroupMember {
@@ -68,7 +68,6 @@ export default abstract class Item implements GroupMember {
 	 * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
 	 */
 	abstract parse(code: string, info: string | null, dimRatio: number, unitscale?: number, displayFontFactor?: number, name?: string): void
-
 
     /**
      * @returns an array of Entries, to be supplied to ItemEditor.
