@@ -18,10 +18,11 @@ export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 
 
 /**
- * This class corresponds to the class IndependentItem from the 2007 applet.
  * Nodes are Items with a specified center, linewidth, dash pattern, and shading.
+ * (This class corresponds to the class IndependentItem from the 2007 applet.)
+ * @abstract
  */
-export default class Node extends Item {
+export default abstract class Node extends Item {
 
     static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
         <>
@@ -61,8 +62,16 @@ export default class Node extends Item {
         return this.id;
     }
 
+    override getWidth() {
+        return this.radius * 2; 
+    }
+
+    override getHeight() {
+        return this.radius * 2;
+    }
+
     override getBottomLeftCorner() {
-        return { bottom: this.y, left: this.x };
+        return { bottom: this.y - this.radius, left: this.x - this.radius };
     }
 
     override reset() {

@@ -15,8 +15,9 @@ export const ROUNDING_DIGITS = 3
 
 /**
  * An Ornament is an object representing an 'ornament', such as a label, attached to a Node. Ornaments do not have their own Z-indices.
+ * @abstract
  */
-export default class Ornament extends Item {
+export default abstract class Ornament extends Item {
 
     static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
         <>
@@ -50,12 +51,9 @@ export default class Ornament extends Item {
 
     /**
      * Clones this Ornament. The clone is added to the supplied Node's array of Ornaments and receives a unique ID.
+     * @abstract
      */
-    clone(node: Node) {
-        const clone = new Ornament(node);
-        this.copyValuesTo(clone);
-        return clone;
-    }
+    abstract clone(node: Node): void
 
     protected copyValuesTo(target: Ornament) {
         target.group = this.group;
@@ -65,15 +63,17 @@ export default class Ornament extends Item {
         target.gap100 = this.gap100;
     }
 
-    getComponent(key: number, yOffset: number, unitscale: number, displayFontFactor: number, 
+    /** 
+     * Returns a component that represents this Ornament on the canvas. 
+     * @abstract
+     */
+    abstract getComponent(key: number, yOffset: number, unitscale: number, displayFontFactor: number, 
         primaryColor: HSL, markColor: string, 
         focus: boolean, selected: boolean, preselected: boolean, 
         onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
         onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
         onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    ): react.JSX.Element {
-        return <></>;
-    }    
+    ): react.JSX.Element  
 
 }
 

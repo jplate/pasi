@@ -10,7 +10,7 @@ import { getCyclicValue } from '../../../util/MathTools.tsx'
 import { MIN_ROTATION, MAX_ROTATION_INPUT } from '../ItemEditor.tsx'
 
 
-const CNODE_RADIUS = 7
+const CNODE_MARK_RADIUS = 7 // Not the 'real' radius (which is 0), but only used for drawing the 'mark border'.
 const CNODE_ARROW_DIV_RADIUS = 10
 export const CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW = 30
 const CNODE_ARROW_DISTANCE_RATIO = 0.3
@@ -43,7 +43,6 @@ export default class CNode extends Node {
 
     constructor(id: string, x: number, y: number, a0: number, a1: number, group: CNodeGroup) {
         super(id, x, y);
-        this.radius = this.radius100 = CNODE_RADIUS;
         this.angle0 = a0;
         this.angle1 = a1;
         this.group = group;
@@ -122,8 +121,8 @@ export default class CNode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            unitscale: number,
-            displayFontFactor: number,
+            _unitscale: number,
+            _displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'fixed':
@@ -236,6 +235,8 @@ export default class CNode extends Node {
                 return [(item, array) => array, 'onlyThis']        
         }
     }
+
+    override parse() {} // Since there are no texdraw commands corresponding to individual CNodes, there is nothing to parse.
 }
 
 
@@ -264,7 +265,7 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
 ) => {
     const x = cnode.x;
     const y = cnode.y;
-    const radius = CNODE_RADIUS;
+    const radius = CNODE_MARK_RADIUS;
     const focus = focusItem===cnode;
 
     // coordinates (and dimensions) of the inner rectangle, relative to the div:

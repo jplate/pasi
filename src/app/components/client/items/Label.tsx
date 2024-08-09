@@ -67,7 +67,7 @@ export default class Label extends Ornament {
     fontSize: number = normalFontSize;
     parbox: boolean = false;
     parboxWidth: number = DEFAULT_PARBOX_WIDTH;
-    centeredText: boolean = false;
+    centerText: boolean = false;
 
     private lines: Line[] = [];
 
@@ -96,7 +96,7 @@ export default class Label extends Ornament {
         target.vphant = this.vphant;
         target.parbox = this.parbox;
         target.parboxWidth = this.parboxWidth;
-        target.centeredText = this.centeredText;
+        target.centerText = this.centerText;
     }
 
     override getWidth() {
@@ -116,7 +116,7 @@ export default class Label extends Ornament {
         const angle = this.angle;
         const angleRad = angle / 180 * Math.PI;
         const [hPos, vPos] = this.#getPositioning(); 
-        const r = this.node.radius + this.node.linewidth + this.gap;
+        const r = this.node.radius + this.node.linewidth / 2 + this.gap;
         return { 
             left: this.node.x + (this.centered || hPos===0? 
                 -w / 2: 
@@ -138,12 +138,26 @@ export default class Label extends Ornament {
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'checkbox', key: 'centered', text: 'Centered', value: this.centered},
-            {type: 'number input', key: 'angle', text: 'Angle', negativeTopMargin: true, width: 'long', value: this.angle, step: 0, disabled: this.centered},
-            {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0, disabled: this.centered},
-            {type: 'checkbox', key: 'parbox', text: <code>\parbox</code>, value: this.parbox},
+            {type: 'number input', key: 'angle', text: 'Angle', negativeTopMargin: true, width: 'long', value: this.angle, step: 0, disabled: this.centered,
+                tooltip: <>The angle of a straight line from the center of the node to which the label is attached to the nearest point of the label&rsquo;s{' '}
+                    own bounding box.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0, disabled: this.centered,
+                tooltip: <>The distance between the circumference of the node to which the label is attached and the closest point of the label&rsquo;s own{' '} 
+                    bounding box.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'checkbox', key: 'parbox', text: <code>\parbox</code>, value: this.parbox,
+                tooltip: <>Wrap the content of the label in a <code>\parbox</code> command.</>,
+                tooltipPlacement: 'right'
+            },
             {type: 'number input', key: 'parbox width', text: 'Width', negativeTopMargin: true, width: 'long', value: this.parboxWidth, step: 0, disabled: !this.parbox},
-            {type: 'checkbox', key: 'centered text', text: 'Centered content', value: this.centeredText, disabled: !this.parbox},
-            {type: 'checkbox', key: 'mathMode', text: 'Math mode', value: this.mathMode, disabled: this.parbox},
+            {type: 'checkbox', key: 'center text', text: 'Center content', value: this.centerText, disabled: !this.parbox},
+            {type: 'checkbox', key: 'mathMode', text: 'Math mode', value: this.mathMode, disabled: this.parbox,
+                tooltip: <>Enclose the content of the label in a pair of <code>$</code> characters.</>,
+                tooltipPlacement: 'right'
+            },
             {type: 'string input', key: 'vphant', text: <><code>\vphantom</code></>, value: this.vphant, width: 'long',
                 tooltip: <>Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will {' '}
                     be inserted both at the end and at the beginning of the text.)</>,
@@ -159,8 +173,8 @@ export default class Label extends Ornament {
 
     override handleEditing(
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, 
-        logIncrement: number, 
-        selection: Item[],
+        _logIncrement: number, 
+        _selection: Item[],
         unitscale: number,
         displayFontFactor: number,
         key: string
@@ -251,11 +265,11 @@ export default class Label extends Ornament {
                         return array
                     }, 'wholeSelection']
                 }
-            case 'centered text':
-                const centeredText = !this.centeredText;
+            case 'center text':
+                const centeredText = !this.centerText;
                 return [(item, array) => {
                     if (item instanceof Label) {
-                        item.centeredText = centeredText;
+                        item.centerText = centeredText;
                     }
                     return array
                 }, 'wholeSelection']
@@ -264,18 +278,20 @@ export default class Label extends Ornament {
         }
     }
 
+    override reset() {} // Since there is no reset button in the editor, we don't need to do anything here.
+
     override getInfoString() {
         return [
             this.gap, 
             this.angle, 
-            (this.parbox && this.mathMode) || (!this.parbox && this.centeredText)? 1: 0
+            (this.parbox && this.mathMode) || (!this.parbox && this.centerText)? 1: 0
         ].map(encode).join(' ');
     }
 
     override getTexdrawCode(unitscale: number) {
         const vphantomCmd = this.vphant.length > 0? `\\vphantom{${this.vphant}}`: '';
         const textWithVphantom = this.parbox? `${vphantomCmd}${this.text}${vphantomCmd}`: `${vphantomCmd}${this.text}`;
-        const centeredText = this.centeredText;
+        const centeredText = this.centerText;
         const textWithoutSizeCmds = this.parbox? 
             `\\parbox{${this.parboxWidth * unitscale}pt}{${centeredText? '\\begin{center}': ''}${textWithVphantom}${centeredText? '\\end{center}': ''}}`: 
             this.mathMode? `$${textWithVphantom}$`: textWithVphantom;
@@ -350,11 +366,11 @@ export default class Label extends Ornament {
         else { // If we do have a parbox, its text might be centered. So we check:
             const centeredTextMatch = text.match(centeredTextPattern);
             if (centeredTextMatch) {
-                this.centeredText = true;
+                this.centerText = true;
                 text = centeredTextMatch[1];
             }
             else {
-                this.centeredText = false;
+                this.centerText = false;
             }
         }
     
@@ -405,7 +421,7 @@ export default class Label extends Ornament {
                     this.mathMode = true;
                 }
                 else {
-                    this.centeredText = true;
+                    this.centerText = true;
                 }
             }
         }
@@ -576,11 +592,11 @@ export default class Label extends Ornament {
                                     //console.log(`line ${i}: ${line.text} w: ${line.width}`);
                                     return (
                                         <text key={i} 
-                                                x={left + (this.centeredText? (width - line.width) / 2: 0)} 
+                                                x={left + (this.centerText? (width - line.width) / 2: 0)} 
                                                 y={MARK_LINEWIDTH + top + baseLine} 
                                                 className={fontClassName}
                                                 fontSize={fontSize} 
-                                                wordSpacing={this.centeredText? 'normal': `${(width - line.width) / line.text.split(/\s+/).length}px`}
+                                                wordSpacing={this.centerText? 'normal': `${(width - line.width) / line.text.split(/\s+/).length}px`}
                                                 fill={fillColor}>
                                             {line.text}
                                         </text>

@@ -211,10 +211,10 @@ export default function Home() {
             </ul>
             Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a> and{' '}
             <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>. {' '}
-            While it&apos;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram <i>from LaTeX code</i>{' '} 
+            While it&rsquo;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram <i>from LaTeX code</i>{' '} 
             is that this approach allows the diagram to contain text processed by LaTeX. {' '}
-            In the case of <i>pasi</i>, this means that you may feel free to use any command you&apos;ve defined in your document in the text of a label. The <i>dis</i>&#8202;advantage{' '}
-            of this approach (but I think it&apos;s relatively minor) is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
+            In the case of <i>pasi</i>, this means that you may feel free to use any command you&rsquo;ve defined in your document in the text of a label. The <i>dis</i>&#8202;advantage{' '}
+            of this approach (but I think it&rsquo;s relatively minor) is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
             by LaTeX.
           </Section>
         </div>

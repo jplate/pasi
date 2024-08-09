@@ -720,7 +720,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                     }}>
                     <svg width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
                             pointerEvents={shading>0? 'fill': 'none'}>
-                        {shading>0 && 
+                        {shading > 0 && 
                             <path d={fillPath}  
                                 onMouseDown={(e) => onMouseDown(group, e)}
                                 onMouseEnter={(e) => onMouseEnter(group, e)}
@@ -731,7 +731,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                                     `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                                 stroke='none' />
                         }
-                        {linewidth>0 &&
+                        {linewidth > 0 &&
                             <path d={linePath}  
                                 fill='none'
                                 stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
@@ -742,7 +742,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                         }
                     </svg>
                 </div>
-                {cdW>=CONTOUR_CENTER_DIV_MIN_WIDTH && cdH>=CONTOUR_CENTER_DIV_MIN_HEIGHT && 
+                {cdW >= CONTOUR_CENTER_DIV_MIN_WIDTH && cdH >= CONTOUR_CENTER_DIV_MIN_HEIGHT && 
                     <div className={showCenterDiv? 'selected': 'unselected'}
                             onMouseDown={(e) => onMouseDown(group, e)}
                             onMouseEnter={(e) => onMouseEnter(group, e)}
@@ -804,8 +804,9 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
         return Math.abs(c.x - icx) + w2 < cdW/2 + CONTOUR_CENTER_DIV_MARGIN && 
             Math.abs(c.y - icy) + h2 < cdH/2 + CONTOUR_CENTER_DIV_MARGIN;
     });
-    // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 'next node' and 'previous node' in the tooltips
-    // and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected nodes should be decorated in this way.
+    // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by 
+    // 'next node' and 'previous node' in the tooltips and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected 
+    // nodes should be decorated in this way.
     let allSelected = true,
         someSelected = false,
         allPreselected = true;

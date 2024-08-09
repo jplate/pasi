@@ -49,19 +49,6 @@ export default class ENode extends Node {
         return result;
     }
 
-
-    override getWidth() {
-        return this.radius * 2;
-    }
-
-    override getHeight() {
-        return this.radius * 2;
-    }
-
-    override getBottomLeftCorner() {
-        return { bottom: this.y - this.radius, left: this.x - this.radius };
-    }
-
     override reset() {
         super.reset();
         this.radius = this.radius100 = DEFAULT_RADIUS;
@@ -87,8 +74,8 @@ export default class ENode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            unitscale: number,
-            displayFontFactor: number,
+            _unitscale: number,
+            _displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
             case 'x': if (e) {
