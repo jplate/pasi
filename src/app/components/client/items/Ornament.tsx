@@ -53,7 +53,7 @@ export default abstract class Ornament extends Item {
      * Clones this Ornament. The clone is added to the supplied Node's array of Ornaments and receives a unique ID.
      * @abstract
      */
-    abstract clone(node: Node): void
+    abstract clone(node: Node): Ornament
 
     protected copyValuesTo(target: Ornament) {
         target.group = this.group;
