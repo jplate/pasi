@@ -1,13 +1,13 @@
 'use client'
 
 import dynamic from "next/dynamic";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import clsx from 'clsx/lite';
 import { hotkeys } from './components/client/MainPanel'
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
-const Section = dynamic(() => import('./components/client/Section.tsx'), {ssr: false,});
+const SectionComp = dynamic(() => import('./components/client/Section.tsx'), {ssr: false,});
 
 
 
@@ -53,18 +53,13 @@ interface PasiProps {
 }
 
 
-const Pasi = ({ children }: PasiProps) => {
-  return (
-    <span className='pasi text-base'>
-      {children}
-    </span>
-  );
-}
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMac, setIsMac] = useState(false);
+  const [trueBlack, setTrueBlack] = useState(false);
+  const [discoveredTrueBlack, setDiscoveredTrueBlack] = useState(false);
 
   // Initialize state
   useEffect(() => {
@@ -100,7 +95,7 @@ export default function Home() {
   }, [isDarkMode]);
 
 
-  const key = (name: string) => {
+  const key = useCallback((name: string) => {
     if (isMac) name = name.replace(/Ctrl/, '⌘');
     const split = name.split('+');
     return split.map((s, i) => 
@@ -109,7 +104,35 @@ export default function Home() {
         {i < split.length - 1 && '+'}
       </span>
     );
+  }, [isDarkMode]);
+
+  const pasi = useCallback((s: string) => {
+    return (
+      <span className='pasi text-base'>
+        {s}
+      </span>
+    );
+  }, []);
+
+  interface SectProps {
+    id?: string
+    header?: string
+    children: React.ReactNode
   }
+  // This is just so we don't have to pass the dark prop every time we start a section.
+  const Section = useCallback(({ id, header, children }: SectProps) => 
+    <SectionComp id={id || ''} header={header} dark={isDarkMode}>
+      {children}
+    </SectionComp>,
+    [isDarkMode]
+  );
+
+  interface OneWordProps {
+    children: React.ReactNode
+  }
+  const OneWord = useCallback(({ children }: OneWordProps) => {
+    return <span className='whitespace-nowrap'>{children}</span>;
+  }, []);
 
   const hyphens = <>-----<span className='hidden md:inline'>-------------</span></>;
   
@@ -139,7 +162,7 @@ export default function Home() {
             <p>Please access this application from a laptop or desktop.</p>
         </div>:
         <div id='content' className='flex-1 flex flex-col items-center mb-9'>
-          <Section id='intro-section' dark={isDarkMode}>
+          <Section id='intro-section'>
             <p>
               <strong>{hyphens}UNDER CONSTRUCTION{hyphens}</strong> 
             </p>
@@ -151,19 +174,19 @@ export default function Home() {
             </p>
             <p>
               To create a diagram, start by selecting one or (with shift-click) more locations on the canvas below<span className='xl:hidden'>{' '}
-              (if none is visible, you may need to zoom out or increase your screen size)</span>, and then click either the <Pasi>Node</Pasi> or 
-              the <Pasi>Contour</Pasi> button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
-              with arrows, etc. When you’re done, click the <Pasi>Generate</Pasi> button to have the LaTeX code displayed in the text area below the canvas. 
+              (if none is visible, you may need to zoom out or increase your screen size)</span>, and then click either the {pasi('Node')} or 
+              the {pasi('Contour')} button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
+              with arrows, etc. When you’re done, click the {pasi('Generate')} button to have the LaTeX code displayed in the text area below the canvas. 
               To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
-              You can also load diagrams from previously generated code, using the <Pasi>Load</Pasi> button.
+              You can also load diagrams from previously generated code, using the {pasi('Load')} button.
             </p>
           </Section>
 
           <div className='hidden xl:block'>
-            <MainPanel dark={isDarkMode} />
+            <MainPanel dark={isDarkMode} toggleTrueBlack={() => {setTrueBlack(prev => !prev); setDiscoveredTrueBlack(true)}} />
           </div>
 
-          <Section id='hotkey-section' header='Keyboard shortcuts' dark={isDarkMode}>
+          <Section id='keyboard-commands' header='Keyboard commands'>
             <p>
               The following keyboard commands are available for editing the diagram displayed on the canvas. For editing the <i>texdraw</i> code in the text area, the
               usual commands (including {key('Ctrl+Z')} and {isMac? key('Shift+⌘+Z'): key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
@@ -199,7 +222,7 @@ export default function Home() {
             </table>
           </Section>
 
-          <Section id='alternatives-section' header='Alternative apps' dark={isDarkMode}>
+          <Section id='alternatives-section' header='Alternative apps'>
             <p>
               The following are a few other editors that also export LaTeX code:
             </p>
@@ -209,14 +232,96 @@ export default function Home() {
               <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
               <li><a href='https://tpx.sourceforge.net/' target='_blank'><i>TpX</i></a>, another desktop application, superficially similar to <i>Dia</i>.</li>
             </ul>
-            Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a> and{' '}
-            <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>. {' '}
-            While it&rsquo;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram <i>from LaTeX code</i>{' '} 
-            is that this approach allows the diagram to contain text processed by LaTeX. {' '}
-            In the case of <i>pasi</i>, this means that you may feel free to use any command you&rsquo;ve defined in your document in the text of a label. The <i>dis</i>&#8202;advantage{' '}
-            of this approach (but I think it&rsquo;s relatively minor) is that the diagram editor cannot easily give a faithful representation of how a label will appear in the output produced{' '}
-            by LaTeX.
+            Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a>,{' '}
+            <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>, and <a href='https://tldraw.com/' target='_blank'><i>tldraw</i></a>. {' '}
           </Section>
+          
+          <Section id='design-principles' header='Basic design features'>
+            <ol>
+              <li><span className='font-bold'>Exporting LaTeX code.</span>{' '}
+                While it&rsquo;s of course possible to tell LaTeX to include an image file in its output, the major advantage of having it create a diagram{' '}
+                <i>from LaTeX code</i> is that this approach allows the diagram to contain text processed by LaTeX. {' '}
+                In the case of <i>pasi</i>, this means that you may feel free to use any command you&rsquo;ve defined in your document in the text of a label. That text{' '}
+                will then be included <em>verbatim</em> in the code that gets generated when you click on {pasi('Generate')}, and will be processed like any other code{' '}
+                when you run LaTeX on it.{' '}
+                The <OneWord><i>dis</i>advantage</OneWord> of this approach (but arguably it&rsquo;s relatively minor) is that the diagram editor cannot easily give a faithful{' '}
+                representation of how a label will appear in the output produced by LaTeX.
+              </li>
+              <li><span className='font-bold'>Freedom to design your own shapes.</span>{' '}
+                Many editors offer a range of different predefined shapes, such as circles, boxes, and stars. <i>Pasi</i> takes a very different route in that it lets{' '}
+                you define your own shapes as long as these can be described by a series of cubic curves. The starting point in each case is a rounded rectangle&mdash;a{' '}
+                &lsquo;splinegon&rsquo;, or what is here called a <i>contour</i>, with eight nodes carrying information about control points&mdash;that you can then{' '}
+                modify to suit your needs. A few examples of how different shapes can be created in this way are described <a href='#contour-examples'>below</a>.
+              </li>
+              <li><span className='font-bold'>Ease of precise positioning.</span>{' '}
+                <i>Pasi</i> tries hard to make it easy to position elements precisely. With the cursor keys (or {key('W')}, {key('A')}, {key('S')}, and {key('D')}) it is possible{' '}
+                to position selected items to a precision of a tenth of a pixel. The exact coordinates of an item can be inspected and manipulated in the {pasi('Editor')} tab.{' '}
+                In addition, while dragging items across the canvas, you can make use of three kinds of &lsquo;snapping&rsquo; behavior: to the centers of{' '}
+                contours, to the centers of contour <em>nodes</em>, and to a variable grid. 
+              </li>
+              <li><span className='font-bold'>No support for colors or mobile.</span>{' '}
+                What <i>pasi</i> mainly tries to do is to facilitate the expression, in the form of diagrams, of abstract ideas, typically with a view to publishing those ideas{' '}
+                in an academic journal. For this reason, it seems appropriate that <i>pasi</i> should only support diagrams in grayscale. Similarly, it does not{' '}
+                support mobile devices. After all, the app is primarily meant to be used while composing an academic paper in LaTeX, which does not usually happen on a mobile device.
+              </li>
+            </ol>
+          </Section>
+
+          <Section id='contour-examples' header='Contour examples'>
+            <ul>
+              <li><span className='font-bold'>Regular octagon.</span>{' '}
+                By default, each &lsquo;contour&rsquo; contains exactly eight nodes that define its shape. Now suppose you&rsquo;d like to draw a <em>regular octagon</em>.{' '}
+                To do so, you can simply select all the nodes of some eight-noded contour and press {key('P')}&mdash;or, at the bottom of the {pasi('Editor')} tab, click on the {' '}
+                buttons labeled &lsquo;{pasi('Defaults')}&rsquo;, &lsquo;{pasi('Equalize central angles')}&rsquo;, and &lsquo;{pasi('Equalize distances from center')}&rsquo;,{' '}
+                in any order. (To select all the nodes of a given contour, it is normally enough to click on any one of them or near the contour&rsquo;s center.)
+              </li>
+              <li><span className='font-bold'>Star of David.</span>{' '}
+                For a more complicated example, suppose you&rsquo;d like to draw a <em>Star of David</em>, which consists of two overlapping triangles. The easiest{' '}
+                way to do this is to start with a regular hexagon, which can be created from a standard eight-noded contour by deleting two of its nodes, selecting the{' '}
+                remaining six, and then pressing {key('P')}. Next, press {key('R')}, which will rotate the hexagon by 30 degrees and thereby make it stand on a vertex. {' '}
+                Finally, select three nodes of the hexagon that form an equilateral triangle, and press {key('G')}. This will create a new group consisting of those{' '}
+                same three nodes (defining a new, triangular contour) while the remaining three will form a group of their own, which will define the second triangle.
+              </li>
+              <li><span className='font-bold'>Pentagram.</span>{' '}
+                It&rsquo;s also possible to change the order in which the nodes of a contour are connected to each other. For example, to create a <em>pentagram</em>, you&rsquo;d{' '}
+                typically start with a regular pentagon, which can be created by essentially the same method as the regular hexagon from the previous example. Next, select all{' '}
+                the nodes of this pentagon and press {key('H')}, which will deactivate their membership in this node group. Now you can select all of them in the appropriate{' '}
+                order, and press {key('G')} to form a new group in which these nodes will be connected in the same order in which you&rsquo;ve just selected them.
+              </li>
+              <li><span className='font-bold'>Swiss cross.</span>{' '}
+                An easy way to draw a <em>Swiss cross</em> involves first creating a regular dodecagon. Starting from a standard contour, select one of its eight nodes and press{' '}
+                {key('C')} (for &lsquo;copy&rsquo;) four times to turn it into a contour with twelve nodes. Select all twelve and press {key('P')} to turn it{' '}
+                into a regular dodecagon. Next, make sure that the {pasi('Snap to contour centers')} option in the default {pasi('Editor')} tab (which opens whenever{' '}
+                you click on the canvas) is set. Create an <em>entity node</em> somewhere on the canvas and drag it to the center of the dodecagon you&rsquo;ve just created.{' '}
+                Holding {key('Ctrl')} pressed, select one of the four nodes in the NE, SE, SW, and NW{' '}
+                corners of the contour. Holding {key('Ctrl+Shift')} pressed, select also the other three (in any order), and finally select the central entity node as well,{' '}
+                again while holding {key('Ctrl+Shift')} pressed. Now release those keys and press {key('U')} to gradually shrink the square of selected contour nodes.{' '}
+                After a few seconds of holding {key('U')} pressed, you&rsquo;ll have a cross. If you&rsquo;d now also like to turn this cross{' '}
+                black, you can simply press {key('Shift+7')}
+                {isDarkMode? '.': <>:
+                  <div className='flex flex-col items-center my-5'>
+                    <svg width="156" height="156" xmlns="http://www.w3.org/2000/svg" pointerEvents="none">
+                      <path d="M 0.5 97.5 C 10.5 97.5, 52.78 97.5, 56.5 97.5 C 56.5 101.2, 56.5 143.5, 56.5 153.5 C 66.5 153.5, 87.5 153.5, 97.5 153.5 C 97.5 143.5, 97.5 101.2, 97.5 97.5 C 101.2 97.5, 143.5 97.5, 153.5 97.5 C 153.5 87.5, 153.5 66.5, 153.5 56.5 C 143.5 56.5, 101.2 56.5, 97.5 56.5 C 97.5 52.8, 97.5 10.5, 97.5 0.5 C 87.5 0.5, 66.5 0.5, 56.5 0.5 C 56.5 10.5, 56.5 52.8, 56.5 56.5 C 52.8 56.5, 10.5 56.5, 0.5 56.5 C 0.5 66.5, 0.5 87.5, 0.5 97.5" 
+                        fill={`hsla(0,0%,${trueBlack? 0: 19}%,1)`} stroke="none">
+                      </path>
+                      <path d="M 0.5 97.5 C 10.5 97.5, 52.8 97.5, 56.5 97.5 C 56.5 101.2, 56.5 143.5, 56.5 153.5 C 66.5 153.5, 87.5 153.5, 97.5 153.5 C 97.5 143.5, 97.5 101.2, 97.5 97.5 C 101.2 97.5, 143.5 97.5, 153.5 97.5 C 153.5 87.5, 153.5 66.5, 153.5 56.5 C 143.5 56.5, 101.2 56.5, 97.5 56.5 C 97.5 52.8, 97.5 10.5, 97.5 0.5 C 87.5 0.5, 66.5 0.5, 56.5 0.5 C 56.5 10.5, 56.5 52.8, 56.5 56.5 C 52.8 56.5, 10.5 56.5, 0.5 56.5 C 0.5 66.5, 0.5 87.5, 0.5 97.5"
+                        fill="none" stroke={`hsla(0,0%,${trueBlack? 0: 19}%,1)`} strokeWidth="1" strokeDasharray="" strokeLinecap="round" strokeLinejoin="round">
+                      </path>
+                    </svg>
+                  </div>
+                  {!trueBlack && <>
+                    (Admittedly this isn&rsquo;t <em>really</em> black, but a kind of dark grey, which is the color that <i>pasi</i> normally uses to <em>represent</em>{' '}
+                    black when it is in &lsquo;light mode&rsquo;.
+                    {!discoveredTrueBlack && <>{' '}
+                      To experience <em>true</em> black, you&rsquo;ll need to either turn on &lsquo;dark mode&rsquo; or press{' '}
+                      {key('Ctrl+B')}. Except for this one combination&mdash;a well-earned secret if you&rsquo;ve made it this far&mdash;all the other keyboard commands{' '}
+                      used in these examples have already been described <a href='#keyboard-commands'>above</a>.
+                    </>})
+                  </>}
+                </>}
+              </li>
+            </ul>
+            </Section>
         </div>
       }
     </main>

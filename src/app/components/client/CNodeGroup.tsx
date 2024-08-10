@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 //import assert from 'assert'
 import Item, { HSL } from './items/Item.tsx'
 import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './items/Node.tsx'
@@ -684,7 +684,10 @@ export interface ContourProps {
 }
 
 export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, centerDivClickable, showCenterDiv,
-        onMouseDown, onMouseEnter, onMouseLeave }: ContourProps) => {
+        onMouseDown, onMouseEnter, onMouseLeave 
+    }: ContourProps
+) => {
+    const svgRef = useRef<SVGSVGElement>(null);
     const linewidth = group.linewidth;
     const shading = group.shading;
     const dash = group.dash;
@@ -718,7 +721,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                         top: `${H + yOffset - maxY - lwc}px`,
                         pointerEvents: 'none'
                     }}>
-                    <svg width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
+                    <svg ref={svgRef} width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
                             pointerEvents={shading>0? 'fill': 'none'}>
                         {shading > 0 && 
                             <path d={fillPath}  
@@ -734,7 +737,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                         {linewidth > 0 &&
                             <path d={linePath}  
                                 fill='none'
-                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
+                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                                 strokeWidth={linewidth}
                                 strokeDasharray={dash.join(' ')} 
                                 strokeLinecap={LINECAP_STYLE}
@@ -754,7 +757,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                                 cursor: centerDivClickable? 'pointer': 'auto',
                                 pointerEvents: centerDivClickable? 'auto': 'none'
                         }}>
-                        <svg width={cdW + mlw} height={cdH + mlw} opacity={0.5}>
+                        <svg width={cdW + mlw + 1} height={cdH + mlw + 1} opacity={0.5}> {/* The '+ 1' provides a bit of safety.*/}
                             <polyline points={`${mlw2},${mlw2} ${cdW+mlw2},${mlw2} ${cdW+mlw2},${cdH+mlw2} ${mlw2},${cdH+mlw2} ${mlw2},${mlw2} ${3},${mlw2}`}  
                                 stroke={markColor} fill='none' />
                         </svg>

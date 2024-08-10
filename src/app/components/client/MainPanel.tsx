@@ -169,20 +169,20 @@ export const hotkeys: HotkeyInfo[] = [
         <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30 degrees.)</> },
     { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
     { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
-    { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</>},
-    { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains, for each selected node, either the node itself or {' '}
-        the highest group among those with which the node is connected by a chain of active membership and that are such that all their &lsquo;leaf {' '}
-        members&rsquo; are among the selected nodes. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
-    { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of each selected node or its second-highest &lsquo;active&rsquo; group {' '}
+    { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</> },
+    { key: 'create group', keys: 'g', rep: ['G'], descr: <>Create a group that contains, for each selected item, either the item itself or {' '}
+        the highest group among those with which the item is connected by a chain of active membership and that are such that all their &lsquo;leaf {' '}
+        members&rsquo; are among the selected items. (Maximum group level: {MAX_GROUP_LEVEL}.)</> },
+    { key: 'leave', keys: 'h', rep: ['H'], descr: <>Deactivate the membership of each selected item or its second-highest &lsquo;active&rsquo; group {' '}
         (where applicable) in its currently highest active group.</> },
-    { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of each selected node or (where applicable) its highest active group {' '}
+    { key: 'rejoin', keys: 'j', rep: ['J'], descr: <>Reactivate the membership of each selected item or (where applicable) its highest active group {' '}
          in the next-lowest group.</> },
-    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of each selected node&apos;s highest active group.</> },
-    { key: 'adding', keys: 'comma', rep: [','], descr: <>Activate the &lsquo;adding&rsquo; mode: selecting nodes will add them to the currently {' '}
-        focused node&apos;s highest active group. This mode can be deactivated by clicking on the canvas or by activating dissolve-adding.</> },
-    { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Activate dissolve-adding. This mode can be {' '}
-        deactivated by clicking on the canvas or by activating adding.</> },
-    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete all selected nodes.</> },
+    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of each selected item&rsquo;s highest active group.</> },
+    { key: 'adding', keys: 'comma', rep: [','], descr: <>Turn on &lsquo;adding&rsquo;. In this mode, selecting an item will add it (or its highest active group, where applicable){' '}
+        to the highest active group of the currently focused item. (This mode can be turned off by clicking on the canvas or by turning on &lsquo;dissolve-adding&rsquo;.)</> },
+    { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Turn on &lsquo;dissolve-adding&rsquo;. In this mode, selecting a item will add <em>all</em>{' '}
+        members of its highest active group (or the item itself, if there is no such group) to the highest active group of the currently focused item.</> },
+    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete all selected items.</> },
     { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
     { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram and display {' '}
         it in the text area below the canvas.</> },
@@ -547,9 +547,10 @@ interface DialogConfig {
 
 interface MainPanelProps {
     dark: boolean
+    toggleTrueBlack: () => void
 }
 
-const MainPanel = ({dark}: MainPanelProps) => {
+const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
@@ -1748,7 +1749,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
         const createSG = newMembers.every(m => !(m instanceof CNode));
 
         if (!createCNG && !createSG) {
-            showModal('Invalid group composition', `Cannot create a group that contains both contour nodes and (groups of) entity nodes.`);
+            showModal('Invalid group composition', `Cannot create a group that contains both contour nodes and entity nodes or groups.`);
             return;
         }
         if (createCNG && newMembers.length > MAX_CNODEGROUP_SIZE) {
@@ -1984,13 +1985,13 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')),
         { enabled: canAddOrnaments && !modalShown });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), 
-        { enabled: canMoveUp && !modalShown, preventDefault: true });
+        { enabled: canMoveUp && !modalShown && focusItem!==null && (document.activeElement as HTMLElement).closest('.pasi')!==null, preventDefault: true });
     useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), 
-        { enabled: canMoveLeft && !modalShown, preventDefault: true });
+        { enabled: canMoveLeft && !modalShown && focusItem!==null && (document.activeElement as HTMLElement).closest('.pasi')!==null, preventDefault: true });
     useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), 
-        { enabled: canMoveDown && !modalShown, preventDefault: true });
+        { enabled: canMoveDown && !modalShown && focusItem!==null && (document.activeElement as HTMLElement).closest('.pasi')!==null, preventDefault: true });
     useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), 
-        { enabled: canMoveRight && !modalShown, preventDefault: true });
+        { enabled: canMoveRight && !modalShown && focusItem!==null && (document.activeElement as HTMLElement).closest('.pasi')!==null, preventDefault: true });
     useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1), 
         { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0), 
@@ -2054,7 +2055,7 @@ const MainPanel = ({dark}: MainPanelProps) => {
     useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), 
         { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
     // 'Secret' hotkey:
-    useHotkeys('mod+b', useThrottle(() => setTrueBlack(prev => !trueBlack), 100));
+    useHotkeys('mod+b', useThrottle(() => {setTrueBlack(prev => !trueBlack); toggleTrueBlack()}, 100));
 
     const showModal = (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
         setDialog(prev => ({ contentLabel, title, content, extraWide }));
@@ -2085,7 +2086,8 @@ const MainPanel = ({dark}: MainPanelProps) => {
             <div id='main-panel' className='pasi flex my-8 p-6'> {/* We give this div the 'pasi' class to prevent certain css styles from taking effect. */}
                 <div id='canvas-and-code' className='flex flex-col flex-grow scrollbox'
                         style={{minWidth: canvasWidth}}>
-                    <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border'
+                    <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border focus:outline-none'
+                            tabIndex={0} // This makes the canvas focusable; and that's all the focus management we need to do.
                             onMouseDown={canvasMouseDown} >
                         {list.map((it, i) => 
                             it instanceof ENode?
