@@ -38,7 +38,7 @@ const Section = ({ id, header, dark, children }: SectionProps) => {
     }, [header]);
 
     return (
-        <section id={id} ref={sectionRef} className={clsx('prose prose-lg max-w-sm sm:max-w-md md:max-w-xl xl:max-w-3xl mt-3 mx-4 2xl:ml-[-150px] mb-9',
+        <section id={id} ref={sectionRef} className={clsx('prose prose-lg max-w-md md:max-w-xl xl:max-w-3xl mt-3 mx-4 2xl:ml-[-150px] mb-9',
                 dark? 'prose-dark': 'prose-light')}>
             {header && 
                 <h3 ref={headerRef} className={clsx(

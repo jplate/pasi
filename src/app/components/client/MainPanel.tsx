@@ -79,7 +79,7 @@ const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
 const DEFAULT_ROTATION_LOG_INCREMENT = 1
 const DEFAULT_SCALING_LOG_INCREMENT = 1
 const MIN_UNITSCALE = 0.1
-const MAX_UNITSCALE = 100
+const MAX_UNITSCALE = 99
 const DEFAULT_UNITSCALE = 0.75
 const MIN_DISPLAY_FONT_FACTOR = 0.1
 const MAX_DISPLAY_FONT_FACTOR = 100
@@ -2328,8 +2328,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             tooltipPlacement='right'
                             onClick={() => displayCode(unitscale)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
-                            1 pixel = 
-                            <input className='w-16 ml-1 px-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                            1 px = 
+                            <input className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
                                 type='number' min={MIN_UNITSCALE} step={0.01} value={unitscale}
                                 onChange={changeUnitscale}/>
                             pt
