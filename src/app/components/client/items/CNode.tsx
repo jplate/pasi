@@ -2,17 +2,17 @@ import clsx from 'clsx/lite'
 import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
-import CNodeGroup, { angle } from '../CNodeGroup.tsx'
+import CNodeGroup, { angle, getLine } from '../CNodeGroup.tsx'
 import { Entry } from '../ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents.tsx'
-import { getCyclicValue } from '../../../util/MathTools.tsx'
+import { getCyclicValue, cubicBezier, bezierLength, tAtLength, bezierAngle } from '../../../util/MathTools.tsx'
 import { MIN_ROTATION, MAX_ROTATION_INPUT } from '../ItemEditor.tsx'
 
 
 const CNODE_MARK_RADIUS = 7 // Not the 'real' radius (which is 0), but only used for drawing the 'mark border'.
 const CNODE_ARROW_DIV_RADIUS = 10
-export const CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW = 30
+export const MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW = 30
 const CNODE_ARROW_DISTANCE_RATIO = 0.3
 const CNODE_ARROW_DISTANCE_MIN = 15
 const CNODE_ARROW_DISTANCE_MAX = 40
@@ -280,19 +280,40 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
     if (arrow && cnode.group) {
         const index = cnode.group.members.indexOf(cnode);
         const next = (cnode.group as CNodeGroup).members[index==cnode.group.members.length - 1? 0: index + 1];
-        const d = Math.sqrt((cnode.x - next.x) ** 2 + (cnode.y - next.y) ** 2);
-        const factor = Math.min(Math.max(d * CNODE_ARROW_DISTANCE_RATIO, CNODE_ARROW_DISTANCE_MIN), CNODE_ARROW_DISTANCE_MAX) / d;
+        const line = getLine(cnode, next);
         const r = CNODE_ARROW_DIV_RADIUS;
+        let nx: number,
+            ny: number,
+            a: number;
+        // The arrow should be aimed along the line to the next CNode, unless that line is omitted, in which case we let it point to the next CNode:
+        if (cnode.omitLine) {
+            const d = Math.sqrt((x - next.x) ** 2 + (y - next.y) ** 2); // distance to center of next CNode
+            const factor = Math.min(Math.max(CNODE_ARROW_DISTANCE_MIN, d * CNODE_ARROW_DISTANCE_RATIO), CNODE_ARROW_DISTANCE_MAX) / d;
+            nx = x + (next.x - x) * factor - r;
+            ny = y + (next.y - y) * factor + r;
+            a = -angle(x, y, next.x, next.y);
+        }
+        else {
+            const totalLength = bezierLength(line);
+            const targetLength = Math.min(Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO), CNODE_ARROW_DISTANCE_MAX);
+            // The function tAtLength calculates t iteratively. We use smaller steps in proportion to the ratio by which totalLength exceeds targetLength:
+            const t = tAtLength(line, targetLength, 100 * totalLength / targetLength ); 
+            const { x: bx, y: by } = cubicBezier(line, t);
+            nx = bx - r;
+            ny = by + r;
+            a = -bezierAngle(line, t);
+        }
+        
         arrowDiv = (
             <div className={focus || selected? 'selected': 'preselected'}
                 style={{
                     position: 'absolute',
-                    left: `${x + (next.x - x) * factor - r}px`,
-                    top: `${H + yOffset - (y + (next.y - y) * factor + r)}px`,
+                    left: `${nx}px`,
+                    top: `${H + yOffset - ny}px`,
                     pointerEvents: 'none'
                 }}>
-                <svg width={2*r} height={2*r} xmlns="http://www.w3.org/2000/svg">
-                    <g opacity='0.5' transform={`rotate(${-angle(x, y, next.x, next.y)} 10 10)`}>
+                <svg width={2 * r} height={2 * r} xmlns="http://www.w3.org/2000/svg">
+                    <g opacity='0.5' transform={`rotate(${a} ${r} ${r})`}>
                         <polyline stroke={markColor} points={CNODE_ARROW_POINTS} fill={markColor} strokeMiterlimit={CNODE_ARROW_MITER_LIMIT} />
                     </g>
                 </svg>

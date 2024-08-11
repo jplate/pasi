@@ -119,9 +119,8 @@ export default function Home() {
     header?: string
     children: React.ReactNode
   }
-  // This is just so we don't have to pass the dark prop every time we start a section.
   const Section = useCallback(({ id, header, children }: SectProps) => 
-    <SectionComp id={id || ''} header={header} dark={isDarkMode}>
+    <SectionComp id={id || ''} header={header} dark={isDarkMode}> {/* This way we don't need to pass the dark prop every time we start a section. */}
       {children}
     </SectionComp>,
     [isDarkMode]
@@ -259,7 +258,7 @@ export default function Home() {
                 In addition, while dragging items across the canvas, you can make use of three kinds of &lsquo;snapping&rsquo; behavior: to the centers of{' '}
                 contours, to the centers of contour <em>nodes</em>, and to a variable grid. 
               </li>
-              <li><span className='font-bold'>No support for colors or mobile.</span>{' '}
+              <li><span className='font-bold'>No colors or mobile support.</span>{' '}
                 What <i>pasi</i> mainly tries to do is to facilitate the expression, in the form of diagrams, of abstract ideas, typically with a view to publishing those ideas{' '}
                 in an academic journal. For this reason, it seems appropriate that <i>pasi</i> should only support diagrams in grayscale. Similarly, it does not{' '}
                 support mobile devices. After all, the app is primarily meant to be used while composing an academic paper in LaTeX, which does not usually happen on a mobile device.

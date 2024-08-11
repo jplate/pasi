@@ -102,3 +102,123 @@ export const fromBase64 = (base64Str: string): boolean[] => {
     return bools.slice(0, bools.length - (8 - (base64Str.length * 6 % 8)) % 8);
 }
 
+
+
+export type CubicCurve = {
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    x3: number,
+    y3: number
+}
+
+
+/**
+ * @return the point of the cubic curve defined by the specified points that corresponds to the parameter t.  
+ */
+export const cubicBezier = (c: CubicCurve, t: number) => {
+    const b0 = bernsteinCoeff(3, 0, t);
+    const b0a = bernsteinCoeff(3, 1, t);
+    const b1 = bernsteinCoeff(3, 3, t);
+    const b1a = bernsteinCoeff(3, 2, t);
+    
+    return {x: b0 * c.x0 + b0a * c.x1 + b1 * c.x3 + b1a * c.x2, 
+            y: b0 * c.y0 + b0a * c.y1 + b1 * c.y3 + b1a * c.y2 };
+}
+
+const bernsteinCoeff = (n: number, m: number, t: number) => {
+    return over(n, m) * (t ** m) * ((1 - t) ** (n - m));
+}
+
+export const over = (n: number, m: number) => {
+    return factorial(n) / (factorial(n - m) * factorial(m));
+}
+
+export const factorial = (n: number): number => {
+    return n==0? 1: n*factorial(n-1);
+}
+
+/**
+ * Calculates (iteratively) the length of the supplied CubicCurve.
+ */
+export const bezierLength = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, steps: number = 100): number => {    
+
+    let length = 0;
+    let prevX = x0;
+    let prevY = y0;
+
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const { x, y } = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
+
+        const dx = x - prevX;
+        const dy = y - prevY;
+
+        length += Math.sqrt(dx * dx + dy * dy);
+
+        prevX = x;
+        prevY = y;
+    }
+
+    return length;
+}
+
+/**
+ * @returns the approximate value of t at which the specified CubicCurve has reached the specified length.
+ */
+export const tAtLength = (
+    { x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve,
+    targetLength: number,
+    steps: number = 1000
+): number => {
+
+    let accumulatedLength = 0;
+    let prevX = x0;
+    let prevY = y0;
+
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const { x, y } = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
+
+        const dx = x - prevX;
+        const dy = y - prevY;
+
+        accumulatedLength += Math.sqrt(dx * dx + dy * dy);
+
+        if (accumulatedLength >= targetLength) {
+            return t;
+        }
+
+        prevX = x;
+        prevY = y;
+    }
+
+    // In case of floating-point inaccuracies, return the endpoint
+    return 1;
+}
+
+/**
+ * @returns the angle in degrees (relative to the positive X-axis) of the tangent vector of the specified CubicCurve at the specified t-value.
+ */
+export const bezierAngle = (
+    { x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve,
+    t: number
+): number => {
+
+    // Derivatives of the cubic Bézier curve with respect to t
+    const dx = 3 * (1 - t) * (1 - t) * (x1 - x0) +
+               6 * (1 - t) * t * (x2 - x1) +
+               3 * t * t * (x3 - x2);
+
+    const dy = 3 * (1 - t) * (1 - t) * (y1 - y0) +
+               6 * (1 - t) * t * (y2 - y1) +
+               3 * t * t * (y3 - y2);
+
+
+    const angleRadians = Math.atan2(dy, dx);
+
+    return angleRadians * (180 / Math.PI);
+}

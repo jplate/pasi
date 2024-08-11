@@ -5,9 +5,9 @@ import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, 
 import Group from './Group.tsx'
 import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
 import { DashValidator } from './EditorComponents.tsx'
-import CNode, { CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
+import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
 import { MIN_ROTATION } from './ItemEditor'
-import { round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 import { encode, decode } from '../../codec/Codec1.tsx'
@@ -94,7 +94,7 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
     
-    getLines = (): CubicLine[] => {
+    getLines = (): CubicCurve[] => {
         const n = this.members.length;
         return this.members.map((node, i) => getLine(node, this.members[i + 1 < n? i + 1: 0]));
     }
@@ -102,7 +102,7 @@ export default class CNodeGroup implements Group<CNode> {
     /** Returns the bounds of this NodeGroup, taking into account also the control points of the various (non-omitted) lines connecting the nodes.
      */
     getBounds = (
-        lines: CubicLine[] = this.getLines(), 
+        lines: CubicCurve[] = this.getLines(), 
     ): { minX: number, maxX: number, minY: number, maxY: number } => {
         const n = this.members.length;
         let minX = Infinity,
@@ -256,7 +256,7 @@ export default class CNodeGroup implements Group<CNode> {
         const index = this.members.indexOf(node);
         if (index<0) {
             console.log('Illegal argument');
-            return; // In this case we h
+            return; 
         }
 
         const e = 10 ** -(ROUNDING_DIGITS+1);       
@@ -645,19 +645,7 @@ export default class CNodeGroup implements Group<CNode> {
 }
 
 
-export type CubicLine = {
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    x2: number,
-    y2: number,
-    x3: number,
-    y3: number
-}
-
-
-export const getLine = (node0: CNode, node1: CNode): CubicLine => {
+export const getLine = (node0: CNode, node1: CNode): CubicCurve => {
     const a0 = (angle(node0.x, node0.y, node1.x, node1.y) + node0.angle1) * Math.PI / 180;
     const a1 = (angle(node1.x, node1.y, node0.x, node0.y) + node1.angle0) * Math.PI / 180;
     return {
@@ -833,7 +821,7 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
             const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);                            
             const arrow = (selected && (defer || (allSelected && j==0) || (!allSelected && !selectedNodes[j==0? last: j-1]))) ||
                 (preselected && (defer || (!someSelected && allPreselected && j==0) || (!allPreselected && !preselectedNodes[j==0? last: j-1])));
-            if (arrow && d<CNODE_MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
+            if (arrow && d<MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
                 defer = true;
             }
             else {
