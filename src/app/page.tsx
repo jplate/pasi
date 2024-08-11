@@ -328,10 +328,10 @@ export default function Home() {
             {
               header: 'Links',
               contents: [
-                <a href="https://github.com/jplate/pasi" className="hover:underline" target="_blank" rel="noopener noreferrer">
+                <a key='1' href="https://github.com/jplate/pasi" className="hover:underline" target="_blank" rel="noopener noreferrer">
                   GitHub repository
                 </a>,
-                <a href="https://opensource.org/license/MIT" className="hover:underline">
+                <a key='2' href="https://opensource.org/license/MIT" className="hover:underline">
                   License
                 </a>
               ]
