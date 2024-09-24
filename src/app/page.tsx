@@ -263,7 +263,8 @@ export default function Home() {
                 <li><span className='font-bold'>No colors or mobile support.</span>{' '}
                   What <i>pasi</i> mainly tries to do is to facilitate the expression, in the form of diagrams, of abstract ideas, typically with a view to publishing those ideas{' '}
                   in an academic journal. For this reason, it seems appropriate that <i>pasi</i> should only support diagrams in grayscale. Similarly, it does not{' '}
-                  support mobile devices. After all, the app is primarily meant to be used while composing an academic paper in LaTeX, which does not usually happen on a mobile device.
+                  support freeform drawing or mobile devices. After all, the app is primarily meant to be used while composing an academic paper in LaTeX, which does not {' '}
+                  usually happen on a mobile device, and a diagram suitable for this format does not usually contain freeform drawings.
                 </li>
               </ol>
             </Section>
@@ -324,32 +325,35 @@ export default function Home() {
               </ul>
               </Section>
           </div>
-          <Footer sections={[
-            {
-              header: 'Links',
-              contents: [
-                <a key='1' href="https://github.com/jplate/pasi" className="hover:underline" target="_blank" rel="noopener noreferrer">
-                  GitHub repository
-                </a>,
-                <a key='2' href="https://opensource.org/license/MIT" className="hover:underline">
-                  License
-                </a>
-              ]
-            },
-            {
-              header: 'Contact',
-              contents: [
-                <>
-                  <span>Email: </span>
-                  <a href="mailto:janplate@gmail.com">jan.plate@gmail.com</a>
-                </>,
-                <>
-                  <span>𝕏: </span> {/* Twitter */}
-                  <a href="https://x.com/jan_plate" target="_blank" rel="noopener noreferrer">@jan_plate</a>
-                </>
-              ]
-            }
-          ]} />
+          <Footer copyRightHolder='Jan Plate'
+            licenseInfo='The source code for this webpage is licensed under the MIT License.'
+            sections={[
+              {
+                header: 'Links',
+                contents: [
+                  <a key='1' href="https://github.com/jplate/pasi" className="hover:underline" target="_blank" rel="noopener noreferrer">
+                    GitHub repository
+                  </a>,
+                  <a key='2' href="https://opensource.org/license/MIT" className="hover:underline">
+                    License
+                  </a>
+                ]
+              },
+              {
+                header: 'Contact',
+                contents: [
+                  <>
+                    <span>Email: </span>
+                    <a href="mailto:janplate@gmail.com">jan.plate@gmail.com</a>
+                  </>,
+                  <>
+                    <span>&#120143;: </span> {/* Twitter */}
+                    <a href="https://x.com/jan_plate" target="_blank" rel="noopener noreferrer">@jan_plate</a>
+                  </>
+                ]
+              }
+            ]} 
+          />
         </>
       }
     </main>

@@ -675,7 +675,6 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
         onMouseDown, onMouseEnter, onMouseLeave 
     }: ContourProps
 ) => {
-    const svgRef = useRef<SVGSVGElement>(null);
     const linewidth = group.linewidth;
     const shading = group.shading;
     const dash = group.dash;
@@ -709,7 +708,7 @@ export const Contour = ({ id, group, yOffset, bg, primaryColor, markColor, cente
                         top: `${H + yOffset - maxY - lwc}px`,
                         pointerEvents: 'none'
                     }}>
-                    <svg ref={svgRef} width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
+                    <svg width={maxX - minX + 2*linewidth + 1} height={maxY - minY + 2*linewidth + 1} xmlns="http://www.w3.org/2000/svg" 
                             pointerEvents={shading>0? 'fill': 'none'}>
                         {shading > 0 && 
                             <path d={fillPath}  
