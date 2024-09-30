@@ -462,7 +462,10 @@ export const end = '\\end{texdraw}';
 
 export const dimCmd = '\\drawdim pt \\setunitscale';
 
-export const htext = (x: number, y: number, text: string) => `\\htext(${encodeFloat(x)} ${encodeFloat(y)}){${text}}`;
+export const text = (x: number, y: number, tilt: number, text: string) => {
+    const basicCmd = tilt===0? 'htext': tilt===90? 'vtext': `rtext td:${encodeFloat(tilt)} `;
+    return `\\${basicCmd}(${encodeFloat(x)} ${encodeFloat(y)}){${text}}`;
+}
 
 export const linewd = (lw: number) => `\\linewd ${encodeFloat(lw)} `;
 

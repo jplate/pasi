@@ -68,6 +68,7 @@ export default class Label extends Ornament {
     parbox: boolean = false;
     parboxWidth: number = DEFAULT_PARBOX_WIDTH;
     centerText: boolean = false;
+    tilt: number = 0;
 
     private lines: Line[] = [];
 
@@ -135,17 +136,28 @@ export default class Label extends Ornament {
             angle > 0 && angle < 180? 1: angle===0 || angle===180? 0: -1];            
     }
 
+    #getRefPoint(hPos: number, vPos: number, left: number, bottom: number, centeredText: boolean) {
+        const centered = this.centered;
+        const w = this.getWidth();
+        const h = this.getHeight();
+        const lineH = this.fontSize; // This is needed to compensate for a texdraw quirk in connection with '\begin{center}...\end{center}' in parboxes.
+        return { 
+            x: centered || hPos===0? this.node.x: hPos===-1? left + w: left,
+            y: centered || vPos===0? this.node.y: (vPos===-1? bottom + h: bottom) - (centeredText? vPos * lineH: 0)
+        }
+    }
+
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'checkbox', key: 'centered', text: 'Centered', value: this.centered},
-            {type: 'number input', key: 'angle', text: 'Angle', negativeTopMargin: true, width: 'long', value: this.angle, step: 0, disabled: this.centered,
-                tooltip: <>The angle of a straight line from the center of the node to which the label is attached to the nearest point of the label&rsquo;s{' '}
-                    own bounding box.</>,
-                tooltipPlacement: 'left'
-            },
-            {type: 'number input', key: 'gap', text: 'Gap', width: 'long', value: this.gap, step: 0, disabled: this.centered,
+            {type: 'number input', key: 'gap', text: 'Gap', negativeTopMargin: true, width: 'long', value: this.gap, step: 0, disabled: this.centered,
                 tooltip: <>The distance between the circumference of the node to which the label is attached and the closest point of the label&rsquo;s own{' '} 
                     bounding box.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'angle', text: 'Position angle', width: 'long', value: this.angle, step: 0, disabled: this.centered,
+                tooltip: <>The angle of a straight line from the center of the node to which the label is attached to the nearest point of the label&rsquo;s{' '}
+                    own bounding box.</>,
                 tooltipPlacement: 'left'
             },
             {type: 'checkbox', key: 'parbox', text: <code>\parbox</code>, value: this.parbox,
@@ -158,6 +170,7 @@ export default class Label extends Ornament {
                 tooltip: <>Enclose the content of the label in a pair of <code>$</code> characters.</>,
                 tooltipPlacement: 'right'
             },
+            {type: 'number input', key: 'tilt', text: 'Tilt (degrees)', width: 'long', value: this.tilt, step: 0},
             {type: 'string input', key: 'vphant', text: <><code>\vphantom</code></>, value: this.vphant, width: 'long',
                 tooltip: <>Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will {' '}
                     be inserted both at the end and at the beginning of the text.)</>,
@@ -245,6 +258,15 @@ export default class Label extends Ornament {
                     }
                     return array
                 }, 'wholeSelection']
+            case 'tilt': if (e) {
+                const delta = parseCyclicInputValue(e.target.value, this.tilt, 1)[1]; 
+                return [(item, array) => {
+                    if(!isNaN(delta) && delta!==0 && item instanceof Label) {
+                        item.tilt = getCyclicValue(item.tilt + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+                    }
+                    return array
+                }, 'wholeSelection']
+            }
             case 'parbox':
                 const parbox = !this.parbox;
                 return [(item, array) => {
@@ -303,16 +325,12 @@ export default class Label extends Ornament {
         }
         const [hPos, vPos] = this.#getPositioning();
         const { bottom, left } = this.getBottomLeftCorner();
-        const w = this.getWidth();
-        const h = this.getHeight();
-        const x = centered || hPos===0? this.node.x: hPos===-1? left + w: left;
-        const lineH = this.fontSize; // This is needed to compensate for a texdraw quirk in connection with '\begin{center}...\end{center}' in parboxes.
-        const y = centered || vPos===0? this.node.y: (vPos===-1? bottom + h: bottom) - (centeredText? vPos * lineH: 0);
+        const { x, y } = this.#getRefPoint(hPos, vPos, left, bottom, centeredText);
         return [
             Texdraw.textref(
                 centered || hPos===0? Texdraw.CENTER: hPos>0? Texdraw.LEFT: Texdraw.RIGHT,
                 centered || vPos===0? Texdraw.CENTER: vPos>0? Texdraw.BOTTOM: Texdraw.TOP),
-            Texdraw.htext(x, y, clsx(
+            Texdraw.text(x, y, this.tilt, clsx(
                 this.fontSize!==normalFontSize && fontSizeCmds[fontSizeIndex], 
                 textWithoutSizeCmds
             ))
@@ -555,6 +573,8 @@ export default class Label extends Ornament {
         const { left: labelLeft, top: labelTop } = this.#getTopLeftCorner(width, height);
         const divLeft = labelLeft - MARK_LINEWIDTH;
         const divTop = H + yOffset - labelTop - MARK_LINEWIDTH;
+        const [hPos, vPos] = this.#getPositioning();
+        const centered = this.centered;
 
         // Compute the coordinates (and dimensions) of the inner rectangle, relative to the div:
         const top = MARK_LINEWIDTH / 2;
@@ -563,6 +583,7 @@ export default class Label extends Ornament {
         const mH = height + MARK_LINEWIDTH * 2; // ...height relevant for drawing the 'mark border'
         const l = Math.min(Math.max(5, mW / 5), 25);
         const m = Math.min(Math.max(5, mH / 5), 25);
+        const firstAsc = Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc);
         
         return (
             <div className={focus? 'focused': selected? 'selected': preselected? 'preselected': 'unselected'}
@@ -574,7 +595,9 @@ export default class Label extends Ornament {
                         position: 'absolute',
                         left: `${divLeft}px`,
                         top: `${divTop}px`,
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transform: `rotate(${-this.tilt}deg)`,
+                        transformOrigin: `${centered || hPos===0? width/2: hPos===-1? width: 0}px ${centered || vPos===0? height/2: vPos===-1? 0: height}px`
                     }}>
                 <svg width={width + MARK_LINEWIDTH * 4} height={height + MARK_LINEWIDTH * 4} xmlns='http://www.w3.org/2000/svg'
                         style={{overflow: 'visible'}}>
@@ -582,7 +605,6 @@ export default class Label extends Ornament {
                         if (lines.length > 0) {
                             const fontClassName = !parbox && mathMode? mathFont.className: normalFont.className;
                             const fillColor = `hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`;
-                            const firstAsc = Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc);
                             if (parbox) {                                
                                 let next = firstAsc,
                                     baseLine = 0; 
