@@ -183,7 +183,7 @@ export default function Home() {
               </p>
             </Section>
 
-            <div className='hidden xl:block'>
+            <div className='hidden lg:block'>
               <MainPanel dark={isDarkMode} toggleTrueBlack={() => {setTrueBlack(prev => !prev); setDiscoveredTrueBlack(true)}} />
             </div>
 

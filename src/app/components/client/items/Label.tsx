@@ -346,6 +346,9 @@ export default class Label extends Ornament {
 	    if(texts[0].href===Texdraw.CENTER && texts[0].vref===Texdraw.CENTER) {
 	        this.centered = true;
 	    }
+        if(isFinite(texts[0].tilt)) {
+            this.tilt = texts[0].tilt;
+        }
         let text = texts[0].text;
         const fontSizeMatch = text.match(fontSizePattern);
         if (fontSizeMatch) {
@@ -417,7 +420,7 @@ export default class Label extends Ornament {
             }
             const [gap, angle, specialBit] = split.map(s => {
                 const val = decode(s);
-                console.log(`s: "${s}" val: ${val}`);
+                // console.log(`s: "${s}" val: ${val}`);
                 if (!isFinite(val)) {
                     throw Texdraw.makeParseError('Unexpected token in label configuration string', s);
                 }

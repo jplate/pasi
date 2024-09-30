@@ -215,13 +215,15 @@ export class Text {
     text: string;
     vref: string;
     href: string;
+    tilt: number;
     location: Point2D;
     readonly genericDescription = 'a text element';
 
-    constructor(href: string, vref: string, x: number, y: number, text: string) {
+    constructor(href: string, vref: string, tilt: number, x: number, y: number, text: string) {
         this.text = text;
         this.href = href;
         this.vref = vref;
+        this.tilt = tilt;
         this.location = new Point2D(x, y);
     }
 }
@@ -263,7 +265,7 @@ const movePattern1 = /\\move\s*\((\S+)\s+(\S+)\)/;
 
 const shapePattern = /(.*?)(\\lvec|\\clvec|\\larc|\\lcir|\\fcir)/; // 1: preamble, 2: shape command
 
-const textPattern = /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\htext\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
+const textPattern = /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\(h|v|r)text\s*(?:\s+td:(\S+)\s+)?\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
 
 
 export const extractDashArray = (s: string) => {
@@ -413,12 +415,14 @@ export const getTexts = (code: string): Text[] => {
     const list: Text[] = [];
     let match: RegExpExecArray | null;
     while (match = textPattern.exec(code)) {
+        const letter = match[3];
         list.push(new Text(
             match[1],
             match[2],
-            decodeFloat(match[3]),
-            decodeFloat(match[4]),
-            match[5]
+            letter==='h'? 0: letter==='v'? 90: decodeFloat(match[4]),
+            decodeFloat(match[5]),
+            decodeFloat(match[6]),
+            match[7]
         ));
     }
     return list;
@@ -443,7 +447,7 @@ export const encodeFloat = (f: number): string => {
 export const decodeFloat = (s: string): number => {
     if(s==='I') return Infinity;
     else if(s==='i') return -Infinity; 
-    else {
+    else if (s) {
         const result = parseFloat(s);
         if (isNaN(result) || !s.match(floatPattern)) { // Since parseFloat is very lenient, we have to explicitly check whether s is a proper 
                 // representation of a number.            
@@ -453,6 +457,7 @@ export const decodeFloat = (s: string): number => {
         }
         return round(result, ROUNDING_DIGITS);
     }
+    else return NaN;
 }
 
 
