@@ -170,7 +170,10 @@ export default class Label extends Ornament {
                 tooltip: <>Enclose the content of the label in a pair of <code>$</code> characters.</>,
                 tooltipPlacement: 'right'
             },
-            {type: 'number input', key: 'tilt', text: 'Tilt (degrees)', width: 'long', value: this.tilt, step: 0},
+            {type: 'number input', key: 'tilt', text: 'Tilt', negativeTopMargin: true, width: 'long', value: this.tilt, step: 0,
+                tooltip: <>Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated text.</>,
+                tooltipPlacement: 'right'
+            },
             {type: 'string input', key: 'vphant', text: <><code>\vphantom</code></>, value: this.vphant, width: 'long',
                 tooltip: <>Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will {' '}
                     be inserted both at the end and at the beginning of the text.)</>,
