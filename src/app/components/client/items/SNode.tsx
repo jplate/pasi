@@ -190,6 +190,7 @@ export default class SNode extends ENode {
             }
             this.line = this.getLine1();    
         }
+        return this.line;
     }
 
     getLine1(): CubicCurve {
@@ -203,16 +204,42 @@ export default class SNode extends ENode {
         const cpr1 = this.cpr1;
     
         return {
-            x0: x0 + r0* Math.cos(psi0), 
-            y0: y0 - r0*Math.sin(psi0), 
+            x0: x0 + r0 * Math.cos(psi0), 
+            y0: y0 - r0 * Math.sin(psi0), 
             x1: x0 + cpr0 * Math.cos(psi0), 
-            y1: y0 - cpr0*Math.sin(psi0), 
-            x2: x1 + cpr1*Math.cos(psi1), 
-            y2: y1 - cpr1*Math.sin(psi1), 
-            x3: x1 + r1*Math.cos(psi1), 
-            y3: y1 - r1*Math.sin(psi1)
+            y1: y0 - cpr0 * Math.sin(psi0), 
+            x2: x1 + cpr1 * Math.cos(psi1), 
+            y2: y1 - cpr1 * Math.sin(psi1), 
+            x3: x1 + r1 * Math.cos(psi1), 
+            y3: y1 - r1 * Math.sin(psi1)
         }
     }
+
+    /**
+	 * @return the line connecting the two involutes with the end points adjusted to leave room for an arrowhead (etc.).
+	 * The specified parameters give the distances of the new line's endpoints from the centers of the two involutes.
+	 */  
+	getAdjustedLine(r0: number, r1: number): CubicCurve {
+        const [n0, n1] = this.involutes;
+        const [x0, y0] = n0.getPosition();
+        const [x1, y1] = n1.getPosition();
+        const link = this.getLine();
+        const x0new = x0 + r0 * Math.cos(this.psi0);
+        const y0new = y0 - r0 * Math.sin(this.psi0);
+        const x1new = x1 + r1 * Math.cos(this.psi1);
+        const y1new = y1 - r1 * Math.sin(this.psi1);
+        return {
+            x0: x0new, 
+            y0: y0new, 
+            x1: link.x1 + (x0new - link.x0), 
+            y1: link.y1 + (y0new - link.y0), 
+            x2: link.x2 + (x1new - link.x3), 
+            y2: link.y2 + (y1new - link.y3), 
+            x3: x1new, 
+            y3: y1new 
+        };
+	}
+
 
 }
 

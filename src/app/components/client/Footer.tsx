@@ -10,15 +10,21 @@ interface FooterProps {
   }[]
 }
 
+const footerStyle = (sectionsLength: number) => `
+    @media (min-width: 640px) {
+        .footer-div {
+            grid-template-columns: repeat(${sectionsLength}, minmax(0, 1fr));
+        }
+    }
+`;
+
 const Footer = ({ copyRightHolder, licenseInfo, sections }: FooterProps) => {
   return (
     <footer className='py-8 2xl:ml-[-150px]'>
-      <div className='max-w-fit mx-auto grid gap-8'>            
-        <style>
-            @media (min-width: 640px) {'{'} .footer-div {'{'} grid-template-columns: repeat({sections.length}, minmax(0, 1fr)) {'}}'}
-        </style>
+      <style>{footerStyle(sections.length)}</style>
+      <div className='footer-div mx-auto max-w-fit grid gap-8'>
         {sections.map((info, i) =>         
-          <div key={i} className='mx-6 sm:mx-auto 2xl:ml-0 2xl:flex 2xl:items-baseline'>
+          <div key={i} className='mx-6 sm:mx-2 2xl:ml-0 2xl:flex 2xl:items-baseline'>
             <h3 className='text-base font-semibold my-1 2xl:mr-6'>{info.header}</h3>
             <ul className='text-sm 2xl:inline 2xl:flex 2xl:space-x-6'>
               {info.contents.map((item, j) =>
