@@ -10,7 +10,7 @@ import { H, MARK_LINEWIDTH } from '../MainPanel.tsx'
 import { Entry } from '../ItemEditor.tsx'
 import { parseInputValue, parseCyclicInputValue, validInt } from '../EditorComponents.tsx'
 import { MIN_ROTATION } from '../ItemEditor.tsx'
-import { getCyclicValue, round } from '../../../util/MathTools.tsx'
+import { getCyclicValue, round } from '../../../util/MathTools.ts'
 import * as Texdraw from '../../../codec/Texdraw.tsx'
 import { ParseError } from '../../../codec/Texdraw.tsx'
 import { encode, decode } from '../../../codec/Codec1.tsx'
@@ -172,7 +172,7 @@ export default class Label extends Ornament {
             },
             {type: 'number input', key: 'tilt', text: 'Tilt', negativeTopMargin: true, width: 'long', value: this.tilt, step: 0,
                 tooltip: <>Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated text.</>,
-                tooltipPlacement: 'right'
+                tooltipPlacement: 'left'
             },
             {type: 'string input', key: 'vphant', text: <><code>\vphantom</code></>, value: this.vphant, width: 'long',
                 tooltip: <>Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will {' '}
@@ -589,7 +589,7 @@ export default class Label extends Ornament {
         const mH = height + MARK_LINEWIDTH * 2; // ...height relevant for drawing the 'mark border'
         const l = Math.min(Math.max(5, mW / 5), 25);
         const m = Math.min(Math.max(5, mH / 5), 25);
-        const firstAsc = Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc);
+        const firstAsc = lines.length>0? Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc): MIN_HEIGHT;
         
         return (
             <div className={focus? 'focused': selected? 'selected': preselected? 'preselected': 'unselected'}

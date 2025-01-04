@@ -7,7 +7,7 @@ import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from '
 import { DashValidator } from './EditorComponents.tsx'
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
 import { MIN_ROTATION } from './ItemEditor'
-import { CubicCurve, round, toBase64, fromBase64, getCyclicValue } from '../../util/MathTools.tsx'
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools.ts'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
 import { encode, decode } from '../../codec/Codec1.tsx'
@@ -27,13 +27,6 @@ export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
 export const MAX_CNODEGROUP_SIZE = 500
 
-
-export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians: boolean = false): number => {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const radians = Math.atan2(dy, dx);
-    return inRadians? radians: radians * (180 / Math.PI);
-}
 
 
 export default class CNodeGroup implements Group<CNode> {

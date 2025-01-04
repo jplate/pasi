@@ -155,7 +155,6 @@ export const CopyToClipboardButton = ({ id, iconSize, textareaRef }: CopyToClipb
         top: '0.25rem',
         right: `${0.25 + scrollbarWidth}rem`,
         padding: '0.25rem',
-        fontWeight: '600',
     };
 
     const iconStyle: CSSProperties = {

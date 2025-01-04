@@ -189,7 +189,7 @@ export const MenuItemList = ({ children }: Readonly<{ children: react.ReactNode 
                 leaveTo='opacity-0 scale-95'>
             <MenuItems
                     anchor='bottom end'
-                    className={clsx('menu w-72 origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
+                    className={clsx('menu w-72 transition origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
                         '[--anchor-gap:var(--spacing-1)] focus:outline-none')}>
                 {children}
             </MenuItems>

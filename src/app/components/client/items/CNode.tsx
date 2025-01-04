@@ -2,11 +2,11 @@ import clsx from 'clsx/lite'
 import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
-import CNodeGroup, { angle, getLine } from '../CNodeGroup.tsx'
+import CNodeGroup, { getLine } from '../CNodeGroup.tsx'
 import { Entry } from '../ItemEditor.tsx'
 import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel.tsx'
 import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents.tsx'
-import { getCyclicValue, cubicBezier, bezierLength, tAtLength, bezierAngle } from '../../../util/MathTools.tsx'
+import { getCyclicValue, cubicBezier, bezierLength, tAtLength, bezierAngle, angle } from '../../../util/MathTools.ts'
 import { MIN_ROTATION, MAX_ROTATION_INPUT } from '../ItemEditor.tsx'
 
 

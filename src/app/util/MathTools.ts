@@ -1,3 +1,8 @@
+
+/****************************************************************************
+ * ROUNDING AND NORMALIZING
+ ****************************************************************************/
+
 /**
  * For n = 0,...,digits, rounds to nearest (10^n)th if the difference to that value is less than 10^-(n+5). Used for avoiding the compounding of slight rounding errors.
  */
@@ -24,6 +29,10 @@ export const getCyclicValue = (raw: number, min: number, base: number, roundingF
     return Math.round(v2 * roundingFactor) / roundingFactor;
 }
 
+
+/****************************************************************************
+ * OPERATIONS ON GEOMETRIC POINTS
+ ****************************************************************************/
 
 /**
  * Rotates a point around another point by a given angle.
@@ -69,6 +78,10 @@ export const scalePoint = (px: number, py: number, ox: number, oy: number, scale
 }
 
 
+/****************************************************************************
+ * STRING ENCODING AND DECODING
+ ****************************************************************************/
+
 export const toBase64 = (bools: boolean[]): string => {
     const byteArray = new Uint8Array(Math.ceil(bools.length / 8));
 
@@ -103,6 +116,9 @@ export const fromBase64 = (base64Str: string): boolean[] => {
 }
 
 
+/****************************************************************************
+ * CUBIC CURVES
+ ****************************************************************************/
 
 export type CubicCurve = {
     x0: number,
@@ -114,7 +130,6 @@ export type CubicCurve = {
     x3: number,
     y3: number
 }
-
 
 /**
  * @return the point of the cubic curve defined by the specified points that corresponds to the parameter t.  
@@ -221,4 +236,43 @@ export const bezierAngle = (
     const angleRadians = Math.atan2(dy, dx);
 
     return angleRadians * (180 / Math.PI);
+}
+
+
+/****************************************************************************
+ * OPERATIONS ON ANGLES
+ ****************************************************************************/
+
+/**
+ * Returns the counterclockwise-measured angle of the vector connecting (x0, y0) and (x1, y1).
+ */
+export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians: boolean = false): number => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const radians = Math.atan2(dy, dx);
+    return inRadians? radians: radians * (180 / Math.PI);
+}
+
+/**
+ * Normalize the specified angle with respect to a reference angle alpha. The returned angle will lie between alpha-PI and alpha+PI.
+ * @param angle
+ * @param alpha
+ * @return
+ */
+export const normalize = (angle: number, alpha: number) => {
+    return angle>=alpha+Math.PI? angle - 2*Math.PI*(1 + Math.floor((angle - alpha - Math.PI)/2/Math.PI)): 
+           angle<alpha-Math.PI? angle + 2*Math.PI*(1 + Math.floor((alpha - Math.PI - angle)/2/Math.PI)): 
+           angle;
+}
+
+/*
+ * Returns the difference between a and b, in positive direction. Ranges over [0..2*Math.PI[
+ */
+export const angleDiff = (a: number, b: number) => {
+    const epsilon = 1e-8;
+    let d = normalize(b, a + Math.PI) - a;
+    if(Math.abs(d - 2*Math.PI) < epsilon) {
+        d = 0;
+    }
+    return d;
 }

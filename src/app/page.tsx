@@ -66,7 +66,7 @@ export default function Home() {
   useEffect(() => {
     Object.freeze(Object.prototype); // to prevent prototype pollution
 
-    setIsMobile(matchMedia('(pointer:fine)').matches==false);
+    setIsMobile(matchMedia('(pointer:coarse)').matches && matchMedia('(max-width: 768px)').matches);
     setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0); 
     setIsDarkMode(getInitialColorScheme()=='dark');  
 
@@ -137,7 +137,7 @@ export default function Home() {
   const hyphens = <>-----<span className='hidden md:inline'>-------------</span></>;
   
   return (<> {/* We're returning a fragment. */}
-    <div id='sticky-top' className={`sticky-top sticky top-0 bg-transparent z-40 hidden sm:block`}>
+    <div id='sticky-top' className='sticky-top sticky top-0 bg-transparent z-40 hidden sm:block'>
       <span className='flex items-center justify-between px-2 lg:px-4 2xl:px-6 py-1 lg:py-2'>
         <LogoSpan />
         <button className='opacity-60'
@@ -178,7 +178,7 @@ export default function Home() {
                 (if none is visible, you may need to zoom out or increase your screen size)</span>, and then click either the {pasi('Node')} or 
                 the {pasi('Contour')} button. To manipulate your diagram, you can drag nodes around, add labels to nodes, connect nodes 
                 with arrows, etc. When you’re done, click the {pasi('Generate')} button to have the LaTeX code displayed in the text area below the canvas. 
-                To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank'><i>texdraw</i></a>&nbsp; package.
+                To use that code in your document, you’ll need Peter Kabal’s <a href='https://ctan.org/pkg/texdraw' target='_blank' rel='noopener noreferrer'><i>texdraw</i></a>&nbsp; package.
                 You can also load diagrams from previously generated code, using the {pasi('Load')} button.
               </p>
             </Section>
@@ -228,13 +228,13 @@ export default function Home() {
                 The following are a few other editors that also export LaTeX code:
               </p>
               <ul>
-                <li><a href='https://sourceforge.net/projects/dia-installer/?source=directory' target='_blank'><i>Dia</i></a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
-                <li><a href='https://inkscape.org/' target='_blank'><i>Inkscape</i></a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
-                <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
-                <li><a href='https://tpx.sourceforge.net/' target='_blank'><i>TpX</i></a>, another desktop application, superficially similar to <i>Dia</i>.</li>
+                <li><a href='https://sourceforge.net/projects/dia-installer/?source=directory' target='_blank' rel='noopener noreferrer'><i>Dia</i></a>, a desktop application specializing on diagrams, with a wide variety of export options.</li>
+                <li><a href='https://inkscape.org/' target='_blank' rel='noopener noreferrer'><i>Inkscape</i></a>, a fully-featured desktop SVG editor, also allows the creation of diagrams.</li>
+                <li><a href='https://enjoysmath.github.io/quiver-bee/' target='_blank' rel='noopener noreferrer'><i>Quiver</i></a>, a powerful web-based editor that specializes on commutative diagrams.</li>
+                <li><a href='https://tpx.sourceforge.net/' target='_blank' rel='noopener noreferrer'><i>TpX</i></a>, another desktop application, superficially similar to <i>Dia</i>.</li>
               </ul>
-              Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank'><i>draw.io</i></a>,{' '}
-              <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>, and <a href='https://tldraw.com/' target='_blank'><i>tldraw</i></a>. {' '}
+              Web-based diagram editors that do not (as of this writing) export LaTeX code include <a href='https://app.diagrams.net/' target='_blank' rel='noopener noreferrer'><i>draw.io</i></a>,{' '}
+              <a href='https://excalidraw.com/' target='_blank'><i>Excalidraw</i></a>, and <a href='https://tldraw.com/' target='_blank' rel='noopener noreferrer'><i>tldraw</i></a>. {' '}
             </Section>
             
             <Section id='design-principles' header='Basic design features'>
@@ -331,10 +331,10 @@ export default function Home() {
               {
                 header: 'Links',
                 contents: [
-                  <a key='1' href="https://github.com/jplate/pasi" className="hover:underline" target="_blank" rel="noopener noreferrer">
+                  <a key='1' href="https://github.com/jplate/pasi" target="_blank" rel="noopener noreferrer">
                     GitHub repository
                   </a>,
-                  <a key='2' href="https://opensource.org/license/MIT" className="hover:underline">
+                  <a key='2' href="https://opensource.org/license/MIT" target='_blank' rel='noopener noreferrer'>
                     License
                   </a>
                 ]
@@ -348,7 +348,7 @@ export default function Home() {
                   </>,
                   <>
                     <span>&#120143;: </span> {/* Twitter */}
-                    <a href="https://x.com/jan_plate" target="_blank" rel="noopener noreferrer">@jan_plate</a>
+                    <a href="https://x.com/jan_plate" target='_blank' rel='noopener noreferrer'>@jan_plate</a>
                   </>
                 ]
               }

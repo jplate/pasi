@@ -13,7 +13,7 @@ import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
-import ENode, { ENodeComp, MAX_RADIUS } from './items/ENode.tsx'
+import ENode, { MAX_RADIUS } from './items/ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
 import CNode, { DEFAULT_DISTANCE  } from './items/CNode.tsx'
@@ -22,6 +22,7 @@ import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathT
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
 import { useThrottle } from '../../util/Misc'
+import SNode from './items/SNode'
 import Ornament from './items/Ornament.tsx'
 import Label from './items/Label.tsx'
 
@@ -554,7 +555,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl'))
+    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl')) 
     const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
@@ -1270,9 +1271,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         if (points.length>0) {
             let counter = eNodeCounter;
             const nodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
-            const newList = [...list, ...nodes];
             setENodeCounter(counter);
-            setList(list => newList);
+            setList(prev => [...prev, ...nodes]);
             const newFocus = nodes[nodes.length-1];
             setPoints([]);
             setSelection(nodes);
@@ -1310,8 +1310,18 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const createDepItem = useCallback((index: number) => {
         if (selectedNodes.length > 0 && index >= 0 && index < depItemKeys.length) {
             let newSelection: Item[] = [];
+            let counter = eNodeCounter;  
+            let nodes: SNode[] = [];               
             const key = depItemKeys[index];
             switch (key) {
+                case 'adj': 
+                    if (selectedNodes.length < 2) return;   
+                    nodes = new Array(selectedNodes.length - 1).fill(null).map(e => new SNode(counter++));
+                    for (let i = 0; i<nodes.length; i++) {
+                        nodes[i].init([selectedNodes[i], selectedNodes[i+1]]);
+                    }
+                    newSelection = nodes;
+                    break;
                 case 'lbl':         
                     newSelection = selectedNodes.map(node => {
                         const label = new Label(node);
@@ -1324,15 +1334,21 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     sorry();
                     return;
             }
-            const newFocus = newSelection[newSelection.length - 1];
+            const newFocus = newSelection.at(-1);
             setPoints([]);
             setList(prev => [...prev]); // This will update allItems.
             setSelection(prev => newSelection);
-            setFocusItem(newFocus);
-            setOrigin(true, [], newFocus, newSelection);
+            if (newFocus) {
+                setFocusItem(newFocus);
+                setOrigin(true, [], newFocus, newSelection);
+            }
+            if (counter!==eNodeCounter) {
+                setENodeCounter(counter);
+                setList(prev => [...prev, ...nodes]);
+            }
             // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
         }
-    }, [selectedNodes, unitscale, displayFontFactor, setOrigin, sorry]);
+    }, [eNodeCounter, selectedNodes, unitscale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -2077,8 +2093,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
 
-    console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`+
-        `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`));
+    console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
+        `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`,
+        focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.id).join()}]`));
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
 
     return ( 
@@ -2091,21 +2108,22 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             onMouseDown={canvasMouseDown} >
                         {list.map((it, i) => 
                             it instanceof ENode?
-                            <ENodeComp key={it.id} id={it.id} enode={it} 
-                                yOffset={yOffset} 
-                                unitscale={unitscale}
-                                displayFontFactor={displayFontFactor}
-                                bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
-                                primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
-                                markColor0={dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE}
-                                markColor1={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}
-                                titleColor={dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE}  
-                                focusItem={focusItem} 
-                                selection={selection} 
-                                preselection={preselection2}
-                                onMouseDown={itemMouseDown}
-                                onMouseEnter={itemMouseEnter} 
-                                onMouseLeave={(item, e) => mouseLeft()} />:
+                            it.getComp({ id: it.id, 
+                                yOffset: yOffset,
+                                unitscale: unitscale,
+                                displayFontFactor: displayFontFactor,
+                                bg: dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE,
+                                primaryColor: trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE,
+                                markColor0: dark? MARK_COLOR0_DARK_MODE: MARK_COLOR0_LIGHT_MODE,
+                                markColor1: dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE,
+                                titleColor: dark? MARK_COLOR1_DARK_MODE: MARK_COLOR1_LIGHT_MODE,
+                                focusItem: focusItem,
+                                selection: selection,
+                                preselection: preselection2,
+                                onMouseDown: itemMouseDown,
+                                onMouseEnter: itemMouseEnter, 
+                                onMouseLeave: (_item, _e) => mouseLeft(),
+                                hidden: false}):
                             it instanceof CNodeGroup? 
                             <CNodeGroupComp key={it.id} id={it.id} nodeGroup={it} 
                                 focusItem={focusItem} 

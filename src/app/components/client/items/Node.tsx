@@ -62,6 +62,10 @@ export default abstract class Node extends Item {
         return this.id;
     }
 
+    getPosition() {
+        return [this.x, this.y];
+    }
+
     override getWidth() {
         return this.radius * 2; 
     }
@@ -71,7 +75,8 @@ export default abstract class Node extends Item {
     }
 
     override getBottomLeftCorner() {
-        return { bottom: this.y - this.radius, left: this.x - this.radius };
+        const [x, y] = this.getPosition();
+        return { bottom: y - this.radius, left: x - this.radius };
     }
 
     override reset() {
