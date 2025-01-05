@@ -67,12 +67,9 @@ export default abstract class Ornament extends Item {
      * Returns a component that represents this Ornament on the canvas. 
      * @abstract
      */
-    abstract getComponent(key: number, yOffset: number, unitscale: number, displayFontFactor: number, 
-        primaryColor: HSL, markColor: string, 
-        focus: boolean, selected: boolean, preselected: boolean, 
-        onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
-        onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
-        onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    abstract getComponent( 
+        key: number, 
+        { yOffset, unitscale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ): react.JSX.Element  
 
 }

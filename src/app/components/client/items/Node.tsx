@@ -1,6 +1,7 @@
 import Item from './Item'
-import Ornament from './Ornament.tsx'
-import * as Texdraw from '../../../codec/Texdraw.tsx'
+import Ornament from './Ornament'
+import SNode from './SNode'
+import * as Texdraw from '../../../codec/Texdraw'
 
 export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
@@ -37,8 +38,8 @@ export default abstract class Node extends Item {
     y: number
     x100: number // These coordinates represent the item's location at 100% scaling.
     y100: number
-    radius: number = 0;
-    radius100: number = 0;
+    radius: number = 1;
+    radius100: number = 1;
     linewidth: number = DEFAULT_LINEWIDTH
     linewidth100: number = DEFAULT_LINEWIDTH
     shading: number = DEFAULT_SHADING
@@ -46,6 +47,7 @@ export default abstract class Node extends Item {
     dash100: number[] = DEFAULT_DASH
 
     ornaments: Ornament[] = [];
+    dependentSNodes: SNode[] = []; // We keep a tally of the SNodes that have this Node as involute, for purposes of efficiency.
 
     private ornamentCounter = 0; // for generating IDs for Ornaments
 
@@ -62,7 +64,11 @@ export default abstract class Node extends Item {
         return this.id;
     }
 
-    getPosition() {
+    /**
+     * This normally just returns [this.x, this.y], but subclasses (such as SNode) may implement more sophisticated behavior. In particular, if the
+     * location of this Node becomes invalidated for some reason, then getLocation() should update the location and store it in this.x and this.y.
+     */
+    getLocation() {
         return [this.x, this.y];
     }
 
@@ -75,7 +81,7 @@ export default abstract class Node extends Item {
     }
 
     override getBottomLeftCorner() {
-        const [x, y] = this.getPosition();
+        const [x, y] = this.getLocation();
         return { bottom: y - this.radius, left: x - this.radius };
     }
 
@@ -95,10 +101,24 @@ export default abstract class Node extends Item {
     }
 
     move(dx: number, dy: number): void {
-        this.x += dx;
-        this.y += dy;
+        const [x, y] = this.getLocation(); // The idea is that getLocation() updates this.x and this.y if these should have become invalidated.
+        this.x = x + dx;
+        this.y = y + dy;
         this.x100 += dx;
         this.y100 += dy;
+        this.invalidateDepSNodeLocations();
+    }
+
+    /**
+     * Recursively invalidates the locations of all dependent SNodes.
+     */
+    invalidateDepSNodeLocations() {
+        for (let node of this.dependentSNodes) {
+            if (node.locationDefined) { // If the node's location is already invalidated, we assume that we don't have to do anything with it or its own dependent SNodes.
+                node.locationDefined = false;
+                node.invalidateDepSNodeLocations();
+            }
+        }
     }
 
     setLinewidth(lw: number) {

@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx/lite'
 import { Lora } from 'next/font/google'  
-import Item, { HSL, Range } from './Item.tsx'
+import Item, { Range } from './Item.tsx'
 import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament.tsx'
 import Node from './Node.tsx'
 import ENode from './ENode.tsx'
@@ -118,12 +118,13 @@ export default class Label extends Ornament {
         const angleRad = angle / 180 * Math.PI;
         const [hPos, vPos] = this.#getPositioning(); 
         const r = this.node.radius + this.node.linewidth / 2 + this.gap;
+        const [nx, ny] = this.node.getLocation();
         return { 
-            left: this.node.x + (this.centered || hPos===0? 
+            left: nx + (this.centered || hPos===0? 
                 -w / 2: 
                 r * Math.cos(angleRad) - (hPos < 0? w: 0)
             ),
-            top: this.node.y + (this.centered || vPos===0? 
+            top: ny + (this.centered || vPos===0? 
                 h / 2: 
                 r * Math.sin(angleRad) + (vPos > 0? h: 0)
             )
@@ -141,9 +142,10 @@ export default class Label extends Ornament {
         const w = this.getWidth();
         const h = this.getHeight();
         const lineH = this.fontSize; // This is needed to compensate for a texdraw quirk in connection with '\begin{center}...\end{center}' in parboxes.
+        const [nx, ny] = this.node.getLocation();
         return { 
-            x: centered || hPos===0? this.node.x: hPos===-1? left + w: left,
-            y: centered || vPos===0? this.node.y: (vPos===-1? bottom + h: bottom) - (centeredText? vPos * lineH: 0)
+            x: centered || hPos===0? nx: hPos===-1? left + w: left,
+            y: centered || vPos===0? ny: (vPos===-1? bottom + h: bottom) - (centeredText? vPos * lineH: 0)
         }
     }
 
@@ -451,12 +453,9 @@ export default class Label extends Ornament {
         }
     }
 
-    override getComponent(key: number, yOffset: number, unitscale: number, displayFontFactor: number,
-        primaryColor: HSL, markColor: string, 
-        focus: boolean, selected: boolean, preselected: boolean, 
-        onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
-        onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
-        onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    override getComponent( 
+        key: number, 
+        { yOffset, unitscale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ) {
         return (
             <this.Component key={key} yOffset={yOffset} unitscale={unitscale} displayFontFactor={displayFontFactor}

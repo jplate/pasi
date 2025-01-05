@@ -1,14 +1,15 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
-import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node.tsx'
-import { Entry } from '../ItemEditor.tsx'
-import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel.tsx'
-import { validFloat, parseInputValue, DashValidator } from '../EditorComponents.tsx'
-import CNodeGroup from '../CNodeGroup.tsx'
-import * as Texdraw from '../../../codec/Texdraw.tsx'
-import {  ParseError, makeParseError } from '../../../codec/Texdraw.tsx'
-import { encode, decode } from '../../../codec/Codec1.tsx'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
+import SNode from './SNode'
+import { Entry } from '../ItemEditor'
+import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel'
+import { validFloat, parseInputValue, DashValidator } from '../EditorComponents'
+import CNodeGroup from '../CNodeGroup'
+import * as Texdraw from '../../../codec/Texdraw'
+import {  ParseError, makeParseError } from '../../../codec/Texdraw'
+import { encode, decode } from '../../../codec/Codec1'
 
 export const DEFAULT_RADIUS = 12
 export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
@@ -20,7 +21,7 @@ export const DISTANCE_PENALTY = 4
 export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9
 
 export const MAX_RADIUS = 9999
-export const MIN_RADIUS_FOR_INNER_TITLE = 5
+export const MIN_RADIUS_FOR_INNER_TITLE = 6
 export const TITLE_FONTSIZE = 9
 
 interface info {
@@ -150,6 +151,9 @@ export default class ENode extends Node {
         ...this.commonEditHandler
     }
 
+    /**
+     * This is also overridden by subclasses, such as SNode.
+     */
     override handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
@@ -278,14 +282,17 @@ export default class ENode extends Node {
         [this.radius100, this.x100, this.y100] = [this.radius, this.x, this.y];
     }
 
-    getComp({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, onMouseDown, onMouseEnter,
-            onMouseLeave, hidden }: ENodeCompProps
+
+    getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, onMouseDown, onMouseEnter,
+            onMouseLeave, hiddenByDefault=false, radiusWhenHidden=1 }: ENodeCompProps
     ) {    
-        const [x, y] = this.getPosition();
-        const radius = this.radius;
+        const [x, y] = this.getLocation();
         const linewidth = this.linewidth;
         const shading = this.shading;
         const selectedPositions = this.getSelectedPositions(selection);
+        // The parameter hiddenByDefault will be true if this method is called from the SNode override.
+        const hidden = hiddenByDefault && selectedPositions.length===0 && this.ornaments.length===0 && this.dependentSNodes.length===0;
+        const radius = hidden? radiusWhenHidden: this.radius;
     
         const width = radius * 2;
         const height = radius * 2;
@@ -316,17 +323,19 @@ export default class ENode extends Node {
                         cursor: 'pointer'
                     }}>
                     <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
-                        <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
-                            cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
-                            fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
-                                `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
-                                `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
-                                `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
-                            stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
-                            strokeWidth={linewidth}
-                            strokeDasharray={this.dash.join(' ')} 
-                            strokeLinecap={LINECAP_STYLE}
-                            strokeLinejoin={LINEJOIN_STYLE} />
+                        {!hidden && 
+                            <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
+                                cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
+                                fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
+                                    `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
+                                    `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
+                                    `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
+                                strokeWidth={linewidth}
+                                strokeDasharray={this.dash.join(' ')} 
+                                strokeLinecap={LINECAP_STYLE}
+                                strokeLinejoin={LINEJOIN_STYLE} />
+                        }
                         {Node.markBorder(left, top, l, m, mW, mH, markColor1)}
                     </svg>
                     {selectedPositions.length > 0 && // Add a 'title'
@@ -337,10 +346,13 @@ export default class ENode extends Node {
                             {selectedPositions.map(i => i + 1).join(', ')}
                         </div>}
                 </div>
-                {this.ornaments.map((o, i) => {
-                    return o.getComponent(i, yOffset, unitscale, displayFontFactor, primaryColor, markColor0, 
-                        focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave);
-                })}
+                {this.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitscale, displayFontFactor, primaryColor, 
+                    markColor: markColor0, 
+                    focus: focusItem===o, 
+                    selected: selection.includes(o), 
+                    preselected: preselection.includes(o), 
+                    onMouseDown, onMouseEnter, onMouseLeave 
+                }))}
             </React.Fragment>
         )
     }
@@ -362,5 +374,6 @@ export interface ENodeCompProps {
     onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    hidden: boolean
+    hiddenByDefault?: boolean
+    radiusWhenHidden?: number
 }

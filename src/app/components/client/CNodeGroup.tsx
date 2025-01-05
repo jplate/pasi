@@ -822,6 +822,7 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
             arrowNodes[j] = arrow && !defer;
         }
     }
+    //console.log(`Rendering CNodeGroup ${nodeGroup.id} time: ${performance.now()}`);
     return (
         <React.Fragment key={nodeGroup.id}>
             <Contour id={nodeGroup.id+'Contour'} group={nodeGroup} yOffset={yOffset} 

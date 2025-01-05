@@ -140,8 +140,10 @@ export const cubicBezier = (c: CubicCurve, t: number) => {
     const b1 = bernsteinCoeff(3, 3, t);
     const b1a = bernsteinCoeff(3, 2, t);
     
-    return {x: b0 * c.x0 + b0a * c.x1 + b1 * c.x3 + b1a * c.x2, 
-            y: b0 * c.y0 + b0a * c.y1 + b1 * c.y3 + b1a * c.y2 };
+    return [
+        b0 * c.x0 + b0a * c.x1 + b1 * c.x3 + b1a * c.x2, 
+        b0 * c.y0 + b0a * c.y1 + b1 * c.y3 + b1a * c.y2 
+    ];
 }
 
 const bernsteinCoeff = (n: number, m: number, t: number) => {
@@ -167,7 +169,7 @@ export const bezierLength = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, ste
 
     for (let i = 1; i <= steps; i++) {
         const t = i / steps;
-        const { x, y } = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
+        const [ x, y ] = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
 
         const dx = x - prevX;
         const dy = y - prevY;
@@ -196,7 +198,7 @@ export const tAtLength = (
 
     for (let i = 1; i <= steps; i++) {
         const t = i / steps;
-        const { x, y } = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
+        const [ x, y ] = cubicBezier({ x0, y0, x1, y1, x2, y2, x3, y3 }, t);
 
         const dx = x - prevX;
         const dy = y - prevY;
@@ -237,6 +239,52 @@ export const bezierAngle = (
 
     return angleRadians * (180 / Math.PI);
 }
+
+/**
+ * @return the approximately closest point to (x,y) on the curve c between the t-values t0 and t1 (both should be between 0 and 1) 
+ */
+export const closestTo = (x: number, y: number, c: CubicCurve, t0: number, t1: number): number => {
+    const [x0, y0] = cubicBezier(c, t0);
+    const [x1, y1] = cubicBezier(c, t1);
+    const d0 = Math.sqrt((x0 - x)**2 + (y0 - y)**2);
+    const d1 = Math.sqrt((x1 - x)**2 + (y1 - y)**2)
+    return findClosest(x, y, c, t0, d0, t1, d1, 4);
+}
+	
+/** 
+* Performs a simple search to get the closest point on the curve c
+*/
+const findClosest = (x: number, y: number, c: CubicCurve, t0: number, d0: number, t1: number, d1: number, j: number): number => {
+    if(t0 > t1) {
+        [t0, t1] = [t1, t0];
+        [d0, d1] = [d1, d0];
+    }
+    const div = 20;
+    const dmin = .5;
+    const incr = (t1 - t0) / div;
+    const ds = new Array(div+1).fill(0);
+    ds[0] = d0;
+    ds[div] = d1;
+    let first = d1 < d0? div: 0;
+    let second = d1 < d0? 0: div;
+    for(let i = 1; i < div && ds[first]>dmin; i++) {
+        const [bx, by] = cubicBezier(c, t0 + i*incr);
+        ds[i] = Math.sqrt((x - bx)**2 + (y - by)**2);
+        if(ds[i] < ds[first]) {
+            second = first;
+            first = i;
+        }
+    }
+
+    if(ds[first] <= dmin || j <= 0 || (first===0 && second!==1) || (first===div && second!==div-1)) {
+        //console.log("t: "+(t0+first*incr)+" "+(ds[first]<=dmin)+" "+(j<=0)+" "+(first==0 && second!=1)+" "+(first==div && second!=div-1));
+        return t0 + first * incr;
+    }
+    else {
+        return findClosest(x, y, c, t0 + first*incr, ds[first], t0 + second*incr, ds[second], j-1);
+    }
+}
+
 
 
 /****************************************************************************

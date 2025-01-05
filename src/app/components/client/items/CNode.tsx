@@ -10,7 +10,7 @@ import { getCyclicValue, cubicBezier, bezierLength, tAtLength, bezierAngle, angl
 import { MIN_ROTATION, MAX_ROTATION_INPUT } from '../ItemEditor.tsx'
 
 
-const CNODE_MARK_RADIUS = 7 // Not the 'real' radius (which is 0), but only used for drawing the 'mark border'.
+const CNODE_MARK_RADIUS = 7 // Not the 'real' radius (which is 1), but only used for drawing the 'mark border'.
 const CNODE_ARROW_DIV_RADIUS = 10
 export const MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW = 30
 const CNODE_ARROW_DISTANCE_RATIO = 0.3
@@ -298,7 +298,7 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
             const targetLength = Math.min(Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO), CNODE_ARROW_DISTANCE_MAX);
             // The function tAtLength calculates t iteratively. We use smaller steps in proportion to the ratio by which totalLength exceeds targetLength:
             const t = tAtLength(line, targetLength, 100 * totalLength / targetLength ); 
-            const { x: bx, y: by } = cubicBezier(line, t);
+            const [ bx, by ] = cubicBezier(line, t);
             nx = bx - r;
             ny = by + r;
             a = -bezierAngle(line, t);
@@ -340,8 +340,12 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
                     {Node.markBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
-            {cnode.ornaments.map((o, i) => o.getComponent(i, yOffset, unitscale, displayFontFactor, primaryColor, markColor, 
-                focusItem===o, selection.includes(o), preselection.includes(o), onMouseDown, onMouseEnter, onMouseLeave))}
+            {cnode.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitscale, displayFontFactor, primaryColor, markColor, 
+                focus: focusItem===o, 
+                selected: selection.includes(o), 
+                preselected: preselection.includes(o), 
+                onMouseDown, onMouseEnter, onMouseLeave
+            }))}
             {arrowDiv}
         </>
     )

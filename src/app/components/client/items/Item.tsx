@@ -9,9 +9,13 @@ export interface HSL {
     lgt: number
 }
 
+export type Direction = 'clockwise' | 'counter-clockwise';
 export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // This last value means that the editing function will be applied to only 
     // at most one CNode per CNodeGroup.
+
     
+export const DEFAULT_DIRECTION: Direction = 'counter-clockwise';
+
 /**
  * An Item represents a component located on the canvas that is either selectable or contributes texdraw code. This includes Nodes, Ornaments, and Connectors,
  * but neither CNodeGroups (which represent multiple components) nor Points (which are neither selectable nor contribute texdraw code).
@@ -19,10 +23,16 @@ export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // T
  */
 export default abstract class Item implements GroupMember {
 
-    readonly id: string
+    readonly id: string;
 
-    group: Group<Item | Group<any>> | null = null
-    isActiveMember: boolean = false
+    group: Group<Item | Group<any>> | null = null;
+    isActiveMember: boolean = false;
+
+    /**
+	 * The direction in which lines are bent and angles adjusted.
+	 */
+	flexDirection = DEFAULT_DIRECTION;
+
 
     constructor(id: string) {
         this.id = id;
