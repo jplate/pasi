@@ -279,8 +279,8 @@ export default abstract class SNode extends ENode {
         	[n0, n1] = [n1, n0];
             [w0, w1] = [w1, w0];
         }
-        const r0 = n0.radius;
-        const r1 = n1.radius;
+        const r0 = n0.radius; // the smaller node's radius
+        const r1 = n1.radius; // the larger node's radius
         const [x0, y0] = n0.getLocation();
         const [x1, y1] = n1.getLocation();
         
@@ -290,18 +290,18 @@ export default abstract class SNode extends ENode {
 		// discrepancy per Entity involved:
         const discr = Math.max(0, w + r0 + r1 - d) / 2;
         
-        // distance between centers at which exit points will become less than sqrt(2)*w apart:
-        const d0 = Math.sqrt(w*w/2 - r1 * Math.sin(Math.acos((r1 - r0) / r1))) + r1 - r0;
-		const d1 = Math.min(w, w + r0 + r1 - d0) / 2;
 		const rr = 1 + Math.log(r1 / r0);
         const m0 = Math.min(
-            discr<r0? discr: discr<d1? r0 + (discr - r0)/(d1 - r0)*(r0*rr*d1/(w+r0+r1)): r0 + r0*rr*discr/(w+r0+r1), 
+            discr<r0? discr: 
+            r0 + r0*rr*discr/(w+r0+r1)/1.2, 
             9/5*r0
         );
         const m1 = Math.min(
-            discr<r0? discr: discr<d1? r0 + (discr - r0)/(d1 - r0)*(r0/rr*d1/(w+r0+r1)): r0 + r0/rr*discr/(w+r0+r1),
+            discr<r0? discr: 
+            r0 + r0/rr*discr/(w+r0+r1)/1.2,
             9/5*r1
         );
+        //console.log(`m0: ${m0} m1: ${m1}`);
 
         let chi0, chi1;
         const baseAngle = this.findBaseAngle();

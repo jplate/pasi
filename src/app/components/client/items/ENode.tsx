@@ -93,7 +93,10 @@ export default class ENode extends Node {
     commonEditHandler: handler = {
         radius: ({e, logIncrement, selection}: info) => {
             if (e) return [(item, array) => {
-                if(item instanceof ENode) item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
+                if(item instanceof ENode) {
+                    item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
+                    item.invalidateDepSNodeLocations();
+                }
                 return array
             }, 'wholeSelection']
         },

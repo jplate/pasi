@@ -556,7 +556,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl')) 
+    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj')) 
     const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
