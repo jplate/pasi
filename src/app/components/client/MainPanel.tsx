@@ -556,7 +556,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj')) 
+    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl')) 
     const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
@@ -1545,8 +1545,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const moveSelection = useCallback((dirX: number, dirY: number) => {
         const inc = 10 ** logIncrement;
         selectedNodesDeduplicated.forEach(node => {
-            if (dirX!==0) node.x = node.x100 = round(node.x + dirX * inc, ROUNDING_DIGITS);
-            if (dirY!==0) node.y = node.y100 = round(node.y + dirY * inc, ROUNDING_DIGITS);
+            if (node instanceof SNode) {
+                node.move(dirX * inc, dirY * inc);
+            }
+            else { // We round the new locations to avoid unnecessary decimals showing up in the editor pane:
+                if (dirX!==0) node.x = node.x100 = round(node.x + dirX * inc, ROUNDING_DIGITS);
+                if (dirY!==0) node.y = node.y100 = round(node.y + dirY * inc, ROUNDING_DIGITS);
+                node.invalidateDepSNodeLocations();
+            }
         });
         adjustLimit();
         setOrigin(false, points, focusItem, selection, list);

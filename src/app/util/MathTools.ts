@@ -117,8 +117,17 @@ export const fromBase64 = (base64Str: string): boolean[] => {
 
 
 /****************************************************************************
- * CUBIC CURVES
+ * LINES AND CURVES
  ****************************************************************************/
+
+export type Shape = Line | CubicCurve;
+
+export type Line = {
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number
+}
 
 export type CubicCurve = {
     x0: number,
@@ -129,6 +138,56 @@ export type CubicCurve = {
     y2: number,
     x3: number,
     y3: number
+}
+
+/** 
+ * Returns the bounds of the supplied array of Shapes.
+ */
+export const getBounds = (shapes: Shape[]): { minX: number, maxX: number, minY: number, maxY: number } => {
+    const n = shapes.length;
+    let minX = Infinity,
+        maxX = -Infinity,
+        minY = Infinity,
+        maxY = -Infinity;
+    for (let i = 0; i < n; i++) {        
+        const sh = shapes[i];
+        let mx, mX, my, mY;
+        if ('x3' in sh) {
+            mx = Math.min(sh.x0, sh.x1, sh.x2, sh.x3);
+            mX = Math.max(sh.x0, sh.x1, sh.x2, sh.x3);
+            my = Math.min(sh.y0, sh.y1, sh.y2, sh.y3);
+            mY = Math.max(sh.y0, sh.y1, sh.y2, sh.y3);
+        }
+        else {
+            mx = Math.min(sh.x0, sh.x1);
+            mX = Math.max(sh.x0, sh.x1);
+            my = Math.min(sh.y0, sh.y1);
+            mY = Math.max(sh.y0, sh.y1);
+        }
+        if (mx < minX) minX = mx;
+        if (mX > maxX) maxX = mX;
+        if (my < minY) minY = my;
+        if (mY > maxY) maxY = mY;
+    }
+    return { minX, maxX, minY, maxY }
+}
+
+/**
+ * Returns the SVG path corresponding to the supplied array of Shapes, with coordinates transformed according to the supplied functions.
+ */
+export const getPath = (shapes: Shape[], transX: (x: number) => number, transY: (y: number) => number) => {
+    const n = shapes.length;
+    const path: string[] = new Array(n).fill('');
+    for (let i = 0; i<n; i++) {
+        const sh = shapes[i];
+        if ('x3' in sh) {
+            path[i] = `M ${transX(sh.x0)} ${transY(sh.y0)} C ${transX(sh.x1)} ${transY(sh.y1)}, ${transX(sh.x2)} ${transY(sh.y2)}, ${transX(sh.x3)} ${transY(sh.y3)}`;
+        }
+        else {
+            path[i] = `M ${transX(sh.x0)} ${transY(sh.y0)} L ${transX(sh.x1)} ${transY(sh.y1)}`;
+        }
+    }
+    return path.join(' ');
 }
 
 /**
@@ -240,6 +299,57 @@ export const bezierAngle = (
     return angleRadians * (180 / Math.PI);
 }
 
+/** 
+* Performs a simple search to get the point on the curve c that lies closest to the supplied reference point.
+* @param x X coordinate of the reference point
+* @param y Y coordinate of the reference point
+* @param t0 start of the search interval
+* @param t1 end of the search interval
+* @param d0 distance of the point at t0 from the reference point 
+* @param d1 distance of the point at t1 from the reference point
+* @param j number of iterations
+*/
+const findClosest = (x: number, y: number, c: CubicCurve, t0: number, d0: number, t1: number, d1: number, j: number): number => {
+    if(d0 > d1) { 
+        // If the curve is closer to the reference point at the end of the search interval, we'll start from there.
+        [t0, t1] = [t1, t0];
+        [d0, d1] = [d1, d0];
+    }
+    const div = 20;
+    const dmin = .4;
+    const incr = (t1 - t0) / div;
+    let firstT = t0;
+    let firstD = d0;
+    let secondT = t0;
+    let secondD = d0;
+    let prevD = d0;
+    let prevT = d0;
+    for(let i = 1; i < div; i++) {
+        const t = t0 + i * incr;
+        const [bx, by] = cubicBezier(c, t);
+        const d = Math.sqrt((x - bx)**2 + (y - by)**2);
+        if (d < firstD) {
+            firstD = d;
+            firstT = t;
+            secondD = prevD;
+            secondT = prevT;
+        }
+        else if (d < secondD) {
+            secondD = d;
+            secondT = t;
+        }
+        prevD = d;
+        prevT = t;
+    }
+
+    if(firstD <= dmin || j <= 0 || firstT===secondT) {
+        return firstT;
+    }
+    else {
+        return findClosest(x, y, c, firstT, firstD, secondT, secondD, j-1);
+    }
+}
+	
 /**
  * @return the approximately closest point to (x,y) on the curve c between the t-values t0 and t1 (both should be between 0 and 1) 
  */
@@ -248,41 +358,79 @@ export const closestTo = (x: number, y: number, c: CubicCurve, t0: number, t1: n
     const [x1, y1] = cubicBezier(c, t1);
     const d0 = Math.sqrt((x0 - x)**2 + (y0 - y)**2);
     const d1 = Math.sqrt((x1 - x)**2 + (y1 - y)**2)
-    return findClosest(x, y, c, t0, d0, t1, d1, 4);
+    return findClosest(x, y, c, t0, d0, t1, d1, 8);
 }
-	
-/** 
-* Performs a simple search to get the closest point on the curve c
-*/
-const findClosest = (x: number, y: number, c: CubicCurve, t0: number, d0: number, t1: number, d1: number, j: number): number => {
-    if(t0 > t1) {
-        [t0, t1] = [t1, t0];
-        [d0, d1] = [d1, d0];
-    }
-    const div = 20;
-    const dmin = .5;
-    const incr = (t1 - t0) / div;
-    const ds = new Array(div+1).fill(0);
-    ds[0] = d0;
-    ds[div] = d1;
-    let first = d1 < d0? div: 0;
-    let second = d1 < d0? 0: div;
-    for(let i = 1; i < div && ds[first]>dmin; i++) {
-        const [bx, by] = cubicBezier(c, t0 + i*incr);
-        ds[i] = Math.sqrt((x - bx)**2 + (y - by)**2);
-        if(ds[i] < ds[first]) {
-            second = first;
-            first = i;
-        }
-    }
 
-    if(ds[first] <= dmin || j <= 0 || (first===0 && second!==1) || (first===div && second!==div-1)) {
-        //console.log("t: "+(t0+first*incr)+" "+(ds[first]<=dmin)+" "+(j<=0)+" "+(first==0 && second!=1)+" "+(first==div && second!=div-1));
-        return t0 + first * incr;
+/**
+ * @param u initially contains the starting position, will contain the end position
+ * @param distance approximate path-length from start to end position 
+ * @param c the curve to be travelled
+ * @param dt the step size 
+ * @param cutOff the maximum number of iterations allowed
+ * @param maxK the maximum number of steps that can be compounded into one
+ * @return the point at the end position
+ */
+export const travelFor = (u: number[], distance: number, c: CubicCurve, dt: number, cutOff: number, maxK: number): [x: number, y: number] => {
+    const t0 = u[0];
+    let t = t0;
+    let [px, py] = cubicBezier(c, t0);
+    let [p1x, p1y] = [px, py];
+    let dist = 0;
+    let done = false;
+    let i = 0;
+    const safetyFactor = 1.2;
+    let sfAdd = 0;
+    let n = 0;
+    while(!done) {
+        let [p_x, p_y] = [0, 0];
+        let t_ = t;
+        let d = 0;
+        let k = 1;
+        let k_ = k;
+        while(dist < distance && i < cutOff) {
+            t_ = t;
+            t += k*dt;
+
+            [p1x, p1y] = cubicBezier(c, t);
+            d = Math.sqrt((p1x - px)**2 + (p1y - py)**2);
+            [p_x, p_y] = [px, py];
+            [px, py] = [p1x, p1y];
+            
+            dist += d;
+            
+            i += k;
+            k_ = k;
+            k = Math.floor(Math.min(maxK, Math.max(1, (distance - dist) * k / d / (safetyFactor + sfAdd))));
+            sfAdd = 0;
+            
+            //console.log("k: "+k+"  dist: "+dist);
+        }
+        if(k_ > 1) {
+            dist -= d;
+            i -= k_;
+            t = t_;
+            [px, py] = [p_x, p_y];
+            n++;
+            sfAdd = n*.1;
+            //console.log("sf: "+(safetyFactor+sfAdd));
+        }
+        else done = true;
     }
-    else {
-        return findClosest(x, y, c, t0 + first*incr, ds[first], t0 + second*incr, ds[second], j-1);
-    }
+    //console.log("result: "+t);
+    u[0] = t;
+    return [p1x, p1y];
+}
+
+/**
+ * @param u initially contains the starting position, will contain the end position
+ * @param distance approximate path-length from start to end position 
+ * @param c the curve to be travelled
+ * @param dt the step size 
+ * @param cutOff the maximum number of iterations allowed
+ * @return the point at the end position
+ */
+export const travel = (u: number[], distance: number, c: CubicCurve, dt: number, cutOff: number) => {
+    return travelFor(u, distance, c, dt, cutOff, 10e6);
 }
 
 
