@@ -2,7 +2,6 @@ import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
 import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
-import SNode from './SNode'
 import { Entry } from '../ItemEditor'
 import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel'
 import { validFloat, parseInputValue, DashValidator } from '../EditorComponents'
@@ -11,27 +10,28 @@ import * as Texdraw from '../../../codec/Texdraw'
 import {  ParseError, makeParseError } from '../../../codec/Texdraw'
 import { encode, decode } from '../../../codec/Codec1'
 
-export const DEFAULT_RADIUS = 12
-export const D0 = 2*Math.PI/100 // absolute minimal angle between two contact points on the periphery of an ENode
-export const D1 = 2*Math.PI/12 // 'comfortable' angle between two contact points on the periphery of an ENode
-export const HALF_DISTANCE_PENALTY = 48
-export const SWITCH_PENALTY = 16
-export const SWITCH_TOLERANCE = 0.1
-export const DISTANCE_PENALTY = 4
-export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9
+export const DEFAULT_RADIUS = 12;
+export const D0 = 2*Math.PI/100; // absolute minimal angle between two contact points on the periphery of an ENode
+export const D1 = 2*Math.PI/12; // 'comfortable' angle between two contact points on the periphery of an ENode
+export const HALF_DISTANCE_PENALTY = 48;
+export const SWITCH_PENALTY = 16;
+export const SWITCH_TOLERANCE = 0.1;
+export const DISTANCE_PENALTY = 4;
+export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9;
 
-export const MAX_RADIUS = 9999
-export const MIN_RADIUS_FOR_INNER_TITLE = 6
-export const TITLE_FONTSIZE = 9
+export const MAX_RADIUS = 9999;
+export const MIN_RADIUS_FOR_INNER_TITLE = 6;
+export const TITLE_FONTSIZE = 9;
+export const TITLE_BOTTOM_MARGIN = 1.5; // The margin at the bottom of a Node's 'title' if the latter appears *above* the mark border.
 
-interface info {
+export interface Info {
     e: React.ChangeEvent<HTMLInputElement> | null, 
     logIncrement: number, 
     selection: Item[]
 }
 
-type handler = {
-    [key: string]: (i: info) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range]
+export type Handler = {
+    [key: string]: (i: Info) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range]
 }
 
 
@@ -41,7 +41,7 @@ type handler = {
 export default class ENode extends Node {
 
 
-    private dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
+    protected dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
 
     constructor(i: number, x: number, y: number) {
@@ -63,9 +63,13 @@ export default class ENode extends Node {
         return result;
     }
 
+    getDefaultRadius() {
+        return DEFAULT_RADIUS;
+    }
+
     override reset() {
         super.reset();
-        this.radius = this.radius100 = DEFAULT_RADIUS;
+        this.radius = this.radius100 = this.getDefaultRadius();
     }
 
     getCommonInfo(list: (ENode | CNodeGroup)[]): Entry[] {
@@ -90,8 +94,8 @@ export default class ENode extends Node {
         ]
     }
 
-    commonEditHandler: handler = {
-        radius: ({e, logIncrement, selection}: info) => {
+    commonEditHandler: Handler = {
+        radius: ({ e }: Info) => {
             if (e) return [(item, array) => {
                 if(item instanceof ENode) {
                     item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
@@ -100,13 +104,13 @@ export default class ENode extends Node {
                 return array
             }, 'wholeSelection']
         },
-        lw: ({e, logIncrement, selection}: info) => {
+        lw: ({ e }: Info) => {
             if (e) return [(item, array) => {
                 if (item instanceof Node) item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                 return array
             }, 'ENodesAndCNodeGroups']
         },
-        dash: ({e, logIncrement, selection}: info) => {
+        dash: ({ e }: Info) => {
             if (e) {
                 const dash = this.dashValidator.read(e.target);
                 return [(item, array) => {
@@ -115,19 +119,23 @@ export default class ENode extends Node {
                 }, 'ENodesAndCNodeGroups']
             }
         },
-        shading: ({e, logIncrement, selection}: info) => {
+        shading: ({ e }: Info) => {
             if (e) return [(item, array) => {
                 if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1)); 
                 return array
             }, 'ENodesAndCNodeGroups'];
         },
-        rank: ({e, logIncrement, selection}: info) => {
+        rank: ({ e, selection }: Info) => {
             if (e) return [getRankMover(e.target.value, selection), 'onlyThis'];
-        }
+        },
+        defaults: ({}: Info) => [(item, array) => {
+            item.reset();
+            return array
+        }, 'wholeSelection']
     }
 
-    editHandler: handler = {
-        x: ({e, logIncrement, selection}: info) => {
+    editHandler: Handler = {
+        x: ({ e, logIncrement, selection }: Info) => {
             if (e) {
                 const dmin = -(selection.filter(item => item instanceof Node) as Node[]).reduce((min, item) => min<item.x? min: item.x, this.x);
                 const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
@@ -140,7 +148,7 @@ export default class ENode extends Node {
                 }, 'wholeSelection']
             } 
         },
-        y: ({e, logIncrement, selection}: info) => {
+        y: ({ e, logIncrement }: Info) => {
             if (e) {
                 const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
                 return [(item, array) => {
@@ -299,7 +307,7 @@ export default class ENode extends Node {
     
         const width = radius * 2;
         const height = radius * 2;
-        const extraHeight = radius < MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE: 0;
+        const extraHeight = radius < MIN_RADIUS_FOR_INNER_TITLE? TITLE_FONTSIZE + TITLE_BOTTOM_MARGIN: 0;
     
         // coordinates (and dimensions) of the inner rectangle, relative to the div:
         const top = MARK_LINEWIDTH + extraHeight;

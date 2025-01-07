@@ -1637,7 +1637,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const rotateSelection = useCallback((angle: number) => {
         selectedNodesDeduplicated.forEach(node => {
             ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
-            ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS))                              
+            ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS));
+            node.invalidateDepSNodeLocations();                          
         });
         adjustLimit();
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
@@ -1651,6 +1652,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         if (testScaling(newValue)) {
             selectedNodesDeduplicated.forEach(node => {
                 ({x: node.x, y: node.y} = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue/100));
+                node.invalidateDepSNodeLocations();
                 if (node instanceof CNode) {
                     node.dist0 = round(node.dist0_100 * newValue/100, ROUNDING_DIGITS);
                     node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
@@ -1751,6 +1753,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             g.members.forEach(node => {
                 ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle, ROUNDING_DIGITS));
                 ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle, ROUNDING_DIGITS));
+                node.invalidateDepSNodeLocations();
             });
         });
         adjustLimit();

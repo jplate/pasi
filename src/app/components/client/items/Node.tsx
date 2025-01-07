@@ -16,6 +16,7 @@ export const LINEJOIN_STYLE = 'round';
 
 export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
 export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
+export const MARK_BORDER_LINEWIDTH = 1;
 
 
 /**
@@ -26,7 +27,7 @@ export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 export default abstract class Node extends Item {
 
     static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
-        <>
+        <> {/* The stroke width is taken care of by a style applied to polyline elements that is specified in MainPanel's return statement. */}
             <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill='none' />    
             <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill='none' />
             <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill='none' />

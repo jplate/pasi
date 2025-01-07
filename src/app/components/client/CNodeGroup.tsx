@@ -228,7 +228,7 @@ export default class CNodeGroup implements Group<CNode> {
             })) {
             for (let i = 0; i<n; i++) {
                 const m = members[i];
-                m.x = m.x100 = m.x + dxs[i];
+                m.move(dxs[i], 0);
             }
         }
         if (members.every((m, i) => {
@@ -237,11 +237,10 @@ export default class CNodeGroup implements Group<CNode> {
             })) {
             for (let i = 0; i<n; i++) {
                 const m = members[i];
-                m.y = m.y100 = m.y + dys[i];
+                m.move(0, dys[i]);
             }
         }
     }
-
 
     equalizeCentralAngles = (node: CNode) => {
         const n = this.members.length;
@@ -305,12 +304,13 @@ export default class CNodeGroup implements Group<CNode> {
         }
         while (Math.abs(newC.x-c.x)>e || Math.abs(newC.y-c.y)>e);
 
-        // Finally, we round all coordinates to the nearest (e/10)th.
+        // Finally, we round all coordinates to the nearest (e/10)th and invalidate the locations of their dependent SNodes.
         const factor = 10 ** ROUNDING_DIGITS;
         this.members.forEach(m => {
             // We apply extra rounding because the division by factor can yield numbers that differ from the intended values by a tiny amount.
             m.x = m.x100 = round(Math.round(m.x * factor) / factor, ROUNDING_DIGITS);
             m.y = m.y100 = round(Math.round(m.y * factor) / factor, ROUNDING_DIGITS);
+            m.invalidateDepSNodeLocations();
         });
     }
 
@@ -327,6 +327,7 @@ export default class CNodeGroup implements Group<CNode> {
             const a = angle(c.x, c.y, m.x, m.y, true);
             m.x = m.x100 = round(Math.round((c.x + Math.cos(a) * d) * factor) / factor, ROUNDING_DIGITS);
             m.y = m.y100 = round(Math.round((c.y + Math.sin(a) * d) * factor) / factor, ROUNDING_DIGITS);
+            m.invalidateDepSNodeLocations();
         });
     }
 
