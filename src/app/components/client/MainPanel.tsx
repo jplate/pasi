@@ -6,7 +6,7 @@ import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
 import Item from './items/Item.tsx'
-import Node, { MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './items/Node.tsx'
+import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './items/Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
@@ -16,7 +16,7 @@ import GroupTab from './GroupTab.tsx'
 import ENode, { MAX_RADIUS } from './items/ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode, { DEFAULT_DISTANCE  } from './items/CNode.tsx'
+import CNode from './items/CNode.tsx'
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup.tsx'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
@@ -111,6 +111,14 @@ interface HotkeyInfo {
     descrDark?: JSX.Element
 }
 
+export const pasi = (s: string) => {
+    return (
+      <span className='pasi text-base'>
+        {s}
+      </span>
+    );
+};  
+
 const transformHotkeyDescrRump = (s1: string, s2: string, units: string, addExplanation: boolean, darkMode: boolean): JSX.Element => (
     <>
         {s1} selection {s2} by 10<span className='text-xs align-top'><i>n</i></span> {units}, where <i>n</i>&thinsp; ranges from -1 to 2 {' '}
@@ -138,6 +146,8 @@ const scaleUpHotkeyDescr = (darkMode: boolean): JSX.Element => (
 export const hotkeys: HotkeyInfo[] = [
     { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
     { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
+    { key: 'create', keys: 'space', rep: ['Space'], descr: <>Creates one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the {' '}
+        currently selected nodes. (Equivalent to clicking the {pasi('Create')} button.)</> },
     { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Add a label to each selected node.</> },
     { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection. (Tip: by copying individual members of a group, new members can be added to that group.)</> },
     { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
@@ -185,7 +195,7 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'dissolve-adding', keys: '.', rep: ['.'], descr: <>Turn on &lsquo;dissolve-adding&rsquo;. In this mode, selecting a item will add <em>all</em>{' '}
         members of its highest active group (or the item itself, if there is no such group) to the highest active group of the currently focused item.</> },
     { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete all selected items.</> },
-    { key: 'clear points', keys: 'space', rep: ['Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
+    { key: 'clear points', keys: 'shift+space', rep: ['Shift+Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
     { key: 'generate code', keys: 'enter', rep: ['Enter'], descr: <>Generate the <i>texdraw</i>&thinsp; code for the current diagram and display {' '}
         it in the text area below the canvas.</> },
     { key: 'load diagram', keys: 'mod+enter', rep: ['Ctrl+Enter'], descr: <>(Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.</> }
@@ -347,7 +357,6 @@ const depItemInfos = [
     new DepItemInfo('Dot', 'exs', exsSrc, 'A square-shaped ornament attached to a node', 1),
     new DepItemInfo('Double hook, circular', 'ins', insSrc, 'An arrow with two curved hooks, each being a segment of a circle', 2),
     new DepItemInfo('Double hook, curved', 'ent', entSrc, 'An arrow with two curved hooks (cubic)', 2),
-    new DepItemInfo('Double hook, straight', 'adj', adjSrc, 'An arrow with two straight hooks', 2),
     new DepItemInfo('Harpoon', 'inc', incSrc, 'An arrow with an asymmetric, harpoonlike tip', 2),
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
     new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
@@ -356,6 +365,7 @@ const depItemInfos = [
     new DepItemInfo('Single hook, composite', 'rst', rstSrc, 'An arrow with a single hook that is made up of a cubic curve followed by a straight line', 2),
     new DepItemInfo('Single hook, curved', 'prd', prdSrc, 'An arrow with a single curved hook (cubic)', 2),
     new DepItemInfo('Single hook, straight', 'orp', orpSrc, 'An arrow with a single straight hook', 2),
+    new DepItemInfo('Standard arrow', 'adj', adjSrc, 'An arrow with two straight hooks', 2),
 ];
 
 const depItemKeys = depItemInfos.map(dl => dl.key);
@@ -556,7 +566,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null)
     const codeRef = useRef<HTMLTextAreaElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('lbl')) 
+    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj')) 
     const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [replace, setReplace] = useState(true)
@@ -2029,6 +2039,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         { enabled: canAddENodes && !modalShown });
     useHotkeys(hotkeyMap['add contours'], addContours, 
         { enabled: canAddContours && !modalShown });
+    useHotkeys(hotkeyMap['create'], () => createDepItem(depItemIndex), 
+        { enabled: canCreateDepItem && !modalShown, preventDefault: true });
     useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')),
         { enabled: canAddOrnaments && !modalShown });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), 

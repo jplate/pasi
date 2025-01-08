@@ -1,6 +1,6 @@
 import clsx from 'clsx/lite'
 import Item, { HSL, Range } from './Item'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
+import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node.tsx'
 import ENode from './ENode.tsx'
 import CNodeGroup, { getLine } from '../CNodeGroup.tsx'
 import { Entry } from '../ItemEditor.tsx'
@@ -18,10 +18,7 @@ const CNODE_ARROW_DISTANCE_MIN = 15
 const CNODE_ARROW_DISTANCE_MAX = 40
 const CNODE_ARROW_POINTS = '6,10 5,7 15,10 5,13, 6,10'
 const CNODE_ARROW_MITER_LIMIT = 5
-const MIN_DISTANCE = -9999
-const MAX_DISTANCE = 9999
 
-export const DEFAULT_DISTANCE = 10
 
 /**
  * CNodes ('contour nodes') are members of CNodeGroups ('contour node groups'). They define the shape and beheavior of contours. Although each CNode inherits

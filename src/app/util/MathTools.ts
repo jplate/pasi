@@ -169,6 +169,16 @@ export const getBounds = (shapes: Shape[]): { minX: number, maxX: number, minY: 
         if (my < minY) minY = my;
         if (mY > maxY) maxY = mY;
     }
+    if (isNaN(minX) || isNaN(maxX) || isNaN(minY) || isNaN(maxY)) {
+        shapes.forEach((sh, i) => {
+            if('x3' in sh) {
+                console.log(`${i} (${sh.x0} ${sh.y0}) (${sh.x1}, ${sh.y1}) (${sh.x2}, ${sh.y2}) (${sh.x3}, ${sh.y3})`);
+            }
+            else {
+                console.log(`${i} (${sh.x0}, ${sh.y0}) (${sh.x1}, ${sh.y1})`);
+            }
+        });
+    }
     return { minX, maxX, minY, maxY }
 }
 

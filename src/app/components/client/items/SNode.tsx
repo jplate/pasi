@@ -1,20 +1,24 @@
 import React from 'react'
 import Item, { HSL, Range, Direction } from './Item'
-import Node, { DEFAULT_DASH, MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
+import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_DASH, MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH,
+     MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
 import ENode, { Info, Handler, ENodeCompProps } from './ENode'
-import { H } from '../MainPanel'
+import { H, MIN_TRANSLATION_LOG_INCREMENT } from '../MainPanel'
 import CNodeGroup from '../CNodeGroup'
-import { Entry } from '../ItemEditor'
-import { DashValidator, validFloat, parseInputValue } from '../EditorComponents'
-import { Shape, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo } from '../../../util/MathTools'
+import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
+import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents'
+import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools'
+
 
 export const DEFAULT_RADIUS = 5
 export const DEFAULT_GAP = .4;
 export const MIN_HIDDEN_RADIUS = 12;
 export const MAX_HIDDEN_RADIUS = 36;
+export const ROUNDING_DIGITS = 3
+
 
 /**
- * SNodes are 'state nodes': they represent states, typically relationships between other entities, by lines and arrows on the canvas.
+ * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
  * This class roughly corresponds to the Connector class of the 2007 applet.
  */
 export default abstract class SNode extends ENode {
@@ -36,13 +40,11 @@ export default abstract class SNode extends ENode {
 	protected w1 = 0; // ditto for the end of the connector
 	protected wc = 0; // ditto for the center of the connector
     protected rigidPoint = false;
-    d0: number = 0; // the distances from the involutes to the corresponding control points of the connector
-    d1: number = 0;
-    phi0: number = 0; // the connector's incidence angles relative to the baseline angle
+    d0: number = DEFAULT_DISTANCE; // the distances from the involutes to the corresponding control points of the connector
+    d1: number = DEFAULT_DISTANCE;
+    phi0: number = 0; // the connector's incidence angles (in degrees) relative to the baseline angle
     phi1: number = 0;
-    baseAngle: number = 0; // relevant if involutes[0]==involutes[1].
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
-
 
     locationDefined: boolean = false; // indicates whether this.x and this.y give the actual location or need to be updated.
     t:number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
@@ -133,15 +135,99 @@ export default abstract class SNode extends ENode {
         this.y100 += (newY - y);
         this.invalidateDepSNodeLocations();
     }
+    
+    /**
+     * This function is supposed to be called as a result of user input.
+     */
+    adjustIncidenceAngle(k: number, delta: number): void {
+        const a = getCyclicValue((k===0? this.phi0: this.phi1) + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+        if (k===0) {
+            this.phi0 = a;
+        }
+        else {
+            this.phi1 = a;
+        }
+        this.manual = true;
+        this.locationDefined = false;
+        this.invalidateDepSNodeLocations();
+    }
 
+    /**
+     * This function is supposed to be called as a result of user input.
+     */
+    adjustControlPointDistance(k: number, delta: number): void {
+        const d = round((k===0? this.d0: this.d1) + delta, ROUNDING_DIGITS);
+        if (k===0) {
+            this.d0 = d;
+        }
+        else {
+            this.d1 = d;
+        }
+        this.manual = true;
+        this.locationDefined = false;
+        this.invalidateDepSNodeLocations();
+    }
+
+    /**
+     * This function is supposed to be called as a result of user input.
+     */
+    adjustGap(k: number, delta: number): void {
+        const d = round((k===0? this.gap0: this.gap1) + delta, ROUNDING_DIGITS);
+        if (k===0) {
+            this.gap0 = d;
+        }
+        else {
+            this.gap1 = d;
+        }
+        this.locationDefined = false;
+        this.invalidateDepSNodeLocations();
+    }
+
+    /**
+     * Expected to be overridden by subclasses.
+     */
     getConnectorInfo(): Entry[] {
         return [
             {type: 'number input', key: 'conLw', text: 'Line width', width: 'medium', value: this.conLinewidth, step: 0.1},
-            {type: 'string input', key: 'conDash', text: 'Stroke pattern', width: 'long', value: this.conDashValidator.write(this.conDash)},
+            {type: 'string input', key: 'conDash', text: 'Stroke pattern', width: 'long', value: this.conDashValidator.write(this.conDash), 
+                extraBottomMargin: true
+            },
+            {type: 'number input', key: 'phi0', text: 'Angle 1', width: 'long', value: this.phi0, step: 0, 
+                min: -MAX_ROTATION_INPUT, max: MAX_ROTATION_INPUT,
+                tooltip: <>The angle (in degrees) by which a straight line from the center of the connector&rsquo;s source node to its first {' '}
+                control point would deviate from a straight line between the centers of the two nodes.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'd0', text: 'Distance 1', width: 'long', value: this.d0, step: 0,
+                tooltip: <>The distance from the connector&rsquo;s starting point to its first control point.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'gap0', text: 'Gap 1', width: 'medium', value: this.gap0, step: 0,
+                tooltip: <>The gap between the connector&rsquo;s source node and its starting point.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'phi1', text: 'Angle 2', width: 'long', value: this.phi1, step: 0, 
+                min: -MAX_ROTATION_INPUT, max: MAX_ROTATION_INPUT,
+                tooltip: <>The angle (in degrees) by which a straight line from the center of the connector&rsquo;s target node to its second {' '}
+                control point would deviate from a straight line between the centers of the two nodes.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'd1', text: 'Distance 2', width: 'long', value: this.d1, step: 0,
+                tooltip: <>The distance from the connector&rsquo;s second control point to its end point.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'number input', key: 'gap1', text: 'Gap 2', width: 'medium', value: this.gap1, step: 0,
+                tooltip: <>The gap between the connector&rsquo;s end point and its target node.</>,
+                tooltipPlacement: 'left'
+            },
+            {type: 'logIncrement', extraBottomMargin: false},
             {type: 'button', key: 'lift', text: 'Lift Constraints', disabled: !this.manual, style: 'mt-2'}
         ];
     }
 
+    /**
+     * Expected to be overridden by subclasses.
+     */
     getArrowheadInfo(): Entry[] {
         return [
             {type: 'number input', key: 'ahLw', text: 'Line width', width: 'medium', value: this.ahLinewidth, step: 0.1},
@@ -154,18 +240,19 @@ export default abstract class SNode extends ENode {
         const border = 'mt-2 pt-2 border-t border-btnborder/50';
         const borderedLabelStyle = `${labelStyle} ${border}`;
         let ahInfo = this.getArrowheadInfo();
-        if (ahInfo.length>0) {
+        if (ahInfo.length > 0) {
             ahInfo = [
                 {type: 'label', text: 'Arrowhead properties', style: borderedLabelStyle}, 
                 ...ahInfo
             ];
         }
         return [
-            {type: 'label', text: 'Line properties', style: labelStyle}, 
+            {type: 'label', text: 'Connector properties', style: labelStyle}, 
             ...this.getConnectorInfo(),
             ...ahInfo,
             {type: 'label', text: 'Node properties', style: borderedLabelStyle}, 
-            ...this.getCommonInfo(list)
+            ...this.getNodeInfo(list),
+            {type: 'label', text: '', style: 'flex-0'} // a filler, to ensure an appropriate bottom margin
         ];
     }
 
@@ -185,6 +272,82 @@ export default abstract class SNode extends ENode {
                 }, 'ENodesAndCNodeGroups']
             }
         },
+        gap0: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.gap0, 
+                    logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.gap0;
+                return [(item, array) => {
+                    if (!isNaN(d) && d!==0 && item instanceof SNode) {
+                        item.adjustGap(0, d);   
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+            }
+        },
+        phi0: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const delta = parseCyclicInputValue(e.target.value, this.phi0, logIncrement)[1]; 
+                return [(item, array) => {
+                    if(!isNaN(delta) && delta!==0 && item instanceof SNode) {
+                        item.adjustIncidenceAngle(0, delta);
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+        }},
+        d0: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.d0, 
+                    logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.d0;
+                return [(item, array) => {
+                    if (!isNaN(d) && d!==0 && item instanceof SNode) {
+                        item.adjustControlPointDistance(0, d);   
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+            }
+        },
+        gap1: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.gap1, 
+                    logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.gap1;
+                return [(item, array) => {
+                    if (!isNaN(d) && d!==0 && item instanceof SNode) {
+                        item.adjustGap(1, d);   
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+            }
+        },
+        phi1: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const delta = parseCyclicInputValue(e.target.value, this.phi1, logIncrement)[1]; 
+                return [(item, array) => {
+                    if(!isNaN(delta) && delta!==0 && item instanceof SNode) {
+                        item.adjustIncidenceAngle(1, delta);
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+        }},
+        d1: ({ e, logIncrement }: Info) => {
+            if (e) {
+                const d = parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.d1, 
+                    logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.d1;
+                return [(item, array) => {
+                    if (!isNaN(d) && d!==0 && item instanceof SNode) {
+                        item.adjustControlPointDistance(1, d);   
+                    }
+                    return array
+                }, 'ENodesAndCNodeGroups']
+            }
+        },
+        lift: ({}: Info) => [(item, array) => {
+            if (item instanceof SNode) {
+                item.manual = false;
+                this.locationDefined = false;
+                this.invalidateDepSNodeLocations();        
+            }
+            return array
+        }, 'wholeSelection']
     }
 
     commonArrowheadEditHandler: Handler = {
@@ -243,26 +406,21 @@ export default abstract class SNode extends ENode {
         const [x1, y1] = n1.getLocation();
         const [r0, r1] = this.involutes.map(n => n.radius);
         const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
-        return Math.min(MAX_HIDDEN_RADIUS, 
-            Math.max(MIN_HIDDEN_RADIUS,
-			    Math.floor((this.w0 + this.w1 + this.wc) / 2), 
-			    Math.floor((d - r0 - r1) / 3)
-            )
+        const d1 = Math.floor((this.w0 + this.w1 + this.wc) / 2);
+        const d2 = Math.floor(Math.sqrt(Math.max(0, 3 * (d - r0 - r1))));
+        const hr = Math.min(MAX_HIDDEN_RADIUS, 
+            Math.max(MIN_HIDDEN_RADIUS, d1, d2)
         );
+        //console.log(` d: ${d} d1: ${d1)}, d2: ${d2} hr: ${hr}`);
+        return hr;
 	}
 
     findBaseAngle(): number {
-        if (this.manual) {
-            return this.baseAngle;
-        }
-        else {
-            let [n0, n1] = this.involutes;
-            const [x0, y0] = n0.getLocation();
-            const [x1, y1] = n1.getLocation();
-            const a = -angle(x0, y0, x1, y1, true);
-            this.baseAngle = a;
-            return a;
-        } 
+        let [n0, n1] = this.involutes;
+        const [x0, y0] = n0.getLocation();
+        const [x1, y1] = n1.getLocation();
+        const a = angle(x0, y0, x1, y1, true);
+        return a;
     }
 
     /**
@@ -282,8 +440,8 @@ export default abstract class SNode extends ENode {
 		const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
         const discr = Math.max(0, w + r0 + r1 - d) / 2; // 'discrepancy', divided evenly among the two involutes
         const baseAngle = this.findBaseAngle();
-        let chi0 = baseAngle - Math.acos(Math.max(-0.5, (r0 - discr) / r0));
-        let chi1 = baseAngle - Math.PI + Math.acos(Math.max(-0.5, (r1 - discr) / r1));
+        let chi0 = baseAngle + Math.acos(Math.max(-0.5, (r0 - discr) / r0));
+        let chi1 = baseAngle + Math.PI - Math.acos(Math.max(-0.5, (r1 - discr) / r1));
         if(this.flexDirection==='clockwise') {
         	chi0 = 2*baseAngle - chi0;
         	chi1 = 2*baseAngle - chi1;
@@ -293,44 +451,66 @@ export default abstract class SNode extends ENode {
 
     // This needs more work; currently we're ignoring whether multiple connectors hit a node at the same spot.
     findIncidenceAngles(): [psi0: number, psi1: number] {
-        return this.findPreferredAngles();
+        const base = this.findBaseAngle();
+        if (this.manual) {
+            const phi0 = this.phi0 / 180 * Math.PI;
+            const phi1 = this.phi1 / 180 * Math.PI;
+            return [base + phi0, base + Math.PI - phi1];
+        }
+        else {
+            const [chi0, chi1] = this.findPreferredAngles();
+            const factor = 10 ** ROUNDING_DIGITS;
+            this.phi0 = round(Math.round(angleDiff(base, chi0) / Math.PI * 180 * factor) / factor, ROUNDING_DIGITS);
+            this.phi1 = round(Math.round(angleDiff(chi1, base + Math.PI) / Math.PI * 180 * factor) / factor, ROUNDING_DIGITS);
+            return [chi0, chi1];
+        }
     }
 
     getLineFor(psi0: number, cpr0: number, psi1: number, cpr1: number): CubicCurve {
         const [n0, n1] = this.involutes;
         const [x0, y0] = n0.getLocation();
         const [x1, y1] = n1.getLocation();
-        const [r0, r1] = this.involutes.map(n => n.radius);
-    
+        let [r0, r1] = this.involutes.map(n => n.radius);
+        
+        r0 += this.gap0;
+        r1 += this.gap1;
+
         return {
             x0: x0 + r0 * Math.cos(psi0), 
-            y0: y0 - r0 * Math.sin(psi0), 
+            y0: y0 + r0 * Math.sin(psi0), 
             x1: x0 + cpr0 * Math.cos(psi0), 
-            y1: y0 - cpr0 * Math.sin(psi0), 
+            y1: y0 + cpr0 * Math.sin(psi0), 
             x2: x1 + cpr1 * Math.cos(psi1), 
-            y2: y1 - cpr1 * Math.sin(psi1), 
+            y2: y1 + cpr1 * Math.sin(psi1), 
             x3: x1 + r1 * Math.cos(psi1), 
-            y3: y1 - r1 * Math.sin(psi1)
+            y3: y1 + r1 * Math.sin(psi1)
         }
     }
 
     getLine(): CubicCurve {
         const [r0, r1] = this.involutes.map(n => n.radius);
-        const w0 = this.w0 + this.gap0;
-        const w1 = this.w1 + this.gap1;
-
         const [psi0, psi1] = this.findIncidenceAngles();
         const baseAngle = this.findBaseAngle();
 
-        let cpr0 = r0 + w0;
-        let cpr1 = r1 + w1;
-        const xi0 = Math.min(angleDiff(baseAngle, psi0), angleDiff(psi0, baseAngle));
-        const xi1 = Math.min(angleDiff(baseAngle + Math.PI, psi1), angleDiff(psi1, baseAngle + Math.PI));
-        if (Math.abs(xi0) + Math.abs(xi1) > 0.1) {
-            const co0 = Math.min(1, 1 + Math.cos(xi0));
-            const co1 = Math.min(1, 1 + Math.cos(xi1));
-            cpr0 += 0.3 * r0 * xi0 * xi0 / co0;
-            cpr1 += 0.3 * r1 * xi1 * xi0 / co1;
+        let cpr0, cpr1;
+        if (this.manual) {
+            cpr0 = r0 + this.gap0 + this.d0;
+            cpr1 = r1 + this.gap1 + this.d1;
+        }
+        else {
+            cpr0 = r0 + this.w0 + this.gap0;
+            cpr1 = r1 + this.w1 + this.gap1;
+            const xi0 = Math.min(angleDiff(baseAngle, psi0), angleDiff(psi0, baseAngle));
+            const xi1 = Math.min(angleDiff(baseAngle + Math.PI, psi1), angleDiff(psi1, baseAngle + Math.PI));
+            if (Math.abs(xi0) + Math.abs(xi1) > 0.1) {
+                const co0 = Math.min(1, 1 + Math.cos(xi0)); // These factors are needed to reduce the cprs when the exit vectors are pointing towards each other.
+                const co1 = Math.min(1, 1 + Math.cos(xi1));
+                cpr0 += 0.3 * r0 * xi0 * xi0 / co0;
+                cpr1 += 0.3 * r1 * xi1 * xi0 / co1;
+            }
+            const factor = 10 ** ROUNDING_DIGITS;
+            this.d0 = round(Math.round((cpr0 - this.gap0 - r0) * factor) / factor, ROUNDING_DIGITS);
+            this.d1 = round(Math.round((cpr1 - this.gap1 - r1) * factor) / factor, ROUNDING_DIGITS);
         }
         return this.getLineFor(psi0, cpr0, psi1, cpr1);    
     }
@@ -346,9 +526,9 @@ export default abstract class SNode extends ENode {
         const link = this.getLine();
         const [psi0, psi1] = this.findIncidenceAngles();
         const x0new = x0 + r0 * Math.cos(psi0);
-        const y0new = y0 - r0 * Math.sin(psi0);
+        const y0new = y0 + r0 * Math.sin(psi0);
         const x1new = x1 + r1 * Math.cos(psi1);
-        const y1new = y1 - r1 * Math.sin(psi1);
+        const y1new = y1 + r1 * Math.sin(psi1);
         return {
             x0: x0new, 
             y0: y0new, 
@@ -361,25 +541,27 @@ export default abstract class SNode extends ENode {
         };
 	}
 
+    /**
+     * This is expected to be overridden by subclasses (like Transition) that have a connector that does not run through the arrowhead.
+     */
     getAdjustedLine() {
-        const [r0, r1] = this.involutes.map(n => n.radius);
-        return this.getAdjustedLineFor(r0 + this.gap0, r1 + this.gap1);
+        return this.getLine();
     }
 
     /**
      * This is expected to be overridden by subclasses that require a more complex connector.
      */
-    getLineShapes(): Shape[] {
+    getConnectorShapes(): Shape[] {
         return [this.getAdjustedLine()];
     }
 
-    getConnector(id: string, yOffset: number, primaryColor: HSL): React.ReactNode {
+    getConnectorComponent(id: string, yOffset: number, primaryColor: HSL): React.ReactNode {
         if (this.involutes.length !== 2) return null;
 
-        const lineShapes = this.getLineShapes();
-        const arrowheadShapes = this.getArrowheadShapes();
+        const conShapes = this.getConnectorShapes();
+        const ahShapes = this.getArrowheadShapes();
 
-        const { minX, maxX, minY, maxY } = getBounds([...lineShapes, ...arrowheadShapes]);
+        const { minX, maxX, minY, maxY } = getBounds([...conShapes, ...ahShapes]);
         const width = maxX - minX;
         const height = maxY - minY;
         if (isNaN(width) || isNaN(height)) {
@@ -395,8 +577,8 @@ export default abstract class SNode extends ENode {
         
         const xTransform = (x: number) => x - minX + lwc;
         const yTransform = (y: number) => height - y + minY + lwc;
-        const linePath = getPath(lineShapes, xTransform, yTransform);
-        const arrowheadPath = getPath(arrowheadShapes, xTransform, yTransform);
+        const conPath = getPath(conShapes, xTransform, yTransform);
+        const ahPath = getPath(ahShapes, xTransform, yTransform);
 
         return (
             <div id={id}
@@ -407,14 +589,14 @@ export default abstract class SNode extends ENode {
                     pointerEvents: 'none'            
                 }}>
                 <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns="http://www.w3.org/2000/svg">
-                    <path d={linePath}  
+                    <path d={conPath}  
                         fill='none'
                         stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                         strokeWidth={conLw}
                         strokeDasharray={this.conDash.join(' ')} 
                         strokeLinecap={LINECAP_STYLE}
                         strokeLinejoin={LINEJOIN_STYLE} />
-                    <path d={arrowheadPath}  
+                    <path d={ahPath}  
                         fill='none'
                         stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                         strokeWidth={ahLw}
@@ -426,18 +608,19 @@ export default abstract class SNode extends ENode {
         );    
     }
 
-    override getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, 
+    override getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, 
+        titleColor, focusItem, selection, preselection, 
         onMouseDown, onMouseEnter, onMouseLeave }: ENodeCompProps
     ) {
         return (
             <React.Fragment key={id}>
                 {super.getComponent({
-                    id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, 
-                    onMouseDown, onMouseEnter, onMouseLeave, 
+                    id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
+                    selection, preselection, onMouseDown, onMouseEnter, onMouseLeave, 
                     hiddenByDefault: true, 
                     radiusWhenHidden: this.getHiddenRadius() 
                 })}
-                {this.getConnector(`${id}con`, yOffset, primaryColor)}
+                {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
             </React.Fragment>
         );
     }

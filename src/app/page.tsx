@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import React, { useState, useEffect, useCallback } from "react";
 import clsx from 'clsx/lite';
-import { hotkeys } from './components/client/MainPanel'
+import { pasi, hotkeys } from './components/client/MainPanel'
 
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {ssr: false,});
@@ -47,13 +47,6 @@ const LogoSpan: React.FC = () => {
       </span>
   );
 };
-
-
-interface PasiProps {
-  children: React.ReactNode
-}
-
-
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
@@ -106,14 +99,6 @@ export default function Home() {
       </span>
     );
   }, [isDarkMode, isMac]);
-
-  const pasi = useCallback((s: string) => {
-    return (
-      <span className='pasi text-base'>
-        {s}
-      </span>
-    );
-  }, []);
 
   interface SectProps {
     id?: string

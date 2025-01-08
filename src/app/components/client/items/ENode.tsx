@@ -72,7 +72,7 @@ export default class ENode extends Node {
         this.radius = this.radius100 = this.getDefaultRadius();
     }
 
-    getCommonInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    getNodeInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'number input', key: 'radius', text: 'Radius', width: 'long', value: this.radius, step: 1},
             {type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: this.linewidth, step: 0.1},
@@ -90,7 +90,7 @@ export default class ENode extends Node {
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
             {type: 'logIncrement', extraBottomMargin: true},
-            ...this.getCommonInfo(list)
+            ...this.getNodeInfo(list)
         ]
     }
 

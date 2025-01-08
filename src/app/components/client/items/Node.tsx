@@ -7,6 +7,9 @@ export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
 export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 export const MAX_NUMBER_OF_ORNAMENTS = 500;
+export const MIN_DISTANCE = -9999; // minimal specifiable distance 
+export const MAX_DISTANCE = 9999; // maximal specifiable distance 
+export const DEFAULT_DISTANCE = 10; // default distance (to a control point of a cubic curve)
 
 export const DEFAULT_LINEWIDTH = 1;
 export const DEFAULT_DASH = [];
