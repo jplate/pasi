@@ -1,8 +1,8 @@
 import React from 'react'
 import clsx from 'clsx/lite'
-import { Grid } from './MainPanel.tsx'
-import { BasicColoredButton } from './Button.tsx'
-import { LabelField, InputField, CheckBoxField } from './EditorComponents.tsx'
+import { Grid } from './MainPanel'
+import { BasicColoredButton } from './Button'
+import { LabelField, InputField, CheckBoxField } from './EditorComponents'
 
 
 interface CanvasEditorProps {
