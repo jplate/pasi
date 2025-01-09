@@ -169,6 +169,7 @@ export const getBounds = (shapes: Shape[]): { minX: number, maxX: number, minY: 
         if (my < minY) minY = my;
         if (mY > maxY) maxY = mY;
     }
+    /* // Uncomment for debugging
     if (isNaN(minX) || isNaN(maxX) || isNaN(minY) || isNaN(maxY)) {
         shapes.forEach((sh, i) => {
             if('x3' in sh) {
@@ -179,6 +180,7 @@ export const getBounds = (shapes: Shape[]): { minX: number, maxX: number, minY: 
             }
         });
     }
+    */
     return { minX, maxX, minY, maxY }
 }
 

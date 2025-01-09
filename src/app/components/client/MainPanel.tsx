@@ -1320,6 +1320,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const sorry = useCallback(() => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}, []);
 
+    const equalArrays = (ar0: any[], ar1: any[]) => {
+        const set0 = new Set(ar0);
+        const set1 = new Set(ar1);
+        return set0.size===set1.size && set0.isSubsetOf(set1);
+    }
+
     /** 
      * OnClick handler for the 'Create' button.
      */
@@ -1327,42 +1333,63 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         if (selectedNodes.length > 0 && index >= 0 && index < depItemKeys.length) {
             let newSelection: Item[] = [];
             let counter = eNodeCounter;  
-            let nodes: SNode[] = [];               
+            let snodes: SNode[] = [];               
             const key = depItemKeys[index];
-            switch (key) {
-                case 'adj': 
-                    if (selectedNodes.length < 2) return;   
-                    nodes = new Array(selectedNodes.length - 1).fill(null).map(e => new Adjunction(counter++));
-                    for (let i = 0; i<nodes.length; i++) {
-                        nodes[i].init([selectedNodes[i], selectedNodes[i+1]]);
+            const minNodes = depItemInfos[index].min;
+            if (selectedNodes.length >= minNodes) {   
+
+                let relata = selectedNodes;
+                if (minNodes > 1) { 
+                    // If the selected nodes contain all members of a CNodeGroup, the user has likely intended to create only one connector.
+                    let n0 = selectedNodes[0];
+                    let slice = selectedNodes.slice(1);
+                    if (n0 instanceof CNode) { 
+                        const ng0 = n0.group!.members;
+                        if (equalArrays(ng0, selectedNodes.slice(0, ng0.length))) {
+                            n0 = selectedNodes[ng0.length - 1];
+                            slice = selectedNodes.slice(ng0.length);
+                        }
                     }
-                    newSelection = nodes;
-                    break;
-                case 'lbl':         
-                    newSelection = selectedNodes.map(node => {
-                        const label = new Label(node);
-                        label.text = 'a';
-                        label.updateLines(unitscale, displayFontFactor);
-                        return label;
-                    });
-                    break;
-                default: 
-                    sorry();
-                    return;
+                    const n1 = slice[0];
+                    if (slice.length===1 || (n1 instanceof CNode && equalArrays(slice, n1.group!.members))) {
+                        relata = [n0, n1];
+                    }
+                }
+
+                switch (key) {
+                    case 'adj': 
+                        snodes = new Array(relata.length - 1).fill(null).map(e => new Adjunction(counter++));
+                        for (let i = 0; i<snodes.length; i++) {
+                            snodes[i].init([relata[i], relata[i+1]]);
+                        }
+                        newSelection = snodes;
+                        break;
+                    case 'lbl':         
+                        newSelection = selectedNodes.map(node => {
+                            const label = new Label(node);
+                            label.text = 'a';
+                            label.updateLines(unitscale, displayFontFactor);
+                            return label;
+                        });
+                        break;
+                    default: 
+                        sorry();
+                        return;
+                }
+                const newFocus = newSelection.at(-1);
+                setPoints([]);
+                setList(prev => [...prev]); // This will update allItems.
+                setSelection(prev => newSelection);
+                if (newFocus) {
+                    setFocusItem(newFocus);
+                    setOrigin(true, [], newFocus, newSelection);
+                }
+                if (counter!==eNodeCounter) {
+                    setENodeCounter(counter);
+                    setList(prev => [...prev, ...snodes]);
+                }
+                // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
             }
-            const newFocus = newSelection.at(-1);
-            setPoints([]);
-            setList(prev => [...prev]); // This will update allItems.
-            setSelection(prev => newSelection);
-            if (newFocus) {
-                setFocusItem(newFocus);
-                setOrigin(true, [], newFocus, newSelection);
-            }
-            if (counter!==eNodeCounter) {
-                setENodeCounter(counter);
-                setList(prev => [...prev, ...nodes]);
-            }
-            // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
         }
     }, [eNodeCounter, selectedNodes, unitscale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
@@ -2136,7 +2163,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
 
-    console.log(clsx(`Rendering... listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
+    console.log(clsx(`Rendering... ${selectedNodes.map(node => node.id)} listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
         `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`,
         focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.id).join()}]`));
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);

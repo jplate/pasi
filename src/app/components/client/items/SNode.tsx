@@ -5,6 +5,7 @@ import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_DASH, MAX_D
 import ENode, { Info, Handler, ENodeCompProps } from './ENode'
 import { H, MIN_TRANSLATION_LOG_INCREMENT } from '../MainPanel'
 import CNodeGroup from '../CNodeGroup'
+import CNode from './CNode'
 import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
 import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents'
 import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools'
@@ -14,6 +15,7 @@ export const DEFAULT_RADIUS = 5
 export const DEFAULT_GAP = .4;
 export const MIN_HIDDEN_RADIUS = 12;
 export const MAX_HIDDEN_RADIUS = 36;
+export const MIN_EFFECTIVE_RADIUS = 8; // used for calculating the distances of the control points of connectors to the centers of the corresponding nodes
 export const ROUNDING_DIGITS = 3
 
 
@@ -45,6 +47,7 @@ export default abstract class SNode extends ENode {
     phi0: number = 0; // the connector's incidence angles (in degrees) relative to the baseline angle
     phi1: number = 0;
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
+    closest = false; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
 
     locationDefined: boolean = false; // indicates whether this.x and this.y give the actual location or need to be updated.
     t:number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
@@ -114,6 +117,44 @@ export default abstract class SNode extends ENode {
             return [this.x, this.y];
         }
         else {
+            if (this.closest) { // Determine the relevant closest node(s) and make it/them the new involute(s).
+                const [n0, n1] = this.involutes;
+                if (n0 instanceof CNode) {
+                    const cng0 = n0.group as CNodeGroup;
+                    if (n1 instanceof CNode) {
+                        let [cn0, cn1] = [n0, n1];
+                        let dmin = Infinity;
+                        const cng1 = n1.group as CNodeGroup;
+                        for (let node of cng0.members) {
+                            const [x0, y0] = [node.x, node.y];
+                            const cn = cng1.getClosestNode(node);
+                            if (cn) {
+                                const [x1, y1] = [cn.x, cn.y];
+                                const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
+                                if (d < dmin) {
+                                    dmin = d;
+                                    cn0 = node;
+                                    cn1 = cn;
+                                }
+                            }
+                        }
+                        this.involutes = [cn0, cn1];
+                    }
+                    else {
+                        const cn0 = cng0.getClosestNode(n1);
+                        if (cn0) {
+                            this.involutes = [cn0, n1];
+                        }
+                    }
+                }
+                else if (n1 instanceof CNode) {
+                    const cng1 = n1.group as CNodeGroup;
+                    const cn1 = cng1.getClosestNode(n0);
+                    if (cn1) {
+                        this.involutes = [n0, cn1];
+                    }
+                }
+            }
             const line = this.getLine();
             const loc =  cubicBezier(line, this.t);
             [this.x, this.y] = loc;
@@ -187,11 +228,37 @@ export default abstract class SNode extends ENode {
      * Expected to be overridden by subclasses.
      */
     getConnectorInfo(): Entry[] {
+        const [n0, n1] = this.involutes;
+        let checkBoxInfo: Entry[] = [];
+        let tooltipExtension: React.ReactNode = '';
+        if (n0 instanceof CNode || n1 instanceof CNode) {
+            if (n0 instanceof CNode) {
+                if (n1 instanceof CNode) {
+                    tooltipExtension = <>the connector&rsquo;s end points switch to whichever nodes of the corresponding contour node groups {' '}
+                        are closest together.</>;
+                }
+                else {
+                    tooltipExtension = <>the connector&rsquo;s starting point switches to whichever node of the source node&rsquo;s contour node {' '}
+                        group is closest to the target node.</>;
+                }
+            }
+            else {
+                tooltipExtension = <>the connector&rsquo;s end point switches to whichever node of the target node&rsquo;s contour node group {' '}
+                    is closest to the source node.</>;
+            }
+            checkBoxInfo =  [
+                {type: 'checkbox', key: 'closest', text: 'Switch to closest contour node', value: this.closest, extraBottomMargin: true,
+                    tooltip: <>When either of the two connected nodes is moved, {tooltipExtension}</>,
+                    tooltipPlacement: 'left'
+                }
+            ];
+        }
         return [
             {type: 'number input', key: 'conLw', text: 'Line width', width: 'medium', value: this.conLinewidth, step: 0.1},
             {type: 'string input', key: 'conDash', text: 'Stroke pattern', width: 'long', value: this.conDashValidator.write(this.conDash), 
                 extraBottomMargin: true
             },
+            ...checkBoxInfo,
             {type: 'number input', key: 'phi0', text: 'Angle 1', width: 'long', value: this.phi0, step: 0, 
                 min: -MAX_ROTATION_INPUT, max: MAX_ROTATION_INPUT,
                 tooltip: <>The angle (in degrees) by which a straight line from the center of the connector&rsquo;s source node to its first {' '}
@@ -236,8 +303,8 @@ export default abstract class SNode extends ENode {
     }
 
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
-        const labelStyle = 'flex-0 mb-1';
-        const border = 'mt-2 pt-2 border-t border-btnborder/50';
+        const labelStyle = 'flex-0 mb-1 pb-4 tracking-wide';
+        const border = 'mt-4 pt-3 border-t border-btnborder/50';
         const borderedLabelStyle = `${labelStyle} ${border}`;
         let ahInfo = this.getArrowheadInfo();
         if (ahInfo.length > 0) {
@@ -261,7 +328,7 @@ export default abstract class SNode extends ENode {
             if (e) return [(item, array) => {
                 if (item instanceof SNode) item.setConnectorLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                 return array
-            }, 'ENodesAndCNodeGroups']
+            }, 'ENodesAndCNodeGroups'];
         },
         conDash: ({ e }: Info) => {
             if (e) {
@@ -269,8 +336,19 @@ export default abstract class SNode extends ENode {
                 return [(item, array) => {
                     if (item instanceof SNode) item.setConnectorDash(dash);                    
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
+        },
+        closest: ({}: Info) => {
+            const closest = !this.closest;
+            return [(item, array) => {
+                if (item instanceof SNode) {
+                    item.closest = closest;
+                    item.locationDefined = false;
+                    item.invalidateDepSNodeLocations();
+                }
+                return array;
+            }, 'ENodesAndCNodeGroups'];
         },
         gap0: ({ e, logIncrement }: Info) => {
             if (e) {
@@ -281,7 +359,7 @@ export default abstract class SNode extends ENode {
                         item.adjustGap(0, d);   
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
         },
         phi0: ({ e, logIncrement }: Info) => {
@@ -292,7 +370,7 @@ export default abstract class SNode extends ENode {
                         item.adjustIncidenceAngle(0, delta);
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
         }},
         d0: ({ e, logIncrement }: Info) => {
             if (e) {
@@ -303,7 +381,7 @@ export default abstract class SNode extends ENode {
                         item.adjustControlPointDistance(0, d);   
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
         },
         gap1: ({ e, logIncrement }: Info) => {
@@ -315,7 +393,7 @@ export default abstract class SNode extends ENode {
                         item.adjustGap(1, d);   
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
         },
         phi1: ({ e, logIncrement }: Info) => {
@@ -326,7 +404,7 @@ export default abstract class SNode extends ENode {
                         item.adjustIncidenceAngle(1, delta);
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
         }},
         d1: ({ e, logIncrement }: Info) => {
             if (e) {
@@ -337,7 +415,7 @@ export default abstract class SNode extends ENode {
                         item.adjustControlPointDistance(1, d);   
                     }
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
         },
         lift: ({}: Info) => [(item, array) => {
@@ -346,7 +424,7 @@ export default abstract class SNode extends ENode {
                 this.locationDefined = false;
                 this.invalidateDepSNodeLocations();        
             }
-            return array
+            return array;
         }, 'wholeSelection']
     }
 
@@ -355,7 +433,7 @@ export default abstract class SNode extends ENode {
             if (e) return [(item, array) => {
                 if (item instanceof SNode) item.setArrowheadLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0)); 
                 return array
-            }, 'ENodesAndCNodeGroups']
+            }, 'ENodesAndCNodeGroups'];
         },
         ahDash: ({ e }: Info) => {
             if (e) {
@@ -363,7 +441,7 @@ export default abstract class SNode extends ENode {
                 return [(item, array) => {
                     if (item instanceof SNode) item.setArrowheadDash(dash);                    
                     return array
-                }, 'ENodesAndCNodeGroups']
+                }, 'ENodesAndCNodeGroups'];
             }
         },
     }
@@ -488,7 +566,7 @@ export default abstract class SNode extends ENode {
     }
 
     getLine(): CubicCurve {
-        const [r0, r1] = this.involutes.map(n => n.radius);
+        const [r0, r1] = this.involutes.map(n => Math.max(MIN_EFFECTIVE_RADIUS, n.radius));
         const [psi0, psi1] = this.findIncidenceAngles();
         const baseAngle = this.findBaseAngle();
 
@@ -506,7 +584,7 @@ export default abstract class SNode extends ENode {
                 const co0 = Math.min(1, 1 + Math.cos(xi0)); // These factors are needed to reduce the cprs when the exit vectors are pointing towards each other.
                 const co1 = Math.min(1, 1 + Math.cos(xi1));
                 cpr0 += 0.3 * r0 * xi0 * xi0 / co0;
-                cpr1 += 0.3 * r1 * xi1 * xi0 / co1;
+                cpr1 += 0.3 * r1 * xi1 * xi1 / co1;
             }
             const factor = 10 ** ROUNDING_DIGITS;
             this.d0 = round(Math.round((cpr0 - this.gap0 - r0) * factor) / factor, ROUNDING_DIGITS);

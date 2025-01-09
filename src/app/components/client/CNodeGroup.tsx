@@ -148,6 +148,24 @@ export default class CNodeGroup implements Group<CNode> {
     }
 
     /**
+     * Returns the member node that is closest to the supplied reference node.
+     */
+    getClosestNode(ref: Node): CNode | undefined {
+        const [x0, y0] = ref.getLocation();
+        let dmin = Infinity;
+        let closest;
+        for (let node of this.members) {
+            const [x1, y1] = node.getLocation();
+            const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
+            if (d < dmin) {
+                dmin = d;
+                closest = node;
+            }
+        }
+        return closest;
+    }
+
+    /**
      * Returns an array [w, h], with w and h being the width and height of the 'center div' for this group. The center div acts in part as an
      * alternative handle by which the group's nodes can be selected and moved around the canvas.
      */
