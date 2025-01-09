@@ -1323,7 +1323,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const equalArrays = (ar0: any[], ar1: any[]) => {
         const set0 = new Set(ar0);
         const set1 = new Set(ar1);
-        return set0.size===set1.size && set0.isSubsetOf(set1);
+        return set0.size===set1.size && ar0.every(el => set1.has(el));
     }
 
     /** 
