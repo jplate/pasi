@@ -3,10 +3,59 @@ import clsx from 'clsx/lite'
 import { Placement } from 'tippy.js'
 import { BasicColoredButton } from './Button.tsx'
 import { CheckBoxField, MenuField, GlossField, InputField, LabelField, Textarea, Width, validInt } from './EditorComponents.tsx'
-import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from './MainPanel'
+import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from '../../Constants'
+import Item from './items/Item'
+import ENode from './items/ENode'
+import CNode from './items/CNode'
+import CNodeGroup from './CNodeGroup'
 
 export const MIN_ROTATION = -180
 export const MAX_ROTATION_INPUT = 9999
+
+
+/**
+ * Returns a function that moves the ENodes and CNodeGroups in the array that is supplied to that function up or down in that same array.
+ * To be called by implementations of Item.handleEditing().
+ */
+export const getRankMover = (val: string, selection: Item[]) => (item: Item, array: (ENode | CNodeGroup)[]) => {                        
+    const n = array.length;
+    const selectedListMembers = selection.reduce((acc: (ENode | CNodeGroup)[], it) => 
+        it instanceof ENode? [...acc, it]:
+        it instanceof CNode? [...acc, it.group as CNodeGroup]:
+        acc, 
+    []).filter((it, i, arr) => i===arr.indexOf(it));
+    const currentPositions: [ENode | CNodeGroup, number][] = selectedListMembers.map(m => [m, array.indexOf(m)]);
+    const currentPosMap = new Map<ENode | CNodeGroup, number>(currentPositions);
+    const focusPos = item instanceof ENode? currentPosMap.get(item): item instanceof CNode? currentPosMap.get(item.group as CNodeGroup): null;
+    let result = array;
+    if (typeof focusPos === 'number') {
+        const newPos = parseInt(val);
+        let incr = 0;
+        if(newPos > focusPos && currentPositions.every(([, pos]) => pos + 1 < n)) { 
+            // move the item up in the Z-order (i.e., towards the end of the array), but only by one
+            incr = 1;
+        } 
+        else if(newPos < focusPos && currentPositions.every(([, pos]) => pos > 0)) { 
+            // move the item down in the Z-order, but only by one
+            incr = -1;
+        }
+        if (incr!==0) {
+            const newPosMap = new Map<number, ENode | CNodeGroup>(currentPositions.map(([it, pos]) => [pos + incr, it]));
+            const unselectedListMembers = array.filter(it => !currentPosMap.has(it));
+            result = new Array<ENode | CNodeGroup>(n);
+            for (let i = 0, j = 0; i < n; i++) {
+                if (newPosMap.has(i)) {
+                    const it = newPosMap.get(i);
+                    if (it) result[i] = it;
+                }
+                else {
+                    result[i] = unselectedListMembers[j++];
+                }                                    
+            }
+        }
+    }
+    return result
+}
 
 
 type Type = 'label' | 'gloss' | 'checkbox' | 'number input' | 'string input' | 'button' | 'logIncrement' | 'textarea' | 'menu';

@@ -2,13 +2,13 @@ import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
 import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
-import { Entry } from '../ItemEditor'
-import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, getRankMover } from '../MainPanel'
+import { Entry, getRankMover } from '../ItemEditor'
+import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from '../../../Constants'
 import { validFloat, parseInputValue, DashValidator } from '../EditorComponents'
 import CNodeGroup from '../CNodeGroup'
 import * as Texdraw from '../../../codec/Texdraw'
 import {  ParseError, makeParseError } from '../../../codec/Texdraw'
-import { encode, decode } from '../../../codec/Codec1'
+import { encode, decode } from '../../../codec/General'
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = 2*Math.PI/100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -40,13 +40,25 @@ export type Handler = {
  */
 export default class ENode extends Node {
 
-
     protected dashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
-
 
     constructor(i: number, x: number, y: number) {
         super(`E${i}`, x, y);
         this.radius = this.radius100 = DEFAULT_RADIUS;
+    }
+
+    /**
+     * Expected to be overridden.
+     */
+    isHidden(_selected: boolean): boolean {
+        return false;
+    }
+
+    /**
+     * Expected to be overridden.
+     */
+    getHiddenRadius(): number {
+        return this.getDefaultRadius();
     }
 
     getSelectedPositions = (selection: Item[]) => {
@@ -63,6 +75,9 @@ export default class ENode extends Node {
         return result;
     }
 
+    /**
+     * Expected to be overridden.
+     */
     getDefaultRadius() {
         return DEFAULT_RADIUS;
     }
@@ -99,7 +114,7 @@ export default class ENode extends Node {
             if (e) return [(item, array) => {
                 if(item instanceof ENode) {
                     item.radius = item.radius100 = validFloat(e.target.value, 0, MAX_RADIUS, 0); 
-                    item.invalidateDepSNodeLocations();
+                    item.invalidateDepNodeLocations();
                 }
                 return array
             }, 'wholeSelection']
@@ -176,17 +191,21 @@ export default class ENode extends Node {
         return this.editHandler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
     }
 
-    override getInfoString() {
-        return (this.linewidth>0 || this.shading>0)? '': [this.radius, this.x, this.y].map(encode).join(' ');
+    override getInfoString(): string {
+        const lineDrawn = this.linewidth > 0; // This deviates from getTexdrawCode() below. But in SNode this will be overridden anyhow, since there
+            // we won't have to include the information about the coordinates.
+        return (lineDrawn || this.shading>0)? '': [this.radius, this.x, this.y].map(encode).join(' ');
     }
 
-    override getTexdrawCode() {
+    override getTexdrawCode(): string {
+        const lineDrawn = !this.isHidden(false) && this.linewidth > 0; // For the purposes of generating the texdraw code, we're assuming that this 
+            // ENode is not selected, even if this means that it will not be represented in the code. (This only affects SNodes.)
 		return [
             super.getTexdrawCode(),
-            (this.shading>0 || this.linewidth>0? Texdraw.move(this.x, this.y): ''),
+            (this.shading>0 || lineDrawn? Texdraw.move(this.x, this.y): ''),
             (this.shading>0? Texdraw.fcirc(this.radius, this.shading): ''),
             (this.dash.length>0? Texdraw.lpatt(this.dash): ''),
-            (this.linewidth>0? Texdraw.circ(this.radius): ''),
+            (lineDrawn? Texdraw.circ(this.radius): ''),
             (this.dash.length>0? Texdraw.lpatt([]): '')
         ].join('');	        
     }
@@ -294,16 +313,16 @@ export default class ENode extends Node {
     }
 
 
-    getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, selection, preselection, onMouseDown, onMouseEnter,
-            onMouseLeave, hiddenByDefault=false, radiusWhenHidden=1 }: ENodeCompProps
-    ) {    
+    getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
+            selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
+    }: ENodeCompProps) {    
         const [x, y] = this.getLocation();
         const linewidth = this.linewidth;
         const shading = this.shading;
         const selectedPositions = this.getSelectedPositions(selection);
         // The parameter hiddenByDefault will be true if this method is called from the SNode override.
-        const hidden = hiddenByDefault && selectedPositions.length===0 && this.ornaments.length===0 && this.dependentSNodes.length===0;
-        const radius = hidden? radiusWhenHidden: this.radius;
+        const hidden = this.isHidden(selectedPositions.length > 0);
+        const radius = hidden? this.getHiddenRadius(): this.radius;
     
         const width = radius * 2;
         const height = radius * 2;
@@ -385,6 +404,4 @@ export interface ENodeCompProps {
     onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    hiddenByDefault?: boolean
-    radiusWhenHidden?: number
 }

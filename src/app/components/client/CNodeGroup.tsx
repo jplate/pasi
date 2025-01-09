@@ -1,16 +1,16 @@
 import React, { useRef } from 'react'
 //import assert from 'assert'
-import Item, { HSL } from './items/Item.tsx'
-import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './items/Node.tsx'
+import Item, { HSL } from './items/Item'
+import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './items/Node'
 import Group from './Group.tsx'
-import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from './MainPanel.tsx'
+import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from '../../Constants'
 import { DashValidator } from './EditorComponents.tsx'
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
 import { MIN_ROTATION } from './ItemEditor'
-import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools.ts'
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools'
 import * as Texdraw from '../../codec/Texdraw.tsx'
-import { ParseError, makeParseError } from '../../codec/Texdraw.tsx'
-import { encode, decode } from '../../codec/Codec1.tsx'
+import { ParseError, makeParseError } from '../../codec/Texdraw'
+import { encode, decode } from '../../codec/General'
 
 const STANDARD_CONTOUR_HEIGHT = 80
 const STANDARD_CONTOUR_WIDTH = 120
@@ -26,7 +26,6 @@ const CONTOUR_CENTER_DIV_MARGIN = 4
 export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
 export const MAX_CNODEGROUP_SIZE = 500
-
 
 
 export default class CNodeGroup implements Group<CNode> {
@@ -328,7 +327,7 @@ export default class CNodeGroup implements Group<CNode> {
             // We apply extra rounding because the division by factor can yield numbers that differ from the intended values by a tiny amount.
             m.x = m.x100 = round(Math.round(m.x * factor) / factor, ROUNDING_DIGITS);
             m.y = m.y100 = round(Math.round(m.y * factor) / factor, ROUNDING_DIGITS);
-            m.invalidateDepSNodeLocations();
+            m.invalidateDepNodeLocations();
         });
     }
 
@@ -345,7 +344,7 @@ export default class CNodeGroup implements Group<CNode> {
             const a = angle(c.x, c.y, m.x, m.y, true);
             m.x = m.x100 = round(Math.round((c.x + Math.cos(a) * d) * factor) / factor, ROUNDING_DIGITS);
             m.y = m.y100 = round(Math.round((c.y + Math.sin(a) * d) * factor) / factor, ROUNDING_DIGITS);
-            m.invalidateDepSNodeLocations();
+            m.invalidateDepNodeLocations();
         });
     }
 

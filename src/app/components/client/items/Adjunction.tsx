@@ -1,10 +1,10 @@
-import SNode, { ROUNDING_DIGITS } from './SNode'
-import Node, { MIN_DISTANCE, MAX_DISTANCE } from './Node'
-import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
+import { MIN_DISTANCE, MAX_DISTANCE } from './Node'
 import { Info, Handler } from './ENode'
+import SNode from './SNode'
+import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
 import { Shape, angle, travel, getCyclicValue } from '../../../util/MathTools'
 import { parseInputValue, parseCyclicInputValue } from '../EditorComponents'
-import { MIN_TRANSLATION_LOG_INCREMENT } from '../MainPanel'
+import { MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants'
 
 
 export const DEFAULT_W0 = 8;

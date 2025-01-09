@@ -2,12 +2,7 @@ import React, { useState } from 'react'
 import { InputField, CheckBoxField, parseInputValue, parseCyclicInputValue, validInt } from './EditorComponents.tsx'
 import { BasicColoredButton } from './Button.tsx'
 import { MAX_SCALING, MIN_ROTATION, HotkeyComp } from './MainPanel'
-
-export const MIN_ROTATION_LOG_INCREMENT = -3
-export const MAX_ROTATION_LOG_INCREMENT = 2
-export const MIN_SCALING_LOG_INCREMENT = -3
-export const MAX_SCALING_LOG_INCREMENT = 3
-const MAX_ROTATION_INPUT = 360 + 10 ** MAX_ROTATION_LOG_INCREMENT
+import { MIN_ROTATION_LOG_INCREMENT, MAX_ROTATION_LOG_INCREMENT, MIN_SCALING_LOG_INCREMENT, MAX_SCALING_LOG_INCREMENT, MAX_ROTATION_INPUT } from '../../Constants'
 
 interface TransformTabProps {
     rotation: number

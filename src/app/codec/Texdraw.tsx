@@ -1,5 +1,17 @@
 import { round } from '../util/MathTools'
+import { Shape as MathShape } from '../util/MathTools'
+import { equalArrays } from '../util/Misc'
 import BidirectionalMap from '../util/BidirectionalMap'
+
+export const ROUNDING_DIGITS = 4;
+const PRECISION = 10**ROUNDING_DIGITS; 
+export const TOP = 'T';
+export const LEFT = 'L';
+export const RIGHT = 'R';
+export const BOTTOM = 'B';
+export const CENTER = 'C';
+
+export type Position = typeof TOP | typeof LEFT | typeof RIGHT | typeof BOTTOM | typeof CENTER;
 
 export const fontSizes = new BidirectionalMap([
     ['tiny', 8],
@@ -14,10 +26,6 @@ export const fontSizes = new BidirectionalMap([
     ['Huge', 40]
 ]);
 export const NORMAL_SIZE_STRING = 'normalsize';
-
-export const ROUNDING_DIGITS = 4;
-const PRECISION = 10**ROUNDING_DIGITS; 
-
 
 export class ParseError extends Error {
     constructor(
@@ -228,14 +236,24 @@ export class Text {
     }
 }
 
-
-export const TOP = 'T';
-export const LEFT = 'L';
-export const RIGHT = 'R';
-export const BOTTOM = 'B';
-export const CENTER = 'C';
-
-export type Position = typeof TOP | typeof LEFT | typeof RIGHT | typeof BOTTOM | typeof CENTER;
+export const translateShapes = (shapes: MathShape[]): Shape[] => {
+    return shapes.map(sh => {
+        if ('x3' in sh) {
+            return new CubicCurve(
+                new Point2D(sh.x0, sh.y0),
+                new Point2D(sh.x1, sh.y1),
+                new Point2D(sh.x2, sh.y2),
+                new Point2D(sh.x3, sh.y3),
+            );
+        }
+        else {
+            return new Line(
+                new Point2D(sh.x0, sh.y0),
+                new Point2D(sh.x1, sh.y1)
+            );
+        }
+    });
+}
 
 
 //const shapePattern = /(.*?)(?:\\lvec\s*\((\S+)\s+(\S+)\)|\\clvec\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)\s*\((\S+)\s+(\S+)\)|\\larc\s+r:(\S+)\s+sd:(\S+)\s+ed:(\S+)|(?:\\lcir|\\fcir\s+f:(\S+))\s+r:(\S+))/g;
@@ -544,13 +562,15 @@ export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], 
 /**
  * Returns a texdraw command sequence for 'drawn' shapes, i.e., shapes that are not supposed to be filled.
  */
-export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, dash: number[]): string => {
+export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, dash: number[], prevLw?: number, prevDash?: number[]): string => {
     const result: string[] = [];
     
-    if (dash.length>0) {
+    if (dash.length > 0 && !(prevDash && equalArrays(dash, prevDash))) {
         result.push(lpatt(dash));
     }
-    result.push(linewd(lw));
+    if (lw !== prevLw) {
+        result.push(linewd(lw));
+    }
 
     const start = shapes[0].getStartingPoint();
     result.push(move(start.x, start.y));

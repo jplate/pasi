@@ -1,23 +1,22 @@
 import React from 'react'
-import Item, { HSL, Range, Direction } from './Item'
+import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_DASH, MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH,
      MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
 import ENode, { Info, Handler, ENodeCompProps } from './ENode'
-import { H, MIN_TRANSLATION_LOG_INCREMENT } from '../MainPanel'
+import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants'
 import CNodeGroup from '../CNodeGroup'
 import CNode from './CNode'
 import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
 import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents'
 import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools'
-
+import * as Texdraw from '../../../codec/Texdraw'
+import { encode, decode } from '../../../codec/General'
 
 export const DEFAULT_RADIUS = 5
 export const DEFAULT_GAP = .4;
 export const MIN_HIDDEN_RADIUS = 12;
 export const MAX_HIDDEN_RADIUS = 36;
 export const MIN_EFFECTIVE_RADIUS = 8; // used for calculating the distances of the control points of connectors to the centers of the corresponding nodes
-export const ROUNDING_DIGITS = 3
-
 
 /**
  * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
@@ -49,7 +48,6 @@ export default abstract class SNode extends ENode {
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
     closest = false; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
 
-    locationDefined: boolean = false; // indicates whether this.x and this.y give the actual location or need to be updated.
     t:number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
 
     protected conDashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
@@ -68,7 +66,7 @@ export default abstract class SNode extends ENode {
     init(involutes: Node[]) {
         this.involutes = involutes;
         for (let node of involutes) {
-            node.dependentSNodes=[...node.dependentSNodes, this];
+            node.dependentNodes=[...node.dependentNodes, this];
         }
     }
 
@@ -77,9 +75,32 @@ export default abstract class SNode extends ENode {
     abstract getDefaultWC(): number;
     abstract getArrowheadShapes(): Shape[];
 
+    override isHidden(selected: boolean) {
+        return !selected && 
+            this.shading===0 && 
+            this.dash.length===0 && 
+            this.ornaments.length===0 && 
+            this.dependentNodes.length===0;
+    }
+
     override getDefaultRadius() {
         return DEFAULT_RADIUS;
     }
+
+    override getHiddenRadius(): number {
+        const [n0, n1] = this.involutes; 
+        const [x0, y0] = n0.getLocation();
+        const [x1, y1] = n1.getLocation();
+        const [r0, r1] = this.involutes.map(n => n.radius);
+        const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
+        const d1 = Math.floor((this.w0 + this.w1 + this.wc) / 2);
+        const d2 = Math.floor(Math.sqrt(Math.max(0, 3 * (d - r0 - r1))));
+        const hr = Math.min(MAX_HIDDEN_RADIUS, 
+            Math.max(MIN_HIDDEN_RADIUS, d1, d2)
+        );
+        //console.log(` d: ${d} d1: ${d1)}, d2: ${d2} hr: ${hr}`);
+        return hr;
+	}
 
     /**
      * Meant for invocation by CompoundArrow#parse() on the CompoundArrow's elements. 
@@ -174,7 +195,7 @@ export default abstract class SNode extends ENode {
         this.y = newY;
         this.x100 += (newX - x);
         this.y100 += (newY - y);
-        this.invalidateDepSNodeLocations();
+        this.invalidateDepNodeLocations();
     }
     
     /**
@@ -190,7 +211,7 @@ export default abstract class SNode extends ENode {
         }
         this.manual = true;
         this.locationDefined = false;
-        this.invalidateDepSNodeLocations();
+        this.invalidateDepNodeLocations();
     }
 
     /**
@@ -206,7 +227,7 @@ export default abstract class SNode extends ENode {
         }
         this.manual = true;
         this.locationDefined = false;
-        this.invalidateDepSNodeLocations();
+        this.invalidateDepNodeLocations();
     }
 
     /**
@@ -221,7 +242,7 @@ export default abstract class SNode extends ENode {
             this.gap1 = d;
         }
         this.locationDefined = false;
-        this.invalidateDepSNodeLocations();
+        this.invalidateDepNodeLocations();
     }
 
     /**
@@ -345,7 +366,7 @@ export default abstract class SNode extends ENode {
                 if (item instanceof SNode) {
                     item.closest = closest;
                     item.locationDefined = false;
-                    item.invalidateDepSNodeLocations();
+                    item.invalidateDepNodeLocations();
                 }
                 return array;
             }, 'ENodesAndCNodeGroups'];
@@ -422,7 +443,7 @@ export default abstract class SNode extends ENode {
             if (item instanceof SNode) {
                 item.manual = false;
                 this.locationDefined = false;
-                this.invalidateDepSNodeLocations();        
+                this.invalidateDepNodeLocations();        
             }
             return array;
         }, 'wholeSelection']
@@ -478,20 +499,37 @@ export default abstract class SNode extends ENode {
         return handler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
     }
 
-    getHiddenRadius() {
-        const [n0, n1] = this.involutes; 
-        const [x0, y0] = n0.getLocation();
-        const [x1, y1] = n1.getLocation();
-        const [r0, r1] = this.involutes.map(n => n.radius);
-        const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
-        const d1 = Math.floor((this.w0 + this.w1 + this.wc) / 2);
-        const d2 = Math.floor(Math.sqrt(Math.max(0, 3 * (d - r0 - r1))));
-        const hr = Math.min(MAX_HIDDEN_RADIUS, 
-            Math.max(MIN_HIDDEN_RADIUS, d1, d2)
+    override getInfoString(): string {
+        const nodeDrawn = !this.isHidden(false) && this.linewidth > 0; 
+        const undrawnNodeParams = nodeDrawn? []: [this.radius];
+        return [
+            this.t,
+            ...undrawnNodeParams 
+        ].map(encode).join(' ');
+    }
+
+    getConnectorCode(): string {
+        const shapes = this.getConnectorShapes();
+        return Texdraw.getCommandSequenceForDrawnShapes(
+            Texdraw.translateShapes(shapes), 
+            this.conLinewidth, this.conDash, this.linewidth, this.dash
         );
-        //console.log(` d: ${d} d1: ${d1)}, d2: ${d2} hr: ${hr}`);
-        return hr;
-	}
+    }
+
+    getArrowheadCode(): string {
+        const shapes = this.getArrowheadShapes();
+        return Texdraw.getCommandSequenceForDrawnShapes(
+            Texdraw.translateShapes(shapes), 
+            this.ahLinewidth, this.ahDash, this.conLinewidth, this.conDash
+        );
+    }
+
+    override getTexdrawCode(): string {
+        return [super.getTexdrawCode(),
+            this.getConnectorCode(),
+            this.getArrowheadCode()
+        ].join('');
+    }
 
     findBaseAngle(): number {
         let [n0, n1] = this.involutes;
@@ -694,9 +732,7 @@ export default abstract class SNode extends ENode {
             <React.Fragment key={id}>
                 {super.getComponent({
                     id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
-                    selection, preselection, onMouseDown, onMouseEnter, onMouseLeave, 
-                    hiddenByDefault: true, 
-                    radiusWhenHidden: this.getHiddenRadius() 
+                    selection, preselection, onMouseDown, onMouseEnter, onMouseLeave
                 })}
                 {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
             </React.Fragment>

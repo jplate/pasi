@@ -5,13 +5,16 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem
 import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
+import { H, CANVAS_WIDTH_BASE, CANVAS_WIDTH_LARGE, MIN_X, MAX_X, MIN_Y, MAX_Y, MARGIN, MARK_LINEWIDTH, ROUNDING_DIGITS,
+    MIN_ROTATION_LOG_INCREMENT, DEFAULT_TRANSLATION_LOG_INCREMENT, DEFAULT_ROTATION_LOG_INCREMENT, DEFAULT_SCALING_LOG_INCREMENT    
+} from '../../Constants.ts'
 import Item from './items/Item.tsx'
 import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './items/Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
-import TransformTab, { MIN_ROTATION_LOG_INCREMENT } from './TransformTab.tsx'
+import TransformTab from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
 import ENode, { MAX_RADIUS } from './items/ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
@@ -21,7 +24,7 @@ import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup.ts
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
 import { getCode, load } from '../../codec/Codec1.tsx'
-import { useThrottle } from '../../util/Misc'
+import { sameElements, useThrottle } from '../../util/Misc'
 import SNode from './items/SNode'
 import Adjunction from './items/Adjunction'
 import Ornament from './items/Ornament.tsx'
@@ -43,22 +46,12 @@ import rstSrc from '../../../icons/rst.png'
 import trnSrc from '../../../icons/trn.png'
 import unvSrc from '../../../icons/unv.png'
 
-export const H = 650; // the height of the canvas; needed to convert screen coordinates to Tex coordinates
-const CANVAS_WIDTH_BASE = 850; // the 'standard' width of the canvas
-const CANVAS_WIDTH_LARGE = 1000; // the width of the canvas for larger screens
-export const MAX_X = 32*CANVAS_WIDTH_BASE-1 // the highest possible X coordinate for an Item
-export const MIN_X = 0 // the lowest possible X coordinate for an Item
-export const MIN_Y = -16*H+1 // the lowest possible Y coordinate for an Item 
-export const MAX_Y = 16*H-1 // the highest possible Y coordinate for an Item 
-export const MARGIN = 0; // the width of the 'margin' at right and bottom edges of the canvas
-
 const MAX_LIST_SIZE = 1000 // maximal size of the list of ENodes and CNodeGroups
 
 export const MARK_COLOR0_LIGHT_MODE = '#8877bb'
 export const MARK_COLOR0_DARK_MODE = '#462d0c'
 export const MARK_COLOR1_LIGHT_MODE = '#b0251a'
 export const MARK_COLOR1_DARK_MODE = '#5b0b00'
-export const MARK_LINEWIDTH = 1.0
 export const LASSO_COLOR_LIGHT_MODE = 'rgba(136, 119, 187, 200)'
 export const LASSO_COLOR_DARK_MODE = 'rgba(100, 50, 0, 200)'
 export const LASSO_DASH = '2'
@@ -75,18 +68,12 @@ export const DEFAULT_HDISPLACEMENT = 50
 export const DEFAULT_VDISPLACEMENT = 0
 export const MIN_DISPLACEMENT = -9999
 export const MAX_DISPLACEMENT = 9999
-export const MIN_TRANSLATION_LOG_INCREMENT = -3
-export const MAX_TRANSLATION_LOG_INCREMENT = 2
-const DEFAULT_TRANSLATION_LOG_INCREMENT = 0
-const DEFAULT_ROTATION_LOG_INCREMENT = 1
-const DEFAULT_SCALING_LOG_INCREMENT = 1
 const MIN_UNITSCALE = 0.1
 const MAX_UNITSCALE = 99
 const DEFAULT_UNITSCALE = 0.75
 const MIN_DISPLAY_FONT_FACTOR = 0.1
 const MAX_DISPLAY_FONT_FACTOR = 100
 const DEFAULT_DISPLAY_FONT_FACTOR = 0.8
-export const ROUNDING_DIGITS = 3 // used for rounding values resulting from rotations of points, etc.
 
 export const MAX_SCALING = 1E6
 export const MIN_ROTATION = -180
@@ -488,49 +475,6 @@ array.reduce((acc: CNodeGroup[], it) =>
     [...acc, ...getCNodeGroups(it.members)], 
 []);
 
-/**
- * Returns a function that moves the ENodes and CNodeGroups in the array that is supplied to that function up or down in that same array.
- * To be called by implementations of Item.handleEditing().
- */
-export const getRankMover = (val: string, selection: Item[]) => (item: Item, array: (ENode | CNodeGroup)[]) => {                        
-    const n = array.length;
-    const selectedListMembers = selection.reduce((acc: (ENode | CNodeGroup)[], it) => 
-        it instanceof ENode? [...acc, it]:
-        it instanceof CNode? [...acc, it.group as CNodeGroup]:
-        acc, 
-    []).filter((it, i, arr) => i===arr.indexOf(it));
-    const currentPositions: [ENode | CNodeGroup, number][] = selectedListMembers.map(m => [m, array.indexOf(m)]);
-    const currentPosMap = new Map<ENode | CNodeGroup, number>(currentPositions);
-    const focusPos = item instanceof ENode? currentPosMap.get(item): item instanceof CNode? currentPosMap.get(item.group as CNodeGroup): null;
-    let result = array;
-    if (typeof focusPos === 'number') {
-        const newPos = parseInt(val);
-        let incr = 0;
-        if(newPos > focusPos && currentPositions.every(([, pos]) => pos + 1 < n)) { 
-            // move the item up in the Z-order (i.e., towards the end of the array), but only by one
-            incr = 1;
-        } 
-        else if(newPos < focusPos && currentPositions.every(([, pos]) => pos > 0)) { 
-            // move the item down in the Z-order, but only by one
-            incr = -1;
-        }
-        if (incr!==0) {
-            const newPosMap = new Map<number, ENode | CNodeGroup>(currentPositions.map(([it, pos]) => [pos + incr, it]));
-            const unselectedListMembers = array.filter(it => !currentPosMap.has(it));
-            result = new Array<ENode | CNodeGroup>(n);
-            for (let i = 0, j = 0; i < n; i++) {
-                if (newPosMap.has(i)) {
-                    const it = newPosMap.get(i);
-                    if (it) result[i] = it;
-                }
-                else {
-                    result[i] = unselectedListMembers[j++];
-                }                                    
-            }
-        }
-    }
-    return result
-}
 
 /**
  * A function to be called on groups that have just been emptied of all their members. The second argument is the list of items to be displayed
@@ -1320,12 +1264,6 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const sorry = useCallback(() => {showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');}, []);
 
-    const equalArrays = (ar0: any[], ar1: any[]) => {
-        const set0 = new Set(ar0);
-        const set1 = new Set(ar1);
-        return set0.size===set1.size && ar0.every(el => set1.has(el));
-    }
-
     /** 
      * OnClick handler for the 'Create' button.
      */
@@ -1345,13 +1283,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     let slice = selectedNodes.slice(1);
                     if (n0 instanceof CNode) { 
                         const ng0 = n0.group!.members;
-                        if (equalArrays(ng0, selectedNodes.slice(0, ng0.length))) {
+                        if (sameElements(ng0, selectedNodes.slice(0, ng0.length))) {
                             n0 = selectedNodes[ng0.length - 1];
                             slice = selectedNodes.slice(ng0.length);
                         }
                     }
                     const n1 = slice[0];
-                    if (slice.length===1 || (n1 instanceof CNode && equalArrays(slice, n1.group!.members))) {
+                    if (slice.length===1 || (n1 instanceof CNode && sameElements(slice, n1.group!.members))) {
                         relata = [n0, n1];
                     }
                 }
@@ -1459,7 +1397,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         for (let it of selection) {
             acc.add(it);
             if (it instanceof Node) {
-                getToBeDeleted(it.dependentSNodes, acc);
+                getToBeDeleted(it.dependentNodes, acc);
             }
         }
         return acc;
@@ -1478,7 +1416,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newList.push(it);
                         // Remove to-be-deleted Ornaments and dependent SNodes:  
                         it.ornaments = it.ornaments.filter(o => !toBeDeleted.has(o));
-                        it.dependentSNodes = it.dependentSNodes.filter(sn => !toBeDeleted.has(sn));
+                        it.dependentNodes = it.dependentNodes.filter(sn => !toBeDeleted.has(sn));
                     }
                 }
                 else if (it instanceof CNodeGroup) {
@@ -1489,7 +1427,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newMembers.forEach(m => { 
                             // Remove to-be-deleted Ornaments and dependent SNodes:  
                             m.ornaments = m.ornaments.filter(o => !toBeDeleted.has(o));
-                            m.dependentSNodes = m.dependentSNodes.filter(sn => !toBeDeleted.has(sn));
+                            m.dependentNodes = m.dependentNodes.filter(sn => !toBeDeleted.has(sn));
                         });
                     }
                 }
@@ -1588,7 +1526,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             else { // We round the new locations to avoid unnecessary decimals showing up in the editor pane:
                 if (dirX!==0) node.x = node.x100 = round(node.x + dirX * inc, ROUNDING_DIGITS);
                 if (dirY!==0) node.y = node.y100 = round(node.y + dirY * inc, ROUNDING_DIGITS);
-                node.invalidateDepSNodeLocations();
+                node.invalidateDepNodeLocations();
             }
         });
         adjustLimit();
@@ -1675,7 +1613,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         selectedNodesDeduplicated.forEach(node => {
             ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
             ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS));
-            node.invalidateDepSNodeLocations();                          
+            node.invalidateDepNodeLocations();                          
         });
         adjustLimit();
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
@@ -1689,7 +1627,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         if (testScaling(newValue)) {
             selectedNodesDeduplicated.forEach(node => {
                 ({x: node.x, y: node.y} = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue/100));
-                node.invalidateDepSNodeLocations();
+                node.invalidateDepNodeLocations();
                 if (node instanceof CNode) {
                     node.dist0 = round(node.dist0_100 * newValue/100, ROUNDING_DIGITS);
                     node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
@@ -1790,7 +1728,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             g.members.forEach(node => {
                 ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, c.x, c.y, angle, ROUNDING_DIGITS));
                 ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, c.x, c.y, angle, ROUNDING_DIGITS));
-                node.invalidateDepSNodeLocations();
+                node.invalidateDepNodeLocations();
             });
         });
         adjustLimit();

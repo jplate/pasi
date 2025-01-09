@@ -1,6 +1,6 @@
 import React from 'react'
-import { HSL } from './items/Item.tsx'
-import { H } from './MainPanel.tsx'
+import { HSL } from './items/Item'
+import { H } from '../../Constants'
 
 export const POINT_RADIUS = 4;
 

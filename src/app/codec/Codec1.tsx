@@ -1,21 +1,20 @@
 import Item from '../components/client/items/Item'
+import Node from '../components/client/items/Node'
 import ENode from '../components/client/items/ENode'
+import SNode from '../components/client/items/SNode'
 import CNodeGroup from '../components/client/CNodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
-import { round } from '../util/MathTools'
 import Ornament from '../components/client/items/Ornament'
 import Label from '../components/client/items/Label'
-import Node from '../components/client/items/Node'
+import Adjunction from '../components/client/items/Adjunction'
 import BidirectionalMap from '../util/BidirectionalMap'
 import { getItems } from '../components/client/MainPanel'
+import { encodeInt, decodeInt, encode, decode } from './General'
 
 export const versionString = 'pasiCodecV1';
 
-const CODE = '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
-const ENCODE_BASE = CODE.length;
-const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 const ENODE_PREFIX = 'E';
 const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what a contour is most naturally taken to represent.
@@ -26,85 +25,9 @@ const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => any>(
     ['L', Label]
 ]);
 
-
-const encodeInt = (num: number) => {
-    if (num === 0) return CODE[0];
-    let result = '';
-    while (num > 0) {
-        result = CODE[num % ENCODE_BASE] + result;
-        num = Math.floor(num / ENCODE_BASE);
-    }
-    return result;
-}
-
-const decodeInt = (str: string) => {
-    if (str==='') return NaN;
-    let result = 0;
-    for (let i = 0; i < str.length; i++) {
-        const inc = CODE.indexOf(str[i]);
-        if (inc<0) return NaN;
-        result = result * ENCODE_BASE + inc;
-    }
-    return result;
-}
-
-/**
- * Returns a string that encodes the supplied argument in base 100. The format is: integer part + ('-' or '.') + fractional part (if applicable). The 
- * minus sign appears whenever the number is negative, the dot only if the number is positive and there's a fractional part.
- */
-export const encode = (val: number) => {
-    if (isNaN(val)) return 'î';
-    else switch (val) {
-        case -Infinity: return 'â';
-        case Infinity: return 'ô';
-        default: {
-            const isNegative = val<0;
-            const abs = Math.abs(val);
-            const integerPart = Math.floor(abs);
-            const fractionalPart = abs - integerPart;
-        
-            const integerString = encodeInt(integerPart);
-            let fractionalString = '';
-        
-            let fraction = fractionalPart;
-            for (let i = 0; i < ENCODE_PRECISION; i++) {
-                fraction *= ENCODE_BASE;
-                const digit = Math.floor(fraction);
-                fractionalString += encodeInt(digit);
-                fraction = round(fraction - digit, 2 * (ENCODE_PRECISION - i));
-        
-                if (fraction===0) break;
-            }
-        
-            return `${integerString}${isNegative? '-': fractionalPart? '.': ''}${fractionalPart ? fractionalString: ''}`;
-        }
-    }
-}
-
-/**
- * Returns the number represented by the supplied string. This may be NaN. NaN is also returned if the string contains a syntax error.
- */
-export const decode = (s: string) => {
-    switch (s) {
-        case '':
-        case 'î': return NaN;
-        case 'â': return -Infinity;
-        case 'ô': return Infinity;
-        default: {
-            const isNegative = s.includes('-');
-            const fpPos = s.search(/[\.-]/);
-            const integerPart = fpPos>=0? s.slice(0, fpPos): s;
-            const fractionalPart = fpPos>=0? s.slice(fpPos+1): '';
-            let val = integerPart===''? 0: decodeInt(integerPart);
-            for (let i = 0, k = ENCODE_BASE; i<fractionalPart.length; i++, k*=ENCODE_BASE) {
-                const digit = CODE.indexOf(fractionalPart[i]);
-                if (digit<0) return NaN;
-                val += digit / k;
-            }
-            return (isNegative? -1: 1) * val;
-        }
-    }
-}
+const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => any>([
+    ['A', Adjunction]
+]);
 
 export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
@@ -133,10 +56,31 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string
 
     arr.push(`${Texdraw.dimCmd} ${unitscale} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
 
-    // Next, we construct the main part of the code.
+    // Next, we construct a map from Nodes to their names.
 
-    const nodeMap = new Map<Node, string>(); // maps enodes to their names (cnode groups don't need names)
+    const nodeMap = new Map<Node, string>(); // maps Nodes to their names (cnode groups don't need names)
     let eNodeCounter = 0;
+    for (const it of list) {
+        let cngName: string | undefined = undefined;
+        if (it instanceof CNodeGroup) {
+            cngName = gMap.get(it);
+        }
+        const nodes: Node[] = it instanceof CNodeGroup? it.members: [it];
+        for (let i = 0; i < nodes.length; i++) {
+            const node = nodes[i];
+            let nodeName: string;
+            if (node instanceof ENode) {
+                nodeName = encodeInt(eNodeCounter++);
+            } 
+            else { // Otherwise we're dealing with a CNode:
+                nodeName = `${cngName}${CNODE_NAME_INFIX}${i}`;
+            }
+            nodeMap.set(node, nodeName);
+        }
+    }
+
+    // Finally, we construct the main part of the code.
+
     for (const it of list) {
         const code = it.getTexdrawCode();
         let cngName: string | undefined = undefined;
@@ -145,20 +89,24 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string
             arr.push(`${code}%${CNODEGROUP_PREFIX}${cngName}{${it.getInfoString()}}${getGroupInfo(it, gMap)}`); 
         }
         
-        // We now have to add the codes for any ornaments.
         const nodes: Node[] = it instanceof CNodeGroup? it.members: [it];
         for (let i = 0; i < nodes.length; i++) {
             const node = nodes[i];
-            let nodeName: string;
+            const nodeName = nodeMap.get(node);
             if (node instanceof ENode) {
-                nodeName = encodeInt(eNodeCounter++);
+                let nodeInfo;
+                if (node instanceof SNode) {
+                    const prefix = sNodePrefixMap.getByValue(node.constructor as new (i: number) => any);
+                    const invNames = node.involutes.map(inv => nodeMap.get(inv));
+                    nodeInfo = `${prefix}${nodeName}(${invNames.join(',')})`;
+                }
+                else {
+                    nodeInfo = `${ENODE_PREFIX}${nodeName}`;
+                }
                 const info = node.getInfoString();
-                arr.push(`${code}%${ENODE_PREFIX}${nodeName}${info.length>0? `{${info}}`: ''}${getGroupInfo(node, gMap)}`); 
+                arr.push(`${code}%${nodeInfo}${info.length>0? `{${info}}`: ''}${getGroupInfo(node, gMap)}`); 
             } 
-            else { // Otherwise we're dealing with a CNode:
-                nodeName = `${cngName}${CNODE_NAME_INFIX}${i}`;
-            }
-            nodeMap.set(node, nodeName);
+            // We now have to add the codes for any ornaments.
             for (const o of node.ornaments) {
                 const code = o.getTexdrawCode(unitscale);
                 const prefix = ornamentPrefixMap.getByValue(o.constructor as new (node: Node) => any);

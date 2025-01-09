@@ -1,6 +1,5 @@
 import Item from './Item'
 import Ornament from './Ornament'
-import SNode from './SNode'
 import * as Texdraw from '../../../codec/Texdraw'
 
 export const MAX_LINEWIDTH = 500;
@@ -51,9 +50,10 @@ export default abstract class Node extends Item {
     dash100: number[] = DEFAULT_DASH
 
     ornaments: Ornament[] = [];
-    dependentSNodes: SNode[] = []; // We keep a tally of the SNodes that have this Node as involute, for purposes of efficiency.
+    dependentNodes: Node[] = []; // We keep a tally of the Nodes (typically, SNodes) that have this Node as involute, for purposes of efficiency.
 
     private ornamentCounter = 0; // for generating IDs for Ornaments
+    locationDefined: boolean = false; // indicates whether this.x and this.y give the actual location or need to be updated. Relevant for SNodes.
 
 
     constructor(id: string, x: number, y: number) {
@@ -110,17 +110,17 @@ export default abstract class Node extends Item {
         this.y = y + dy;
         this.x100 += dx;
         this.y100 += dy;
-        this.invalidateDepSNodeLocations();
+        this.invalidateDepNodeLocations();
     }
 
     /**
      * Recursively invalidates the locations of all dependent SNodes.
      */
-    invalidateDepSNodeLocations() {
-        for (let node of this.dependentSNodes) {
+    invalidateDepNodeLocations() {
+        for (let node of this.dependentNodes) {
             if (node.locationDefined) { // If the node's location is already invalidated, we assume that we don't have to do anything with it or its own dependent SNodes.
                 node.locationDefined = false;
-                node.invalidateDepSNodeLocations();
+                node.invalidateDepNodeLocations();
             }
         }
     }

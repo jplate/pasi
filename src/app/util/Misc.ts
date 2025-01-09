@@ -1,5 +1,27 @@
 import { useRef, useCallback } from 'react';
 
+export const equalArrays = (arr1: any[], arr2: any[]) => {
+    // Check if both arrays are the same reference
+    if (arr1 === arr2) return true;
+
+    // Check if the lengths are different
+    if (arr1.length !== arr2.length) return false;
+
+    // Check each element for equality
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+
+    return true; // All checks passed, arrays are equal
+}
+
+export const sameElements = (ar0: any[], ar1: any[]) => {
+    const set0 = new Set(ar0);
+    const set1 = new Set(ar1);
+    return set0.size===set1.size && ar0.every(el => set1.has(el));
+}
+
+
 export const throttle = <T extends (...args: any[]) => void>(func: T, limit: number) => {
     let lastFunc: ReturnType<typeof setTimeout>;
     let lastRan: number;
@@ -47,3 +69,5 @@ export const debounce = <T extends (...args: any[]) => void>(func: T, wait: numb
       timeout = setTimeout(() => func(...args), wait);
     };
 };
+
+

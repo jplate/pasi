@@ -6,14 +6,14 @@ import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '
 import Node from './Node'
 import ENode from './ENode'
 import CNodeGroup from '../CNodeGroup'
-import { H, MARK_LINEWIDTH } from '../MainPanel'
+import { H, MARK_LINEWIDTH } from '../../../Constants'
 import { Entry } from '../ItemEditor.tsx'
 import { parseInputValue, parseCyclicInputValue, validInt } from '../EditorComponents'
 import { MIN_ROTATION } from '../ItemEditor'
 import { getCyclicValue, round } from '../../../util/MathTools'
 import * as Texdraw from '../../../codec/Texdraw'
 import { ParseError } from '../../../codec/Texdraw'
-import { encode, decode } from '../../../codec/Codec1'
+import { encode, decode } from '../../../codec/General'
 
 export const MIN_WIDTH = 5;
 export const MIN_HEIGHT = 5;
