@@ -70,14 +70,14 @@ export default class Adjunction extends SNode {
         const factor = 10**ROUNDING_DIGITS;
         return [
             ...super.getArrowheadInfo(),
-            {type: 'number input', key: 'hookAngle', text: 'Hook angle', width: 'long', 
+            {type: 'number input', key: 'hookAngle', text: 'Hook angle', width: 'medium', 
                 value: this.hookAngle, 
                 step: 0, 
                 min: -MAX_ROTATION_INPUT, max: MAX_ROTATION_INPUT,
                 tooltip: <>The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center line.</>,
                 tooltipPlacement: 'left'
             },
-            {type: 'number input', key: 'hookLength', text: 'Hook length', width: 'long', 
+            {type: 'number input', key: 'hookLength', text: 'Hook length', width: 'medium', 
                 value: this.hookLength, 
                 step: 0,
                 tooltip: <>The length of the arrowhead&rsquo;s hook.</>,
@@ -110,8 +110,8 @@ export default class Adjunction extends SNode {
         const by1 = len * Math.sin(gamma + a);
         
         return [
-            {x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0}, // the left hook
-            {x0: p1x, y0: p1y, x1: p1x + bx1, y1: p1y + by1} // the right hook
+            { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }, // the left hook
+            { x0: p1x, y0: p1y, x1: p1x + bx1, y1: p1y + by1 } // the right hook
         ];
 	}	
 
@@ -133,16 +133,16 @@ export default class Adjunction extends SNode {
         const a0 = angle(x0, y0, x1, y1, true); // the angle of the left hook, with the arrow's tip as origin
         const a1 = angle(x0, y0, x2, y2, true); // the angle of the right hook, with the arrow's tip as origin
         const a2 = angle(x0, y0, cpx, cpy, true); // the angle of the vector that leads from the arrow's tip to the connector's last control point
-        const negativeAngles = angleDiff(a0, a2) + angleDiff(a2, a1) > 2*Math.PI;
+        const negativeAngles = angleDiff(a0, a2) + angleDiff(a2, a1) > 2 * Math.PI;
+        const aDeg = (negativeAngles? -angleDiff(a1, a0): angleDiff(a0, a1)) / Math.PI * 90;
+        const factor = 10**ROUNDING_DIGITS;
         this.hookAngle = round(
-            (negativeAngles? -angleDiff(a1, a0): angleDiff(a0, a1)) / Math.PI * 90, 
+            Math.round(aDeg * factor) / factor, 
             ROUNDING_DIGITS, 
             2 // We seem to need a pretty low tolerance to avoid arithmetic errors.
         ); 
-        this.hookLength = round(Math.sqrt((x1 - x0)**2 + (y1 - y0)**2), ROUNDING_DIGITS, 3);
+        this.hookLength = round(Math.round(Math.sqrt((x1 - x0)**2 + (y1 - y0)**2) * factor) / factor, ROUNDING_DIGITS, 3);
 
         return stShapes.slice(2);
     }
-
-
 }

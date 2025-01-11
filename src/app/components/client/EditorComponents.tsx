@@ -1,4 +1,4 @@
-import react, { useContext } from 'react'
+import react, { useContext, useEffect, useRef } from 'react'
 import clsx from 'clsx/lite'
 import Tippy from '@tippyjs/react'
 import { Placement } from 'tippy.js'
@@ -9,7 +9,7 @@ import 'tippy.js/themes/light.css'
 import 'tippy.js/themes/translucent.css'
 import 'tippy.js/animations/shift-toward.css'
 
-import { DarkModeContext } from './MainPanel.tsx'
+import { DarkModeContext } from './MainPanel'
 
 const ACCENT_LIGHT = 'accent-slate-50';
 const ACCENT_DARK = 'accent-amber-600 dark';
@@ -387,10 +387,49 @@ interface WithToolTipProps {
 
 export const WithTooltip = ({comp, tooltip, placement}: WithToolTipProps) => {
     const dark = useContext(DarkModeContext)
+    const tippyRef = useRef<any>(null);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (tippyRef.current && !tippyRef.current.state.isDestroyed) {
+                tippyRef.current.hide(); // Hide the tooltip on scroll
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+
+        // Find closest parent with 'scrollbox' class
+        const element = tippyRef.current?.reference;
+        if (element) {
+            const scrollbox = element.closest('.scrollbox');
+            if (scrollbox) {
+                scrollbox.addEventListener('scroll', handleScroll);
+            }
+        }
+
+        return () => {
+            // Clean up scroll listeners
+            window.removeEventListener('scroll', handleScroll);
+            if (element) {
+                const scrollbox = element.closest('.scrollbox');
+                if (scrollbox) {
+                    scrollbox.removeEventListener('scroll', handleScroll);
+                }
+            }
+        };
+    }, []);
+
     return (
-        <Tippy theme={dark? 'translucent': 'light'} delay={[750,0]} arrow={true} placement={placement} animation='shift-toward' 
-                content={tooltip}>
+        <Tippy theme={dark ? 'translucent' : 'light'}
+                delay={[750, 0]}
+                arrow={true}
+                placement={placement}
+                animation='shift-toward'
+                content={tooltip}
+                onCreate={(instance) => {
+                    tippyRef.current = instance; // Store the Tippy instance
+                }}>
             {comp}
         </Tippy>
-    );
+    );   
 }

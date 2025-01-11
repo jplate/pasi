@@ -7,13 +7,13 @@ import clsx from 'clsx/lite'
 
 import { H, CANVAS_WIDTH_BASE, CANVAS_WIDTH_LARGE, MIN_X, MAX_X, MIN_Y, MAX_Y, MARGIN, MARK_LINEWIDTH, ROUNDING_DIGITS,
     MIN_ROTATION_LOG_INCREMENT, DEFAULT_TRANSLATION_LOG_INCREMENT, DEFAULT_ROTATION_LOG_INCREMENT, DEFAULT_SCALING_LOG_INCREMENT    
-} from '../../Constants.ts'
-import Item from './items/Item.tsx'
+} from '../../Constants'
+import Item from './items/Item'
 import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, 
     DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, MAX_RADIUS 
-} from './items/Node.tsx'
-import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
-import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
+} from './items/Node'
+import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button'
+import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab from './TransformTab.tsx'
@@ -22,10 +22,11 @@ import ENode from './items/ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
 import CNode from './items/CNode.tsx'
-import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup.tsx'
+import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
-import { getCode, load } from '../../codec/Codec1.tsx'
+import { getCode, load } from '../../codec/Codec1'
+import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General'
 import { sameElements, useThrottle } from '../../util/Misc'
 import SNode from './items/SNode'
 import Adjunction from './items/Adjunction'
@@ -91,6 +92,8 @@ const CANVAS_HSL_DARK_MODE = {hue: 29.2, sat: 78.6, lgt: 47.65}
 const BLACK = {hue: 0, sat: 0, lgt: 0}
 const LASSO_DESELECT_LIGHT_MODE = 'rgba(255, 255, 255, 0.5)'
 const LASSO_DESELECT_DARK_MODE = 'rgba(0, 0, 0, 0.1)'
+const NUMBER_FORMAT = Intl.NumberFormat('en-US');
+
 
 interface HotkeyInfo {
     key: string
@@ -2346,7 +2349,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
-                            tooltip={<>Generate and display <i>texdraw</i> code.<HotkeyComp mapKey='generate code' /></>}
+                            tooltip={<>Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest {' '}
+                                {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may be lost as a result.) {' '}
+                                <HotkeyComp mapKey='generate code' /></>}
                             tooltipPlacement='left'
                             onClick={() => displayCode(unitscale)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
