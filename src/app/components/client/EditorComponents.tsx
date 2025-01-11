@@ -1,7 +1,7 @@
 import react, { useContext, useEffect, useRef } from 'react'
 import clsx from 'clsx/lite'
 import Tippy from '@tippyjs/react'
-import { Placement } from 'tippy.js'
+import { Placement, Instance } from 'tippy.js'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { getCyclicValue, round } from '../../util/MathTools'
 import 'tippy.js/dist/tippy.css'
@@ -387,7 +387,7 @@ interface WithToolTipProps {
 
 export const WithTooltip = ({comp, tooltip, placement}: WithToolTipProps) => {
     const dark = useContext(DarkModeContext)
-    const tippyRef = useRef<any>(null);
+    const tippyRef = useRef<Instance | null>(null);
 
     useEffect(() => {
         const handleScroll = () => {

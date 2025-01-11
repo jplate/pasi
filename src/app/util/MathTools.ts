@@ -377,75 +377,73 @@ export const closestTo = (x: number, y: number, c: CubicCurve, t0: number, t1: n
 }
 
 /**
- * @param u initially contains the starting position, will contain the end position
- * @param distance approximate path-length from start to end position 
+ * @param u initially contains the starting position (as a t-value), will contain the end position
+ * @param distance the desired distance (i.e., path-length) from the start position 
  * @param c the curve to be travelled
  * @param dt the step size 
- * @param cutOff the maximum number of iterations allowed
- * @param maxK the maximum number of steps that can be compounded into one
+ * @param closeEnough the difference between the distance traveled and the desired distance that is considered 'close enough'
  * @return the point at the end position
  */
-export const travelFor = (u: number[], distance: number, c: CubicCurve, dt: number, cutOff: number, maxK: number): [x: number, y: number] => {
+export const travelFor = (
+    u: number[], 
+    distance: number, 
+    c: CubicCurve, 
+    dt: number, 
+    closeEnough: number
+): [x: number, y: number] => {
     const t0 = u[0];
     let t = t0;
-    let [px, py] = cubicBezier(c, t0);
-    let [p1x, p1y] = [px, py];
-    let dist = 0;
-    let done = false;
-    let i = 0;
-    const safetyFactor = 1.2;
-    let sfAdd = 0;
-    let n = 0;
-    while(!done) {
-        let [p_x, p_y] = [0, 0];
-        let t_ = t;
+    let [x0, y0] = cubicBezier(c, t0);
+    let [x1, y1] = [x0, y0];
+    let totalDistance = 0;
+    let safetyFactor = 1.2;
+    while(true) {
+        let steps = 1;
         let d = 0;
-        let k = 1;
-        let k_ = k;
-        while(dist < distance && i < cutOff) {
-            t_ = t;
-            t += k*dt;
+        while(totalDistance < distance) {
+            [x0, y0] = [x1, y1];
 
-            [p1x, p1y] = cubicBezier(c, t);
-            d = Math.sqrt((p1x - px)**2 + (p1y - py)**2);
-            [p_x, p_y] = [px, py];
-            [px, py] = [p1x, p1y];
+            t += steps * dt;
+
+            [x1, y1] = cubicBezier(c, t);
+            d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
             
-            dist += d;
+            totalDistance += d;
             
-            i += k;
-            k_ = k;
-            k = Math.floor(Math.min(maxK, Math.max(1, (distance - dist) * k / d / (safetyFactor + sfAdd))));
-            sfAdd = 0;
+            if (distance < totalDistance) { // adjust step multiplier
+                steps = Math.floor(Math.min(1e6, Math.max(1, 
+                    (distance - totalDistance) / d / safetyFactor
+                )));
+            }
             
-            //console.log("k: "+k+"  dist: "+dist);
+            // console.log(`steps: ${steps}  totD: ${totalDistance}`);
         }
-        if(k_ > 1) {
-            dist -= d;
-            i -= k_;
-            t = t_;
-            [px, py] = [p_x, p_y];
-            n++;
-            sfAdd = n * .1;
-            //console.log("sf: "+(safetyFactor+sfAdd));
+        if(Math.abs(distance - totalDistance) < closeEnough) break;
+        // Otherwise we overshot. So we revert back to the previous values, provided that the reason for overshooting lies in 
+        // our having taken too many steps at once. While reverting, we also increase the safetyFactor.
+        else if(steps > 1) { 
+            t -= dt;
+            totalDistance -= d;
+            [x1, y1] = [x0, x0];
+            safetyFactor += .1;
         }
-        else done = true;
+        else break;
     }
-    //console.log("result: "+t);
     u[0] = t;
-    return [p1x, p1y];
+    return [x1, y1];
 }
+
 
 /**
  * @param u initially contains the starting position, will contain the end position
- * @param distance approximate path-length from start to end position 
+ * @param distance desired path-length from start to end position 
  * @param c the curve to be travelled
  * @param dt the step size 
- * @param cutOff the maximum number of iterations allowed
+ * @param closeEnough the tolerance for distance matching
  * @return the point at the end position
  */
-export const travel = (u: number[], distance: number, c: CubicCurve, dt: number, cutOff: number) => {
-    return travelFor(u, distance, c, dt, cutOff, 1e6);
+export const travel = (u: number[], distance: number, c: CubicCurve, dt: number, closeEnough: number) => {
+    return travelFor(u, distance, c, dt, closeEnough);
 }
 
 
