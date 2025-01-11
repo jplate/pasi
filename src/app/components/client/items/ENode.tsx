@@ -1,13 +1,15 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
 import Item, { HSL, Range } from './Item'
-import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
+import Node, { MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH, MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, MAX_RADIUS,
+    validateCoordinates, validateLinewidth, validateDash, validateShading, validateRadius
+ } from './Node'
 import { Entry, getRankMover } from '../ItemEditor'
-import { H, MAX_X, MIN_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from '../../../Constants'
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from '../../../Constants'
 import { validFloat, parseInputValue, DashValidator } from '../EditorComponents'
 import CNodeGroup from '../CNodeGroup'
 import * as Texdraw from '../../../codec/Texdraw'
-import {  ParseError, makeParseError } from '../../../codec/Texdraw'
+import { ParseError, makeParseError } from '../../../codec/Texdraw'
 import { encode, decode } from '../../../codec/General'
 
 export const DEFAULT_RADIUS = 12;
@@ -19,7 +21,6 @@ export const SWITCH_TOLERANCE = 0.1;
 export const DISTANCE_PENALTY = 4;
 export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9;
 
-export const MAX_RADIUS = 9999;
 export const MIN_RADIUS_FOR_INNER_TITLE = 6;
 export const TITLE_FONTSIZE = 9;
 export const TITLE_BOTTOM_MARGIN = 1.5; // The margin at the bottom of a Node's 'title' if the latter appears *above* the mark border.
@@ -48,14 +49,14 @@ export default class ENode extends Node {
     }
 
     /**
-     * Expected to be overridden.
+     * Overridden by SNode.
      */
     isHidden(_selected: boolean): boolean {
         return false;
     }
 
     /**
-     * Expected to be overridden.
+     * Overridden by SNode.
      */
     getHiddenRadius(): number {
         return this.getDefaultRadius();
@@ -76,7 +77,7 @@ export default class ENode extends Node {
     }
 
     /**
-     * Expected to be overridden.
+     * Overridden by SNode.
      */
     getDefaultRadius() {
         return DEFAULT_RADIUS;
@@ -100,6 +101,9 @@ export default class ENode extends Node {
         ];
     }
 
+    /**
+     * Overridden by SNode.
+     */
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
@@ -178,7 +182,7 @@ export default class ENode extends Node {
     }
 
     /**
-     * This is also overridden by subclasses, such as SNode.
+     * Overridden by SNode.
      */
     override handleEditing(
             e: React.ChangeEvent<HTMLInputElement> | null, 
@@ -191,128 +195,114 @@ export default class ENode extends Node {
         return this.editHandler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
     }
 
+    /**
+     * Overridden by SNode.
+     */
     override getInfoString(): string {
         const lineDrawn = this.linewidth > 0; // This deviates from getTexdrawCode() below. But in SNode this will be overridden anyhow, since there
             // we won't have to include the information about the coordinates.
         return (lineDrawn || this.shading>0)? '': [this.radius, this.x, this.y].map(encode).join(' ');
     }
 
+    /**
+     * Overridden by SNode.
+     */
     override getTexdrawCode(): string {
-        const lineDrawn = !this.isHidden(false) && this.linewidth > 0; // For the purposes of generating the texdraw code, we're assuming that this 
-            // ENode is not selected, even if this means that it will not be represented in the code. (This only affects SNodes.)
 		return [
             super.getTexdrawCode(),
-            (this.shading>0 || lineDrawn? Texdraw.move(this.x, this.y): ''),
-            (this.shading>0? Texdraw.fcirc(this.radius, this.shading): ''),
-            (this.dash.length>0? Texdraw.lpatt(this.dash): ''),
-            (lineDrawn? Texdraw.circ(this.radius): ''),
-            (this.dash.length>0? Texdraw.lpatt([]): '')
+            (this.shading > 0 || this.linewidth > 0? Texdraw.move(this.x, this.y): ''),
+            (this.shading > 0? Texdraw.fcirc(this.radius, this.shading): ''),
+            (this.dash.length > 0? Texdraw.lpatt(this.dash): ''),
+            (this.linewidth > 0? Texdraw.circ(this.radius): ''),
+            (this.dash.length > 0? Texdraw.lpatt([]): '')
         ].join('');	        
+    }
+
+    /**
+     * Overridden by SNode.
+     */
+    parseNodeInfoString(tex: string, info: string | null, dimRatio: number, name: string): void {
+        if(info===null) {	        	
+            throw new ParseError(<span>Incomplete definition of entity node <code>{name}</code>: info string required.</span>);
+        }
+        this.linewidth = this.linewidth100 = 0;
+        this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
+
+        [this.radius, this.x, this.y] = info.split(/\s+/).map(s => {
+            const val = decode(s);
+            if(!isFinite(val)) {
+                throw makeParseError('Unexpected token in entity node configuration string', s);
+            }
+            return dimRatio * val;
+        });
+    }
+
+    /**
+     * Overridden by SNode.
+     */
+    extractCircles(stShapes: Texdraw.StrokedShape[], tex: string) {
+        const circles: Texdraw.Circle[] = [];
+        for (let i = 0; i < stShapes.length; i++) { 
+		    if (i > 2) {
+		        throw makeParseError(`Expected a circle, not ${stShapes[i].shape.genericDescription}`, tex);
+		    }
+		    if (!(stShapes[i].shape instanceof Texdraw.Circle)) {
+		        throw makeParseError(`Expected a circle, not ${stShapes[i].shape.genericDescription}`, tex);
+		    }
+            circles.push(stShapes[i].shape as Texdraw.Circle);
+	    }
+        return circles;
+    }
+
+
+    /**
+     * Configures this node according to the supplied array of shapes (which may or may not contain circles).
+     * @return an array of the remaining shapes.
+     * NOT overridden by SNode. Instead, SNode calls this from its own implementation of parse().
+     */
+    parseNode(stShapes: Texdraw.StrokedShape[], tex: string, info: string | null, dimRatio: number, name: string): Texdraw.StrokedShape[] {        
+        const circles = this.extractCircles(stShapes, tex);
+        const n = circles.length;
+        
+        if (n > 0) {
+            this.shading = validateShading(circles[0].fillLevel, name);
+            this.linewidth = this.linewidth100 = validateLinewidth(dimRatio * stShapes[n-1].stroke.linewidth, name);
+            this.dash = this.dash100 = validateDash((
+                    this.linewidth > 0? // In this case the dash pattern can be got from the same shape:
+                    stShapes[n-1].stroke.pattern: // If linewidth is zero, then there will be only one stroked shape (n will be equal
+                        // to 1), and we have to extract the dash pattern ourselves:
+                    (Texdraw.extractDashArray(tex) || [])
+                ).map(v => dimRatio * v), 
+                name
+            );
+            this.radius = validateRadius(dimRatio * circles[0].radius, name);
+            const { x, y } = circles[0].location;
+            [this.x, this.y] = validateCoordinates(dimRatio * x, dimRatio * y, name);
+        }
+        else { // In this case there are no circles, so we have to rely in part on the info string, assuming there is one.
+            this.parseNodeInfoString(tex, info, dimRatio, name);
+        }
+        
+        [this.radius100, this.x100, this.y100] = [this.radius, this.x, this.y];
+
+        return stShapes.slice(n);
     }
 
     /** 
      *  The 'name' is the string by which this ENode is referred to in the 'hints' that appear as comments in the texdraw code. 
      *  The calling function should make sure that this name is of reasonable length so that we don't have to worry about truncating it in our
      *  error messages.
+     * 
+     *  Overridden by SNode.
      */
-    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string) {
-        const stShapes =  Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
-        
-        //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join(', ')}`);
+    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string): void {
+        const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
+        this.parseNode(stShapes, tex, info, dimRatio, name ?? 'unnamed');
+    }    
 
-        const circles: Texdraw.Circle[] = [];
-        if (stShapes.length>2) {
-            throw new ParseError(<span>Too many shapes in the definition of entity node <code>{name}</code>.</span>);
-        }
-        let n = 0;
-        for(; n<stShapes.length; n++) {
-		    if(!(stShapes[n].shape instanceof Texdraw.Circle)) {
-		        throw makeParseError(`Expected a circle, not ${stShapes[n].shape.genericDescription}`, tex);
-		    }
-            circles.push(stShapes[n].shape as Texdraw.Circle);
-	    }
-        
-        //assert(n>=0 && n<3);
-        
-        if (n > 0) {
-            this.shading = circles[0].fillLevel;
-            this.linewidth = this.linewidth100 = dimRatio * stShapes[n-1].stroke.linewidth;
-            if (this.linewidth > 0) { // In this case the dash pattern can be got from the same shape.
-                this.dash = this.dash100 = stShapes[n-1].stroke.pattern.map(v => dimRatio * v);
-            }
-            else { // If linewidth is zero, then there will be only one stroked shape (n will be equal to 1), and we have to extract the dash pattern ourselves:
-                this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
-            }
-            this.radius = dimRatio * circles[0].radius;
-            const { x, y } = circles[0].location;
-            this.x = dimRatio * x;
-            this.y = dimRatio * y;
-        }
-        else { // In this case there are no shapes, so we have to rely in part on the info string, assuming there is one.
-            if(info===null) {	        	
-	            throw new ParseError(<span>Incomplete definition of entity node <code>{name}</code>: info string required.</span>);
-	        }
-            // console.log(`info: ${info}`);
-            this.linewidth = this.linewidth100 = 0;
-            this.dash = this.dash100 = (Texdraw.extractDashArray(tex) || []).map(v => dimRatio * v);
-            [this.radius, this.x, this.y] = info.split(/\s+/).map(s => {
-                const val = decode(s);
-                if(!isFinite(val)) {
-                    throw makeParseError('Unexpected token in entity node configuration string', s);
-                }
-                return dimRatio * val;
-            });
-        }
-        if (this.linewidth < 0) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.</span>);
-        }
-        else if (this.linewidth > MAX_LINEWIDTH) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width {this.linewidth} exceeds maximum value.</span>);
-        }
-
-        if (this.shading < 0) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value should not be negative.</span>);
-        }
-        else if (this.shading > 1) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value {this.shading} exceeds 1.</span>);
-        }
-
-        if (this.dash.length > MAX_DASH_LENGTH) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length {this.dash.length} exceeds maximum value.</span>); 
-        }
-        let val;
-        if (this.dash.some(v => (val = v) < 0)) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value should not be negative.</span>); 
-        }        
-        if (this.dash.some(v => v > MAX_DASH_VALUE)) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds  maximum value.</span>); 
-        }
-
-        if (this.radius < 0) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.</span>); 
-        }
-        else if (this.radius > MAX_RADIUS) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius {this.radius} exceeds maximum value.</span>); 
-        }
-        
-        if (this.x < MIN_X) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {this.x} below minimum value.</span>); 
-        }
-        else if (this.x > MAX_X) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {this.x} exceeds maximum value.</span>); 
-        }
-        
-        if (this.y < MIN_Y) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {this.y} below minimum value.</span>); 
-        }
-        else if (this.y > MAX_Y) {
-            throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {this.y} exceeds maximum value.</span>); 
-        }
-        
-        [this.radius100, this.x100, this.y100] = [this.radius, this.x, this.y];
-    }
-
-
+    /**
+     * Overridden by SNode, but also called from there.
+     */
     getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
             selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
     }: ENodeCompProps) {    

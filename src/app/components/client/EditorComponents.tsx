@@ -289,10 +289,10 @@ export const parseInputValue = (input: string, min: number, max: number, oldValu
         return NaN;
     } else {
         const raw = getRawValue(oldValue, val, logIncrement);
-        const v0 = Math.min(Math.max(min, round(raw, roundingDigits)), max);
+        const v0 = Math.min(Math.max(min, raw), max);
         const factor = 10 ** roundingDigits; 
-        const result = Math.floor(round(v0 * factor, 1)) / factor;
-        console.log(`v0: ${v0} factor: ${factor} result: ${result}`);
+        const result = round(Math.round(v0 * factor) / factor, roundingDigits);
+        //console.log(`v0: ${v0} factor: ${factor} result: ${result}`);
         return result;
     }
 }

@@ -3,13 +3,14 @@ import { round } from '../util/MathTools'
 const CODE = '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
 const ENCODE_BASE = CODE.length;
 const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
+const ROUNDING_DIGITS = 4; // The number of digits (in base 10) that we're using for the purposes of Math.round()
 
 export const encodeInt = (num: number) => {
     if (num === 0) return CODE[0];
     let result = '';
     while (num > 0) {
         result = CODE[num % ENCODE_BASE] + result;
-        num = Math.floor(num / ENCODE_BASE);
+        num = Math.floor(round(num / ENCODE_BASE, ROUNDING_DIGITS));
     }
     return result;
 }
@@ -26,8 +27,8 @@ export const decodeInt = (str: string) => {
 }
 
 /**
- * Returns a string that encodes the supplied argument in base 100. The format is: integer part + ('-' or '.') + fractional part (if applicable). The 
- * minus sign appears whenever the number is negative, the dot only if the number is positive and there's a fractional part.
+ * Returns a string that encodes the supplied argument in base 100. The format is: integer part (if non-zero), plus '-' or '.', plus fractional part
+ * (if applicable). The minus sign appears whenever the number is negative, the dot only if the number is positive and there's a fractional part.
  */
 export const encode = (val: number) => {
     if (isNaN(val)) return 'î';
@@ -40,13 +41,13 @@ export const encode = (val: number) => {
             const integerPart = Math.floor(abs);
             const fractionalPart = abs - integerPart;
         
-            const integerString = encodeInt(integerPart);
+            const integerString = integerPart===0 && fractionalPart!==0? '': encodeInt(integerPart);
             let fractionalString = '';
         
             let fraction = fractionalPart;
             for (let i = 0; i < ENCODE_PRECISION; i++) {
                 fraction *= ENCODE_BASE;
-                const digit = Math.floor(fraction);
+                const digit = Math.floor(round(fraction, 0));
                 fractionalString += encodeInt(digit);
                 fraction = round(fraction - digit, 2 * (ENCODE_PRECISION - i));
         
@@ -73,10 +74,10 @@ export const decode = (s: string) => {
             const integerPart = fpPos>=0? s.slice(0, fpPos): s;
             const fractionalPart = fpPos>=0? s.slice(fpPos+1): '';
             let val = integerPart===''? 0: decodeInt(integerPart);
-            for (let i = 0, k = ENCODE_BASE; i<fractionalPart.length; i++, k*=ENCODE_BASE) {
+            for (let i = 0, k = ENCODE_BASE; i < fractionalPart.length; i++, k *= ENCODE_BASE) {
                 const digit = CODE.indexOf(fractionalPart[i]);
-                if (digit<0) return NaN;
-                val += digit / k;
+                if (digit < 0) return NaN;
+                val += round(digit / k, ROUNDING_DIGITS);
             }
             return (isNegative? -1: 1) * val;
         }

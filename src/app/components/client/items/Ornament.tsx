@@ -8,8 +8,8 @@ import { getCyclicValue } from '../../../util/MathTools'
 export const DEFAULT_ANGLE = 10;
 export const INCREMENT = 30; // the angle (in degrees) by which the angle of a new Ornament is increased when added to the same node.
 export const DEFAULT_GAP = 2;
-export const MIN_GAP = -9999
-export const MAX_GAP = 9999
+export const MIN_GAP = -999
+export const MAX_GAP = 999
 export const ROUNDING_DIGITS = 3
 
 

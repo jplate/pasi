@@ -78,9 +78,9 @@ export default class CNode extends Node {
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         const group = this.group as CNodeGroup;
         return [
-            {type: 'checkbox', key: 'fixed', text: 'Dragging preserves angles', value: this.fixedAngles,
-                tooltip: clsx('Dragging this node will move its two neighbors in parallel with it if this helps to preserve the angles between them.',
-                    'Where the movement is parallel to the X- or Y-axis, distances between nodes may be lengthened or shortened.'),
+            {type: 'checkbox', key: 'fixed', text: 'Keep angles fixed', value: this.fixedAngles,
+                tooltip: <>When this node is moved, each of its two neighbors will be moved in parallel with it unless the neighbor has exactly {' '}
+                    the same X- or Y-coordinate as this node.</>,
                 tooltipPlacement: 'left'
             },
             {type: 'checkbox', key: 'line', text: 'No line to next node', value: this.omitLine},

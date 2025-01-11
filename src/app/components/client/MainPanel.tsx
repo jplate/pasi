@@ -9,14 +9,16 @@ import { H, CANVAS_WIDTH_BASE, CANVAS_WIDTH_LARGE, MIN_X, MAX_X, MIN_Y, MAX_Y, M
     MIN_ROTATION_LOG_INCREMENT, DEFAULT_TRANSLATION_LOG_INCREMENT, DEFAULT_ROTATION_LOG_INCREMENT, DEFAULT_SCALING_LOG_INCREMENT    
 } from '../../Constants.ts'
 import Item from './items/Item.tsx'
-import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE } from './items/Node.tsx'
+import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, 
+    DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, MAX_RADIUS 
+} from './items/Node.tsx'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button.tsx'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents.tsx'
 import CanvasEditor from './CanvasEditor.tsx'
 import ItemEditor from './ItemEditor.tsx'
 import TransformTab from './TransformTab.tsx'
 import GroupTab from './GroupTab.tsx'
-import ENode, { MAX_RADIUS } from './items/ENode.tsx'
+import ENode from './items/ENode.tsx'
 import Point, { PointComp } from './Point.tsx'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
 import CNode from './items/CNode.tsx'
@@ -584,7 +586,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         [selection]
     );
 
-    const selectedNodes = useMemo(() => 
+    const nodes = useMemo(() => 
         selection.filter(item => item instanceof Node) as Node[], 
         [selection]
     );
@@ -789,6 +791,27 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     }, [selection, focusItem, points, deduplicatedSelection, list, setOrigin]);
 
 
+    const move = useCallback((nodes: Node[], dx: number, dy: number) => {
+        const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+        nodes.forEach(node => {
+            // console.log(`moving: ${item.id}`);
+            if (node.group instanceof CNodeGroup) {
+                if (!nodeGroups.includes(node.group)) {
+                    nodeGroups.push(node.group);
+                    const members = node.group.members;
+                    (node.group as CNodeGroup).groupMove(
+                        members.filter(m => nodes.includes(m)), 
+                        dx, 
+                        dy
+                    );
+                }
+            }
+            else if (node instanceof Node) {
+                node.move(dx, dy)
+            }
+        });
+    }, []);
+
     /**
      * Mouse down handler for items on the canvas.
      */
@@ -974,7 +997,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         // First, we take into account the grid:
                         const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, 
                             selectedNodes, dccDx, dccDy);
-                        // Next, we have to prevent the enode, as well as the left-most selected item, from being dragged outside the 
+                        // Next, we have to prevent the node, as well as the left-most selected item, from being dragged outside the 
                         // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
                         const x = Math.min(Math.max(snapX, xMinD), MAX_X);
                         const y = Math.min(Math.max(snapY, MIN_Y), MAX_Y);
@@ -982,24 +1005,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         const dy = y - item.y;
                         // Finally, we move each item in the selection, if necessary:
                         if(dx!==0 || dy!==0) {
-                            const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
-                            selectedNodes.forEach(item => {
-                                // console.log(`moving: ${item.id}`);
-                                if (item.group instanceof CNodeGroup) {
-                                    if (!nodeGroups.includes(item.group)) {
-                                        nodeGroups.push(item.group);
-                                        const members = item.group.members;
-                                        (item.group as CNodeGroup).groupMove(
-                                            selectedNodes.filter(m => m instanceof CNode && members.includes(m)) as CNode[], 
-                                            dx, 
-                                            dy
-                                        );
-                                    }
-                                }
-                                else if (item instanceof Node) {
-                                    item.move(dx, dy)
-                                }
-                            });
+                            move(selectedNodes, dx, dy);
                             setItemsDragged(prev=> [...prev]);  // to trigger a re-render 
                         }
                     };            
@@ -1268,24 +1274,24 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * OnClick handler for the 'Create' button.
      */
     const createDepItem = useCallback((index: number) => {
-        if (selectedNodes.length > 0 && index >= 0 && index < depItemKeys.length) {
+        if (nodes.length > 0 && index >= 0 && index < depItemKeys.length) {
             let newSelection: Item[] = [];
             let counter = eNodeCounter;  
             let snodes: SNode[] = [];               
             const key = depItemKeys[index];
             const minNodes = depItemInfos[index].min;
-            if (selectedNodes.length >= minNodes) {   
+            if (nodes.length >= minNodes) {   
 
-                let relata = selectedNodes;
+                let relata = nodes;
                 if (minNodes > 1) { 
                     // If the selected nodes contain all members of a CNodeGroup, the user has likely intended to create only one connector.
-                    let n0 = selectedNodes[0];
-                    let slice = selectedNodes.slice(1);
+                    let n0 = nodes[0];
+                    let slice = nodes.slice(1);
                     if (n0 instanceof CNode) { 
                         const ng0 = n0.group!.members;
-                        if (sameElements(ng0, selectedNodes.slice(0, ng0.length))) {
-                            n0 = selectedNodes[ng0.length - 1];
-                            slice = selectedNodes.slice(ng0.length);
+                        if (sameElements(ng0, nodes.slice(0, ng0.length))) {
+                            n0 = nodes[ng0.length - 1];
+                            slice = nodes.slice(ng0.length);
                         }
                     }
                     const n1 = slice[0];
@@ -1303,7 +1309,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newSelection = snodes;
                         break;
                     case 'lbl':         
-                        newSelection = selectedNodes.map(node => {
+                        newSelection = nodes.map(node => {
                             const label = new Label(node);
                             label.text = 'a';
                             label.updateLines(unitscale, displayFontFactor);
@@ -1329,7 +1335,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
             }
         }
-    }, [eNodeCounter, selectedNodes, unitscale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
+    }, [eNodeCounter, nodes, unitscale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1519,16 +1525,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      */
     const moveSelection = useCallback((dirX: number, dirY: number) => {
         const inc = 10 ** logIncrement;
-        selectedNodesDeduplicated.forEach(node => {
-            if (node instanceof SNode) {
-                node.move(dirX * inc, dirY * inc);
-            }
-            else { // We round the new locations to avoid unnecessary decimals showing up in the editor pane:
-                if (dirX!==0) node.x = node.x100 = round(node.x + dirX * inc, ROUNDING_DIGITS);
-                if (dirY!==0) node.y = node.y100 = round(node.y + dirY * inc, ROUNDING_DIGITS);
-                node.invalidateDepNodeLocations();
-            }
-        });
+        move(selectedNodesDeduplicated, dirX * inc, dirY * inc);
         adjustLimit();
         setOrigin(false, points, focusItem, selection, list);
         if (focusItem instanceof Node) {
@@ -1962,11 +1959,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canCreateDepItem: boolean = useMemo(() => {
         const info = depItemInfos[depItemIndex]
-        return selectedNodes.length >= info.min && (
+        return nodes.length >= info.min && (
             (info.min===1 && canAddOrnaments) || // If info.min===1, we are going to add Ornaments, and otherwise ENodes.
-            (info.min > 1) && list.length + selectedNodes.length < MAX_LIST_SIZE
+            (info.min > 1) && list.length + nodes.length < MAX_LIST_SIZE
         )
-    }, [list, selectedNodes, depItemIndex, canAddOrnaments]);
+    }, [list, nodes, depItemIndex, canAddOrnaments]);
 
     const canMoveLeft: boolean = leftMostSelected - 10 ** logIncrement >= 0;
 
@@ -2101,7 +2098,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
 
-    console.log(clsx(`Rendering... ${selectedNodes.map(node => node.id)} listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
+    console.log(clsx(`Rendering... ${nodes.map(node => node.id)} listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
         `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`,
         focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.id).join()}]`));
     //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
@@ -2350,7 +2347,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
                             tooltip={<>Generate and display <i>texdraw</i> code.<HotkeyComp mapKey='generate code' /></>}
-                            tooltipPlacement='right'
+                            tooltipPlacement='left'
                             onClick={() => displayCode(unitscale)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 px = 
@@ -2361,7 +2358,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         </div>
                         <BasicColoredButton id='load-btton' label='Load' style='rounded-xl mb-2 py-2' disabled={false} 
                             tooltip={<>Load diagram from <i>texdraw</i> code.<HotkeyComp mapKey='load diagram' /></>}
-                            tooltipPlacement='right'
+                            tooltipPlacement='left'
                             onClick={() => loadDiagram(code, replace)} /> 
                         <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
                     </div>

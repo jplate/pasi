@@ -34,7 +34,7 @@ export class ParseError extends Error {
     ) {super();}
 }
 
-export const makeParseError = (message: React.ReactNode, code: string) => {
+export const makeParseError = (message: React.ReactNode, code: string): ParseError => {
     const long = code.length > 30;
     const codeComp = long? <pre className='mt-6 w-[50rem]'><code>{code}</code></pre>: <code>{code}</code>;
     return new ParseError(long? 
@@ -201,7 +201,7 @@ export class Stroke {
     }
 
     toString(): string {
-        return `(Stroke: ${this.linewidth} (${this.pattern.join(', ')}))`;
+        return `(Stroke: ${this.linewidth} [${this.pattern.join()}])`;
     }
 }
 
@@ -562,7 +562,9 @@ export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], 
 /**
  * Returns a texdraw command sequence for 'drawn' shapes, i.e., shapes that are not supposed to be filled.
  */
-export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, dash: number[], prevLw?: number, prevDash?: number[]): string => {
+export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, dash: number[], 
+    prevLw?: number, prevDash?: number[], nextDash?: number[]
+): string => {
     const result: string[] = [];
     
     if (dash.length > 0 && !(prevDash && equalArrays(dash, prevDash))) {
@@ -588,7 +590,9 @@ export const getCommandSequenceForDrawnShapes = (shapes: Shape[], lw: number, da
         }
         prevPoint = shapes[i].getEndPoint();
     }
-    if (dash.length > 0) result.push(lpatt([]));
+    if (dash.length > 0 && !nextDash) {
+        result.push(lpatt([])); // If there is no specified next dash pattern, we let the pattern revert to normal.
+    }
 
     return result.join('');
 }

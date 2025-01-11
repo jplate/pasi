@@ -29,6 +29,11 @@ const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => any>([
     ['A', Adjunction]
 ]);
 
+type NodeIdentifier = {
+    name: string,
+    index?: number
+}
+
 export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
 
@@ -98,7 +103,7 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string
                 if (node instanceof SNode) {
                     const prefix = sNodePrefixMap.getByValue(node.constructor as new (i: number) => any);
                     const invNames = node.involutes.map(inv => nodeMap.get(inv));
-                    nodeInfo = `${prefix}${nodeName}(${invNames.join(',')})`;
+                    nodeInfo = `${prefix}${nodeName}(${invNames.join(' ')})`;
                 }
                 else {
                     nodeInfo = `${ENODE_PREFIX}${nodeName}`;
@@ -194,10 +199,7 @@ const extractString = (s: string, pattern: string, offset: number): string | nul
  * This function analyzes the 'hint', returning an array that contains the relevant item's name, the name of its group, 
  * a boolean indicating whether it is an active member of that group, and an info string.
  */
-const analyzeHint = (
-    hint: string, 
-    allowFractionalName: boolean = false// indicates whether we allow the 'name' to represent a floating point number.
-): [name: string, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
+const analyzeHint = (hint: string): [name: string, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
     let info: string | null = null,
         activeMember: boolean | undefined = undefined;
     const i =  hint.indexOf('{'); // the beginning of the info string, if present.
@@ -222,17 +224,26 @@ const analyzeHint = (
     if (j+1===hint.length) { // In this case the hint ends with a '.' or ':', which makes no sense.
         throw new ParseError(<span>Directive should not end with a period or colon: <code>{truncate(hint)}</code>.</span>);
     }
-    const tooLong = name && name.length > 2 * MAX_NAME_LENGTH + 1;
-    const isInt = name && !tooLong && !isNaN(decodeInt(name));
-    if(!name || tooLong ||
-        (isInt && name.length > MAX_NAME_LENGTH) || 
-        (!allowFractionalName && !isInt) || 
-        (groupName && 
-            (groupName.length > MAX_NAME_LENGTH || isNaN(decodeInt(groupName))))) {
-        throw new ParseError(<span>Missing and/or illegal item identifier: <code>{truncate(name)}</code>.</span>);
-    }
 
     return [name, groupName, activeMember, info];
+}
+
+const validateName = (
+    name: string, 
+    allowCNodeName: boolean = false // indicates whether we allow name to be of the format 'name + CNODE_NAME_INFIX + nodeIndex'.
+): NodeIdentifier => {
+    if (!name) {
+        throw new ParseError(<span>Missing item identifier.</span>);
+    }
+    if ((!allowCNodeName && name.length > MAX_NAME_LENGTH) ||  name.length > 2 * MAX_NAME_LENGTH + 1) {
+        throw new ParseError(<span>Identifier too long: <code>{truncate(name)}</code>.</span>);
+    }
+    const split = name.split(CNODE_NAME_INFIX);
+    const index = split.length > 1? decodeInt(split[1]): undefined;
+    if (!isFinite(decodeInt(split[0])) || (index && (!allowCNodeName || !isFinite(index)))) {
+        throw new ParseError(<span>Illegal identifier: <code>{truncate(name)}</code>.</span>);
+    }
+    return { name: split[0], index };
 }
 
 /** 
@@ -257,7 +268,7 @@ const addToGroup = (item: Item | CNodeGroup, groupName: string, activeMember: bo
     return sgCounter;
 }
 
-const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<string, [ENode, boolean]>, 
+const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<string, ENode>, 
     gMap: Map<string, Group<any>>, counter: number, sgCounter: number
 ): [ENode, number] => {
     // The 'hint' for an ENode has the following format:
@@ -266,111 +277,114 @@ const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<strin
     // ['E' + name + info] or 
     // ['E' + name + info + ('.' or ':') + groupName].
     const [name, groupName, activeMember, info] = analyzeHint(hint);
+    validateName(name);
 
     //console.log(` name: ${name}  groupName: ${groupName}  active: ${activeMember}  info: ${info}  in map: ${eMap.has(name)}`);
 
-    let node: ENode;
-    if (eMap.has(name)) {
-        const [it, defined] = eMap.get(name) as [ENode, boolean];
-        if (!(it instanceof ENode)) {
-            throw new ParseError(<span><code>{name}</code> used as a name of both a contour node group and an entity node.</span>);
-        }
-        if (defined) {
-            throw new ParseError(<span>Duplicate definition of entity node <code>{name}</code>.</span>);
-        }
-        node = it;
+    if (eMap.get(name)) {
+        throw new ParseError(<span>Duplicate definition of entity node <code>{name}</code>.</span>);
     }
-    else {
-        node = new ENode(counter, 0, 0);
-    }
+    const node = new ENode(counter, 0, 0);
 
     if (groupName) {
+        validateName(groupName);
         sgCounter = addToGroup(node, groupName, activeMember!, gMap, sgCounter);
     }
     node.parse(tex, info, dimRatio, 1, 1, name);
-    eMap.set(name, [node, true]);
+    eMap.set(name, node);
     return [node, sgCounter];
 }
 
-const parseCNodeGroup = (tex: string, hint: string, dimRatio: number, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
+const sNodeNameMatch = /(\S+)\((\S+)\s+(\S+)\)/;
+
+const parseSNode = (tex: string, hint: string, dimRatio: number, snClass: new (id: number) => any, 
+    eMap: Map<string, ENode>, invMap: Map<SNode, NodeIdentifier[]>, gMap: Map<string, Group<any>>, 
+    counter: number, sgCounter:number
+): [SNode, number] => {
+    const [nameString, groupName, activeMember, info] = analyzeHint(hint);
+
+    // Extract the names of this node and its two involutes from the nameString
+    const match = nameString.match(sNodeNameMatch);
+    if (!match) {
+        throw new ParseError(<span>Illegal expression: <code>{truncate(nameString)}</code>.</span>);
+    }
+    const name: string = validateName(match[1]).name;
+    const inv0Id: NodeIdentifier = validateName(match[2], true);
+    const inv1Id: NodeIdentifier = validateName(match[3], true);
+
+    if (eMap.get(name)) {
+        throw new ParseError(<span>Duplicate definition of entity node <code>{name}</code>.</span>);
+    }
+    const sn = new snClass(counter);
+
+    if (groupName) {
+        validateName(groupName);
+        sgCounter = addToGroup(sn, groupName, activeMember!, gMap, sgCounter);
+    }
+
+    sn.parse(tex, info, dimRatio, 1, 1, name);
+    eMap.set(name, sn);
+    invMap.set(sn, [inv0Id, inv1Id]);
+    return [sn, sgCounter];
+}
+
+const parseCNodeGroup = (tex: string, hint: string, dimRatio: number, cngMap: Map<string, CNodeGroup>, gMap: Map<string, Group<any>>, 
     counter: number, sgCounter: number
 ): [CNodeGroup, number] => {
     // The 'hint' for a NodeGroup has the following format:
     // ['K' + info] or 
     // ['K' + info + ('.' or ':') + groupName].
     const [name, groupName, activeMember, info] = analyzeHint(hint);
+    validateName(name);
 
-    let cng: CNodeGroup;
-    if (cngMap.has(name)) {
-        const [it, defined] = cngMap.get(name) as [ENode | CNodeGroup, boolean];
-        if (!(it instanceof CNodeGroup)) {
-            throw new ParseError(<span><code>{name}</code> used as a name of both an entity node and a contour node group.</span>);
-        }
-        if (defined) {
-            throw new ParseError(<span>Duplicate definition of contour node group <code>{name}</code>.</span>);
-        }
-        cng = it;
+    if (cngMap.get(name) ) {
+        throw new ParseError(<span>Duplicate definition of contour node group <code>{name}</code>.</span>);
     }
-    else {
-        cng = new CNodeGroup(counter);
-    }
+    const cng = new CNodeGroup(counter);
     if (groupName) {
+        validateName(groupName);
         sgCounter = addToGroup(cng, groupName, activeMember!, gMap, sgCounter);
     }
     cng.parse(tex, info, dimRatio);
-    cngMap.set(name, [cng, true]); 
+    cngMap.set(name, cng); 
     return [cng, sgCounter];
 }
 
 const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new (node: Node) => any, 
-    eMap: Map<string, [ENode, boolean]>, cngMap: Map<string, [CNodeGroup, boolean]>, gMap: Map<string, Group<any>>, 
+    eMap: Map<string, ENode>, cngMap: Map<string, CNodeGroup>, gMap: Map<string, Group<any>>, 
     sgCounter:number, unitscale: number, displayFontFactor: number
 ): [Ornament, number] => {
     // The 'hint' for an Ornament has (roughly) the following format:
     // [prefix + nodeName + info] or 
     // [prefix + nodeName + info + ('.' or ':') + groupName].
-    const [name, groupName, activeMember, info] = analyzeHint(hint, true);
+    const [nameString, groupName, activeMember, info] = analyzeHint(hint);
     // The 'name' should here have the format [eNodeName] OR [cngName + CNODE_NAME_INFIX + nodeIndex].
-    const split = name.split(CNODE_NAME_INFIX);
+    const { name, index } = validateName(nameString, true);
     let o: Ornament, 
         nodeIdentifier = ''; // This will be passed on to Ornapment.parse() for the purpose of constructing error messages.
-    if (split.length===1) { // In this case we're dealing with an Ornament attached to an ENode.
-        let node: Node | undefined = undefined,
-            defined = false;
-        const enName = split[0];
-        const eNodeIndex = decode(enName);
+    if (!index) { // In this case we're dealing with an Ornament attached to an ENode.
+        const eNodeIndex = decode(name);
         if (!isFinite(eNodeIndex)) {
             throw new ParseError(<span>Invalid entity node identifier: <code>{name}</code>.</span>);
         }
-        if (eMap.has(enName)) {
-            [node, defined] = eMap.get(enName) as [ENode, boolean];
-        }
-        if (!node || !defined) {
-            throw new ParseError(<span>Entity node <code>{enName}</code> should be defined before the definition of any ornaments attached to it.</span>);
+        const node = eMap.get(name);
+        if (!node) {
+            throw new ParseError(<span>Entity node <code>{name}</code> should be defined before the definition of any ornaments attached to it.</span>);
         }
         nodeIdentifier = `entity node ${eNodeIndex}`;
         o = new oClass(node);
     }
     else { // In this case we're dealing with an Ornament attached to a CNode.
-        let cng: CNodeGroup | undefined = undefined,
-            defined = false;
-        const cngName = split[0];
-        const cngIndex = decode(cngName);
-        const cnIndex = split.length>1? decode(split[1]): 0;
-        if (split.length!==2 || !isFinite(cngIndex) || !isFinite(cnIndex)) {
-            throw new ParseError(<span>Invalid contour node identifier: <code>{name}</code>.</span>);
+        const cngIndex = decode(name);
+        const cng = cngMap.get(name);
+        if (!cng) {
+            throw new ParseError(<span>Contour node group <code>{name}</code> should be defined before the definition of any ornaments attached to it.</span>);
         }
-        if (cngMap.has(cngName)) {
-            [cng, defined] = cngMap.get(cngName) as [CNodeGroup, boolean];
+        if (index > cng.members.length - 1) {
+            throw new ParseError(<span>Node index out of bounds: {index}.</span>);
         }
-        if (!cng || !defined) {
-            throw new ParseError(<span>Contour node group <code>{cngName}</code> should be defined before the definition of any ornaments attached to it.</span>);
-        }
-        if (cnIndex > cng.members.length - 1) {
-            throw new ParseError(<span>Node index out of bounds: {cnIndex}.</span>);
-        }
-        nodeIdentifier = `node ${cnIndex} of contour node group ${cngIndex}`;
-        const cn = cng.members[cnIndex];
+        nodeIdentifier = `node ${index} of contour node group ${cngIndex}`;
+        const cn = cng.members[index];
         o = new oClass(cn);
     }
 
@@ -380,11 +394,13 @@ const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new 
     }
 
     if (groupName) {
+        validateName(groupName);
         sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
     }
     o.parse(tex, info, dimRatio, unitscale, displayFontFactor, nodeIdentifier);
     return [o, sgCounter];
 }
+
 
 export const load = (code: string, unitscale: number | undefined, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
 ): [(ENode | CNodeGroup)[], number, number, number, number] => {
@@ -419,11 +435,9 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
 
     // We now have to parse the remaining lines, except for the last one, which should just be identical with Texdraw.end.
 
-    const eMap = new Map<string, [ENode, boolean]>();     // These two maps map names of ENodes or CNodeGroups to arrays holding (i) the respective ENode or
-    const cngMap = new Map<string, [CNodeGroup, boolean]>(); // CNodeGroup and (ii) a boolean indicating whether that node or group has already been configured 
-        // by parseENode or parseCNodeGroup. (ENodes and CNodeGroups will be added to the respective map as soon as their names are used, which can happen   
-        // before their definitions have been encountered in the texdraw code. However, the definition of any ornament has to come later than the definition 
-        // of the node to which it is attached.)
+    const eMap = new Map<string, ENode>();    
+    const cngMap = new Map<string, CNodeGroup>(); 
+    const invMap = new Map<SNode, NodeIdentifier[]>();
     let tex = '',
         cont = false; // indicates whether the current texdraw command has started on a previous line
     for (let i = 2; i<lines.length-1; i++) {
@@ -453,14 +467,23 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
                         list.push(cng);
                         break;
                     }
-                default: { // In this case we're probably dealing with an Ornament:
-                    const oClass = ornamentPrefixMap.getByKey(prefix);
-                    let o: Ornament;
-                    if (oClass) {
-                        [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedUnitscale, displayFontFactor);
+                default: { // In this case we're probably dealing with an Ornament or SNode:
+                    const snClass = sNodePrefixMap.getByKey(prefix);
+                    if (snClass) {
+                        let sn: SNode;
+                        [sn, sgCounter] = parseSNode(tex, hint, dimRatio, snClass, eMap, invMap, gMap, eCounter, sgCounter);
+                        eCounter++;
+                        list.push(sn);
                     }
-                    else { // In this case the prefix has not been recognized.
-                        throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
+                    else {
+                        const oClass = ornamentPrefixMap.getByKey(prefix);
+                        if (oClass) {
+                            let o: Ornament;
+                            [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedUnitscale, displayFontFactor);
+                        }
+                        else { // In this case the prefix has not been recognized.
+                            throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
+                        }
                     }
                 }
             }
@@ -469,6 +492,30 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
             cont = true;
         }
     }
+    invMap.forEach((invIds, sn) => {
+        const involutes: Node[] = invIds.map(id => {
+            let node;
+            if (id.index) {
+                const cng = cngMap.get(id.name);
+                if (!cng) {
+                    throw new ParseError(<span>Incomplete code: missing definition of contour node group <code>{id.name}</code>.</span>);
+                }
+                if (cng.members.length <= id.index) {
+                    throw new ParseError(<>Failed reference to a member with index {id.index} of contour node group <code>{id.name}</code>, which {' '}
+                        has only {cng.members.length} members.</>);
+                }
+                node = cng.members[id.index];
+            }
+            else {
+                node = eMap.get(id.name);
+                if (!node) {
+                    throw new ParseError(<span>Incomplete code: missing definition of entity node <code>{id.name}</code>.</span>);
+                }
+            }
+            return node;
+        });
+        sn.init(involutes);
+    });
 
     // last line
     if (lines[lines.length-1]!==Texdraw.end) {

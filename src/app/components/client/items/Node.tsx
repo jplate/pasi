@@ -1,6 +1,10 @@
 import Item from './Item'
 import Ornament from './Ornament'
+import { ROUNDING_DIGITS, MIN_X, MAX_X, MIN_Y, MAX_Y } from '../../../Constants'
+import { round } from '../../../util/MathTools'
 import * as Texdraw from '../../../codec/Texdraw'
+import { ParseError } from '../../../codec/Texdraw'
+
 
 export const MAX_LINEWIDTH = 500;
 export const MAX_DASH_LENGTH = 9999 // maximal length of dash array
@@ -8,6 +12,7 @@ export const MAX_DASH_VALUE = 9999 // maximum for a single value in a dash array
 export const MAX_NUMBER_OF_ORNAMENTS = 500;
 export const MIN_DISTANCE = -9999; // minimal specifiable distance 
 export const MAX_DISTANCE = 9999; // maximal specifiable distance 
+export const MAX_RADIUS = 9999;
 export const DEFAULT_DISTANCE = 10; // default distance (to a control point of a cubic curve)
 
 export const DEFAULT_LINEWIDTH = 1;
@@ -19,6 +24,8 @@ export const LINEJOIN_STYLE = 'round';
 export const DEFAULT_HSL_LIGHT_MODE = {hue: 0, sat: 0, lgt: 19};
 export const DEFAULT_HSL_DARK_MODE =  {hue: 30, sat: 100, lgt: 2};
 export const MARK_BORDER_LINEWIDTH = 1;
+
+
 
 
 /**
@@ -106,10 +113,15 @@ export default abstract class Node extends Item {
 
     move(dx: number, dy: number): void {
         const [x, y] = this.getLocation(); // The idea is that getLocation() updates this.x and this.y if these should have become invalidated.
-        this.x = x + dx;
-        this.y = y + dy;
-        this.x100 += dx;
-        this.y100 += dy;
+        if (dx!==0) { 
+            // We round the new locations to avoid unnecessary decimals showing up in the editor pane:
+            this.x = round(x + dx, ROUNDING_DIGITS);
+            this.x100 = round(this.x100 + dx, ROUNDING_DIGITS);
+        }
+        if (dy!==0) {
+            this.y = round(y + dy, ROUNDING_DIGITS);
+            this.y100 = round(this.y100 + dy, ROUNDING_DIGITS);
+        }
         this.invalidateDepNodeLocations();
     }
 
@@ -141,4 +153,65 @@ export default abstract class Node extends Item {
         return `${this.id}-${this.ornamentCounter++}`;
     }
 
+}
+
+export const validateLinewidth = (lw: number, name: string): number => {
+    if (lw < 0) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.</span>);
+    }
+    else if (lw > MAX_LINEWIDTH) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds maximum value.</span>);
+    }
+    return lw;
+}
+
+export const validateShading = (shading: number, name: string): number => {
+    if (shading < 0) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value should not be negative.</span>);
+    }
+    else if (shading > 1) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: shading value {shading} exceeds 1.</span>);
+    }
+    return shading;
+}
+
+export const validateDash = (dash: number[], name: string): number[] => {
+    if (dash.length > MAX_DASH_LENGTH) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash array length {dash.length} exceeds maximum value.</span>); 
+    }
+    let val;
+    if (dash.some(v => (val = v) < 0)) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value should not be negative.</span>); 
+    }        
+    if (dash.some(v => v > MAX_DASH_VALUE)) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds  maximum value.</span>); 
+    }
+    return dash;
+}
+
+export const validateRadius = (radius: number, name: string): number=> {
+    if (radius < 0) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.</span>); 
+    }
+    else if (radius > MAX_RADIUS) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds maximum value.</span>); 
+    }
+    return radius;
+}
+
+export const validateCoordinates = (x: number, y: number, name: string): number[] => {
+    if (x < MIN_X) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below minimum value.</span>); 
+    }
+    else if (x > MAX_X) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds maximum value.</span>); 
+    }
+    
+    if (y < MIN_Y) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below minimum value.</span>); 
+    }
+    else if (y > MAX_Y) {
+        throw new ParseError(<span>Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds maximum value.</span>); 
+    }
+    return [x, y]
 }

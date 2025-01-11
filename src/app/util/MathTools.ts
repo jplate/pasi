@@ -3,13 +3,16 @@
  * ROUNDING AND NORMALIZING
  ****************************************************************************/
 
+export const DEFAULT_TOLERANCE = 5; // used in round() to catch arithmetic inaccuracies.
+
 /**
- * For n = 0,...,digits, rounds to nearest (10^n)th if the difference to that value is less than 10^-(n+5). Used for avoiding the compounding of slight rounding errors.
+ * For n = 0,...,digits, rounds to nearest (10^n)th if the difference to that value is less than 10^-(n + tolerance). 
+ * Used for avoiding the compounding of slight rounding errors, as well as for suppressing tiny arithmetical errors common in JS.
  */
-export const round = (num: number, digits: number): number => { 
+export const round = (num: number, digits: number, tolerance = DEFAULT_TOLERANCE): number => { 
     for (let n = 0; n <= digits; n++) {
         const factor = 10 ** n;
-        const e = 10 ** -(n + 5);
+        const e = 10 ** -(n + tolerance);
         const rounded = Math.round(num*factor) / factor;
         if (Math.abs(rounded-num) < e) return rounded;
     }
@@ -423,7 +426,7 @@ export const travelFor = (u: number[], distance: number, c: CubicCurve, dt: numb
             t = t_;
             [px, py] = [p_x, p_y];
             n++;
-            sfAdd = n*.1;
+            sfAdd = n * .1;
             //console.log("sf: "+(safetyFactor+sfAdd));
         }
         else done = true;
@@ -442,7 +445,7 @@ export const travelFor = (u: number[], distance: number, c: CubicCurve, dt: numb
  * @return the point at the end position
  */
 export const travel = (u: number[], distance: number, c: CubicCurve, dt: number, cutOff: number) => {
-    return travelFor(u, distance, c, dt, cutOff, 10e6);
+    return travelFor(u, distance, c, dt, cutOff, 1e6);
 }
 
 

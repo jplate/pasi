@@ -1,7 +1,7 @@
 import React from 'react'
 import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_DASH, MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH,
-     MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE } from './Node'
+     MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, validateLinewidth, validateDash, validateShading, validateRadius } from './Node'
 import ENode, { Info, Handler, ENodeCompProps } from './ENode'
 import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants'
 import CNodeGroup from '../CNodeGroup'
@@ -10,13 +10,60 @@ import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
 import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents'
 import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools'
 import * as Texdraw from '../../../codec/Texdraw'
+import { ParseError, makeParseError } from '../../../codec/Texdraw'
 import { encode, decode } from '../../../codec/General'
 
 export const DEFAULT_RADIUS = 5
 export const DEFAULT_GAP = .4;
+export const MIN_GAP = -999
+export const MAX_GAP = 999
 export const MIN_HIDDEN_RADIUS = 12;
 export const MAX_HIDDEN_RADIUS = 36;
 export const MIN_EFFECTIVE_RADIUS = 8; // used for calculating the distances of the control points of connectors to the centers of the corresponding nodes
+
+
+export const validateGap = (gap: number, name: string): number => {
+    if (gap < MIN_GAP) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: gap {gap} below minimum value.</span>); 
+    }
+    else if (gap > MAX_GAP) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: gap {gap} exceeds maximum value.</span>); 
+    }
+    return gap;
+}
+
+export const validateT = (t: number, name: string): number => {
+    if (t < 0) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: {t} below minimum {' '}
+            <span className='whitespace-nowrap'>t-value</span>.</span>
+        ); 
+    }
+    else if (t > 1) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: {t} exceeds maximum {' '}
+            <span className='whitespace-nowrap'>t-value</span>.</span>
+        );  
+    }
+    return t;
+}
+
+export const validateDistance = (d: number, name: string): number => {
+    if (d < MIN_DISTANCE) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: distance {d} below minimum value.</span>); 
+    }
+    else if (d > MAX_DISTANCE) {
+        throw new ParseError(<span>Illegal data in definition of state node <code>{name}</code>: distance {d} exceeds maximum value.</span>); 
+    }
+    return d;
+}
+
+/**
+ * A convenience function for use by subclasses.
+ */
+export const complain = (nodeName: string): React.ReactNode => {
+    return (
+        <>Incompatible <i>texdraw</i> code for node <code>{nodeName}</code></>
+    );
+}
 
 /**
  * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
@@ -65,15 +112,15 @@ export default abstract class SNode extends ENode {
 
     init(involutes: Node[]) {
         this.involutes = involutes;
-        for (let node of involutes) {
-            node.dependentNodes=[...node.dependentNodes, this];
+        for (const node of involutes) {
+            node.dependentNodes = [...node.dependentNodes, this];
         }
     }
 
     abstract getDefaultW0(): number;
     abstract getDefaultW1(): number;
     abstract getDefaultWC(): number;
-    abstract getArrowheadShapes(): Shape[];
+
 
     override isHidden(selected: boolean) {
         return !selected && 
@@ -146,7 +193,7 @@ export default abstract class SNode extends ENode {
                         let [cn0, cn1] = [n0, n1];
                         let dmin = Infinity;
                         const cng1 = n1.group as CNodeGroup;
-                        for (let node of cng0.members) {
+                        for (const node of cng0.members) {
                             const [x0, y0] = [node.x, node.y];
                             const cn = cng1.getClosestNode(node);
                             if (cn) {
@@ -175,10 +222,22 @@ export default abstract class SNode extends ENode {
                         this.involutes = [n0, cn1];
                     }
                 }
+                // Update the 'dependentNodes' arrays of the previous involutes, if there has been a change:
+                for (const [old, cn] of [[n0, this.involutes[0]], [n1, this.involutes[1]]]) {
+                    if (old !== cn) {
+                        const prevNodes = old.dependentNodes;
+                        const newNodes = cn.dependentNodes;
+                        old.dependentNodes = prevNodes.filter(node => node===this);
+                        if (!newNodes.includes(this)) {
+                            cn.dependentNodes = [...newNodes, this];
+                        }
+                    }                    
+                }
             }
             const line = this.getLine();
             const loc =  cubicBezier(line, this.t);
             [this.x, this.y] = loc;
+            // No need to do anything about this.x100 and this.y100, since location is entirely determined by the locations of the involutes.
             this.locationDefined = true;
             return loc;
         }
@@ -193,8 +252,7 @@ export default abstract class SNode extends ENode {
         const [newX, newY] = cubicBezier(line, this.t);
         this.x = newX;
         this.y = newY;
-        this.x100 += (newX - x);
-        this.y100 += (newY - y);
+        // No need to do anything about this.x100 and this.y100, since location is entirely determined by the locations of the involutes.
         this.invalidateDepNodeLocations();
     }
     
@@ -499,37 +557,153 @@ export default abstract class SNode extends ENode {
         return handler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
     }
 
+    nodeIsDisplayed() {        
+        return !this.isHidden(false) && (this.linewidth > 0 || this.shading > 0); // For the purposes of generating the texdraw code, we're assuming that this
+        // SNode is not selected, even if this means that it will not be represented in the code.
+    }
+
+    /**
+     * Overridden by (but also called frmo) subclasses.
+     */
     override getInfoString(): string {
-        const nodeDrawn = !this.isHidden(false) && this.linewidth > 0; 
-        const undrawnNodeParams = nodeDrawn? []: [this.radius];
-        return [
+        const nodeDisplayed = this.nodeIsDisplayed();
+        const undrawnNodeInfo = nodeDisplayed? []: [this.radius, this.linewidth];
+        const otherInfo = [
             this.t,
-            ...undrawnNodeParams 
-        ].map(encode).join(' ');
-    }
-
-    getConnectorCode(): string {
-        const shapes = this.getConnectorShapes();
-        return Texdraw.getCommandSequenceForDrawnShapes(
-            Texdraw.translateShapes(shapes), 
-            this.conLinewidth, this.conDash, this.linewidth, this.dash
-        );
-    }
-
-    getArrowheadCode(): string {
-        const shapes = this.getArrowheadShapes();
-        return Texdraw.getCommandSequenceForDrawnShapes(
-            Texdraw.translateShapes(shapes), 
-            this.ahLinewidth, this.ahDash, this.conLinewidth, this.conDash
-        );
+            this.gap0,
+            this.gap1,
+            this.manual? 1: 0, 
+            this.closest? 1: 0
+        ];
+        const connectorInfo = this.manual? [this.phi0, this.d0, this.phi1, this.d1]: [];
+        return [...undrawnNodeInfo, ...otherInfo, ...connectorInfo].map(encode).join(' ');
     }
 
     override getTexdrawCode(): string {
-        return [super.getTexdrawCode(),
-            this.getConnectorCode(),
-            this.getArrowheadCode()
+        const conShapes = this.getConnectorShapes();
+        const ahShapes = this.getArrowheadShapes();
+        const nodeDisplayed = this.nodeIsDisplayed(); 
+        const connectorCode = Texdraw.getCommandSequenceForDrawnShapes(
+            Texdraw.translateShapes(conShapes), 
+            this.conLinewidth, 
+            this.conDash,
+            undefined, 
+            undefined,
+            this.ahDash
+        );
+        const ahCode = Texdraw.getCommandSequenceForDrawnShapes(
+            Texdraw.translateShapes(ahShapes), 
+            this.ahLinewidth, 
+            this.ahDash,
+            this.conLinewidth,
+            this.conDash,
+            this.dash
+        );    
+        const nodeCode = nodeDisplayed? super.getTexdrawCode(): '';
+        return [
+            connectorCode,
+            ahCode,
+            nodeCode
         ].join('');
     }
+
+
+    override extractCircles(stShapes: Texdraw.StrokedShape[], tex: string) {
+        const circles: Texdraw.Circle[] = [];
+        for (let i = 0; i < Math.min(2, stShapes.length) && stShapes[i].shape instanceof Texdraw.Circle; i++) { 
+            // We tolerate there being more than two shapes, since there may also be shapes for a connector and arrowhead.
+            circles.push(stShapes[i].shape as Texdraw.Circle);
+	    }
+        return circles;
+    }
+
+    /**
+     * An empty method, which gets called from ENode.parseNode() conditionally on there being no circles in the stroked shapes. It's empty
+     * because we have to parse the (much more extensive) info string in *every* case -- which we do in parseInfoString() below.
+     */
+    override parseNodeInfoString(_tex: string, _info: string | null, _dimRatio: number, _name: string): void {
+    }
+
+    parseInfoString(info: string, dimRatio: number, nodeDrawn: boolean, name: string): void {
+        let vals = info.split(/\s+/).map(s => {
+            const val = decode(s);
+            if(!isFinite(val)) {
+                throw makeParseError('Unexpected token in entity node configuration string', s);
+            }
+            return val;
+        });
+        if (!nodeDrawn) {
+            const [radRaw, lwRaw] = vals.slice(0,2);
+            this.radius = validateRadius(radRaw * dimRatio, name);
+            this.linewidth = this.linewidth100 = validateLinewidth(lwRaw * dimRatio, name);
+            vals = vals.slice(2);
+        }
+        let i = 0;
+        this.t = validateT(vals[i++], name);
+        this.gap0 = validateGap(vals[i++], name);
+        this.gap1 = validateGap(vals[i++], name);
+        this.manual = vals[i++]===1;
+        this.closest = vals[i++]===1;
+        if (this.manual) {
+            this.phi0 = vals[i++];
+            this.d0 = validateDistance(vals[i++], name);
+            this.phi1 = vals[i++];
+            this.d1 = validateDistance(vals[i++], name);
+        }
+    }
+
+    /**
+     * Extracts connector-related information from the supplied array of StrokedShapes.
+     * Returns a shortened array that may still contain arrowhead shapes.
+     * 
+     * Expected to be overridden by subclasses that use a connector that is more complex than a single CubicCurve.
+    */
+    parseConnector(stShapes: Texdraw.StrokedShape[], dimRatio: number, nodeName: string): [Texdraw.StrokedShape[], number, number] {
+        if (stShapes.length===0 || !(stShapes[0].shape instanceof Texdraw.CubicCurve)) {
+            throw new ParseError(<span>Failed parsing information for entity node <code>{nodeName}</code>: connector missing.</span>);
+        }
+        const stroke = stShapes[0].stroke;
+        const cp = (stShapes[0].shape as Texdraw.CubicCurve).p1a;
+        this.conLinewidth = validateLinewidth(dimRatio * stroke.linewidth, nodeName);
+        this.conDash = validateDash(stroke.pattern.map(v => dimRatio * v), nodeName);
+        return [stShapes.slice(1), cp.x, cp.y];
+    } 
+
+    /**
+     * Overridden (and used) by subclasses. Provides the rudimentary functionality of setting the SNode's ahLinewidth and ahDash, based on the 
+     * supplied arguments.
+     * @return the supplied array of Texdraw.StrokedShapes minus the first shape.
+     */
+    parseArrowhead(stShapes: Texdraw.StrokedShape[], cpx: number, cpy: number, dimRatio: number, nodeName: string): Texdraw.StrokedShape[]  {
+        if (stShapes.length===0) {
+            throw new ParseError(<span>Failed parsing information for entity node <code>{nodeName}</code>: arrowhead missing.</span>);
+        }
+        const stroke = stShapes[0].stroke;
+        this.ahLinewidth = validateLinewidth(dimRatio * stroke.linewidth, nodeName);
+        this.ahDash = validateDash(stroke.pattern.map(v => dimRatio * v), nodeName);
+        return stShapes.slice(1);
+    }
+
+    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string): void {
+        const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
+        //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join()}`);
+
+        const nodeName = name ?? 'unnamed';
+        const [remainder0, x, y] = this.parseConnector(stShapes, dimRatio, nodeName);
+        const remainder1 = this.parseArrowhead(remainder0, x, y, dimRatio, nodeName);
+        this.parseNode(remainder1, tex, info, dimRatio, nodeName);
+
+        if (!info) {
+            throw new ParseError(<span>Missing information: empty info string.</span>);
+        }
+        this.parseInfoString(
+            info, 
+            dimRatio, 
+            stShapes.length > 0 && stShapes[stShapes.length - 1].shape instanceof Texdraw.Circle, 
+            nodeName
+        );
+    }    
+
 
     findBaseAngle(): number {
         let [n0, n1] = this.involutes;
@@ -671,6 +845,13 @@ export default abstract class SNode extends ENode {
         return [this.getAdjustedLine()];
     }
 
+    /**
+     * This is expected to be overridden by subclasses that use an arrowhead.
+     */
+    getArrowheadShapes(): Shape[] {
+        return [];
+    }
+
     getConnectorComponent(id: string, yOffset: number, primaryColor: HSL): React.ReactNode {
         if (this.involutes.length !== 2) return null;
 
@@ -730,11 +911,11 @@ export default abstract class SNode extends ENode {
     ) {
         return (
             <React.Fragment key={id}>
+                {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
                 {super.getComponent({
                     id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
                     selection, preselection, onMouseDown, onMouseEnter, onMouseLeave
                 })}
-                {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
             </React.Fragment>
         );
     }
