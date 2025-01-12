@@ -7,8 +7,8 @@ import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
 import { ParseError } from './Texdraw'
 import Ornament from '../components/client/items/Ornament'
-import Label from '../components/client/items/Label'
-import Adjunction from '../components/client/items/Adjunction'
+import Label from '../components/client/items/ornaments/Label'
+import Adjunction from '../components/client/items/snodes/Adjunction'
 import BidirectionalMap from '../util/BidirectionalMap'
 import { getItems } from '../components/client/MainPanel'
 import { encodeInt, decodeInt, encode, decode } from './General'
@@ -34,7 +34,7 @@ type NodeIdentifier = {
     index?: number
 }
 
-export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string => {
+export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string => {
     const arr = [`${Texdraw.start}%${versionString}`];
 
     // We start by constructing the 'preamble', which mainly contains information as to what groups contain which other groups.
@@ -59,7 +59,7 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string
         }, []
     ).join(' ');
 
-    arr.push(`${Texdraw.dimCmd} ${unitscale} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
+    arr.push(`${Texdraw.dimCmd} ${unitScale} ${groupInfo.length>0? `%${groupInfo}`: ''}`); 
 
     // Next, we construct a map from Nodes to their names.
 
@@ -113,7 +113,7 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitscale: number): string
             } 
             // We now have to add the codes for any ornaments.
             for (const o of node.ornaments) {
-                const code = o.getTexdrawCode(unitscale);
+                const code = o.getTexdrawCode(unitScale);
                 const prefix = ornamentPrefixMap.getByValue(o.constructor as new (node: Node) => any);
                 const info = o.getInfoString();
                 arr.push(`${code}%${prefix}${nodeName}{${info}}${getGroupInfo(o, gMap)}`); 
@@ -352,7 +352,7 @@ const parseCNodeGroup = (tex: string, hint: string, dimRatio: number, cngMap: Ma
 
 const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new (node: Node) => any, 
     eMap: Map<string, ENode>, cngMap: Map<string, CNodeGroup>, gMap: Map<string, Group<any>>, 
-    sgCounter:number, unitscale: number, displayFontFactor: number
+    sgCounter:number, unitScale: number, displayFontFactor: number
 ): [Ornament, number] => {
     // The 'hint' for an Ornament has (roughly) the following format:
     // [prefix + nodeName + info] or 
@@ -397,12 +397,12 @@ const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new 
         validateName(groupName);
         sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
     }
-    o.parse(tex, info, dimRatio, unitscale, displayFontFactor, nodeIdentifier);
+    o.parse(tex, info, dimRatio, unitScale, displayFontFactor, nodeIdentifier);
     return [o, sgCounter];
 }
 
 
-export const load = (code: string, unitscale: number | undefined, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
+export const load = (code: string, unitScale: number | undefined, displayFontFactor: number, eCounter: number, cngCounter: number, sgCounter: number
 ): [(ENode | CNodeGroup)[], number, number, number, number] => {
     const list: (ENode | CNodeGroup)[] = [];
     const lines = code.split(/[\r\n]+/).filter(l => l.length>0);
@@ -423,12 +423,12 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
     if (!split1[0].startsWith(Texdraw.dimCmd)) {
         throw new ParseError(<span>Second line should start with <code>{Texdraw.dimCmd}</code>.</span>);
     }
-    const loadedUnitscale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
-    if (isNaN(loadedUnitscale)) {
-        throw new ParseError(<span>Number format error in argument to <code>\setunitscale</code>.</span>);
+    const loadedunitScale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
+    if (isNaN(loadedunitScale)) {
+        throw new ParseError(<span>Number format error in argument to <code>\setunitScale</code>.</span>);
     }
-    if (loadedUnitscale<0) {
-        throw new ParseError(<span>Argument to <code>\setunitscale</code> should not be negative.</span>);
+    if (loadedunitScale<0) {
+        throw new ParseError(<span>Argument to <code>\setunitScale</code> should not be negative.</span>);
     }
     const gMap = split1.length>1? getGroupMap(split1[1], sgCounter): new Map<string, Group<any>>();
     
@@ -451,7 +451,7 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
 
             //console.log(` t="${tex}" h="${hint}" m=${match[0].length}`);
             const prefix = hint.slice(0, 1);
-            const dimRatio = unitscale===undefined? 1: loadedUnitscale / unitscale;
+            const dimRatio = unitScale===undefined? 1: loadedunitScale / unitScale;
             switch (prefix) {
                 case ENODE_PREFIX: {
                         let node: ENode;
@@ -479,7 +479,7 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
                         const oClass = ornamentPrefixMap.getByKey(prefix);
                         if (oClass) {
                             let o: Ornament;
-                            [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedUnitscale, displayFontFactor);
+                            [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedunitScale, displayFontFactor);
                         }
                         else { // In this case the prefix has not been recognized.
                             throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);
@@ -522,5 +522,5 @@ export const load = (code: string, unitscale: number | undefined, displayFontFac
         throw new ParseError(<span>The last line should read <code>{Texdraw.end}</code>. Incomplete code?</span>);
     }
 
-    return [list, loadedUnitscale, eCounter, cngCounter, sgCounter];
+    return [list, loadedunitScale, eCounter, cngCounter, sgCounter];
 }

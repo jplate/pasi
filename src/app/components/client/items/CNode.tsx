@@ -46,6 +46,10 @@ export default class CNode extends Node {
         this.isActiveMember = true;
     }
 
+    override isIndependent() {
+        return true;
+    }
+
     override setLinewidth(lw: number) {
         const group = this.group as CNodeGroup;
         group.linewidth = group.linewidth100 = lw;
@@ -118,7 +122,7 @@ export default class CNode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            _unitscale: number,
+            _unitScale: number,
             _displayFontFactor: number,
             key: string): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch(key) {
@@ -241,7 +245,7 @@ export interface CNodeCompProps {
     id: string
     cnode: CNode
     yOffset: number
-    unitscale: number
+    unitScale: number
     displayFontFactor: number
     primaryColor: HSL // needed for ornaments of CNodes
     markColor: string
@@ -256,7 +260,7 @@ export interface CNodeCompProps {
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }
 
-export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor, 
+export const CNodeComp = ({ id, cnode, yOffset, unitScale, displayFontFactor, 
     primaryColor, markColor, focusItem, selected, preselected, selection, preselection, arrow, 
     onMouseDown, onMouseEnter, onMouseLeave }: CNodeCompProps
 ) => {
@@ -337,7 +341,7 @@ export const CNodeComp = ({ id, cnode, yOffset, unitscale, displayFontFactor,
                     {Node.markBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
-            {cnode.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitscale, displayFontFactor, primaryColor, markColor, 
+            {cnode.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitScale, displayFontFactor, primaryColor, markColor, 
                 focus: focusItem===o, 
                 selected: selection.includes(o), 
                 preselected: preselection.includes(o), 

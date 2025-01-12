@@ -33,7 +33,6 @@ export default abstract class Item implements GroupMember {
 	 */
 	flexDirection = DEFAULT_DIRECTION;
 
-
     constructor(id: string) {
         this.id = id;
     }    
@@ -42,10 +41,13 @@ export default abstract class Item implements GroupMember {
         return this.id;
     }
 
+    /**
+     * Returns whether this Item's location depends on the locations of one or more other Items.
+     */
+    abstract isIndependent(): boolean;
+
     abstract getWidth(): number
-
     abstract getHeight(): number
-
     abstract getBottomLeftCorner(): { bottom: number, left: number }
     
     /**
@@ -108,4 +110,5 @@ export default abstract class Item implements GroupMember {
         (item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], 
         applyTo: Range
     ]
+
 }

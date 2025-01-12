@@ -59,20 +59,6 @@ export const CheckBoxField = ({
     )
 }
 
-interface GlossFieldProps {
-    label: React.ReactNode;
-    style?: string;
-}
-
-export const GlossField = ({label, style=''}: GlossFieldProps) => {
-    return (
-        <div className={clsx('block px-2 py-1', style)}>
-            <p>
-                {label}
-            </p>
-        </div>
-    )
-}
 
 interface InputFieldProps {
     label: react.ReactNode,
@@ -129,6 +115,7 @@ export const InputField = ({
         </span>
     );      
 }
+
 
 interface SliderProps {
     value: number
@@ -253,6 +240,23 @@ export const LabelField = ({label, style=''}: LabelFieldProps) => {
         </div>
     )
 }
+
+
+interface GlossFieldProps {
+    label: React.ReactNode;
+    style?: string;
+}
+
+export const GlossField = ({label, style=''}: GlossFieldProps) => {
+    return (
+        <div className={clsx('block px-2 py-1', style)}>
+            <p className='text-pretty'>
+                {label}
+            </p>
+        </div>
+    )
+}
+
 
 export const validInt = (s: string, min: number, max: number, dflt: number = min) => {
     const val = parseInt(s);
@@ -385,10 +389,11 @@ interface WithToolTipProps {
     placement?: Placement
 }
 
-export const WithTooltip = ({comp, tooltip, placement}: WithToolTipProps) => {
+export const WithTooltip = ({ comp, tooltip, placement }: WithToolTipProps) => {
     const dark = useContext(DarkModeContext)
     const tippyRef = useRef<Instance | null>(null);
 
+    // At least as of early 2025, Tippy tooltips tend to stay visible when the user scrolls away. To counteract this, we add scroll listeners.
     useEffect(() => {
         const handleScroll = () => {
             if (tippyRef.current && !tippyRef.current.state.isDestroyed) {

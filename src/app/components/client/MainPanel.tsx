@@ -14,14 +14,15 @@ import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_OR
 } from './items/Node'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents'
-import CanvasEditor from './CanvasEditor.tsx'
-import ItemEditor from './ItemEditor.tsx'
-import TransformTab from './TransformTab.tsx'
-import GroupTab from './GroupTab.tsx'
-import ENode from './items/ENode.tsx'
-import Point, { PointComp } from './Point.tsx'
+import CanvasEditor from './CanvasEditor'
+import ItemEditor from './ItemEditor'
+import TransformTab from './TransformTab'
+import GroupTab from './GroupTab'
+import ENode from './items/ENode'
+import GNode from './items/GNode'
+import Point, { PointComp } from './Point'
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx'
-import CNode from './items/CNode.tsx'
+import CNode from './items/CNode'
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
 import copy from './Copying'
@@ -29,9 +30,9 @@ import { getCode, load } from '../../codec/Codec1'
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General'
 import { sameElements, useThrottle } from '../../util/Misc'
 import SNode from './items/SNode'
-import Adjunction from './items/Adjunction'
+import Adjunction from './items/snodes/Adjunction.tsx'
 import Ornament from './items/Ornament.tsx'
-import Label from './items/Label.tsx'
+import Label from './items/ornaments/Label.tsx'
 
 import lblSrc from '../../../icons/lbl.png'
 import adjSrc from '../../../icons/adj.png'
@@ -73,7 +74,7 @@ export const MIN_DISPLACEMENT = -9999
 export const MAX_DISPLACEMENT = 9999
 const MIN_UNITSCALE = 0.1
 const MAX_UNITSCALE = 99
-const DEFAULT_UNITSCALE = 0.75
+const DEFAULT_UNIT_SCALE = 0.75
 const MIN_DISPLAY_FONT_FACTOR = 0.1
 const MAX_DISPLAY_FONT_FACTOR = 100
 const DEFAULT_DISPLAY_FONT_FACTOR = 0.8
@@ -92,6 +93,8 @@ const CANVAS_HSL_DARK_MODE = {hue: 29.2, sat: 78.6, lgt: 47.65}
 const BLACK = {hue: 0, sat: 0, lgt: 0}
 const LASSO_DESELECT_LIGHT_MODE = 'rgba(255, 255, 255, 0.5)'
 const LASSO_DESELECT_DARK_MODE = 'rgba(0, 0, 0, 0.1)'
+const GHOST_TOLERANCE = 0.5; // A GNode has to be closer than this distance (in pixels) to a non-ghost Node to have its
+    // features transferred to the latter.
 const NUMBER_FORMAT = Intl.NumberFormat('en-US');
 
 
@@ -102,6 +105,15 @@ interface HotkeyInfo {
     descr: JSX.Element
     descrDark?: JSX.Element
 }
+
+
+interface DialogConfig {
+    contentLabel?: string
+    title?: string
+    content?: React.ReactNode
+    extraWide?: boolean
+}
+
 
 export const pasi = (s: string) => {
     return (
@@ -258,8 +270,9 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
 }
 
 /**
- * Returns the point to 'snap' to from the supplied coordinates, given the supplied grid, list, and selection. Since this is called from within a mouseMove handler while
- * dragging, members of the selection (which is being dragged) have to be ignored. Same for the center and members of any CNodeGroup containing the focusItem.
+ * Returns the point to 'snap' to from the supplied coordinates (and, if applicable, the node whose center lies at that point), given the supplied grid, list, 
+ * and selection. Since this is called from within a mouseMove handler while dragging, members of the selection (which is being dragged) have to be ignored. 
+ * Same for the center and members of any CNodeGroup containing the focusItem.
  */
 const getSnapPoint = (x: number, y: number, grid: Grid, 
         list: (Node | CNodeGroup)[], 
@@ -267,17 +280,18 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
         selectedNodes: Node[],
         dccDx: number | undefined, // The X-coordinate of the center of the contour group (if any) that contains the focusItem
         dccDy: number | undefined // The Y-coordinate of the center of the contour group (if any) that contains the focusItem
-) => {
+): [number, number, Node | null] => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
         d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
-        snappingToGrid = true;
+        snappingToGrid = true,
+        snapNode: Node | null = null;
     if (grid.snapToContourCenters || grid.snapToNodes) {
         for (const it of list) {
             if (it instanceof CNodeGroup && (!(focus instanceof CNode) || !focus.fixedAngles || !it.members.includes(focus))) {
                 const overlap = it.members.filter(m => selectedNodes.includes(m));
                 if (grid.snapToContourCenters && overlap.length==0) {
                     const c = it.getNodalCenter();
-                    const dc = Math.sqrt(Math.pow(x-c.x, 2) + Math.pow(y-c.y, 2));
+                    const dc = Math.sqrt(Math.pow(x - c.x, 2) + Math.pow(y - c.y, 2));
                     if (dc<d || (snappingToGrid && dc<CONTOUR_CENTER_SNAP_RADIUS)) {
                         snappingToGrid = false;
                         rx = c.x;
@@ -299,8 +313,9 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
                 if (grid.snapToNodes) {
                     for (const node of it.members) {
                         const dn = Math.sqrt(Math.pow(x-node.x, 2) + Math.pow(y-node.y, 2));
-                        if (!overlap.includes(node) && (dn<d || (snappingToGrid && dn<CONTOUR_NODE_SNAP_RADIUS))) {
+                        if (!overlap.includes(node) && (dn < d || (snappingToGrid && dn < CONTOUR_NODE_SNAP_RADIUS))) {
                             snappingToGrid = false;
+                            snapNode = node;
                             rx = node.x;
                             ry = node.y;
                             d = dn;
@@ -310,7 +325,7 @@ const getSnapPoint = (x: number, y: number, grid: Grid,
             }
         }
     }
-    return [rx, ry]
+    return [rx, ry, snapNode]
 }
 
 class Lasso {
@@ -498,11 +513,42 @@ const purge = (group: Group<any>, list: (ENode | CNodeGroup)[]): (ENode | CNodeG
     return newList;
 }
 
-interface DialogConfig {
-    contentLabel?: string
-    title?: string
-    content?: React.ReactNode
-    extraWide?: boolean
+/** A function to be called on arrays of Items when the list of underlying ENodes and CNodeGroups has been changed. All those Items that are either
+ * ENodes or CNodeGroups not in that list or that are Ornaments of some ENode or CNode of a CNodeGroup not in the list will be filtered out.
+ */
+const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]
+): Item[] => selection.filter(it => 
+    (it instanceof ENode && newList.includes(it)) ||
+    (it instanceof CNode && newList.includes(it.group as CNodeGroup) ||
+    (it instanceof Ornament && it.node instanceof ENode && newList.includes(it.node)) ||
+    (it instanceof Ornament && it.node instanceof CNode && newList.includes(it.node.group as CNodeGroup)
+)));
+
+/**
+ * Transfers features (ornaments and end points of connectors) from one Node to another. The third and second argument are needed in order
+ * properly to initalize Labels.
+ */
+const transferFeatures = (n0: Node, n1: Node, unitscale: number, displayFontFactor: number) => {
+    for (const o of n0.ornaments) {
+        const clone = o.clone(n1);
+        if (clone instanceof Label) {
+            clone.updateLines(unitscale, displayFontFactor);
+        }
+    }
+    for (const node of n0.dependentNodes) {
+        if (node instanceof SNode) {
+            const inv = node.involutes;
+            for (let i = 0; i < inv.length; i++) {
+                if (n0===inv[i]) {
+                    inv[i] = n1;
+                }
+            }
+            if (!n1.dependentNodes.includes(node)) {
+                n1.dependentNodes = [node, ...n1.dependentNodes];
+            }
+            n0.dependentNodes = n0.dependentNodes.filter(n => n!==node);
+        }
+    }
 }
 
 
@@ -513,61 +559,63 @@ interface MainPanelProps {
 
 const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
-    const canvasRef = useRef<HTMLDivElement>(null)
+    const canvasRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLTextAreaElement>(null);
-    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj')) 
-    const [unitscale, setUnitscale] = useState(DEFAULT_UNITSCALE)
+    const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj'));
+    const [unitScale, setUnitScale] = useState(DEFAULT_UNIT_SCALE);
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
-    const [replace, setReplace] = useState(true)
-    const [points, setPoints] = useState<Point[]>([])
+    const [replace, setReplace] = useState(true);
+    const [points, setPoints] = useState<Point[]>([]);
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
     const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
-    const [list, setList] = useState<(ENode | CNodeGroup)[]>([])
-    const [eNodeCounter, setENodeCounter] = useState(0) // used for generating keys
-    const [cngCounter, setCNGCounter] = useState(0) // used for generating keys
+    const [list, setList] = useState<(ENode | CNodeGroup)[]>([]);
+    const [eNodeCounter, setENodeCounter] = useState(0); // used for generating keys
+    const [cngCounter, setCNGCounter] = useState(0); // used for generating keys
     const [sgCounter, setSGCounter] = useState(0); // used for generating ids of StandardGroups, which are used in copying
     const [selection, setSelection] = useState<Item[]>([]);// list of selected items; multiple occurrences are allowed    
-    const [focusItem, setFocusItem] = useState<Item | null>(null) // the item that carries the 'focus', relevant for the editor pane
+    const [focusItem, setFocusItem] = useState<Item | null>(null); // the item that carries the 'focus', relevant for the editor pane
     const [yOffset, setYOffset] = useState(0);
-    const [limit, setLimit] = useState<Point>(new Point(0,H)) // the current bottom-right corner of the 'occupied' area of the canvas (which can be adjusted by the user moving items around)
+    const [limit, setLimit] = useState<Point>(new Point(0,H)); // the current bottom-right corner of the 'occupied' area of the canvas (which can 
+        // be adjusted by the user moving items around)
     const [canvasWidth, setCanvasWidth] = useState(CANVAS_WIDTH_BASE);
 
-    const [grid, setGrid] = useState(createGrid())
-    const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT)
-    const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT)
+    const [grid, setGrid] = useState(createGrid());
+    const [hDisplacement, setHDisplacement] = useState(DEFAULT_HDISPLACEMENT);
+    const [vDisplacement, setVDisplacement] = useState(DEFAULT_VDISPLACEMENT);
 
-    const [lasso, setLasso] = useState<Lasso | null>(null)
-    const [dragging, setDragging] = useState(false)
-    const [preselection1, setPreselection1] = useState<Item[]>([]) // In the current implementation, this array only ever contains at most one item. It's meant to contain
+    const [lasso, setLasso] = useState<Lasso | null>(null);
+    const [dragging, setDragging] = useState(false);
+    const snapNode = useRef<Node | null>(null);
+    const [preselection1, setPreselection1] = useState<Item[]>([]); // In the current implementation, this array only ever contains at most one item. It's meant to contain
         // those items that are 'directly' preselected, either because they're hovered over by the mouse or (at least in an earlier implementation) because they're included 
         // in the lasso; and the items that are 'secondarily preselected' are those that are preselected because they share a group-membership with those contained in the 
         // primary preselection. However, as far as items preselected with the lasso are concerned, it seems more intuitive to ignore shared group-membership.
-    const [preselection2, setPreselection2] = useState<Item[]>([])
-    const preselection2Ref = useRef<Item[]>([])
-    preselection2Ref.current = preselection2
+    const [preselection2, setPreselection2] = useState<Item[]>([]);
+    const preselection2Ref = useRef<Item[]>([]);
+    preselection2Ref.current = preselection2;
 
-    const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0) // canvas editor is default
-    const [logIncrement, setLogIncrement] = useState(DEFAULT_TRANSLATION_LOG_INCREMENT) // for itemEditor
-    const [rotation, setRotation] = useState(0)
-    const [scaling, setScaling] = useState(100) // default is 100%
-    const [origin, ] = useState({x: 0, y: 0}) // the point around which to rotate and from which to scale
-    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}) // for the transform tab
-    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false})
+    const [userSelectedTabIndex, setUserSelectedTabIndex] = useState(0); // canvas editor is default
+    const [logIncrement, setLogIncrement] = useState(DEFAULT_TRANSLATION_LOG_INCREMENT); // for itemEditor
+    const [rotation, setRotation] = useState(0);
+    const [scaling, setScaling] = useState(100); // default is 100%
+    const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
+    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}); // for the transform tab
+    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
     const [trueBlack, setTrueBlack] = useState(false); // indicates whether entity nodes and contours should use black as their primary and (when shading is set to 1) 
         // background color.
 
-    const [adding, setAdding] = useState(false)
-    const [dissolveAdding, setDissolveAdding] = useState(false)
+    const [adding, setAdding] = useState(false);
+    const [dissolveAdding, setDissolveAdding] = useState(false);
 
     const [code, setCode] = useState<string>(''); // the texdraw code to be displayed in the code area.
 
-    const [modalShown, setModalShown] = useState(false)
-    const [dialog, setDialog] = useState<DialogConfig>({}) 
-    const okButtonRef = useRef<HTMLButtonElement>(null)
+    const [modalShown, setModalShown] = useState(false);
+    const [dialog, setDialog] = useState<DialogConfig>({});
+    const okButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const element = document.getElementById('content');
-        if(element) Modal.setAppElement(element)
+        if(element) Modal.setAppElement(element);
     }, []);
 
     useEffect(() => {
@@ -600,7 +648,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     );
 
     const leftMostSelected = useMemo(() => 
-        selectedNodesDeduplicated.reduce((min, item) => itemsMoved && (min<item.x)? min: item.x, Infinity), // added 'itemsMoved &&' to suppress a warning about 'unnecessary dependencies'
+        selectedNodesDeduplicated.reduce((min, item) => itemsMoved && (min<item.x)? min: item.x, Infinity), // added 'itemsMoved &&' to 
+            // suppress a warning about 'unnecessary dependencies'
         [selectedNodesDeduplicated, itemsMoved]
     );
 
@@ -946,7 +995,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     }
                 }
                 else {
-                    const pres = preselection2Ref.current; // This may be empty if we've just selected the same item (due to the clearing of the preselection at the end of this function).
+                    const pres = preselection2Ref.current; // This may be empty if we've just selected the same item (due to the clearing of the 
+                        // preselection at the end of this function).
                     if (e.shiftKey) { // increase selection
                         if (e.ctrlKey || pres.length===0) { 
                             if (item instanceof ENode || !deduplicatedSelection.includes(item)) { // If item is a CNode, we don't add it twice. 
@@ -954,16 +1004,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             }
                         }
                         else {               
-                            newSelection = [...selection, ...pres.filter(it => (it instanceof ENode && it===item) || !deduplicatedSelection.includes(it))]; // If the user
-                                // shift-clicks on an item, she'll usually only want to add that item to the selection, together with any other items in the preselection
-                                // that have not yet been selected.
+                            newSelection = [...selection, 
+                                ...pres.filter(it => (it instanceof ENode && it===item) || !deduplicatedSelection.includes(it))
+                            ]; // If the user shift-clicks on an item, she'll usually only want to add that item to the selection, together with 
+                                // any other items in the preselection that have not yet been selected.
                         }
                     }
                     else { // replace selection
                         if (e.ctrlKey || pres.length===0) {
                             newSelection = [item];
-                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not just of item itself but of all 
-                            // members of its highest active group:
+                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not 
+                            // just of item itself but of all members of its highest active group:
                             if (!e.ctrlKey) {
                                 updateSecondaryPreselection([item]);
                                 clearPreselection = false;
@@ -998,8 +1049,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         e.preventDefault();
                         e.stopPropagation();
                         // First, we take into account the grid:
-                        const [snapX, snapY] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, 
+                        const [snapX, snapY, node] = getSnapPoint(e.clientX - startX, H + yOffset - e.clientY + startY, grid, newList, item, 
                             selectedNodes, dccDx, dccDy);
+                        if (node) {
+                            snapNode.current = node;
+                        }
                         // Next, we have to prevent the node, as well as the left-most selected item, from being dragged outside the 
                         // canvas to the left (from where they couldn't be recovered), and also respect the lmits of MAX_X, MAX_Y, and MIN_Y:
                         const x = Math.min(Math.max(snapX, xMinD), MAX_X);
@@ -1014,26 +1068,46 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     };            
 
                     const handleMouseUp = () => {
+                        const unselectedNonGhostNodes = allItems.filter(it => 
+                            it instanceof Node && 
+                            !(it instanceof GNode) &&
+                            !selectedNodes.includes(it)
+                        ) as Node[];
+                        const toBeDeletedGNodes: GNode[] = [];
+                        for (const n0 of selectedNodes) {
+                            console.log(`N0: ${n0.getString()}`);
+                            if (n0 instanceof GNode) {
+                                for (const n1 of unselectedNonGhostNodes) {
+                                    console.log(`  N1: ${n1.getString()}`);
+                                    const [x0, y0] = n0.getLocation();
+                                    const [x1, y1] = n1.getLocation();
+                                    const d = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
+                                    if (d < GHOST_TOLERANCE) {
+                                        transferFeatures(n0, n1, unitScale, displayFontFactor);
+                                        toBeDeletedGNodes.push(n0);
+                                    }
+                                }
+                            }
+                            deleteItems(toBeDeletedGNodes);
+                        }
                         window.removeEventListener('mousemove', handleMouseMove);
                         window.removeEventListener('mouseup', handleMouseUp);
                         setDragging(false);
                         adjustLimit();
                         setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
-                        // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). However, if points is non-empty,
-                        // then we have to 'renormalize' the new selection, since the nodes might have been dragged around the origin (given by the last element of the points array):
-                        if(newPoints.length>0) newSelection.forEach(item => {
-                            if (item instanceof Node) { 
-                                item.x100 = origin.x + (item.x - origin.x) * 100/scaling;
-                                item.y100 = origin.y + (item.y - origin.y) * 100/scaling;
-                            }
+                        // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). 
+                        // However, if points is non-empty, then we have to 'renormalize' the new selection, since the nodes might have been dragged 
+                        // around the origin (given by the last element of the points array):
+                        if(newPoints.length>0) selectedNodes.forEach(node => {
+                            node.x100 = origin.x + (node.x - origin.x) * 100/scaling;
+                            node.y100 = origin.y + (node.y - origin.y) * 100/scaling;
                         });
                         // We also apply round() to get rid of tiny errors that might have been introduced during dragging.
-                        newSelection.forEach(item => {
-                            if (item instanceof Node) {
-                            item.x = item.x100 = round(item.x, ROUNDING_DIGITS);
-                            item.y = item.y100 = round(item.y, ROUNDING_DIGITS);
-                            }
+                        selectedNodes.forEach(node => {
+                            node.x = node.x100 = round(node.x, ROUNDING_DIGITS);
+                            node.y = node.y100 = round(node.y, ROUNDING_DIGITS);
                         });
+                        snapNode.current = null;
                         setItemsMoved(prev => [...prev]); // to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
                     }
                 
@@ -1053,7 +1127,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }, 
         [
             allItems, deduplicatedSelection, selection, points, list, adding, dissolveAdding, focusItem, yOffset, scaling, adjustLimit, 
-            cngCounter, deselect, grid, origin.x, origin.y, setOrigin, updateSecondaryPreselection
+            cngCounter, unitScale, displayFontFactor, deselect, grid, origin.x, origin.y, setOrigin, updateSecondaryPreselection
         ]
     );
 
@@ -1315,7 +1389,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newSelection = nodes.map(node => {
                             const label = new Label(node);
                             label.text = 'a';
-                            label.updateLines(unitscale, displayFontFactor);
+                            label.updateLines(unitScale, displayFontFactor);
                             return label;
                         });
                         break;
@@ -1338,7 +1412,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
             }
         }
-    }, [eNodeCounter, nodes, unitscale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
+    }, [eNodeCounter, nodes, unitScale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
     /**
      * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
@@ -1346,10 +1420,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      */
     const copySelection = useCallback(() => {
         if (topTbc.length>0) {
-            const copies = new Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>(); // This will store the keys of the copied Items, 
+            const copies = new Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>(); // This will store the IDs of the copied Items, 
                 // CNodeGroups, and StandardGroups, mapped to their respective copies.
+            const ghosts = new Map<string, GNode>(); // This will map non-copied nodes (to which to-be-copied ornaments or connectors are attached) to 
+                // their respective 'ghost copies', nodes that will transfer their ornaments and connector end points to non-ghost nodes when dragged 
+                // onto the latter.
             const [newENodeCounter, newCNGCounter, newSGCounter] = copy(topTbc, deduplicatedSelection, hDisplacement, vDisplacement, 
-                copies, eNodeCounter, cngCounter, sgCounter);
+                copies, ghosts, eNodeCounter, cngCounter, sgCounter);
             const copiedList = list.reduce((acc: (ENode | CNodeGroup)[], it) => { // an array that holds the copied nodes or node groups in the same 
                 // order as list holds the nodes or node groups that they're copies of
                 const id = it.id.toString();
@@ -1378,10 +1455,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             }, []);
             for (let it of copies.values()) {
                 if (it instanceof Label) {
-                    it.updateLines(unitscale, displayFontFactor);
+                    it.updateLines(unitScale, displayFontFactor);
                 }
             }
-            const newList = [...list, ...copiedList];
+            const newList = [...list, ...copiedList, ...ghosts.values()];
             const newFocus = focusItem && (copies.get(focusItem.id) || null) as Item | null;
             setENodeCounter(newENodeCounter);
             setCNGCounter(newCNGCounter);
@@ -1396,7 +1473,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             }
         }
     }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
-        unitscale, displayFontFactor, adjustLimit, setOrigin, scrollTo
+        unitScale, displayFontFactor, adjustLimit, setOrigin, scrollTo
     ]);
 
     /** 
@@ -1412,12 +1489,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         return acc;
     }
 
-    /**
-     * OnClick handler for the delete button.
-     */
-    const deleteSelection = useCallback(() => { 
-        if (deduplicatedSelection.length>0) {
-            const toBeDeleted = getToBeDeleted(deduplicatedSelection);
+    const deleteItems = useCallback((items: Item[]) => {
+        if (items.length > 0) {
+            const toBeDeleted = getToBeDeleted(items);
             const newList: (ENode | CNodeGroup)[]  = [];
             for (let it of list) {
                 if (it instanceof ENode) {
@@ -1455,7 +1529,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     });
                 }
             });
-            whitelist.forEach(g => { // For each of those Groups that is not a CNodeGroup, filter out all the members that are not either (a) not-to-be-deleted 
+            whitelist.forEach(g => { // For each whitelisted Group that is not a CNodeGroup, filter out all the members that are not either (a) not-to-be-deleted 
                     // ENodes or (b) ornaments attached to such ENodes or to CNodes of not-to-be-deleted (and accordingly whitelisted) CNodeGroups or (c) 
                     // whitelisted Groups.
                 if (!(g instanceof CNodeGroup)) { 
@@ -1468,15 +1542,16 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 }
             });
             setList(newList);
-            setSelection([]);
-            setPreselection1([]);
-            setPreselection2([]);
-            setFocusItem(null);
+            setSelection(prev => prune(prev, newList));
+            setPreselection1(prev => prune(prev, newList));
+            setPreselection2(prev => prune(prev, newList));
             adjustLimit(getItems(newList));
-            setOrigin(true, points, null, []);
-        }
-    }, [deduplicatedSelection, points, list, adjustLimit, setOrigin]);
-
+            if (focusItem && items.includes(focusItem)) {
+                setFocusItem(null);
+            }
+            setOrigin(true, points, null, []);  
+        }      
+    }, [points, list, adjustLimit, setOrigin]);
 
     /**
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers 
@@ -1485,7 +1560,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      */
     const itemChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
         if (focusItem) {
-            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, unitscale, displayFontFactor, key);
+            const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, unitScale, displayFontFactor, key);
             const nodeGroups: Set<CNodeGroup> | null = range==='ENodesAndCNodeGroups'? new Set<CNodeGroup>(): null;
             const nodes = range=='onlyThis'? 
                 edit(focusItem, list):
@@ -1507,7 +1582,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             adjustLimit();
             setItemsMoved(prev => [...prev]); 
         }
-    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, unitscale, displayFontFactor, 
+    }, [focusItem, logIncrement, deduplicatedSelection, selection, points, list, unitScale, displayFontFactor, 
         adjustLimit, setOrigin, scrollTo
     ]);  
 
@@ -1541,7 +1616,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         const val = parseFloat(e.target.value);
         if (isFinite(val)) {
             const newVal = Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE);
-            setUnitscale(prev => newVal); 
+            setUnitScale(prev => newVal); 
             allItems.forEach(it => {
                 if (it instanceof Label) {
                     it.updateLines(newVal, displayFontFactor);
@@ -1558,12 +1633,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setDisplayFontFactor(prev => newVal);
             allItems.forEach(it => {
                 if (it instanceof Label) {
-                    it.updateLines(unitscale, newVal);
+                    it.updateLines(unitScale, newVal);
                 }
             });
             adjustLimit();
         }
-    }, [allItems, unitscale, adjustLimit]);
+    }, [allItems, unitScale, adjustLimit]);
 
     /**
      * Returns true if the rotation of the selection by the specified angle is within bounds.
@@ -1656,7 +1731,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setScaling(newValue);
             setItemsMoved(prev => [...prev]);
         }
-    }, [selectedNodesDeduplicated, origin, adjustLimit, testScaling, deduplicatedSelection, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);
+    }, [selectedNodesDeduplicated, origin, adjustLimit, testScaling, deduplicatedSelection, transformFlags.scaleDash, 
+        transformFlags.scaleENodes, transformFlags.scaleLinewidths
+    ]);
 
     /**
      * Rounds the location of each selected item to the nearest pixel.
@@ -1778,7 +1855,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             showModal('Too damn high!', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
             return;
         }
-        if (createCNG && list.length===MAX_LIST_SIZE) { // Here we check whether creating the new CNodeGroup would lead to the deletion of at least one existing CNodeGroup:
+        if (createCNG && list.length===MAX_LIST_SIZE) { // Here we check whether creating the new CNodeGroup would lead to the deletion of 
+                // at least one existing CNodeGroup:
             const affectedGroups = newMembers.map(item => item.group).filter((g, i, arr) => g && i===arr.indexOf(g)) as CNodeGroup[];
             if (!affectedGroups.some(g => g.members.every(m => newMembers.includes(m)))) {
                 showModal('Sorry!', `Creating this new group would push our list size over the limit.`);
@@ -1867,7 +1945,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const loadDiagram = useCallback((code: string, replace: boolean) => {
 
         if (false) { // for debugging purposes
-            load(code, unitscale, displayFontFactor, 0, 0, 0); 
+            load(code, unitScale, displayFontFactor, 0, 0, 0); 
             console.log('Success!');
             return;
         }
@@ -1879,9 +1957,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         try {
             [newList, newPixel, newENodeCounter, newCNGCounter, newSGCounter] = replace? 
                 load(code, undefined, displayFontFactor, 0, 0, 0): 
-                load(code, unitscale, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
+                load(code, unitScale, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
             if (replace) {
-                setUnitscale(prev => newPixel);
+                setUnitScale(prev => newPixel);
                 setPreselection1([]);
                 setPreselection2([]);
                 setSelection([]);
@@ -1905,7 +1983,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 console.error('Parsing failed:', e.message, e.stack);
             }
         }
-    }, [list, eNodeCounter, cngCounter, sgCounter, points, unitscale, displayFontFactor, adjustLimit, setOrigin]);
+    }, [list, eNodeCounter, cngCounter, sgCounter, points, unitScale, displayFontFactor, adjustLimit, setOrigin]);
 
 
     const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc + 1: acc, 0), [deduplicatedSelection]);
@@ -1996,7 +2074,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     
     useHotkeys(hotkeyMap['copy'], copySelection, 
         { enabled: canCopy && !modalShown });
-    useHotkeys(hotkeyMap['delete'], deleteSelection, 
+    useHotkeys(hotkeyMap['delete'], () => deleteItems(deduplicatedSelection), 
         { enabled: canDelete && !modalShown });
     useHotkeys(hotkeyMap['clear points'], () => {setPoints(prev => []); setOrigin(true, []);}, 
         { enabled: !modalShown, preventDefault: true });
@@ -2074,7 +2152,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         { enabled: focusItem!==null&& !modalShown });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, 
         { enabled: focusItem!==null&& !modalShown });
-    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(unitscale), 500), 
+    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(unitScale), 500), 
         { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement)&& !modalShown });
     useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), 
         { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
@@ -2093,18 +2171,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const tabIndex = (userSelectedTabIndex===1 && transformTabDisabled) || (userSelectedTabIndex===2 && groupTabDisabled)? 0: userSelectedTabIndex;
 
      // The delete button gets some special colors:
-    const deleteButtonStyle = clsx('rounded-xl', 
-        (dark? 'bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring':
-            'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200 enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'));
+    const deleteButtonStyle = clsx('rounded-xl', (
+        dark? clsx('bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
+            'enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring'
+        ):
+        clsx ('bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200',
+            'enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400')
+    ));
 
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50 data-[selected]:border-b-0 disabled:opacity-50 tracking-wider', 
-        'focus:outline-none data-[selected]:bg-transparent data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
+        'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
+        'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
         'data-[selected]:data-[hover]:text-btncolor');
 
-    console.log(clsx(`Rendering... ${nodes.map(node => node.id)} listLength=${list.length}  focusItem=${focusItem && focusItem.id} (${focusItem instanceof Node && focusItem.x},`,
-        `${focusItem instanceof Node && focusItem.y}) ha=${focusItem && highestActive(focusItem).getString()}`,
-        focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.id).join()}]`));
-    //console.log(`Rendering... preselected=[${preselection.map(item => item.id).join(', ')}]`);
+    if (true) console.log(clsx(`Rendering... ${nodes.map(node => node.getString())} listLength=${list.length}`,
+        `focusItem=${focusItem && focusItem.getString()}`,
+        focusItem instanceof Node && `ornaments=[${focusItem.ornaments.map(o => o.getString()).join()}]`,
+        `(${focusItem instanceof Node && focusItem.x}, ${focusItem instanceof Node && focusItem.y})`,
+        `ha=${focusItem && highestActive(focusItem).getString()}`,
+        focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.getString()).join()}]`));
 
     return ( 
         <DarkModeContext.Provider value={dark}>
@@ -2118,7 +2203,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             it instanceof ENode?
                             it.getComponent({ id: it.id, 
                                 yOffset: yOffset,
-                                unitscale: unitscale,
+                                unitScale: unitScale,
                                 displayFontFactor: displayFontFactor,
                                 bg: dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE,
                                 primaryColor: trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE,
@@ -2138,7 +2223,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 selection={deduplicatedSelection}
                                 allItems={allItems}
                                 yOffset={yOffset} 
-                                unitscale={unitscale}
+                                unitscale={unitScale}
                                 displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
@@ -2323,7 +2408,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 disabled={false}
                                 onClick={sorry} 
                                 icon={ // source: https://heroicons.com/
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                                            strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <g transform="rotate(-45 12 12)">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
                                         </g>
@@ -2332,16 +2418,18 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 disabled={false}
                                 onClick={sorry} 
                                 icon={ // source: https://heroicons.com/
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                                            strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <g transform="rotate(45 12 12)">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
                                         </g>
                                     </svg>} />
                             <BasicButton id='del-button' label='Delete' style={deleteButtonStyle} tooltip='Delete'
                                 disabled={!canDelete} 
-                                onClick={deleteSelection} 
+                                onClick={() => deleteItems(deduplicatedSelection)}
                                 icon={ // source: https://heroicons.com/
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+                                            strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                                     </svg>} />
                         </div>
@@ -2350,14 +2438,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton id='generate-button' label='Generate' style='rounded-xl mb-2 py-2' disabled={false} 
                             tooltip={<>Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest {' '}
-                                {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may be lost as a result.) {' '}
-                                <HotkeyComp mapKey='generate code' /></>}
+                                {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may be lost {' '}
+                                as a result.) <HotkeyComp mapKey='generate code' /></>}
                             tooltipPlacement='left'
-                            onClick={() => displayCode(unitscale)} />
+                            onClick={() => displayCode(unitScale)} />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 px = 
                             <input className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                                type='number' min={MIN_UNITSCALE} step={0.01} value={unitscale}
+                                type='number' min={MIN_UNITSCALE} step={0.01} value={unitScale}
                                 onChange={changeUnitscale}/>
                             pt
                         </div>

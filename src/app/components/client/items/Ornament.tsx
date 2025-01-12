@@ -28,10 +28,10 @@ export default abstract class Ornament extends Item {
         </>
     );
 
-    readonly node: Node // The node to which this Ornament is attached
-    angle: number = DEFAULT_ANGLE // the preferred angle at which this Ornament is attached to this.node
-    gap: number = DEFAULT_GAP
-    gap100: number = DEFAULT_GAP
+    readonly node: Node; // The node to which this Ornament is attached
+    angle: number = DEFAULT_ANGLE; // the preferred angle at which this Ornament is attached to this.node
+    gap: number = DEFAULT_GAP;
+    gap100: number = DEFAULT_GAP;
 
     width = 0;
     height = 0;
@@ -49,11 +49,15 @@ export default abstract class Ornament extends Item {
         this.angle = getCyclicValue(angle, MIN_ROTATION, 360, ROUNDING_DIGITS);
     }
 
+    override isIndependent() {
+        return false;
+    }
+
     /**
      * Clones this Ornament. The clone is added to the supplied Node's array of Ornaments and receives a unique ID.
      * @abstract
      */
-    abstract clone(node: Node): Ornament
+    abstract clone(node: Node): Ornament;
 
     protected copyValuesTo(target: Ornament) {
         target.group = this.group;
@@ -69,14 +73,14 @@ export default abstract class Ornament extends Item {
      */
     abstract getComponent( 
         key: number, 
-        { yOffset, unitscale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
+        { yOffset, unitScale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ): react.JSX.Element  
 
 }
 
 export interface OrnamentCompProps {    
     yOffset: number
-    unitscale: number
+    unitScale: number
     displayFontFactor: number
     primaryColor: HSL
     markColor: string

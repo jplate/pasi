@@ -14,7 +14,8 @@ import { ParseError, makeParseError } from '../../../codec/Texdraw'
 import { encode, decode } from '../../../codec/General'
 
 export const DEFAULT_RADIUS = 5
-export const DEFAULT_GAP = .4;
+export const DEFAULT_GAP0 = 0;
+export const DEFAULT_GAP1 = .4;
 export const MIN_GAP = -999
 export const MAX_GAP = 999
 export const MIN_HIDDEN_RADIUS = 12;
@@ -81,9 +82,8 @@ export default abstract class SNode extends ENode {
     ahDash: number[] = DEFAULT_DASH;
     ahDash100: number[] = DEFAULT_DASH;
 
-    gap: number = DEFAULT_GAP;
-    gap0: number = 0;
-    gap1: number = 0;
+    gap0: number = DEFAULT_GAP0;
+    gap1: number = DEFAULT_GAP1;
     protected w0 = 0; // parameter controlling the length of the 'stiff part' at the beginning of the connector
 	protected w1 = 0; // ditto for the end of the connector
 	protected wc = 0; // ditto for the center of the connector
@@ -106,8 +106,15 @@ export default abstract class SNode extends ENode {
         this.w0 = this.getDefaultW0();
 	    this.w1 = this.getDefaultW1();
 	    this.wc = this.getDefaultWC();
-        this.gap1 = this.computeGap1();
         this.rigidPoint = this.hasByDefaultRigidPoint();
+    }
+
+    override isIndependent() {
+        return false;
+    }
+    
+    override getString() {
+        return `${this.id}(S)`;
     }
 
     init(involutes: Node[]) {
@@ -149,17 +156,7 @@ export default abstract class SNode extends ENode {
         return hr;
 	}
 
-    /**
-     * Meant for invocation by CompoundArrow#parse() on the CompoundArrow's elements. 
-     */
-    computeGap() {
-        return this.gap1;
-    }
-    
-    computeGap1() {
-        return this.gap;
-    }
-    
+        
 	hasByDefaultRigidPoint() {
 	    return false;
     }
@@ -382,7 +379,7 @@ export default abstract class SNode extends ENode {
     }
 
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
-        const labelStyle = 'flex-0 mb-1 pb-4 tracking-wide';
+        const labelStyle = 'flex-0 mb-1 pb-4';
         const border = 'mt-4 pt-3 border-t border-btnborder/50';
         const borderedLabelStyle = `${labelStyle} ${border}`;
         let ahInfo = this.getArrowheadInfo();
@@ -543,7 +540,7 @@ export default abstract class SNode extends ENode {
         e: React.ChangeEvent<HTMLInputElement> | null, 
         logIncrement: number, 
         selection: Item[],
-        _unitscale: number,
+        _unitScale: number,
         _displayFontFactor: number,
         key: string
     ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
@@ -572,7 +569,6 @@ export default abstract class SNode extends ENode {
             this.t,
             this.gap0,
             this.gap1,
-            this.manual? 1: 0, 
             this.closest? 1: 0
         ];
         const connectorInfo = this.manual? [this.phi0, this.d0, this.phi1, this.d1]: [];
@@ -619,7 +615,7 @@ export default abstract class SNode extends ENode {
 
     /**
      * An empty method, which gets called from ENode.parseNode() conditionally on there being no circles in the stroked shapes. It's empty
-     * because we have to parse the (much more extensive) info string in *every* case -- which we do in parseInfoString() below.
+     * because, unlike ENode.parse(), SNode.parse() has to parse the info string in *every* case -- which is done in parseInfoString() below.
      */
     override parseNodeInfoString(_tex: string, _info: string | null, _dimRatio: number, _name: string): void {
     }
@@ -642,8 +638,8 @@ export default abstract class SNode extends ENode {
         this.t = validateT(vals[i++], name);
         this.gap0 = validateGap(vals[i++], name);
         this.gap1 = validateGap(vals[i++], name);
-        this.manual = vals[i++]===1;
         this.closest = vals[i++]===1;
+        this.manual = vals.length > i;
         if (this.manual) {
             this.phi0 = vals[i++];
             this.d0 = validateDistance(vals[i++], name);
@@ -684,7 +680,7 @@ export default abstract class SNode extends ENode {
         return stShapes.slice(1);
     }
 
-    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string): void {
+    override parse(tex: string, info: string | null, dimRatio: number, _unitScale?: number, _displayFontFactor?: number, name?: string): void {
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join()}`);
 
@@ -905,7 +901,7 @@ export default abstract class SNode extends ENode {
         );    
     }
 
-    override getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, 
+    override getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, 
         titleColor, focusItem, selection, preselection, 
         onMouseDown, onMouseEnter, onMouseLeave }: ENodeCompProps
     ) {
@@ -913,7 +909,7 @@ export default abstract class SNode extends ENode {
             <React.Fragment key={id}>
                 {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
                 {super.getComponent({
-                    id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
+                    id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
                     selection, preselection, onMouseDown, onMouseEnter, onMouseLeave
                 })}
             </React.Fragment>

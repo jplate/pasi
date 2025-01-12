@@ -1,12 +1,10 @@
-import { MIN_DISTANCE, MAX_DISTANCE } from './Node'
-import { Info, Handler } from './ENode'
-import SNode, { complain } from './SNode'
-import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
-import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '../../../util/MathTools'
-import { parseInputValue, parseCyclicInputValue } from '../EditorComponents'
-import { MIN_TRANSLATION_LOG_INCREMENT } from '../../../Constants'
-import * as Texdraw from '../../../codec/Texdraw'
-import { ParseError } from '../../../codec/Texdraw'
+import { Info, Handler } from '../ENode'
+import SNode, { complain } from '../SNode'
+import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../../ItemEditor'
+import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/MathTools'
+import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents'
+import * as Texdraw from '@/app/codec/Texdraw'
+import { ParseError } from '@/app/codec/Texdraw'
 
 export const DEFAULT_W0 = 8;
 export const DEFAULT_W1 = 8;

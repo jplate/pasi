@@ -1,19 +1,19 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx/lite'
 import { Lora } from 'next/font/google'  
-import Item, { Range } from './Item'
-import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from './Ornament'
-import Node from './Node'
-import ENode from './ENode'
-import CNodeGroup from '../CNodeGroup'
-import { H, MARK_LINEWIDTH } from '../../../Constants'
-import { Entry } from '../ItemEditor.tsx'
-import { parseInputValue, parseCyclicInputValue, validInt } from '../EditorComponents'
-import { MIN_ROTATION } from '../ItemEditor'
-import { getCyclicValue, round } from '../../../util/MathTools'
-import * as Texdraw from '../../../codec/Texdraw'
-import { ParseError } from '../../../codec/Texdraw'
-import { encode, decode } from '../../../codec/General'
+import Item, { Range } from '../Item.tsx'
+import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament.tsx'
+import Node from '../Node.tsx'
+import ENode from '../ENode.tsx'
+import CNodeGroup from '../../CNodeGroup.tsx'
+import { H, MARK_LINEWIDTH } from '@/app/Constants.ts';
+import { Entry } from '../../ItemEditor.tsx'
+import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents.tsx'
+import { MIN_ROTATION } from '../../ItemEditor.tsx'
+import { getCyclicValue, round } from '@/app/util/MathTools.ts'
+import * as Texdraw from '@/app/codec/Texdraw.tsx'
+import { ParseError } from '@/app/codec/Texdraw.tsx'
+import { encode, decode } from '@/app/codec/General.ts'
 
 export const MIN_WIDTH = 5;
 export const MIN_HEIGHT = 5;
@@ -193,7 +193,7 @@ export default class Label extends Ornament {
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null, 
         _logIncrement: number, 
         _selection: Item[],
-        unitscale: number,
+        unitScale: number,
         displayFontFactor: number,
         key: string
     ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
@@ -229,7 +229,7 @@ export default class Label extends Ornament {
                 return [(item, array) => {
                     if (item instanceof Label) {
                         item.text = text;
-                        item.updateLines(unitscale, displayFontFactor);
+                        item.updateLines(unitScale, displayFontFactor);
                     }
                     return array
                 }, 'wholeSelection']
@@ -240,7 +240,7 @@ export default class Label extends Ornament {
                     if (item instanceof Label) {
                         const fontSize = fontSizes[index]
                         item.fontSize = fontSize;
-                        item.updateLines(unitscale, displayFontFactor);
+                        item.updateLines(unitScale, displayFontFactor);
                     }
                     return array;
                 }, 'wholeSelection']                
@@ -249,7 +249,7 @@ export default class Label extends Ornament {
                     return [(item, array) => {
                         if (item instanceof Label) {
                             item.vphant = e.target.value;
-                            item.updateLines(unitscale, displayFontFactor);
+                            item.updateLines(unitScale, displayFontFactor);
                         }
                         return array
                     }, 'wholeSelection']
@@ -259,7 +259,7 @@ export default class Label extends Ornament {
                 return [(item, array) => {
                     if (item instanceof Label) {
                         item.mathMode = mathMode;
-                        item.updateLines(unitscale, displayFontFactor);
+                        item.updateLines(unitScale, displayFontFactor);
                     }
                     return array
                 }, 'wholeSelection']
@@ -277,7 +277,7 @@ export default class Label extends Ornament {
                 return [(item, array) => {
                     if (item instanceof Label) {
                         item.parbox = parbox;
-                        item.updateLines(unitscale, displayFontFactor);
+                        item.updateLines(unitScale, displayFontFactor);
                     }
                     return array
                 }, 'wholeSelection']
@@ -287,7 +287,7 @@ export default class Label extends Ornament {
                     return [(item, array) => {
                         if (!isNaN(d) && d!==0 && item instanceof Label) {
                             item.parboxWidth = round(item.parboxWidth + d, ROUNDING_DIGITS);
-                            item.updateLines(unitscale, displayFontFactor);
+                            item.updateLines(unitScale, displayFontFactor);
                         }
                         return array
                     }, 'wholeSelection']
@@ -315,12 +315,12 @@ export default class Label extends Ornament {
         ].map(encode).join(' ');
     }
 
-    override getTexdrawCode(unitscale: number) {
+    override getTexdrawCode(unitScale: number) {
         const vphantomCmd = this.vphant.length > 0? `\\vphantom{${this.vphant}}`: '';
         const textWithVphantom = this.parbox? `${vphantomCmd}${this.text}${vphantomCmd}`: `${vphantomCmd}${this.text}`;
         const centeredText = this.centerText;
         const textWithoutSizeCmds = this.parbox? 
-            `\\parbox{${this.parboxWidth * unitscale}pt}{${centeredText? '\\begin{center}': ''}${textWithVphantom}${centeredText? '\\end{center}': ''}}`: 
+            `\\parbox{${this.parboxWidth * unitScale}pt}{${centeredText? '\\begin{center}': ''}${textWithVphantom}${centeredText? '\\end{center}': ''}}`: 
             this.mathMode? `$${textWithVphantom}$`: textWithVphantom;
         const centered = this.centered;
         const fontSizeIndex = fontSizes.indexOf(this.fontSize);
@@ -342,7 +342,7 @@ export default class Label extends Ornament {
         ].join('');	        
     }
 
-    override parse(tex: string, info: string | null, dimRatio: number, unitscale: number, displayFontFactor: number, name?: string) {
+    override parse(tex: string, info: string | null, dimRatio: number, unitScale: number, displayFontFactor: number, name?: string) {
         // The 'name' in this case is a string that identifies the node to which this Label is supposed to be attached.
         const texts = Texdraw.getTexts(tex);
 	    if(texts.length < 1) {
@@ -372,7 +372,7 @@ export default class Label extends Ornament {
             if (isNaN(val) || val < 0) {
                 throw new ParseError(<span>Invalid <code>\parbox</code> width: <code>{parboxMatch[1]}</code></span>);
             }
-            this.parboxWidth = round(dimRatio * val / unitscale, ROUNDING_DIGITS);
+            this.parboxWidth = round(dimRatio * val / unitScale, ROUNDING_DIGITS);
             text = parboxMatch[2];
         }
         else {
@@ -416,7 +416,7 @@ export default class Label extends Ornament {
         }
         
 	    this.text = text;
-        this.updateLines(unitscale / dimRatio, displayFontFactor);
+        this.updateLines(unitScale / dimRatio, displayFontFactor);
 
         if (info) {
             const split = info.split(/\s+/).filter(s => s.length > 0);
@@ -455,10 +455,10 @@ export default class Label extends Ornament {
 
     override getComponent( 
         key: number, 
-        { yOffset, unitscale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
+        { yOffset, unitScale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ) {
         return (
-            <this.Component key={key} yOffset={yOffset} unitscale={unitscale} displayFontFactor={displayFontFactor}
+            <this.Component key={key} yOffset={yOffset} unitScale={unitScale} displayFontFactor={displayFontFactor}
                 primaryColor={primaryColor} markColor={markColor} 
                 focus={focus} selected={selected} preselected={preselected}
                 onMouseDown={onMouseDown} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
@@ -499,14 +499,14 @@ export default class Label extends Ornament {
      * and the functions returned by Item.handleEditing() (and hence from the callBacks constructed by ItemEditor). It would have been more in the 
      * declarative spirit to do these things at render, but that would be too late for the purposes of MainPanel.adjustLimit().
      */
-    updateLines(unitscale: number, displayFontFactor: number): void {
+    updateLines(unitScale: number, displayFontFactor: number): void {
         const lines: Line[] = [];
         let textW = 0,
             textH = 0;
         const canvas = document.getElementById('real-canvas') as HTMLCanvasElement | null;
         if (canvas) { // Here we determine the (approximate) height of the text:
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-            const measureFontSize = this.fontSize * displayFontFactor / unitscale ;
+            const measureFontSize = this.fontSize * displayFontFactor / unitScale ;
             const fontString = `400 ${this.mathMode? 'italic': 'normal'} ${measureFontSize}px ${this.mathMode? MATH_FONT: NORMAL_FONT} serif`;
             ctx.font = fontString;
             
@@ -551,7 +551,7 @@ export default class Label extends Ornament {
     }
 
 
-    protected Component = ({ yOffset, unitscale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, 
+    protected Component = ({ yOffset, unitScale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, 
             onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
     ) => {
         const [width, setWidth] = useState(this.width);
@@ -561,7 +561,7 @@ export default class Label extends Ornament {
         const text = this.text;
         const lines = this.lines;
         const height = this.height;
-        const fontSize = DISPLAY_FONTSIZE_RATIO * this.fontSize * displayFontFactor / unitscale;
+        const fontSize = DISPLAY_FONTSIZE_RATIO * this.fontSize * displayFontFactor / unitScale;
         const mathMode = this.mathMode;
         const parbox = this.parbox;
 

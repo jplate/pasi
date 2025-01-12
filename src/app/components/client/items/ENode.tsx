@@ -51,6 +51,13 @@ export default class ENode extends Node {
     /**
      * Overridden by SNode.
      */
+    override isIndependent() {
+        return true;
+    }
+
+    /**
+     * Overridden by SNode.
+     */
     isHidden(_selected: boolean): boolean {
         return false;
     }
@@ -101,14 +108,20 @@ export default class ENode extends Node {
         ];
     }
 
-    /**
-     * Overridden by SNode.
-     */
-    override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    getCoordinateInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
             {type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0},
             {type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0},
-            {type: 'logIncrement', extraBottomMargin: true},
+            {type: 'logIncrement', extraBottomMargin: true}
+        ]
+    }
+
+    /**
+     * Overridden by SNode and GNode.
+     */
+    override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+        return [
+            ...this.getCoordinateInfo(list),
             ...this.getNodeInfo(list)
         ]
     }
@@ -188,7 +201,7 @@ export default class ENode extends Node {
             e: React.ChangeEvent<HTMLInputElement> | null, 
             logIncrement: number, 
             selection: Item[],
-            _unitscale: number,
+            _unitScale: number,
             _displayFontFactor: number,
             key: string
     ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
@@ -295,7 +308,7 @@ export default class ENode extends Node {
      * 
      *  Overridden by SNode.
      */
-    override parse(tex: string, info: string | null, dimRatio: number, _unitscale?: number, _displayFontFactor?: number, name?: string): void {
+    override parse(tex: string, info: string | null, dimRatio: number, _unitScale?: number, _displayFontFactor?: number, name?: string): void {
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         this.parseNode(stShapes, tex, info, dimRatio, name ?? 'unnamed');
     }    
@@ -303,7 +316,7 @@ export default class ENode extends Node {
     /**
      * Overridden by SNode, but also called from there.
      */
-    getComponent({ id, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
+    getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
             selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
     }: ENodeCompProps) {    
         const [x, y] = this.getLocation();
@@ -366,7 +379,7 @@ export default class ENode extends Node {
                             {selectedPositions.map(i => i + 1).join(', ')}
                         </div>}
                 </div>
-                {this.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitscale, displayFontFactor, primaryColor, 
+                {this.ornaments.map((o, i) => o.getComponent(i, { yOffset, unitScale, displayFontFactor, primaryColor, 
                     markColor: markColor0, 
                     focus: focusItem===o, 
                     selected: selection.includes(o), 
@@ -381,7 +394,7 @@ export default class ENode extends Node {
 export interface ENodeCompProps {
     id: string
     yOffset: number
-    unitscale: number
+    unitScale: number
     displayFontFactor: number
     bg: HSL
     primaryColor: HSL

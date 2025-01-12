@@ -1,26 +1,38 @@
 import Item from './items/Item'
 import Node, { DEFAULT_DISTANCE } from './items/Node'
 import ENode from './items/ENode'
+import GNode, { DEFAULT_RADIUS } from './items/GNode'
 import CNodeGroup from './CNodeGroup'
 import CNode from './items/CNode'
 import Group, { StandardGroup } from './Group'
-import Ornament, { INCREMENT, ROUNDING_DIGITS } from './items/Ornament'
-import { getCyclicValue } from '../../util/MathTools'
-import { MIN_ROTATION } from './ItemEditor'
-
+import Ornament from './items/Ornament'
 
 
 /**
- * Returns a copy of the supplied Ornament, added to the latter's node.
+ * Returns an array of 
+ * (i) a copy of the supplied Ornament, added to a 'ghost node' that is either retrieved from the ghosts map or created, and 
+ * (ii) an updated ENode counter (which is incremented if a new ghost node has been created).
  */
 const copyOrnament = (
     o: Ornament, 
-    copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
-): Ornament => {    
-    const copy = o.clone(o.node);
-    copy.angle = getCyclicValue(o.angle + INCREMENT, MIN_ROTATION, 360, ROUNDING_DIGITS);
+    enCounter: number,
+    hDisplacement: number,
+    vDisplacement: number,
+    copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>,
+    ghosts: Map<string, ENode>
+): [Ornament, number] => {    
+    let ghost = ghosts.get(o.node.id);
+    if (!ghost) { // Create a new ghost node:
+        const a = o.angle / 180 * Math.PI;
+        const radius = o.node.radius - DEFAULT_RADIUS;
+        const x = o.node.x + Math.cos(a) * radius;
+        const y = o.node.y + Math.sin(a) * radius;
+        ghost = new GNode(enCounter++, x + hDisplacement, y + vDisplacement);
+        ghosts.set(o.node.id, ghost);
+    }
+    const copy = o.clone(ghost);
     copies.set(o.id, copy);
-    return copy;
+    return [copy, enCounter];
 }
 
 /** 
@@ -81,8 +93,8 @@ export const copyENode = (node: ENode, i: number, hDisplacement: number, vDispla
 }
 
 /**
- * Returns a copy of the supplied CNode. If ngCounter is zero, we assume that node is included in topTbc, and so we use an id that is based on the copied node's id; 
- * otherwise the copy's id will be composed out of ngCounter and nodeCoutner.
+ * Returns a copy of the supplied CNode. If ngCounter is zero, we assume that node is included in topTbc, and so we use an id that is based on the copied node's ID; 
+ * otherwise the copy's ID will be composed out of ngCounter and nodeCounter.
  */
 export const copyCNode = (node: CNode, hDisplacement: number, vDisplacement: number, cngCounter: number, nodeCounter: number,
     topTbc: (Item | Group<any>)[],
@@ -137,7 +149,8 @@ export const copyStandardGroup = (
     hDisplacement: number, vDisplacement: number, 
     topTbc: (Item | Group<any>)[],
     selection: Item[],
-    copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
+    copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>,
+    ghosts: Map<string, GNode>
 ): [StandardGroup<Item | Group<any>>, number, number, number] => {
 
     const copiedGroup = new StandardGroup<Item | Group<any>>(sgCounter, []);    
@@ -160,13 +173,13 @@ export const copyStandardGroup = (
             }
             case m instanceof StandardGroup: {
                 [copy, enCounter, cngCounter, sgCounter] = 
-                    copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies); // Ditto.
+                    copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies, ghosts); // Ditto.
                 break;
             }
             case m instanceof Ornament: {
                 const nodeShouldBeCopied = selection.includes(m.node);
                 if (!nodeShouldBeCopied) { 
-                    copy = copyOrnament(m, copies);
+                    [copy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, ghosts);
                 } 
                 else if (copies.has(m.id)) { // This will be the case if previously a Node has been copied to which m is attached.
                     const c = copies.get(m.id);
@@ -201,6 +214,7 @@ export const copy = (
     hDisplacement: number,
     vDisplacement: number, 
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>, 
+    ghosts: Map<string, GNode>,
     enCounter: number, 
     cngCounter: number,
     sgCounter: number
@@ -212,7 +226,8 @@ export const copy = (
                 //console.log(`O: ${m.id}`);
                 const nodeShouldBeCopied = selection.includes(m.node);
                 if (!nodeShouldBeCopied) {
-                    const copy = copyOrnament(m, copies);
+                    let copy;
+                    [copy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, ghosts);
                     if (m.group) {
                         m.group.members.push(copy);
                     }                
@@ -254,7 +269,7 @@ export const copy = (
                 //console.log(`SG: ${m.getString()}`);
                 let copy: StandardGroup<Item | Group<any>>;
                 [copy, enCounter, cngCounter, sgCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
-                        enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies);
+                        enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies, ghosts);
                 if (m.group) {
                     copy.group = m.group;
                     copy.group.members.push(copy);
