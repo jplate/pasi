@@ -775,7 +775,7 @@ interface CNodeGroupCompProps {
     selection: Item[]
     allItems: Item[]
     yOffset: number
-    unitscale: number
+    unitScale: number
     displayFontFactor: number
     bg: HSL
     primaryColor: HSL
@@ -791,7 +791,7 @@ interface CNodeGroupCompProps {
     mouseLeft: () => void
 }
 
-export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allItems, yOffset, unitscale, displayFontFactor, bg, primaryColor, markColor, 
+export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, allItems, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor, 
         itemMouseDown, itemMouseEnter, groupMouseDown, groupMouseEnter, mouseLeft }: CNodeGroupCompProps) => {
     const centerDivClickable = !allItems.some(item => {
         const c = nodeGroup.getNodalCenter(); // the location of the center div
@@ -855,7 +855,7 @@ export const CNodeGroupComp = ({ nodeGroup, focusItem, preselection, selection, 
             {nodeGroup.members.map((node, i) => {
                 return <CNodeComp key={node.id} id={node.id} cnode={node} 
                     yOffset={yOffset} 
-                    unitscale={unitscale}
+                    unitScale={unitScale}
                     displayFontFactor={displayFontFactor}
                     primaryColor={primaryColor}
                     markColor={markColor}

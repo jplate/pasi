@@ -11,6 +11,7 @@ import CNodeGroup from '../CNodeGroup'
 import * as Texdraw from '../../../codec/Texdraw'
 import { ParseError, makeParseError } from '../../../codec/Texdraw'
 import { encode, decode } from '../../../codec/General'
+import { addAlpha } from '@/app/util/Misc'
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = 2*Math.PI/100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -24,6 +25,9 @@ export const CLOSENESS_TO_BASE_ANGLE_PENALTY = 9;
 export const MIN_RADIUS_FOR_INNER_TITLE = 6;
 export const TITLE_FONTSIZE = 9;
 export const TITLE_BOTTOM_MARGIN = 1.5; // The margin at the bottom of a Node's 'title' if the latter appears *above* the mark border.
+
+const GHOST_CENTER_OPACITY = 0.45;
+const GHOST_PERIPHERAL_OPACITY = 0.05;
 
 export interface Info {
     e: React.ChangeEvent<HTMLInputElement> | null, 
@@ -316,8 +320,8 @@ export default class ENode extends Node {
     /**
      * Overridden by SNode, but also called from there.
      */
-    getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
-            selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
+    getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, gradient,
+            focusItem, selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
     }: ENodeCompProps) {    
         const [x, y] = this.getLocation();
         const linewidth = this.linewidth;
@@ -338,9 +342,7 @@ export default class ENode extends Node {
         const mH = height + linewidth; // ...height relevant for drawing the 'mark border'
         const l = Math.min(Math.max(5, mW / 5), 25);
         const m = hidden ? 0.9 * l : 0;
-    
-        //console.log(`Rendering ${id}... (${x}, ${y})  yOffset=${yOffset}`);
-    
+        
         return (
             <React.Fragment key={id}>
                 <div className={focusItem===this ? 'focused' : selectedPositions.length > 0 ? 'selected' : preselection.includes(this)? 'preselected': 'unselected'}
@@ -356,13 +358,21 @@ export default class ENode extends Node {
                         cursor: 'pointer'
                     }}>
                     <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <radialGradient id='Radial'>
+                                <stop offset='15%' stopColor={addAlpha(markColor0, GHOST_CENTER_OPACITY)} />
+                                <stop offset='100%' stopColor={addAlpha(markColor0, GHOST_PERIPHERAL_OPACITY)} />
+                            </radialGradient>
+                        </defs>
                         {!hidden && 
                             <circle cx={radius + MARK_LINEWIDTH + linewidth / 2}
                                 cy={radius + MARK_LINEWIDTH + linewidth / 2 + extraHeight} r={radius}
-                                fill={shading == 0? 'hsla(0,0%,0%,0)': // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
-                                    `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
-                                    `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`+
-                                    `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
+                                fill={gradient ? 'url(#Radial)'
+                                    : shading == 0 ? 'hsla(0,0%,0%,0)'
+                                    : // Otherwise we assmilate the background color to the primary color, to the extent that shading approaches 1.
+                                    `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` 
+                                    + `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,`
+                                    + `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`}
                                 stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                                 strokeWidth={linewidth}
                                 strokeDasharray={this.dash.join(' ')} 
@@ -392,19 +402,20 @@ export default class ENode extends Node {
 }
 
 export interface ENodeCompProps {
-    id: string
-    yOffset: number
-    unitScale: number
-    displayFontFactor: number
-    bg: HSL
-    primaryColor: HSL
-    markColor0: string
-    markColor1: string
-    titleColor: string
-    focusItem: Item | null
-    selection: Item[]
-    preselection: Item[]
-    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+    id: string,
+    yOffset: number,
+    unitScale: number,
+    displayFontFactor: number,
+    bg: HSL,
+    primaryColor: HSL,
+    markColor0: string,
+    markColor1: string,
+    titleColor: string,
+    gradient?: boolean,
+    focusItem: Item | null,
+    selection: Item[],
+    preselection: Item[],
+    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
+    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void,
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
 }

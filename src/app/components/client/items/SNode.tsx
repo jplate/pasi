@@ -902,15 +902,15 @@ export default abstract class SNode extends ENode {
     }
 
     override getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, 
-        titleColor, focusItem, selection, preselection, 
+        titleColor, gradient, focusItem, selection, preselection, 
         onMouseDown, onMouseEnter, onMouseLeave }: ENodeCompProps
     ) {
         return (
             <React.Fragment key={id}>
                 {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
                 {super.getComponent({
-                    id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, focusItem, 
-                    selection, preselection, onMouseDown, onMouseEnter, onMouseLeave
+                    id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, gradient, 
+                    focusItem, selection, preselection, onMouseDown, onMouseEnter, onMouseLeave
                 })}
             </React.Fragment>
         );

@@ -528,11 +528,12 @@ const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]
  * Transfers features (ornaments and end points of connectors) from one Node to another. The third and second argument are needed in order
  * properly to initalize Labels.
  */
-const transferFeatures = (n0: Node, n1: Node, unitscale: number, displayFontFactor: number) => {
+const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFactor: number) => {
     for (const o of n0.ornaments) {
         const clone = o.clone(n1);
         if (clone instanceof Label) {
-            clone.updateLines(unitscale, displayFontFactor);
+            console.log(`us: ${unitScale} dff: ${displayFontFactor}`);
+            clone.updateLines(unitScale, displayFontFactor);
         }
     }
     for (const node of n0.dependentNodes) {
@@ -1075,10 +1076,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         ) as Node[];
                         const toBeDeletedGNodes: GNode[] = [];
                         for (const n0 of selectedNodes) {
-                            console.log(`N0: ${n0.getString()}`);
                             if (n0 instanceof GNode) {
                                 for (const n1 of unselectedNonGhostNodes) {
-                                    console.log(`  N1: ${n1.getString()}`);
                                     const [x0, y0] = n0.getLocation();
                                     const [x1, y1] = n1.getLocation();
                                     const d = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
@@ -2223,7 +2222,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 selection={deduplicatedSelection}
                                 allItems={allItems}
                                 yOffset={yOffset} 
-                                unitscale={unitScale}
+                                unitScale={unitScale}
                                 displayFontFactor={displayFontFactor}
                                 bg={dark? CANVAS_HSL_DARK_MODE: CANVAS_HSL_LIGHT_MODE}
                                 primaryColor={trueBlack? BLACK: dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
