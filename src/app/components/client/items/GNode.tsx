@@ -27,7 +27,7 @@ export default class GNode extends ENode {
             ...this.getCoordinateInfo(list),
             {
                 type: 'gloss', 
-                text: <>This is a &lsquo;ghost node&rsquo;: when dragged (via the snapping mechanism) onto another node, it will transfer its {' '}
+                text: <>This is a &lsquo;ghost node&rsquo;: when dragged onto another node, it will transfer its {' '}
                     group membership, ornaments, and connector end points to that other node and disappear.</>,
                 style: 'max-w-64 pl-8 text-sm'
             },
