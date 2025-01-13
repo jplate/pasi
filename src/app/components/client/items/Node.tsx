@@ -60,7 +60,8 @@ export default abstract class Node extends Item {
     dependentNodes: Node[] = []; // We keep a tally of the Nodes (typically, SNodes) that have this Node as involute, for purposes of efficiency.
 
     private ornamentCounter = 0; // for generating IDs for Ornaments
-    locationDefined: boolean = false; // indicates whether this.x and this.y give the actual location or need to be updated. Relevant for SNodes.
+    locationDefined: boolean = true; // indicates whether this.x and this.y give the actual location or need to be updated. Relevant for SNodes.
+        // The SNode constructor sets this to false.
 
 
     constructor(id: string, x: number, y: number) {
@@ -154,6 +155,53 @@ export default abstract class Node extends Item {
     }
 
 }
+
+/**
+ * @return a Set that contains the supplied Items together with their directly or indirectly 'dependent' Items, namely Ornaments and SNodes.
+ */
+export const addDependents = (
+    items: Item[], 
+    includeOrnaments: boolean = true, 
+    acc = new Set<Item>(),
+    visited = new Set<Node>
+): Set<Item> => {
+    for (const it of items) {
+        if (includeOrnaments || !(it instanceof Ornament)) {
+            acc.add(it);
+        }
+        if (it instanceof Node && !visited.has(it)) {
+            visited.add(it);
+            if (includeOrnaments) {
+                it.ornaments.forEach(o => acc.add(o));
+            }
+            addDependents(it.dependentNodes, includeOrnaments, acc, visited);
+        }
+    }
+    return acc;
+}
+
+/**
+ * @return a Set that contains the supplied Item's directly or indirectly 'dependent' Items, namely Ornaments and SNodes.
+ */
+export const getDependents = (
+    it: Item, 
+    includeOrnaments: boolean = true, 
+    acc = new Set<Item>(),
+    visited = new Set<Node>
+): Set<Item> => {
+    if (it instanceof Node && !visited.has(it)) {
+        visited.add(it);
+        if (includeOrnaments) {
+            it.ornaments.forEach(o => acc.add(o));
+        }
+        it.dependentNodes.forEach(dep => {
+            acc.add(dep);
+            getDependents(dep, includeOrnaments, acc, visited);
+        });
+    }
+    return acc;
+}
+
 
 export const validateLinewidth = (lw: number, name: string): number => {
     if (lw < 0) {

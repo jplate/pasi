@@ -21,11 +21,11 @@ const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what 
 const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hints' for the decoding of Ornament information. This infix
     // must *not* overlap with CODE.
 
-const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => any>([
+const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([
     ['L', Label]
 ]);
 
-const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => any>([
+const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([
     ['A', Adjunction]
 ]);
 
@@ -297,7 +297,7 @@ const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<strin
 
 const sNodeNameMatch = /(\S+)\((\S+)\s+(\S+)\)/;
 
-const parseSNode = (tex: string, hint: string, dimRatio: number, snClass: new (id: number) => any, 
+const parseSNode = (tex: string, hint: string, dimRatio: number, snClass: new (id: number) => SNode, 
     eMap: Map<string, ENode>, invMap: Map<SNode, NodeIdentifier[]>, gMap: Map<string, Group<any>>, 
     counter: number, sgCounter:number
 ): [SNode, number] => {
@@ -350,10 +350,10 @@ const parseCNodeGroup = (tex: string, hint: string, dimRatio: number, cngMap: Ma
     return [cng, sgCounter];
 }
 
-const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new (node: Node) => any, 
+const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new (node: Node) => Ornament, 
     eMap: Map<string, ENode>, cngMap: Map<string, CNodeGroup>, gMap: Map<string, Group<any>>, 
     sgCounter:number, unitScale: number, displayFontFactor: number
-): [Ornament, number] => {
+): number => {
     // The 'hint' for an Ornament has (roughly) the following format:
     // [prefix + nodeName + info] or 
     // [prefix + nodeName + info + ('.' or ':') + groupName].
@@ -398,7 +398,7 @@ const parseOrnament = (tex: string, hint: string, dimRatio: number, oClass: new 
         sgCounter = addToGroup(o, groupName, activeMember!, gMap, sgCounter);
     }
     o.parse(tex, info, dimRatio, unitScale, displayFontFactor, nodeIdentifier);
-    return [o, sgCounter];
+    return sgCounter;
 }
 
 
@@ -478,8 +478,7 @@ export const load = (code: string, unitScale: number | undefined, displayFontFac
                     else {
                         const oClass = ornamentPrefixMap.getByKey(prefix);
                         if (oClass) {
-                            let o: Ornament;
-                            [o, sgCounter] = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedunitScale, displayFontFactor);
+                            sgCounter = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedunitScale, displayFontFactor);
                         }
                         else { // In this case the prefix has not been recognized.
                             throw new ParseError(<span>Unexpected directive: <code>{truncate(hint)}</code>.</span>);

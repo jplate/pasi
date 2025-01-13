@@ -2,8 +2,8 @@ import react from 'react'
 import Item from './Item'
 import Node from './Node'
 import { HSL } from './Item'
-import { MIN_ROTATION } from '../ItemEditor'
 import { getCyclicValue } from '../../../util/MathTools'
+import { MIN_ROTATION } from '@/app/Constants'
 
 export const DEFAULT_ANGLE = 10;
 export const INCREMENT = 30; // the angle (in degrees) by which the angle of a new Ornament is increased when added to the same node.

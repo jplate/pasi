@@ -3,10 +3,9 @@ import React, { useRef } from 'react'
 import Item, { HSL } from './items/Item'
 import Node, { DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, LINECAP_STYLE, LINEJOIN_STYLE, MAX_LINEWIDTH, MAX_DASH_LENGTH, MAX_DASH_VALUE } from './items/Node'
 import Group from './Group.tsx'
-import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS } from '../../Constants'
+import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS, MIN_ROTATION } from '../../Constants'
 import { DashValidator } from './EditorComponents.tsx'
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx'
-import { MIN_ROTATION } from './ItemEditor'
 import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools'
 import * as Texdraw from '../../codec/Texdraw.tsx'
 import { ParseError, makeParseError } from '../../codec/Texdraw'
@@ -26,6 +25,41 @@ const CONTOUR_CENTER_DIV_MARGIN = 4
 export const DEFAULT_DISTANCE = 10
 const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
 export const MAX_CNODEGROUP_SIZE = 500
+
+/**
+ * @return true if, among the neighbors to each side of the supplied CNode, up to the first node that is a member of the supplied array, there is a 
+ * node that either does not have the fixedAngles property or is not a member of the array.
+ */
+export const isFree = (node: CNode, nodes: CNode[]): boolean => {
+    const group = node.group;
+    let free = false;
+    if (group instanceof CNodeGroup) {
+        const index = group.members.indexOf(node);
+        const members = group.members;
+        const n = members.length;
+        for (const inc of [-1, 1]) {
+            for (let i = 1; i <  group.members.length; i++) {
+                const j = index + i * inc;
+                const neighbor = members[
+                    j >= n? j - n: // continuing with 0
+                    j < 0? n + j: // continuing with n - 1
+                    j
+                ]; 
+                if (!neighbor.fixedAngles) {
+                    free = true; // We'll return true if this *stays* true.
+                    break;
+                }
+                if (nodes.includes(neighbor)) {
+                    if (!free) {
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return free;
+}
 
 
 export default class CNodeGroup implements Group<CNode> {

@@ -9,7 +9,6 @@ import ENode from './items/ENode'
 import CNode from './items/CNode'
 import CNodeGroup from './CNodeGroup'
 
-export const MIN_ROTATION = -180
 export const MAX_ROTATION_INPUT = 9999
 
 

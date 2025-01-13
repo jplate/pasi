@@ -3,10 +3,10 @@ import Item, { HSL, Range } from './Item'
 import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_DASH, MAX_DASH_VALUE, MAX_DASH_LENGTH, DEFAULT_LINEWIDTH,
      MAX_LINEWIDTH, LINECAP_STYLE, LINEJOIN_STYLE, validateLinewidth, validateDash, validateShading, validateRadius } from './Node'
 import ENode, { Info, Handler, ENodeCompProps } from './ENode'
-import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants'
+import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS, MIN_ROTATION } from '../../../Constants'
 import CNodeGroup from '../CNodeGroup'
 import CNode from './CNode'
-import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../ItemEditor'
+import { Entry, MAX_ROTATION_INPUT } from '../ItemEditor'
 import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents'
 import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools'
 import * as Texdraw from '../../../codec/Texdraw'
@@ -87,10 +87,9 @@ export default abstract class SNode extends ENode {
     protected w0 = 0; // parameter controlling the length of the 'stiff part' at the beginning of the connector
 	protected w1 = 0; // ditto for the end of the connector
 	protected wc = 0; // ditto for the center of the connector
-    protected rigidPoint = false;
     d0: number = DEFAULT_DISTANCE; // the distances from the involutes to the corresponding control points of the connector
     d1: number = DEFAULT_DISTANCE;
-    phi0: number = 0; // the connector's incidence angles (in degrees) relative to the baseline angle
+    phi0: number = 0; // the connector's exit angles (in degrees) relative to the baseline angle
     phi1: number = 0;
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
     closest = false; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
@@ -106,7 +105,7 @@ export default abstract class SNode extends ENode {
         this.w0 = this.getDefaultW0();
 	    this.w1 = this.getDefaultW1();
 	    this.wc = this.getDefaultWC();
-        this.rigidPoint = this.hasByDefaultRigidPoint();
+        this.locationDefined = false;
     }
 
     override isIndependent() {
@@ -156,11 +155,30 @@ export default abstract class SNode extends ENode {
         return hr;
 	}
 
-        
-	hasByDefaultRigidPoint() {
-	    return false;
+    override copyValuesTo(target: SNode) {
+        super.copyValuesTo(target);
+        target.conLinewidth = this.conLinewidth;
+        target.conLinewidth100 = this.conLinewidth100;
+        target.conDash = [...this.conDash];
+        target.conDash100 = [...this.conDash100];
+        target.ahLinewidth = this.ahLinewidth;
+        target.ahLinewidth100 = this.ahLinewidth100;
+        target.ahDash = [...this.ahDash];
+        target.ahDash100 = [...this.ahDash100];
+        target.gap0 = this.gap0;
+        target.gap1 = this.gap1;
+        target.w0 = this.w0;
+        target.w1 = this.w1;
+        target.wc = this.wc;
+        target.d0 = this.d0;
+        target.d1 = this.d1;
+        target.phi0 = this.phi0;
+        target.phi1 = this.phi1;
+        target.manual = this.manual;
+        target.closest = this.closest;
+        target.t = this.t;
     }
-
+        
     setConnectorLinewidth(lw: number) {
         this.conLinewidth = this.conLinewidth100 = lw;
     }
@@ -256,7 +274,7 @@ export default abstract class SNode extends ENode {
     /**
      * This function is supposed to be called as a result of user input.
      */
-    adjustIncidenceAngle(k: number, delta: number): void {
+    adjustExitAngle(k: number, delta: number): void {
         const a = getCyclicValue((k===0? this.phi0: this.phi1) + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
         if (k===0) {
             this.phi0 = a;
@@ -443,7 +461,7 @@ export default abstract class SNode extends ENode {
                 const delta = parseCyclicInputValue(e.target.value, this.phi0, logIncrement)[1]; 
                 return [(item, array) => {
                     if(!isNaN(delta) && delta!==0 && item instanceof SNode) {
-                        item.adjustIncidenceAngle(0, delta);
+                        item.adjustExitAngle(0, delta);
                     }
                     return array
                 }, 'ENodesAndCNodeGroups'];
@@ -477,7 +495,7 @@ export default abstract class SNode extends ENode {
                 const delta = parseCyclicInputValue(e.target.value, this.phi1, logIncrement)[1]; 
                 return [(item, array) => {
                     if(!isNaN(delta) && delta!==0 && item instanceof SNode) {
-                        item.adjustIncidenceAngle(1, delta);
+                        item.adjustExitAngle(1, delta);
                     }
                     return array
                 }, 'ENodesAndCNodeGroups'];
@@ -710,7 +728,9 @@ export default abstract class SNode extends ENode {
     }
 
     /**
-     * Returns a tuple of the connector's preferred angles of incidence on the two involutes.
+     * Returns a tuple of the connector's preferred exit angles (in radians), meaning the angles at which it exits from the 
+     * two involutes. These angles are relative to the X-axis rather than to the 'base angle' of the vector from one involute
+     * to the other.
      */
     findPreferredAngles(): [chi0: number, chi1: number] {
 	    let [n0, n1] = this.involutes;
@@ -735,8 +755,11 @@ export default abstract class SNode extends ENode {
         return [chi0, chi1];
 	}
 
-    // This needs more work; currently we're ignoring whether multiple connectors hit a node at the same spot.
-    findIncidenceAngles(): [psi0: number, psi1: number] {
+    /**
+     * Returns a tuple of the connector's actual exit angles (in radians).
+     * Currently we're ignoring whether multiple connectors hit a node at the same spot.
+     */
+    findExitAngles(): [psi0: number, psi1: number] {
         const base = this.findBaseAngle();
         if (this.manual) {
             const phi0 = this.phi0 / 180 * Math.PI;
@@ -775,7 +798,7 @@ export default abstract class SNode extends ENode {
 
     getLine(): CubicCurve {
         const [r0, r1] = this.involutes.map(n => Math.max(MIN_EFFECTIVE_RADIUS, n.radius));
-        const [psi0, psi1] = this.findIncidenceAngles();
+        const [psi0, psi1] = this.findExitAngles();
         const baseAngle = this.findBaseAngle();
 
         let cpr0, cpr1;
@@ -810,7 +833,7 @@ export default abstract class SNode extends ENode {
         const [x0, y0] = n0.getLocation();
         const [x1, y1] = n1.getLocation();
         const link = this.getLine();
-        const [psi0, psi1] = this.findIncidenceAngles();
+        const [psi0, psi1] = this.findExitAngles();
         const x0new = x0 + r0 * Math.cos(psi0);
         const y0new = y0 + r0 * Math.sin(psi0);
         const x1new = x1 + r1 * Math.cos(psi1);

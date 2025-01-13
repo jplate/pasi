@@ -1,8 +1,9 @@
 import { Info, Handler } from '../ENode'
 import SNode, { complain } from '../SNode'
-import { Entry, MAX_ROTATION_INPUT, MIN_ROTATION } from '../../ItemEditor'
+import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor'
 import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/MathTools'
 import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents'
+import { MIN_ROTATION } from '@/app/Constants'
 import * as Texdraw from '@/app/codec/Texdraw'
 import { ParseError } from '@/app/codec/Texdraw'
 
@@ -62,7 +63,13 @@ export default class Adjunction extends SNode {
 
 	getDefaultWC() {
 		return DEFAULT_WC;
-	}    
+	}
+
+    override copyValuesTo(target: Adjunction) {
+        super.copyValuesTo(target);
+        target.hookAngle = this.hookAngle;
+        target.hookLength = this.hookLength;
+    }
 
     override getArrowheadInfo(): Entry[] {
         const factor = 10**ROUNDING_DIGITS;
@@ -93,20 +100,12 @@ export default class Adjunction extends SNode {
         const len = this.hookLength;
         const a = this.hookAngle / 180 * Math.PI;
         const { x3: p1x, y3: p1y } = adjustedLine;
-        let gamma: number;
-        if (this.rigidPoint) {
-            const [_, psi1] = this.findIncidenceAngles();
-            gamma = psi1;
-        }
-        else {
-            const [p2x, p2y] = travel([1], this.w1, adjustedLine, -EPSILON, 1/EPSILON);
-            gamma = angle(p1x, p1y, p2x, p2y, true);
-        }
+        const [p2x, p2y] = travel([1], this.w1, adjustedLine, -EPSILON, 1/EPSILON);
+        const gamma = angle(p1x, p1y, p2x, p2y, true);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
         const bx1 = len * Math.cos(gamma + a);
-        const by1 = len * Math.sin(gamma + a);
-        
+        const by1 = len * Math.sin(gamma + a);        
         return [
             { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }, // the left hook
             { x0: p1x, y0: p1y, x1: p1x + bx1, y1: p1y + by1 } // the right hook

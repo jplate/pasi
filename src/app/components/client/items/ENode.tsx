@@ -66,13 +66,6 @@ export default class ENode extends Node {
         return false;
     }
 
-    /**
-     * Overridden by SNode.
-     */
-    getHiddenRadius(): number {
-        return this.getDefaultRadius();
-    }
-
     getSelectedPositions = (selection: Item[]) => {
         let result: number[] = [];
         let index = 0;
@@ -92,6 +85,29 @@ export default class ENode extends Node {
      */
     getDefaultRadius() {
         return DEFAULT_RADIUS;
+    }
+
+    /**
+     * Overridden by SNode.
+     */
+    getHiddenRadius(): number {
+        return this.getDefaultRadius();
+    }
+
+    /**
+     * Overridden (and called) by SNode. The reason why this method doesn't already appear in Node is that it's not exactly appropriate
+     * for CNodes. Also, since this method is used for the purposes of copying an ENode, which typically involves some kind of displacement
+     * (with regard to the X-coordinate, the Y-coordinate, or both), and since this displacement is taken care of in the constructor, we are 
+     * NOT copying the ENode's location.
+     */
+    copyValuesTo(target: ENode) {
+        target.radius = this.radius;
+        target.radius100 = this.radius100;
+        target.linewidth = this.linewidth;
+        target.linewidth100 = this.linewidth100;
+        target.shading = this.shading;
+        target.dash = this.dash;
+        target.dash100 = this.dash100;
     }
 
     override reset() {
@@ -360,7 +376,7 @@ export default class ENode extends Node {
                     <svg width={width + MARK_LINEWIDTH * 2 + linewidth} height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight} xmlns="http://www.w3.org/2000/svg">
                         <defs>
                             <radialGradient id='Radial'>
-                                <stop offset='15%' stopColor={addAlpha(markColor0, GHOST_CENTER_OPACITY)} />
+                                <stop offset='0%' stopColor={addAlpha(markColor0, GHOST_CENTER_OPACITY)} />
                                 <stop offset='100%' stopColor={addAlpha(markColor0, GHOST_PERIPHERAL_OPACITY)} />
                             </radialGradient>
                         </defs>

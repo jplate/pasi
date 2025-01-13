@@ -8,7 +8,7 @@ export const DEFAULT_DASH = [1];
 export const DEFAULT_SHADING = 0.02;
 
  /**
-  * GNodes are 'ghost nodes', nodes that will transfer their ornaments and connector end points to non-ghost nodes when dragged onto the latter.
+  * GNodes are 'ghost nodes', which transfer their own group membership, ornaments, and connector end points to other nodes when dragged onto the latter.
   */
 export default class GNode extends ENode {
 
@@ -27,9 +27,14 @@ export default class GNode extends ENode {
             ...this.getCoordinateInfo(list),
             {
                 type: 'gloss', 
-                text: <>This is a &lsquo;ghost node&rsquo;: when dragged (via the snapping mechanism) onto a non-ghost node, it will transfer its {' '}
-                    ornaments and connector end points to that other node and disappear.</>,
+                text: <>This is a &lsquo;ghost node&rsquo;: when dragged (via the snapping mechanism) onto another node, it will transfer its {' '}
+                    group membership, ornaments, and connector end points to that other node and disappear.</>,
                 style: 'max-w-64 pl-8 text-sm'
+            },
+            {
+                type: 'gloss',
+                text: <>Exception: no group membership will be transferred to <i>contour</i> nodes.</>,
+                style: 'max-w-64 pl-8 text-xs'
             },
         ]
     }
@@ -39,7 +44,7 @@ export default class GNode extends ENode {
      */
     override getComponent({ id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, 
         titleColor, focusItem, selection, preselection, onMouseDown, onMouseEnter, onMouseLeave 
-    }: ENodeCompProps) {
+    }: ENodeCompProps) {        
         return super.getComponent({
                 id, yOffset, unitScale, displayFontFactor, bg, primaryColor, markColor0, markColor1, titleColor, gradient: true, 
                 focusItem, selection, preselection, onMouseDown, onMouseEnter, onMouseLeave

@@ -1,19 +1,19 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx/lite'
 import { Lora } from 'next/font/google'  
-import Item, { Range } from '../Item.tsx'
-import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament.tsx'
-import Node from '../Node.tsx'
-import ENode from '../ENode.tsx'
-import CNodeGroup from '../../CNodeGroup.tsx'
-import { H, MARK_LINEWIDTH } from '@/app/Constants.ts';
-import { Entry } from '../../ItemEditor.tsx'
-import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents.tsx'
-import { MIN_ROTATION } from '../../ItemEditor.tsx'
-import { getCyclicValue, round } from '@/app/util/MathTools.ts'
-import * as Texdraw from '@/app/codec/Texdraw.tsx'
-import { ParseError } from '@/app/codec/Texdraw.tsx'
-import { encode, decode } from '@/app/codec/General.ts'
+import Item, { Range } from '../Item'
+import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament'
+import Node from '../Node'
+import ENode from '../ENode'
+import CNodeGroup from '../../CNodeGroup'
+import { H, MARK_LINEWIDTH } from '@/app/Constants';
+import { Entry } from '../../ItemEditor'
+import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents'
+import { MIN_ROTATION } from '@/app/Constants'
+import { getCyclicValue, round } from '@/app/util/MathTools'
+import * as Texdraw from '@/app/codec/Texdraw'
+import { ParseError } from '@/app/codec/Texdraw'
+import { encode, decode } from '@/app/codec/General'
 
 export const MIN_WIDTH = 5;
 export const MIN_HEIGHT = 5;
@@ -547,7 +547,7 @@ export default class Label extends Ornament {
         this.lines = lines;
         this.width = Math.max(MIN_WIDTH, this.parbox? this.parboxWidth: textW);
         this.height = Math.max(MIN_HEIGHT, textH);
-        console.log(`n: ${lines.length} height: ${this.height}`);
+        //console.log(`n: ${lines.length} height: ${this.height}`);
     }
 
 
