@@ -195,11 +195,15 @@ export default abstract class SNode extends ENode {
         this.ahDash = this.ahDash100 = dash;
     }
 
-    override getLocation() {
-        if (this.locationDefined || this.involutes.length!==2) {
+    override getLocation(visited: Set<SNode> = new Set<SNode>) {
+        if (this.locationDefined) {
             return [this.x, this.y];
         }
         else {
+            if (visited.has(this)) {
+                return [this.x, this.y];
+            }
+            visited.add(this);
             if (this.closest) { // Determine the relevant closest node(s) and make it/them the new involute(s).
                 const [n0, n1] = this.involutes;
                 if (n0 instanceof CNode) {
@@ -249,7 +253,7 @@ export default abstract class SNode extends ENode {
                     }                    
                 }
             }
-            const line = this.getLine();
+            const line = this.getLine(visited);
             const loc =  cubicBezier(line, this.t);
             [this.x, this.y] = loc;
             // No need to do anything about this.x100 and this.y100, since location is entirely determined by the locations of the involutes.
@@ -718,34 +722,38 @@ export default abstract class SNode extends ENode {
         );
     }    
 
-
-    findBaseAngle(): number {
+    /**
+     * @return the angle of the vector going from the first to the second involute.
+     * @param visited to prevent infinite loops.
+     */
+    findBaseAngle(visited: Set<SNode> = new Set<SNode>()): number {
         let [n0, n1] = this.involutes;
-        const [x0, y0] = n0.getLocation();
-        const [x1, y1] = n1.getLocation();
+        const [x0, y0] = n0.getLocation(visited);
+        const [x1, y1] = n1.getLocation(visited);
         const a = angle(x0, y0, x1, y1, true);
         return a;
     }
 
     /**
-     * Returns a tuple of the connector's preferred exit angles (in radians), meaning the angles at which it exits from the 
+     * @return a tuple of the connector's preferred exit angles (in radians), meaning the angles at which it exits from the 
      * two involutes. These angles are relative to the X-axis rather than to the 'base angle' of the vector from one involute
      * to the other.
+     * @param visited to prevent infinite loops.
      */
-    findPreferredAngles(): [chi0: number, chi1: number] {
+    findPreferredAngles(visited: Set<SNode> = new Set<SNode>): [chi0: number, chi1: number] {
 	    let [n0, n1] = this.involutes;
         let w0 = this.w0;
         let w1 = this.w1 + this.gap1;
         
         const r0 = n0.radius; 
         const r1 = n1.radius; 
-        const [x0, y0] = n0.getLocation();
-        const [x1, y1] = n1.getLocation();
+        const [x0, y0] = n0.getLocation(visited);
+        const [x1, y1] = n1.getLocation(visited);
         
         const w = w0 + w1 + this.wc;
 		const d = Math.sqrt((x1 - x0)**2 + (y1 - y0)**2);
         const discr = Math.max(0, w + r0 + r1 - d) / 2; // 'discrepancy', divided evenly among the two involutes
-        const baseAngle = this.findBaseAngle();
+        const baseAngle = this.findBaseAngle(visited);
         let chi0 = baseAngle + Math.acos(Math.max(-0.5, (r0 - discr) / r0));
         let chi1 = baseAngle + Math.PI - Math.acos(Math.max(-0.5, (r1 - discr) / r1));
         if(this.flexDirection==='clockwise') {
@@ -756,18 +764,20 @@ export default abstract class SNode extends ENode {
 	}
 
     /**
-     * Returns a tuple of the connector's actual exit angles (in radians).
+     * @return a tuple of the connector's actual exit angles (in radians).
+     * @param visited to prevent infinite loops.
+     * 
      * Currently we're ignoring whether multiple connectors hit a node at the same spot.
      */
-    findExitAngles(): [psi0: number, psi1: number] {
-        const base = this.findBaseAngle();
+    findExitAngles(visited: Set<SNode> = new Set<SNode>()): [psi0: number, psi1: number] {
+        const base = this.findBaseAngle(visited);
         if (this.manual) {
             const phi0 = this.phi0 / 180 * Math.PI;
             const phi1 = this.phi1 / 180 * Math.PI;
             return [base + phi0, base + Math.PI - phi1];
         }
         else {
-            const [chi0, chi1] = this.findPreferredAngles();
+            const [chi0, chi1] = this.findPreferredAngles(visited);
             const factor = 10 ** ROUNDING_DIGITS;
             this.phi0 = round(Math.round(angleDiff(base, chi0) / Math.PI * 180 * factor) / factor, ROUNDING_DIGITS);
             this.phi1 = round(Math.round(angleDiff(chi1, base + Math.PI) / Math.PI * 180 * factor) / factor, ROUNDING_DIGITS);
@@ -775,10 +785,14 @@ export default abstract class SNode extends ENode {
         }
     }
 
-    getLineFor(psi0: number, cpr0: number, psi1: number, cpr1: number): CubicCurve {
+    /**
+     * @return a CubicCurve corresponding to the supplied parameters.
+     * @param visited to prevent infinite loops.
+     */
+    getLineFor(psi0: number, cpr0: number, psi1: number, cpr1: number, visited: Set<SNode> = new Set<SNode>()): CubicCurve {
         const [n0, n1] = this.involutes;
-        const [x0, y0] = n0.getLocation();
-        const [x1, y1] = n1.getLocation();
+        const [x0, y0] = n0.getLocation(visited);
+        const [x1, y1] = n1.getLocation(visited);
         let [r0, r1] = this.involutes.map(n => n.radius);
         
         r0 += this.gap0;
@@ -796,10 +810,15 @@ export default abstract class SNode extends ENode {
         }
     }
 
-    getLine(): CubicCurve {
+    /**
+     * @param visited to prevent infinite loops.
+     * @return the CubicCurve that defines the connector linking the two involutes of this SNode.
+     */
+    getLine(visited: Set<SNode> = new Set<SNode>()): CubicCurve {
+        visited.add(this);
         const [r0, r1] = this.involutes.map(n => Math.max(MIN_EFFECTIVE_RADIUS, n.radius));
-        const [psi0, psi1] = this.findExitAngles();
-        const baseAngle = this.findBaseAngle();
+        const baseAngle = this.findBaseAngle(visited);
+        const [psi0, psi1] = this.findExitAngles(visited);
 
         let cpr0, cpr1;
         if (this.manual) {
@@ -821,7 +840,7 @@ export default abstract class SNode extends ENode {
             this.d0 = round(Math.round((cpr0 - this.gap0 - r0) * factor) / factor, ROUNDING_DIGITS);
             this.d1 = round(Math.round((cpr1 - this.gap1 - r1) * factor) / factor, ROUNDING_DIGITS);
         }
-        return this.getLineFor(psi0, cpr0, psi1, cpr1);    
+        return this.getLineFor(psi0, cpr0, psi1, cpr1, visited);    
     }
 
     /**

@@ -27,12 +27,11 @@ const BUMP_DISTANCE = 5 // the minimal distance that the CNodes of a NodeGroup c
 export const MAX_CNODEGROUP_SIZE = 500
 
 /**
- * @return true if, among the neighbors to each side of the supplied CNode, up to the first node that is a member of the supplied array, there is a 
- * node that either does not have the fixedAngles property or is not a member of the array.
+ * @return true if either the supplied array is empty or, among the neighbors to each side of the supplied CNode, up to the first node that is a member of 
+ * the array, there is a node that either does not have the fixedAngles property or is not a member of the array.
  */
 export const isFree = (node: CNode, nodes: CNode[]): boolean => {
     const group = node.group;
-    let free = false;
     if (group instanceof CNodeGroup) {
         const index = group.members.indexOf(node);
         const members = group.members;
@@ -46,19 +45,15 @@ export const isFree = (node: CNode, nodes: CNode[]): boolean => {
                     j
                 ]; 
                 if (!neighbor.fixedAngles) {
-                    free = true; // We'll return true if this *stays* true.
                     break;
                 }
                 if (nodes.includes(neighbor)) {
-                    if (!free) {
-                        return false;
-                    }
-                    break;
+                    return false;
                 }
             }
         }
     }
-    return free;
+    return true;
 }
 
 

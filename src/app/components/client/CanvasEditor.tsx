@@ -40,7 +40,7 @@ const CanvasEditor = ({grid, hDisp, vDisp, displayFontFactor, changeHGap, change
                 <LabelField label='Grid offset' style='col-span-2 mt-1.5' />
                 <InputField label='Horiz.' value={grid.hShift} onChange={changeHShift} /> 
                 <InputField label='Vert.' value={grid.vShift}onChange={changeVShift} /> 
-                <CheckBoxField label='Snap to nodes' style='col-span-2 mt-2 px-4 py-1 text-base' value={grid.snapToNodes} onChange={changeSnapToNode} />
+                <CheckBoxField label='Snap to node centers' style='col-span-2 mt-2 px-4 py-1 text-base' value={grid.snapToNodes} onChange={changeSnapToNode} />
                 <CheckBoxField label='Snap to contour centers' style='col-span-2 mb-1 px-4 py-1 text-base' value={grid.snapToContourCenters} onChange={changeSnapToCC} />
                 <LabelField label='Copy displacement' style='col-span-2 mb-0.5'/>
                 <InputField label='Horiz.' value={hDisp} onChange={changeHDisp} />

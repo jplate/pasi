@@ -276,12 +276,13 @@ const nearestGridPoint = (x: number, y: number, grid: Grid) => {
  * and selection. Since this is called from within a mouseMove handler while dragging, members of the selection (which is being dragged) have to be ignored. 
  * Same for the center and members of any CNodeGroup containing the focusItem.
  */
-const getSnapPoint = (x: number, y: number, grid: Grid, 
-        list: (Node | CNodeGroup)[], 
-        focus: Item, 
-        selectedNodes: Node[],
-        dccDx: number | undefined, // The X-coordinate of the center of the contour group (if any) that contains the focusItem
-        dccDy: number | undefined // The Y-coordinate of the center of the contour group (if any) that contains the focusItem
+const getSnapPoint = (x: number, y: number, 
+    grid: Grid, 
+    list: (Node | CNodeGroup)[], 
+    focus: Item, 
+    selectedNodes: Node[],
+    dccDx: number | undefined, // The X-coordinate of the center of the contour group (if any) that contains the focusItem
+    dccDy: number | undefined // The Y-coordinate of the center of the contour group (if any) that contains the focusItem
 ): [number, number, Node | null] => {
     let [rx, ry] = nearestGridPoint(x, y, grid),
         d = Math.sqrt(Math.pow(x-rx, 2) + Math.pow(y-ry, 2)),
@@ -1520,7 +1521,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setFocusItem(null);
         }
         setOrigin(true, points, null, []);  
-    }, [points, list, adjustLimit, setOrigin]);
+    }, [focusItem, points, list, setList, setSelection, setFocusItem, adjustLimit, setOrigin, setPreselection1, setPreselection2]);
 
     /**
      * Creates 'ghost nodes' in place of the supplied nodes, to which all the latter's features are then transferred. The original nodes are deleted

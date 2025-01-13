@@ -79,8 +79,9 @@ export default abstract class Node extends Item {
     /**
      * This normally just returns [this.x, this.y], but subclasses (such as SNode) may implement more sophisticated behavior. In particular, if the
      * location of this Node becomes invalidated for some reason, then getLocation() should update the location and store it in this.x and this.y.
+     * @param visited to prevent infinite loops.
      */
-    getLocation() {
+    getLocation(visited: Set<Node> | null = null) {
         return [this.x, this.y];
     }
 
