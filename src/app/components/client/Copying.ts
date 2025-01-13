@@ -82,7 +82,8 @@ export const copyENode = (node: ENode, enCounter: number, hDisplacement: number,
     topTbc: (Item | Group<any>)[],
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
 ): ENode => {
-    const copy = new ENode(enCounter, node.x + hDisplacement, node.y + vDisplacement);
+    const con = node.constructor as new (i: number, x: number, y: number) => ENode;
+    const copy = new con(enCounter, node.x + hDisplacement, node.y + vDisplacement);
     copyNodeValues(node, copy, topTbc, copies);
     node.copyValuesTo(copy);
     return copy;

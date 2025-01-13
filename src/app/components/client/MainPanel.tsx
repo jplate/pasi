@@ -1527,21 +1527,28 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * Creates 'ghost nodes' in place of the supplied nodes, to which all the latter's features are then transferred. The original nodes are deleted
      * unless they are CNodes.
      */
-    const abstractNodes = useCallback((nodes: Node[]) => {
+    const abstractSelection = useCallback(() => {
         let n = eNodeCounter;
         const gnodes: GNode[] = [];
-        for (const node of nodes) {
-            const [x, y] = node.getLocation();
-            const gn = new GNode(n++, x, y);
-            gnodes.push(gn);
-            transferFeatures(node, gn, unitScale, displayFontFactor);             
-        }
+        const newSelection: Item[] = selection.map(node => {
+            if (node instanceof Node) {
+                const [x, y] = node.getLocation();
+                const gn = new GNode(n++, x, y);
+                gnodes.push(gn);
+                transferFeatures(node, gn, unitScale, displayFontFactor);
+                return gn;
+            }
+            else {
+                return node;
+            }
+        });
+        setSelection(newSelection);
         deleteItems(
-            nodes.filter(n => !(n instanceof CNode)), 
+            selectedNodes.filter(n => !(n instanceof CNode)), 
             [...list, ...gnodes]
         );
         setENodeCounter(n);
-    }, [eNodeCounter, list, unitScale, displayFontFactor, deleteItems, setENodeCounter]);
+    }, [eNodeCounter, list, selection, selectedNodes, unitScale, displayFontFactor, setSelection, setENodeCounter, deleteItems]);
 
     /**
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers 
@@ -2062,7 +2069,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [logIncrement, testRotation]);
     
-    useHotkeys(hotkeyMap['abstract'], () => abstractNodes(selectedNodesDeduplicated), 
+    useHotkeys(hotkeyMap['abstract'], () => abstractSelection(), 
         { enabled: selectedNodes.length > 0 && !modalShown });
     useHotkeys(hotkeyMap['copy'], copySelection, 
         { enabled: canCopy && !modalShown });
@@ -2336,7 +2343,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 tooltip={<>Create &lsquo;ghost&rsquo; versions of selected nodes.<HotkeyComp mapKey='abstract' /></>}
                                 tooltipPlacement='left'
                                 disabled={selectedNodes.length===0} 
-                                onClick={() => abstractNodes(selectedNodes)} /> 
+                                onClick={() => abstractSelection()} /> 
                             <BasicColoredButton id='copy-button' label='Copy' style='rounded-xl' 
                                 tooltip={<>Copy selection.<HotkeyComp mapKey='copy' /></>}
                                 tooltipPlacement='right'
