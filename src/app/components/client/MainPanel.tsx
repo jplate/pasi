@@ -1490,6 +1490,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }, 
         [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin, 
             hDisplacement, vDisplacement, replace, unitScale
+            // These state variables that we set in the canvas editor have to be mentioned here so that canvasMouseDown is rebuilt with a new instance of 
+            // update() whenever any of these variables is changed.
         ]
     );
 
