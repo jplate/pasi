@@ -28,13 +28,13 @@ export default class GNode extends ENode {
             {
                 type: 'gloss', 
                 text: <>This is a &lsquo;ghost node&rsquo;: when dragged onto another node, it will transfer its {' '}
-                    group membership, ornaments, and connector end points to that other node and disappear.</>,
-                style: 'max-w-64 pl-8 text-sm'
+                    group membership, ornaments (such as labels), and connector end points to that other node and disappear.</>,
+                style: 'max-w-64 pl-8 text-sm hyphens-auto'
             },
             {
                 type: 'gloss',
-                text: <>Exception: no group membership will be transferred to <i>contour</i> nodes.</>,
-                style: 'max-w-64 pl-8 text-xs'
+                text: <>Exception: group membership will not be transferred to <i>contour</i> nodes.</>,
+                style: 'max-w-64 pl-8 text-xs hyphens-auto'
             },
         ]
     }

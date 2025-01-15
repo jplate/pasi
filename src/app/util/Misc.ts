@@ -40,17 +40,16 @@ export const throttle = <T extends (...args: any[]) => void>(func: T, limit: num
             }, limit - (Date.now() - lastRan));
         }
     };
-};
+}
 
 export const useThrottle = <T extends (...args: any[]) => void>(
-        callback: T,
-        delay: number
-    ) => {
-        const throttledCallback = useRef<ReturnType<typeof setTimeout> | null>(null);
-    
-        return useCallback(
-            (...args: Parameters<T>) => {
-                if (!throttledCallback.current) {
+    callback: T,
+    delay: number
+) => {
+    const throttledCallback = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    return useCallback((...args: Parameters<T>) => {
+            if (!throttledCallback.current) {
                 callback(...args);
                 throttledCallback.current = setTimeout(() => {
                     throttledCallback.current = null;
@@ -59,7 +58,7 @@ export const useThrottle = <T extends (...args: any[]) => void>(
         },
         [callback, delay]
     );
-};
+}
 
 
 export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
@@ -68,12 +67,32 @@ export const debounce = <T extends (...args: any[]) => void>(func: T, wait: numb
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
-};
+}
 
 
 export const addAlpha = (hex: string, opacity: number) => {
     const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
     return `${hex}${alpha}`;
-};
+}
 
 
+export const matchKeys = (event: React.KeyboardEvent<HTMLElement>, combination: string): boolean => {
+    const keys = combination.split('+');
+    const key = keys.pop(); // Get the last key (the main key)
+
+    // Check if the main key matches
+    const keyMatches = event.key.toLowerCase() === key?.toLowerCase();
+
+    // Check for modifier keys
+    const modifiers: { [key: string]: boolean } = {
+        shift: event.shiftKey,
+        ctrl: event.ctrlKey || event.metaKey, // Meta key for Mac (Command)
+        alt: event.altKey,
+        // Add more modifiers if needed
+    };
+
+    // Check if all specified modifiers are pressed
+    const modifiersMatch = keys.every(modifier => modifiers[modifier]);
+
+    return keyMatches && modifiersMatch;
+}

@@ -2,6 +2,7 @@ import Item from '../components/client/items/Item'
 import Node from '../components/client/items/Node'
 import ENode from '../components/client/items/ENode'
 import SNode from '../components/client/items/SNode'
+import GNode from '../components/client/items/GNode'
 import CNodeGroup from '../components/client/CNodeGroup'
 import Group, { StandardGroup, getGroups } from '../components/client/Group'
 import * as Texdraw from './Texdraw'
@@ -17,6 +18,7 @@ export const versionString = 'pasiCodecV1';
 
 const MAX_NAME_LENGTH = 3; // Maximum length for names of nodes and groups (used in detecting corrupt data).
 const ENODE_PREFIX = 'E';
+const GNODE_PREFIX = 'G';
 const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what a contour is most naturally taken to represent.
 const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hints' for the decoding of Ornament information. This infix
     // must *not* overlap with CODE.
@@ -104,6 +106,9 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string
                     const prefix = sNodePrefixMap.getByValue(node.constructor as new (i: number) => any);
                     const invNames = node.involutes.map(inv => nodeMap.get(inv));
                     nodeInfo = `${prefix}${nodeName}(${invNames.join(' ')})`;
+                }
+                else if (node instanceof GNode) {
+                    nodeInfo = `${GNODE_PREFIX}${nodeName}`;
                 }
                 else {
                     nodeInfo = `${ENODE_PREFIX}${nodeName}`;
@@ -268,7 +273,7 @@ const addToGroup = (item: Item | CNodeGroup, groupName: string, activeMember: bo
     return sgCounter;
 }
 
-const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<string, ENode>, 
+const parseENode = (tex: string, isGNode: boolean, hint: string, dimRatio: number, eMap: Map<string, ENode>, 
     gMap: Map<string, Group<any>>, counter: number, sgCounter: number
 ): [ENode, number] => {
     // The 'hint' for an ENode has the following format:
@@ -284,7 +289,7 @@ const parseENode = (tex: string, hint: string, dimRatio: number, eMap: Map<strin
     if (eMap.get(name)) {
         throw new ParseError(<span>Duplicate definition of entity node <code>{name}</code>.</span>);
     }
-    const node = new ENode(counter, 0, 0);
+    const node = isGNode? new GNode(counter, 0, 0): new ENode(counter, 0, 0);
 
     if (groupName) {
         validateName(groupName);
@@ -452,10 +457,15 @@ export const load = (code: string, unitScale: number | undefined, displayFontFac
             //console.log(` t="${tex}" h="${hint}" m=${match[0].length}`);
             const prefix = hint.slice(0, 1);
             const dimRatio = unitScale===undefined? 1: loadedunitScale / unitScale;
+            let isGNode = false;
             switch (prefix) {
+                case GNODE_PREFIX: {
+                        isGNode = true;
+                        // No 'break' because we rely on parseENode for the rest.
+                    }
                 case ENODE_PREFIX: {
                         let node: ENode;
-                        [node, sgCounter] = parseENode(tex, hint, dimRatio, eMap, gMap, eCounter, sgCounter);
+                        [node, sgCounter] = parseENode(tex, isGNode, hint, dimRatio, eMap, gMap, eCounter, sgCounter);
                         eCounter++;
                         list.push(node);
                         break;

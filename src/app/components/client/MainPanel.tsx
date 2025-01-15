@@ -6,11 +6,12 @@ import NextImage, { StaticImageData } from 'next/image'
 import clsx from 'clsx/lite'
 
 import { H, CANVAS_WIDTH_BASE, CANVAS_WIDTH_LARGE, MIN_X, MAX_X, MIN_Y, MAX_Y, MARGIN, MARK_LINEWIDTH, ROUNDING_DIGITS,
-    MIN_ROTATION_LOG_INCREMENT, DEFAULT_TRANSLATION_LOG_INCREMENT, DEFAULT_ROTATION_LOG_INCREMENT, DEFAULT_SCALING_LOG_INCREMENT    
+    MIN_ROTATION_LOG_INCREMENT, DEFAULT_TRANSLATION_LOG_INCREMENT, DEFAULT_ROTATION_LOG_INCREMENT, DEFAULT_SCALING_LOG_INCREMENT,
+    CANVAS_WIDTH_THRESHOLD, MAX_HISTORY
 } from '../../Constants'
 import Item from './items/Item'
 import Node, { DEFAULT_DISTANCE, MAX_LINEWIDTH, MAX_DASH_VALUE, MAX_NUMBER_OF_ORNAMENTS, 
-    DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, MAX_RADIUS, getDependents
+    DEFAULT_HSL_LIGHT_MODE, DEFAULT_HSL_DARK_MODE, MAX_RADIUS, getDependents, addDependents
 } from './items/Node'
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button'
 import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents'
@@ -25,10 +26,11 @@ import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MA
 import CNode from './items/CNode'
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup'
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools'
-import { copy, getTopToBeCopied } from './Copying'
+import { copyItems, getTopToBeCopied } from './Copying'
 import { getCode, load } from '../../codec/Codec1'
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General'
-import { sameElements, useThrottle } from '../../util/Misc'
+import { sameElements, throttle, useThrottle, matchKeys } from '../../util/Misc'
+import { useHistory } from '../../util/History.tsx'
 import SNode from './items/SNode'
 import Adjunction from './items/snodes/Adjunction.tsx'
 import Ornament from './items/Ornament.tsx'
@@ -78,6 +80,8 @@ const DEFAULT_UNIT_SCALE = 0.75
 const MIN_DISPLAY_FONT_FACTOR = 0.1
 const MAX_DISPLAY_FONT_FACTOR = 100
 const DEFAULT_DISPLAY_FONT_FACTOR = 0.8
+const MOVE_UPDATE_DELAY = 500
+const UNDO_REDO_DELAY = 100
 
 export const MAX_SCALING = 1E6
 export const MIN_ROTATION = -180
@@ -152,10 +156,13 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
     { key: 'abstract', keys: 'x', rep: ['X'], descr: <>Create <i>abstractions</i> of selected nodes: &lsquo;ghost nodes&rsquo; that will transfer their {' '}
         own features onto any nodes they&rsquo;re dragged onto.</> },
-    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Copy selection. (Tip: by copying individual members of a group, new members can be added to that group.)</> },
+    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Create copies of selected items. This works not just with nodes, but also with labels. Add new members {' '}
+        to a group by copying individual members.</> },
     { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Add a label to each selected node.</> },
     { key: 'create', keys: 'space', rep: ['Space'], descr: <>Create one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the {' '}
         currently selected nodes. (Equivalent to clicking the {pasi('Create')} button.)</> },
+    { key: 'undo', keys: 'z', rep: ['Z'], descr: <>Undo.</> },
+    { key: 'redo', keys: 'y', rep: ['Y'], descr: <>Redo.</> },
     { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
     { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
     { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
@@ -244,6 +251,12 @@ export const HotkeyComp = ({ mapKey }: HotkeyCompProps) => {
     }
     return result;
 }
+
+// For some reaon, hotkeys-react-hook doesn't work for undo/redo, so we have to do this manually:
+const keyChecker = (key: string) => (event: React.KeyboardEvent<HTMLElement>) => matchKeys(event, key);
+const undoChecker = keyChecker(hotkeyMap['undo']);
+const redoChecker = keyChecker(hotkeyMap['redo']);
+
 
 
 export const DarkModeContext = createContext(false);
@@ -447,7 +460,6 @@ list.flatMap((it: ENode | CNodeGroup) => {
     return result;
 });
 
-
 /**
  * Returns an array of CNodeGroups that are contained (directly or indirectly) in the supplied array of Nodes and Groups.
  */
@@ -458,6 +470,18 @@ array.reduce((acc: CNodeGroup[], it) =>
     [...acc, ...getCNodeGroups(it.members)], 
 []);
 
+/** 
+ * Helper function for deleteSelection().
+ */
+const getToBeDeleted = (selection: Item[], acc: Set<Item> = new Set()) => {
+    for (let it of selection) {
+        acc.add(it);
+        if (it instanceof Node) {
+            getToBeDeleted(it.dependentNodes, acc);
+        }
+    }
+    return acc;
+}
 
 /**
  * A function to be called on groups that have just been emptied of all their members. The second argument is the list of items to be displayed
@@ -531,6 +555,7 @@ const move = (nodes: Node[], dx: number, dy: number) => {
     for (const node of nodes) {
         getDependents(node, false, dependents);
     }
+    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
     const toMove = nodes.filter(n => !dependents.has(n));
     const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
     toMove.forEach(node => {
@@ -553,6 +578,23 @@ const move = (nodes: Node[], dx: number, dy: number) => {
 }
 
 
+interface HistoryEntry {
+    list: (ENode | CNodeGroup)[],
+    selection: Item[],
+    focusItem: Item | null,
+    points: Point[],
+    eNodeCounter: number,
+    cngCounter: number,
+    sgCounter: number,
+    grid: Grid,
+    displayFontFactor: number,
+    unitScale: number,
+    replace: boolean,
+    hDisplacement: number,
+    vDisplacement: number,
+    adding: boolean,
+    dissolveAdding: boolean
+}
 
 interface MainPanelProps {
     dark: boolean
@@ -621,7 +663,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 1536) {
+            if (window.innerWidth < CANVAS_WIDTH_THRESHOLD) {
                 setCanvasWidth(CANVAS_WIDTH_BASE);
             }
             else {
@@ -632,6 +674,152 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         handleResize();    
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+
+/****************************************************************************************
+ * STATE MANAGEMENT
+ ***************************************************************************************/
+
+    const { push, before, after, canRedo, canUndo, history, now } = useHistory<HistoryEntry>({        
+        list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
+            replace, hDisplacement, vDisplacement, adding, dissolveAdding 
+    }, MAX_HISTORY);
+
+
+    const updateState = useCallback((entry: HistoryEntry) => {
+        //console.log(`entry.selection.length: ${entry.selection.length} entry.focusItem: ${entry.focusItem && entry.focusItem.getString()} `);
+        setList(entry.list);
+        setSelection(entry.selection);
+        setFocusItem(entry.focusItem);
+        setPoints(entry.points);
+        setENodeCounter(entry.eNodeCounter);
+        setCNGCounter(entry.cngCounter);
+        setSGCounter(entry.sgCounter);
+        setGrid(entry.grid);
+        setDisplayFontFactor(entry.displayFontFactor);
+        setUnitScale(entry.unitScale);
+        setReplace(entry.replace);
+        setHDisplacement(entry.hDisplacement);
+        setVDisplacement(entry.vDisplacement);
+        setAdding(entry.adding);
+        setDissolveAdding(entry.dissolveAdding);
+    }, [setList, setSelection, setFocusItem, setENodeCounter, setCNGCounter, setSGCounter, setGrid, setDisplayFontFactor, setUnitScale, setReplace,
+        setHDisplacement, setVDisplacement, setAdding, setDissolveAdding
+    ]);
+
+
+    const stored = useMemo(() => ({ // to facilitate reference in the update function
+        list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
+            replace, hDisplacement, vDisplacement, adding, dissolveAdding  
+    }),
+    [list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, 
+        replace, hDisplacement, vDisplacement, adding, dissolveAdding 
+    ]);
+
+    /**
+     * Updates the state and stores a copy of the new state in the history.
+     */
+    const update = useCallback(({ 
+            list = stored.list, 
+            selection = stored.selection, 
+            focusItem = stored.focusItem,
+            points = stored.points,
+            eNodeCounter = stored.eNodeCounter,
+            cngCounter = stored.cngCounter,
+            sgCounter = stored.sgCounter,
+            grid = stored.grid,
+            displayFontFactor = stored.displayFontFactor,
+            unitScale = stored.unitScale,
+            replace = stored.replace,
+            hDisplacement = stored.hDisplacement,
+            vDisplacement = stored.vDisplacement,
+            adding = stored.adding,
+            dissolveAdding = stored.dissolveAdding
+        }: Partial<HistoryEntry>,
+        changeState: boolean = true
+    ): void => {
+        
+        // We first update the state, if desired:
+
+        if (changeState) {
+            updateState({ list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
+                replace, hDisplacement, vDisplacement, adding, dissolveAdding
+            });
+        }
+        else { // If we don't have to update the state, the only thing that has changed are the coordinates of nodes. But the values stored in 'stored' 
+            // may have become stale by the time this update function is called. So we fetch the current values from the history hook.
+            const current = history.current[now.current];
+            selection = current.selection;
+            focusItem = current.focusItem;
+            points = current.points;
+        }
+
+        // Next, store a copy of the state in the history:
+
+        const allItems = getItems(list);
+        const topTbc = getTopToBeCopied(allItems);        
+        const nodes = new Set<Node>(allItems.filter(it => it instanceof Node));
+        const [newList, gnodes, newSelection, newFocusItem] = copyItems(topTbc, nodes, list, selection, focusItem, 
+            0, 0, 0, 0, 0, unitScale, displayFontFactor
+        );
+        if (gnodes.length > 0) {
+            console.warn(`Not all nodes copied? GNode counter=${gnodes.length}.`);
+        }
+
+        //console.log(`newSelection.length: ${newSelection.length} newFocusItem: ${newFocusItem && newFocusItem.getString()} `);
+        push({
+            list: newList,
+            selection: newSelection,
+            focusItem: newFocusItem,
+            points: [...points],
+            eNodeCounter,
+            cngCounter,
+            sgCounter,
+            grid: {... grid},
+            displayFontFactor,
+            unitScale,
+            replace,
+            hDisplacement,
+            vDisplacement,
+            adding,
+            dissolveAdding      
+        });
+    }, [stored, history, now, push, updateState]);
+
+    const reportMovement = useCallback(() => {
+        // Signal to the updaters of, e.g., canCopy that the positions of items may have changed:
+        setItemsMoved(prev => [...prev]); 
+        update({}, false);
+    }, [update, setItemsMoved]);
+
+    const throttledReport = useThrottle(() => update({}, false), MOVE_UPDATE_DELAY);
+
+    const undo = useCallback(() => updateState(before()), [updateState, before]);
+
+    const throttledUndo = useThrottle(() => updateState(before()), UNDO_REDO_DELAY);
+
+    const redo = useCallback(() => updateState(after()), [updateState, after]);
+
+    const throttledRedo = useThrottle(() => updateState(after()), UNDO_REDO_DELAY);
+
+    /**
+     * Dedicated keydown handler for undo/redo, because react-hotkeys-hook refuses to work for undo and redo (even though
+     * the buttons do work).
+     */
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (undoChecker(e)) {
+            throttledUndo();
+        }
+        else if (redoChecker(e)) {
+            throttledRedo();
+        }
+    }, [undo, redo]);
+
+
+/****************************************************************************************
+ * OTHER CONSTANTS
+ ***************************************************************************************/
+
 
     const deduplicatedSelection = useMemo(() => 
         selection.filter((item, i) => i===selection.indexOf(item)), 
@@ -671,18 +859,18 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const allItems = useMemo(() => getItems(list) as Item[], [list]); // an array of all Items, including Ornaments.
 
-    const toBeGrouped: (Item | Group<any>)[] = useMemo(() => 
-        getTopToBeCopied(deduplicatedSelection),
-        [deduplicatedSelection]
-    ); 
-
     /**
      * The highest-level Items/Groups that will need to be copied if the user clicks on 'Copy Selection'. This includes any Ornaments attached to 
      * selected Nodes, as well as any SNodes that have one or more selected Nodes as involutes.
      */
-    const topTbc: (Item | Group<any>)[] = useMemo(() => 
+    const topMembers: (Item | Group<any>)[] = useMemo(() => 
         getTopToBeCopied(deduplicatedSelection), [deduplicatedSelection]
     ); 
+
+    const showModal = useCallback((contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
+        setDialog(prev => ({ contentLabel, title, content, extraWide }));
+        setModalShown(true);
+    }, [setDialog, setModalShown]);
 
     /**
      * Sets the origin point for transformations. This function should be called whenever we've changed the points, the selection, or the focusItem.
@@ -1015,9 +1203,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         dccDx = x - item.x;
                         dccDy = y - item.y;
                     }
-                    const startX = e.clientX - item.x;
-                    const startY = e.clientY - (H + yOffset - item.y);
-                    const xMinD = item.x - selectedNodes.reduce((min, it) => it.x<min? it.x: min, item.x); // x-distance to the left-most selected item
+                    const itemX = item.x;
+                    const itemY = item.y;
+                    const startX = e.clientX - itemX;
+                    const startY = e.clientY - (H + yOffset - itemY);
+                    const xMinD = itemX - selectedNodes.reduce((min, it) => it.x < min ? it.x : min, itemX); // x-distance to the left-most selected item
 
                     
                     const handleMouseMove = (e: MouseEvent) => {
@@ -1062,35 +1252,36 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         window.removeEventListener('mousemove', handleMouseMove);
                         window.removeEventListener('mouseup', handleMouseUp);
                         setDragging(false);
-                        adjustLimit();
-                        setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
-                        // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). 
-                        // However, if points is non-empty, then we have to 'renormalize' the new selection, since the nodes might have been dragged 
-                        // around the origin (given by the last element of the points array):
-                        if(newPoints.length>0) selectedNodes.forEach(node => {
-                            node.x100 = origin.x + (node.x - origin.x) * 100/scaling;
-                            node.y100 = origin.y + (node.y - origin.y) * 100/scaling;
-                        });
-                        // We also apply round() to get rid of tiny errors that might have been introduced during dragging.
-                        selectedNodes.forEach(node => {
-                            node.x = node.x100 = round(node.x, ROUNDING_DIGITS);
-                            node.y = node.y100 = round(node.y, ROUNDING_DIGITS);
-                        });
-                        setItemsMoved(prev => [...prev]); // to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
+
+                        if ((item.x !== itemX) || (item.y !==itemY)) { 
+                            adjustLimit();
+                            setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
+                            // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed). 
+                            // However, if points is non-empty, then we have to 'renormalize' the new selection, since the nodes might have been dragged 
+                            // around the origin (given by the last element of the points array):
+                            if(newPoints.length>0) selectedNodes.forEach(node => {
+                                node.x100 = origin.x + (node.x - origin.x) * 100/scaling;
+                                node.y100 = origin.y + (node.y - origin.y) * 100/scaling;
+                            });
+                            // We also apply round() to get rid of tiny errors that might have been introduced during dragging.
+                            selectedNodes.forEach(node => {
+                                node.x = node.x100 = round(node.x, ROUNDING_DIGITS);
+                                node.y = node.y100 = round(node.y, ROUNDING_DIGITS);
+                            });
+
+                            reportMovement();
+                        }
                     }
                 
                     window.addEventListener('mousemove', handleMouseMove);
                     window.addEventListener('mouseup', handleMouseUp);
                 }
 
-                setFocusItem(item);
-                setList(newList);
-                setPoints(newPoints);
                 if (clearPreselection) {
                     setPreselection1([]);
                     setPreselection2([]);
                 }
-                setSelection(newSelection);
+                update({ list: newList, selection: newSelection, focusItem: item, points: newPoints });
             }           
         }, 
         [
@@ -1229,7 +1420,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newFocus = null;
                     } 
                     else {
-                        const included = points.some(p => newPoint.id==p.id);
+                        const included = points.some(p => newPoint.id===p.id); // The ID contains the Point's coordinates, so this is checking whether there
+                            // already exists a Point for the clicked-on position on the canvas.
                         if (!included) newPoints = [...points, newPoint];
                     }
                 } 
@@ -1257,14 +1449,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     else if (newSelection.length==0 || (focusItem && !newSelection.includes(focusItem))) {
                         newFocus = null;
                     }
-                }            
-                setFocusItem(newFocus);
+                } 
+                update({ selection: newSelection, focusItem: newFocus, points: newPoints, adding: false, dissolveAdding: false });
                 setLasso(null);
-                setOrigin(true, newPoints, newFocus, newSelection);
-                setPoints(newPoints);
                 setPreselection1([]);
                 setPreselection2([]);
-                setSelection(newSelection);
+                setOrigin(true, newPoints, newFocus, newSelection);
             }
     
             canvasRef.current?.addEventListener('mousemove', handleMouseMove);
@@ -1272,6 +1462,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
             setAdding(false);
             setDissolveAdding(false);
+            // No history update necessary, since that is already done in the mouseup handler.
         }, [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
     );
 
@@ -1282,16 +1473,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         if (points.length>0) {
             let counter = eNodeCounter;
             const nodes = points.map((point, i) => new ENode(counter++, point.x, point.y));
-            setENodeCounter(counter);
-            setList(prev => [...prev, ...nodes]);
+            const newList = [...list, ...nodes];
             const newFocus = nodes[nodes.length-1];
-            setPoints([]);
-            setSelection(nodes);
-            setFocusItem(newFocus);
+            update({ 
+                list: newList, 
+                selection: nodes, 
+                focusItem: newFocus, 
+                points: [],
+                eNodeCounter: counter
+            }); 
             setOrigin(true, [], newFocus, nodes);
             // No need to call adjustLimit, since we're basically just replacing the points with nodes.
         }
-    }, [points, eNodeCounter, list, setOrigin]);
+    }, [points, eNodeCounter, list, update, setOrigin]);
 
     /**
      *  OnClick handler for the 'Contour' button.
@@ -1382,86 +1576,31 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }
     }, [eNodeCounter, selectedNodes, unitScale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
-    /**
-     * An array of the highest-level Groups and Items that will need to be copied if the 'Copy Selection' button is pressed. The same array is also used for 
-     * the purposes of the 'Create Group' button in the GroupTab.
-     */
-    const copySelection = useCallback(() => {
-        if (topTbc.length > 0) {
-            const copies = new Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>(); // This will store the IDs of the copied Items, 
-                // CNodeGroups, and StandardGroups, mapped to their respective copies.
-            const ghosts = new Map<string, GNode>(); // This will map non-copied nodes (to which to-be-copied ornaments or connectors are attached) to 
-                // their respective 'ghost copies', nodes that will transfer their ornaments and connector end points to non-ghost nodes when dragged 
-                // onto the latter.
-            const [newENodeCounter, newCNGCounter, newSGCounter] = copy(topTbc, deduplicatedSelection, hDisplacement, vDisplacement, 
-                copies, ghosts, eNodeCounter, cngCounter, sgCounter);
-            const copiedList = list.reduce((acc: (ENode | CNodeGroup)[], it) => { // an array that holds the copied nodes or node groups in the same 
-                // order as list holds the nodes or node groups that they're copies of
-                const id = it.id.toString();
-                if (copies.has(id)) {
-                    const copy = copies.get(id) as ENode | CNodeGroup;
-                    if (copy) acc.push(copy);
-                }
-                return acc;
-            }, []);
-            const newSelection = selection.reduce((acc: Item[], item) => {
-                const id: string = item.id;
-                const copy = copies.get(id);
-                if (!(copy instanceof Item)) { // If this happens, then either topTbc hasn't been set properly or something has gone wrong with the Item IDs.
-                    if (!copy) {
-                        console.warn(`Copying: no copy found of ${id}.`);
-                    }
-                    else {
-                        console.warn(`Copying: ID '${id}' mapped to non-item.`);
-                    }
-                    return acc;
-                }
-                else {
-                    acc.push(copy);
-                    return acc;
-                }
-            }, []);
-            for (let it of copies.values()) {
-                if (it instanceof Label) {
-                    it.updateLines(unitScale, displayFontFactor);
-                }
-            }
-            const newList = [...list, ...copiedList, ...ghosts.values()];
-            const newFocus = focusItem && (copies.get(focusItem.id) || null) as Item | null;
-            setENodeCounter(newENodeCounter);
-            setCNGCounter(newCNGCounter);
-            setSGCounter(newSGCounter);
-            setList(newList);
-            setFocusItem(newFocus);
-            setOrigin(true, points, newFocus, newSelection); 
-            adjustLimit(getItems(newList));
-            setSelection(newSelection);
-            if (newFocus) {
-                scrollTo(newFocus);
-            }
-        }
-    }, [topTbc, deduplicatedSelection, points, list, hDisplacement, vDisplacement, eNodeCounter, cngCounter, sgCounter, selection, focusItem, 
-        unitScale, displayFontFactor, adjustLimit, setOrigin, scrollTo
-    ]);
 
-    /** 
-     * Helper function for deleteSelection().
-     */
-    const getToBeDeleted = (selection: Item[], acc: Set<Item> = new Set()) => {
-        for (let it of selection) {
-            acc.add(it);
-            if (it instanceof Node) {
-                getToBeDeleted(it.dependentNodes, acc);
-            }
+    const copySelection = () => {
+        const nodes = addDependents(selection.filter(it => it instanceof Node), false) as Set<Node>;
+        const [copiedList, gnodes, newSelection, newFocusItem, newENodeCounter, newCNGCounter, newSGCounter] = 
+            copyItems(topMembers, nodes, list, selection, focusItem, eNodeCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, unitScale, displayFontFactor);
+        const newList = [...list, ...copiedList, ...gnodes];
+        setENodeCounter(newENodeCounter);
+        setCNGCounter(newCNGCounter);
+        setSGCounter(newSGCounter);
+        setList(newList);
+        setFocusItem(newFocusItem);
+        setOrigin(true, points, newFocusItem, newSelection); 
+        adjustLimit(getItems(newList));
+        setSelection(newSelection);
+        if (newFocusItem) {
+            scrollTo(newFocusItem);
         }
-        return acc;
     }
 
     /**
      * Deletes the supplied Items from any lists membership in which would cause an Item to be displayed on the canvas. With the help of the second
-     * argument, this function can also be used to *add* new Items to the canvas.
+     * (optional) argument, this function can also be used to *add* new Items to the canvas. If the third argument is specified, it will be used to
+     * set the new focusItem in case the current one is deleted.
      */
-    const deleteItems = useCallback((items: Item[], currentList = list) => {
+    const deleteItems = useCallback((items: Item[], currentList = list, newFocus: Item | null = null) => {
         const toBeDeleted = getToBeDeleted(items);
         const newList: (ENode | CNodeGroup)[]  = [];
         for (let it of currentList) {
@@ -1518,7 +1657,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         setPreselection2(prev => prune(prev, newList));
         adjustLimit(getItems(newList));
         if (focusItem && items.includes(focusItem)) {
-            setFocusItem(null);
+            setFocusItem(newFocus);
         }
         setOrigin(true, points, null, []);  
     }, [focusItem, points, list, setList, setSelection, setFocusItem, adjustLimit, setOrigin, setPreselection1, setPreselection2]);
@@ -1530,23 +1669,28 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const abstractSelection = useCallback(() => {
         let n = eNodeCounter;
         const gnodes: GNode[] = [];
+        let newFocus: Item | null = null;
         const newSelection: Item[] = selection.map(node => {
             if (node instanceof Node) {
                 const [x, y] = node.getLocation();
                 const gn = new GNode(n++, x, y);
                 gnodes.push(gn);
                 transferFeatures(node, gn, unitScale, displayFontFactor);
+                if (focusItem===node) {
+                    newFocus = gn;
+                }
                 return gn;
             }
             else {
                 return node;
             }
         });
-        setSelection(newSelection);
         deleteItems(
-            selectedNodes.filter(n => !(n instanceof CNode)), 
-            [...list, ...gnodes]
+            selectedNodes.filter(n => !(n instanceof CNode) && n.isIndependent()), 
+            [...list, ...gnodes],
+            newFocus
         );
+        setSelection(newSelection);
         setENodeCounter(n);
     }, [eNodeCounter, list, selection, selectedNodes, unitScale, displayFontFactor, setSelection, setENodeCounter, deleteItems]);
 
@@ -1607,6 +1751,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             scrollTo(focusItem);
         }
         setItemsMoved(prev => [...prev]);
+        throttledReport();
     }, [logIncrement, selectedNodesDeduplicated, focusItem, list, points, selection, adjustLimit, setOrigin, scrollTo]);
 
     const changeUnitscale = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1840,7 +1985,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
      */
     const createGroup = useCallback(() => {
-        const newMembers = toBeGrouped; 
+        const newMembers = topMembers; 
         const createCNG = newMembers.every(m => m instanceof CNode);
         const createSG = newMembers.every(m => !(m instanceof CNode));
 
@@ -1899,7 +2044,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         });
         setList(prev => newList); 
         if (focusItem) adjustSelection(focusItem);
-    }, [toBeGrouped, list, cngCounter, sgCounter, focusItem, adjustSelection]);
+    }, [topMembers, list, cngCounter, sgCounter, focusItem, adjustSelection]);
 
 
     const leaveGroup = useCallback(() => {
@@ -1985,17 +2130,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => m instanceof ENode? acc + 1: acc, 0), [deduplicatedSelection]);
 
-    const numberOfTbcCNGs = useMemo(() => getCNodeGroups(topTbc).length, [topTbc]);
+    const numberOfTbcCNGs = useMemo(() => getCNodeGroups(topMembers).length, [topMembers]);
 
     const copyingWouldConflictWithMaxCNGSize = useMemo(() => {
-        const tbcContainingCNGs = topTbc.filter(it => it instanceof CNode).map(node => node.group);
+        const tbcContainingCNGs = topMembers.filter(it => it instanceof CNode).map(node => node.group);
         const dedupTbcContainingCNGs = tbcContainingCNGs.filter((g, i, arr) => i===arr.indexOf(g));
         return dedupTbcContainingCNGs.some(group => group && 
             group.members.length + tbcContainingCNGs.reduce((acc, g) => g===group? acc + 1: acc, 0) > MAX_CNODEGROUP_SIZE)
-    }, [topTbc]);
+    }, [topMembers]);
 
     const copyingWouldConflictWithMaxNumberOfOrnaments = useMemo(() => {
-        const nonTbcNodesWithTbcOrnaments = topTbc.filter(it => it instanceof Ornament || it instanceof StandardGroup).flatMap(it => {
+        const nonTbcNodesWithTbcOrnaments = topMembers.filter(it => it instanceof Ornament || it instanceof StandardGroup).flatMap(it => {
             if (it instanceof Ornament) {
                 return deduplicatedSelection.includes(it.node)? []: [it.node];
             }
@@ -2007,7 +2152,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         const dedupNonTbcNodesWithTbcOrnaments = nonTbcNodesWithTbcOrnaments.filter((g, i, arr) => i===arr.indexOf(g));
         return dedupNonTbcNodesWithTbcOrnaments.some(node => node && 
             node.ornaments.length + nonTbcNodesWithTbcOrnaments.reduce((acc, n) => n===node? acc + 1: acc, 0) > MAX_NUMBER_OF_ORNAMENTS);
-    }, [topTbc, deduplicatedSelection]);
+    }, [topMembers, deduplicatedSelection]);
 
     const canCopy: boolean = useMemo(() => (
         deduplicatedSelection.length > 0 &&
@@ -2069,6 +2214,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canRotateCCW: boolean = useMemo(() => testRotation(10**logIncrement), [logIncrement, testRotation]);
     
+/* // This doesn't work for some reason:
+    useHotkeys(hotkeyMap['undo'], undo, 
+        { enabled: canUndo && !modalShown });
+    useHotkeys(hotkeyMap['redo'], redo, 
+        { enabled: canRedo && !modalShown });
+*/
     useHotkeys(hotkeyMap['abstract'], () => abstractSelection(), 
         { enabled: selectedNodes.length > 0 && !modalShown });
     useHotkeys(hotkeyMap['copy'], copySelection, 
@@ -2082,8 +2233,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     useHotkeys(hotkeyMap['add contours'], addContours, 
         { enabled: canAddContours && !modalShown });
     useHotkeys(hotkeyMap['create'], () => createDepItem(depItemIndex), 
-        { enabled: !modalShown, preventDefault: true }); // We enable this even if the Create button is disabled, in order to make sure that the default 
-            // behavior (which is to scroll down) is always prevented.
+        { enabled: !modalShown && (document.activeElement as HTMLElement).closest('.pasi')!==null, preventDefault: true }); 
+            // We enable this even if the Create button is disabled, in order to make sure that the default behavior (which is to scroll down) is 
+            // prevented as long as the canvas is the active element.
     useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')),
         { enabled: canAddOrnaments && !modalShown });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), 
@@ -2152,39 +2304,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         { enabled: focusItem!==null&& !modalShown });
     useHotkeys(hotkeyMap['dissolve-adding'], () => { setDissolveAdding(prev => true); setAdding(prev => false);}, 
         { enabled: focusItem!==null&& !modalShown });
-    useHotkeys(hotkeyMap['generate code'], useThrottle(() => displayCode(unitScale), 500), 
+    const throttledGenerate = useThrottle(() => displayCode(unitScale), 500);
+    useHotkeys(hotkeyMap['generate code'], throttledGenerate, 
         { enabled: () =>  !(document.activeElement instanceof HTMLButtonElement)&& !modalShown });
-    useHotkeys(hotkeyMap['load diagram'], useThrottle(() => loadDiagram(code, replace), 500), 
+    const throttledLoadDiagram = useThrottle(() => loadDiagram(code, replace), 500);
+    useHotkeys(hotkeyMap['load diagram'], throttledLoadDiagram, 
         { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown } );
     // 'Secret' hotkey:
-    useHotkeys('mod+b', useThrottle(() => {setTrueBlack(prev => !trueBlack); toggleTrueBlack()}, 100));
+    const throttledToggleTrueBlack = useThrottle(() => {
+        setTrueBlack(prev => !prev);
+        toggleTrueBlack();
+    }, 100);
+    useHotkeys('mod+b', throttledToggleTrueBlack);
 
-    const showModal = (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel, ) => {
-        setDialog(prev => ({ contentLabel, title, content, extraWide }));
-        setModalShown(true);
-    }
-        
 
-    const transformTabDisabled = selectedNodesDeduplicated.length===0;
 
-    const groupTabDisabled = !focusItem;    
-    
-    const tabIndex = (userSelectedTabIndex===1 && transformTabDisabled) || (userSelectedTabIndex===2 && groupTabDisabled)? 0: userSelectedTabIndex;
 
-     // The delete button gets some special colors:
-    const deleteButtonStyle = clsx('rounded-xl', (
-        dark? clsx('bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
-            'enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring'
-        ):
-        clsx ('bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200',
-            'enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400')
-    ));
-
-    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
-        'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
-        'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
-        'data-[selected]:data-[hover]:text-btncolor');
-        
+/********************************************************************************************
+ * RENDERING
+ *******************************************************************************************/
 
     const getENodeComp = useCallback((node: ENode) => 
         node.getComponent({ 
@@ -2207,13 +2345,34 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         [yOffset, unitScale, displayFontFactor, focusItem, selection, preselection2, itemMouseDown, itemMouseEnter, mouseLeft]
     );
     
+    const transformTabDisabled = selectedNodesDeduplicated.length===0;
+
+    const groupTabDisabled = !focusItem;    
+    
+    const tabIndex = (userSelectedTabIndex===1 && transformTabDisabled) || (userSelectedTabIndex===2 && groupTabDisabled)? 0: userSelectedTabIndex;
+
+     // The delete button gets some special colors:
+    const deleteButtonStyle = clsx('rounded-xl', (
+        dark? clsx('bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
+            'enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring'
+        ):
+        clsx ('bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200',
+            'enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400')
+    ));
+
+    const tabClassName = clsx('py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
+        'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
+        'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
+        'data-[selected]:data-[hover]:text-btncolor');
+        
+    /*
     if (true) console.log(clsx(`Rendering... ${selectedNodes.map(node => node.getString())} listLength=${list.length}`,
         `focusItem=${focusItem && focusItem.getString()}`,
         focusItem instanceof Node && `ornaments=[${focusItem.ornaments.map(o => o.getString()).join()}]`,
         `(${focusItem instanceof Node && focusItem.x}, ${focusItem instanceof Node && focusItem.y})`,
         `ha=${focusItem && highestActive(focusItem).getString()}`,
         focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.getString()).join()}]`));
-
+    */
     return ( 
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'> {/* We give this div the 'pasi' class to prevent certain css styles from taking effect. */}
@@ -2221,7 +2380,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         style={{minWidth: canvasWidth}}>
                     <div id='canvas' ref={canvasRef} className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border focus:outline-none'
                             tabIndex={0} // This makes the canvas focusable; and that's all the focus management we need to do.
-                            onMouseDown={canvasMouseDown} >
+                            onMouseDown={canvasMouseDown} 
+                            onKeyDown={handleKeyDown} >
                         {points.map(point => 
                             <PointComp key={point.id} x={point.x} y={point.y - yOffset} 
                                 primaryColor={dark? DEFAULT_HSL_DARK_MODE: DEFAULT_HSL_LIGHT_MODE}
@@ -2426,8 +2586,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         </TabGroup>
                         <div id='undo-panel' className='grid grid-cols-3'>
                             <BasicColoredButton id='undo-button' label='Undo' style='rounded-xl mr-1.5' tooltip='Undo'
-                                disabled={false}
-                                onClick={sorry} 
+                                disabled={!canUndo}
+                                onClick={undo} 
                                 icon={ // source: https://heroicons.com/
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
                                             strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
@@ -2436,8 +2596,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                         </g>
                                     </svg>} />
                             <BasicColoredButton id='redo-button' label='Redo' style='rounded-xl mr-1.5' tooltip='Redo'
-                                disabled={false}
-                                onClick={sorry} 
+                                disabled={!canRedo}
+                                onClick={redo} 
                                 icon={ // source: https://heroicons.com/
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
                                             strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">

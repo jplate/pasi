@@ -176,6 +176,7 @@ export default function Home() {
               <p>
                 The following keyboard commands are available for editing the diagram displayed on the canvas. For editing the <i>texdraw</i> code in the text area, the
                 usual commands (including {key('Ctrl+Z')} and {isMac? key('Shift+⌘+Z'): key('Ctrl+Y')} for &lsquo;undo&rsquo; and &lsquo;redo&rsquo;) are also available.
+                To select a single node out of a group, hold {key('Ctrl')} pressed while clicking on it.
               </p>
               <table>
                 <colgroup>

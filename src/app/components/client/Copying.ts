@@ -7,6 +7,7 @@ import CNode from './items/CNode'
 import Group, { StandardGroup, getGroups, getLeafMembers } from './Group'
 import Ornament from './items/Ornament'
 import SNode from './items/SNode'
+import Label from './items/ornaments/Label'
 
 
 /**
@@ -158,7 +159,7 @@ export const copyStandardGroup = (
     enCounter: number, cngCounter: number, sgCounter: number,
     hDisplacement: number, vDisplacement: number, 
     topTbc: (Item | Group<any>)[],
-    selection: Item[],
+    toBeCopied: Set<Node>,
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>,
     gnodes: Map<string, GNode>,
     snodes: SNode[]
@@ -190,11 +191,11 @@ export const copyStandardGroup = (
             }
             case m instanceof StandardGroup: {
                 [mCopy, enCounter, cngCounter, sgCounter] = 
-                    copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies, gnodes, snodes); // Ditto.
+                    copyStandardGroup(m, enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, toBeCopied, copies, gnodes, snodes); // Ditto.
                 break;
             }
             case m instanceof Ornament: {
-                const nodeShouldBeCopied = selection.includes(m.node);
+                const nodeShouldBeCopied = toBeCopied.has(m.node);
                 if (!nodeShouldBeCopied) { 
                     [mCopy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, gnodes);
                 } 
@@ -228,9 +229,9 @@ export const copyStandardGroup = (
  * @return a triple consisting of an updated ENode counter, ContourGroup counter, and StandardGroup counter.
  * @param gnodes maps non-copied nodes (in particular, ones to which to-be-copied ornaments or connectors are attached) to their respective 'ghost copies'
  */
-export const copy = (
+const copy = (
     topTbc: (Item | Group<any>)[],
-    selection: Item[],
+    toBeCopied: Set<Node>,
     hDisplacement: number,
     vDisplacement: number, 
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>, 
@@ -245,7 +246,7 @@ export const copy = (
         switch (true) {
             case m instanceof Ornament: {
                 //console.log(`O: ${m.id}`);
-                const nodeShouldBeCopied = selection.includes(m.node);
+                const nodeShouldBeCopied = toBeCopied.has(m.node);
                 if (!nodeShouldBeCopied) {
                     let copy;
                     [copy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, gnodes);
@@ -301,7 +302,7 @@ export const copy = (
                 //console.log(`SG: ${m.getString()}`);
                 let copy: StandardGroup<Item | Group<any>>;
                 [copy, enCounter, cngCounter, sgCounter] = copyStandardGroup(m as StandardGroup<Item | Group<any>>, 
-                        enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, selection, copies, gnodes, snodes);
+                        enCounter, cngCounter, sgCounter, hDisplacement, vDisplacement, topTbc, toBeCopied, copies, gnodes, snodes);
                 if (m.group) {
                     copy.group = m.group;
                     copy.group.members.push(copy);
@@ -348,6 +349,75 @@ export const copy = (
     });
     return [enCounter, cngCounter, sgCounter];
 }
+
+/** 
+ * Produces copies of the Items contained in, or belonging to some Group contained in, the first argument.
+ * @param topTbc the top-level entities (Items and Groups) that are supposed to be copied.
+ * @param toBeCopied a set of Nodes that is passed on to the helper function, where it is used to determine whether a given Node should be 
+ * copied or not (relevant only for the copying of Ornaments)
+ * @param list an array of ENodes and CNodeGroups that will be used for ordering the first of the returned arrays
+ * @param selection an array of nodes presumed that will be used for creating the third of the returned arrays
+ * @return an array of (1) an array of the copied nodes or contour node groups that holds these in the same order as the array supplied in the fourth 
+ * argument holds the originals, (2) an array of GNodes created as a result of the copying, (3) an array that holds copies of the Items supplied in
+ * the third argument in the same order as the originals, provided that these were included in, or belong to one of the groups included in, the 
+ * first argument, (4) a copy of the Item supplied as fifth argument, and (5)--(7) updated ENode, CNodeGroup, and StandardGroup counters.
+ */
+export const copyItems = (
+    topTbc: (Item | Group<any>)[],
+    toBeCopied: Set<Node>, 
+    list: (ENode | CNodeGroup)[],
+    selection: Item[], 
+    focusItem: Item | null,
+    eNodeCounter: number, 
+    cngCounter: number, 
+    sgCounter: number,
+    hDisplacement: number,
+    vDisplacement: number,
+    unitScale: number,
+    displayFontFactor: number
+): [(ENode | CNodeGroup)[], GNode[], Item[], Item | null, number, number, number] => {
+    const copies = new Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>(); // This will store the IDs of the copied Items, 
+        // CNodeGroups, and StandardGroups, mapped to their respective copies.
+    const ghosts = new Map<string, GNode>(); // This will map non-copied nodes (to which to-be-copied ornaments or connectors are attached) to 
+        // their respective 'ghost copies', nodes that will transfer their ornaments and connector end points to non-ghost nodes when dragged 
+        // onto the latter.
+    const [newENodeCounter, newCNGCounter, newSGCounter] = copy(topTbc, toBeCopied, hDisplacement, vDisplacement, 
+        copies, ghosts, eNodeCounter, cngCounter, sgCounter);
+    const copiedList = list.reduce((acc: (ENode | CNodeGroup)[], it) => { // an array that holds the copied nodes or contour node groups in the same 
+        // order as list holds the nodes or node groups that they're copies of
+        const id = it.id.toString();
+        if (copies.has(id)) {
+            const copy = copies.get(id) as ENode | CNodeGroup;
+            if (copy) acc.push(copy);
+        }
+        return acc;
+    }, []);
+    const newSelection = selection.reduce((acc: Item[], item) => {
+        const id: string = item.id;
+        const copy = copies.get(id);
+        if (!(copy instanceof Item)) { // If this happens, then either topTbc hasn't been set properly or something has gone wrong with the Item IDs.
+            if (!copy) {
+                console.warn(`Copying: no copy found of ${id}.`);
+            }
+            else {
+                console.warn(`Copying: ID '${id}' mapped to non-item.`);
+            }
+            return acc;
+        }
+        else {
+            acc.push(copy);
+            return acc;
+        }
+    }, []);
+    for (let it of copies.values()) {
+        if (it instanceof Label) {
+            it.updateLines(unitScale, displayFontFactor);
+        }
+    }
+    const newFocusItem = focusItem && (copies.get(focusItem.id) || null) as Item | null;
+
+    return [copiedList, [...ghosts.values()], newSelection, newFocusItem, newENodeCounter, newCNGCounter, newSGCounter];
+};
 
 
 /** 
