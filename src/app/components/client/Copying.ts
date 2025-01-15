@@ -105,15 +105,15 @@ export const copySNode = (node: SNode, enCounter: number,
 }
 
 /**
- * Returns a copy of the supplied CNode. If ngCounter is zero, we assume that node is included in topTbc, and so we use an id that is based on the copied node's ID; 
- * otherwise the copy's ID will be composed out of ngCounter and nodeCounter.
+ * Returns a copy of the supplied CNode. If ngCounter is negative, we assume that node is included in topTbc, and so we use an id that
+ *  is based on the copied node's ID; otherwise the copy's ID will be composed out of ngCounter and nodeCounter.
  */
 export const copyCNode = (node: CNode, hDisplacement: number, vDisplacement: number, cngCounter: number, nodeCounter: number,
     topTbc: (Item | Group<any>)[],
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
 ): CNode => {
     if (node.group) {
-        const copy = new CNode(cngCounter===0? `${node.id}c${node.numberOfCopies++}`: `CN${cngCounter}/${nodeCounter}`, 
+        const copy = new CNode(cngCounter < 0? `${node.id}c${node.numberOfCopies++}`: `CN${cngCounter}/${nodeCounter}`, 
             node.x + hDisplacement, node.y + vDisplacement, node.angle0, node.angle1, node.group as CNodeGroup);
         copyNodeValues(node, copy, topTbc, copies);
         copy.omitLine = node.omitLine;
@@ -240,7 +240,7 @@ const copy = (
     cngCounter: number,
     sgCounter: number
 ): [number, number, number] => {
-    // console.log(`topTbc: ${topTbc.map(m => m.getString()).join('; ')}`);
+    console.log(`topTbc: ${topTbc.map(m => m.getString()).join('; ')}`);
     const snodes: SNode[] = []; // This will contain all the SNodes that we're going to copy.
     topTbc.forEach(m => {
         switch (true) {
@@ -279,7 +279,8 @@ const copy = (
             }
             case m instanceof CNode: {
                 //console.log(`C: ${m.id}`);
-                const copy = copyCNode(m, hDisplacement, vDisplacement, 0, 0, topTbc, copies);
+                const copy = copyCNode(m, hDisplacement, vDisplacement, -1, 0, topTbc, copies); // Passing a negative number to signal that we're 
+                    // coming from the top level.
                 if (m.group) {
                     m.group.members.splice(m.group.members.indexOf(m) + 1, 0, copy);
                 }

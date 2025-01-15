@@ -156,8 +156,8 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
     { key: 'abstract', keys: 'x', rep: ['X'], descr: <>Create <i>abstractions</i> of selected nodes: &lsquo;ghost nodes&rsquo; that will transfer their {' '}
         own features onto any nodes they&rsquo;re dragged onto.</> },
-    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Create copies of selected items. This works not just with nodes, but also with labels. Add new members {' '}
-        to a group by copying individual members.</> },
+    { key: 'copy', keys: 'c', rep: ['C'], descr: <>Create copies of selected items. (This works not just with nodes, but also with labels.) Add new members {' '}
+        to an existing group by copying individual members.</> },
     { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Add a label to each selected node.</> },
     { key: 'create', keys: 'space', rep: ['Space'], descr: <>Create one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the {' '}
         currently selected nodes. (Equivalent to clicking the {pasi('Create')} button.)</> },
@@ -582,6 +582,19 @@ const move = (nodes: Node[], dx: number, dy: number) => {
 }
 
 
+interface LogIncrements {
+    rotate: number,
+    scale: number
+}
+
+interface TransformFlags {
+    scaleArrowheads: boolean,
+    scaleENodes: boolean, 
+    scaleDash: boolean, 
+    scaleLinewidths: boolean, 
+    flipArrowheads: boolean
+}
+
 interface HistoryEntry {
     list: (ENode | CNodeGroup)[],
     selection: Item[],
@@ -597,7 +610,11 @@ interface HistoryEntry {
     hDisplacement: number,
     vDisplacement: number,
     adding: boolean,
-    dissolveAdding: boolean
+    dissolveAdding: boolean,
+    logIncrement: number,
+    logIncrements: LogIncrements, // for the transform tab
+    transformFlags: TransformFlags,
+    yOffset: number
 }
 
 interface MainPanelProps {
@@ -645,9 +662,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const [logIncrement, setLogIncrement] = useState(DEFAULT_TRANSLATION_LOG_INCREMENT); // for itemEditor
     const [rotation, setRotation] = useState(0);
     const [scaling, setScaling] = useState(100); // default is 100%
-    const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale
-    const [logIncrements, ] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}); // for the transform tab
-    const [transformFlags, ] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
+    const [origin, ] = useState({x: 0, y: 0}); // the point around which to rotate and from which to scale; computed and set by setOrigin()
+    const [logIncrements, setLogIncrements] = useState({rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT}); // for the transform tab
+    const [transformFlags, setTransformFlags] = useState({scaleArrowheads: false, scaleENodes: false, scaleDash: false, scaleLinewidths: false, flipArrowheads: false});
     const [trueBlack, setTrueBlack] = useState(false); // indicates whether entity nodes and contours should use black as their primary and (when shading is set to 1) 
         // background color.
 
@@ -688,7 +705,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const { push, before, after, canRedo, canUndo, history, now } = useHistory<HistoryEntry>({        
         list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
-            replace, hDisplacement, vDisplacement, adding, dissolveAdding 
+            replace, hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset
     }, MAX_HISTORY);
 
 
@@ -709,17 +726,21 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         setVDisplacement(entry.vDisplacement);
         setAdding(entry.adding);
         setDissolveAdding(entry.dissolveAdding);
+        setLogIncrement(entry.logIncrement);
+        setLogIncrements(entry.logIncrements);
+        setTransformFlags(entry.transformFlags);
+        setYOffset(entry.yOffset);
     }, [setList, setSelection, setFocusItem, setENodeCounter, setCNGCounter, setSGCounter, setGrid, setDisplayFontFactor, setUnitScale, setReplace,
-        setHDisplacement, setVDisplacement, setAdding, setDissolveAdding
+        setHDisplacement, setVDisplacement, setAdding, setDissolveAdding, setLogIncrement, setLogIncrements, setTransformFlags, setYOffset
     ]);
 
 
     const stored = useMemo(() => ({ // to facilitate reference in the update function
         list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
-            replace, hDisplacement, vDisplacement, adding, dissolveAdding  
+            replace, hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset
     }),
     [list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, 
-        replace, hDisplacement, vDisplacement, adding, dissolveAdding 
+        replace, hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset
     ]);
 
     /**
@@ -740,7 +761,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             hDisplacement = stored.hDisplacement,
             vDisplacement = stored.vDisplacement,
             adding = stored.adding,
-            dissolveAdding = stored.dissolveAdding
+            dissolveAdding = stored.dissolveAdding,
+            logIncrement = stored.logIncrement,
+            logIncrements = stored.logIncrements,
+            transformFlags = stored.transformFlags,
+            yOffset = stored.yOffset
         }: Partial<HistoryEntry>,
         changeState: boolean = true
     ): void => {
@@ -749,7 +774,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
         if (changeState) {
             updateState({ list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
-                replace, hDisplacement, vDisplacement, adding, dissolveAdding
+                replace, hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset
             });
         }
         else { // If we don't have to update the state, the only thing that has changed are the coordinates of nodes. But the values stored in 'stored' 
@@ -758,9 +783,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             selection = current.selection;
             focusItem = current.focusItem;
             points = current.points;
-            // We ensure that these are the only state variables that can have become stale, because they are the only ones that can change between two calls of the 
-            // same function instance. That is because the only such calls are made from within the mouseMove and the mouseUp handlers, respectively,
-            // of itemMouseDown().
+            // We have to ensure that these are the only state variables that can have become stale. The reason why they can become stale is that,
+            // from within itemMouseDown() and its mouseUp handler, there can be two calls to the same instance of update(): one that changes the selection, 
+            // focusItem, and points, and another that only reports the changed location of some nodes.
         }
 
         // Next, store a copy of the state in the history:
@@ -784,45 +809,28 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             eNodeCounter,
             cngCounter,
             sgCounter,
-            grid: {... grid},
+            grid: {...grid},
             displayFontFactor,
             unitScale,
             replace,
             hDisplacement,
             vDisplacement,
             adding,
-            dissolveAdding      
+            dissolveAdding,
+            logIncrement, 
+            logIncrements: {...logIncrements}, 
+            transformFlags: {...transformFlags},
+            yOffset: yOffset   
         });
-    }, [stored, history, now, push, updateState]);
+    }, [stored, history, now, push, updateState, ]);
 
     const reportMovement = useCallback(() => {
         // Signal to the updaters of, e.g., canCopy that the positions of items may have changed:
         setItemsMoved(prev => [...prev]); 
         update({}, false);
-    }, [update, setItemsMoved]);
+    }, [update, setItemsMoved, focusItem]);
 
     const throttledReport = useThrottle(() => update({}, false), MOVE_UPDATE_DELAY);
-
-    const undo = useCallback(() => updateState(before()), [updateState, before]);
-
-    const throttledUndo = useThrottle(() => updateState(before()), UNDO_REDO_DELAY);
-
-    const redo = useCallback(() => updateState(after()), [updateState, after]);
-
-    const throttledRedo = useThrottle(() => updateState(after()), UNDO_REDO_DELAY);
-
-    /**
-     * Dedicated keydown handler for undo/redo, because react-hotkeys-hook refuses to work for undo and redo (even though
-     * the buttons do work).
-     */
-    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (undoChecker(e)) {
-            throttledUndo();
-        }
-        else if (redoChecker(e)) {
-            throttledRedo();
-        }
-    }, [undo, redo]);
 
 
 
@@ -843,6 +851,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const selectedNodesDeduplicated = useMemo(() => 
         deduplicatedSelection.filter(item => item instanceof Node) as Node[], 
+        [deduplicatedSelection]
+    );
+
+    const selectedIndependentNodes = useMemo(() => 
+        deduplicatedSelection.filter(item => item instanceof Node && item.isIndependent()) as Node[], 
         [deduplicatedSelection]
     );
 
@@ -998,6 +1011,35 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }
     }, [yOffset, canvasWidth]);
 
+    const revertTo = useCallback((state: HistoryEntry) => {
+        updateState(state);
+        setOrigin(true, points, null, [], state.list);
+        adjustLimit(getItems(state.list));
+        if (state.focusItem) {
+            scrollTo(state.focusItem);
+        }
+    }, [updateState, setOrigin, adjustLimit, scrollTo]);
+
+    const undo = useCallback(() => revertTo(before()), [updateState, before]);
+
+    const throttledUndo = useThrottle(() => revertTo(before()), UNDO_REDO_DELAY);
+
+    const redo = useCallback(() => revertTo(after()), [updateState, after]);
+
+    const throttledRedo = useThrottle(() => revertTo(after()), UNDO_REDO_DELAY);
+
+    /**
+     * Dedicated keydown handler for undo/redo, because react-hotkeys-hook refuses to work for undo and redo (even though
+     * the buttons do work).
+     */
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (undoChecker(e)) {
+            throttledUndo();
+        }
+        else if (redoChecker(e)) {
+            throttledRedo();
+        }
+    }, [undo, redo]);
 
     const updateSecondaryPreselection = useCallback((
             prim: Item[] = preselection1
@@ -1489,7 +1531,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             // No history update necessary, since that is already done in the mouseup handler.
         }, 
         [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin, 
-            hDisplacement, vDisplacement, replace, unitScale
+            hDisplacement, vDisplacement, replace, unitScale, displayFontFactor, 
             // These state variables that we set in the canvas editor have to be mentioned here so that canvasMouseDown is rebuilt with a new instance of 
             // update() whenever any of these variables is changed.
         ]
@@ -1803,51 +1845,45 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     }, [logIncrement, selectedNodesDeduplicated, focusItem, list, points, selection, adjustLimit, setOrigin, scrollTo]);
 
     const changeUnitscale = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        if (isFinite(val)) {
-            const newVal = Math.min(Math.max(MIN_UNITSCALE, val), MAX_UNITSCALE);
-            setUnitScale(prev => newVal); 
-            allItems.forEach(it => {
-                if (it instanceof Label) {
-                    it.updateLines(newVal, displayFontFactor);
-                }
-            });
-            adjustLimit();
-        }
+        const val = validFloat(e.target.value, MIN_UNITSCALE, MAX_UNITSCALE);
+        setUnitScale(prev => val); 
+        allItems.forEach(it => {
+            if (it instanceof Label) {
+                it.updateLines(val, displayFontFactor);
+            }
+        });
+        adjustLimit();
     }, [allItems, displayFontFactor, adjustLimit]);
 
     const changeDisplayFontFactor = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = parseFloat(e.target.value);
-        if (isFinite(val)) {
-            const newVal = Math.min(Math.max(MIN_DISPLAY_FONT_FACTOR, val), MAX_DISPLAY_FONT_FACTOR);
-            setDisplayFontFactor(prev => newVal);
-            allItems.forEach(it => {
-                if (it instanceof Label) {
-                    it.updateLines(unitScale, newVal);
-                }
-            });
-            adjustLimit();
-        }
+        const val = validFloat(e.target.value, MIN_DISPLAY_FONT_FACTOR, MAX_DISPLAY_FONT_FACTOR);
+        setDisplayFontFactor(prev => val);
+        allItems.forEach(it => {
+            if (it instanceof Label) {
+                it.updateLines(unitScale, val);
+            }
+        });
+        adjustLimit();
     }, [allItems, unitScale, adjustLimit]);
 
     /**
      * Returns true if the rotation of the selection by the specified angle is within bounds.
      */
     const testRotation = useCallback((angle: number) => {
-        for(const node of selectedNodesDeduplicated) {
+        for(const node of selectedIndependentNodes) {
             const {x, y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS);
             if (x<0 || x>MAX_X) return false;
             if (y<MIN_Y || y>MAX_Y) return false;
         }
         return itemsMoved!==null; // We use 'itemsMoved!==null' instead of 'true' to suppress a warning about an 'unnecessary dependency'
-    }, [selectedNodesDeduplicated, origin.x, origin.y, itemsMoved]);
+    }, [selectedIndependentNodes, origin.x, origin.y, itemsMoved]);
 
     /**
      * Returns true if setting the scaling of the selection to the specified angle doesn't violate any constraints on the placement, radius, etc. of nodes.
      * May display error messages.
      */
     const testScaling = useCallback((val: number) => {
-        for (const node of selectedNodesDeduplicated) {
+        for (const node of selectedIndependentNodes) {
             const {x, y} = scalePoint(node.x100, node.y100, origin.x, origin.y, val/100)
             if (!isFinite(x) || !isFinite(y)) {
                 showModal('Buzz Lightyear Alert', 
@@ -1869,13 +1905,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             })) return false;
         }
         return true
-    }, [selectedNodesDeduplicated, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);    
+    }, [selectedIndependentNodes, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths]);    
 
     /**
      * Rotates the selection by the specified angle (in degrees).
      */
     const rotateSelection = useCallback((angle: number) => {
-        selectedNodesDeduplicated.forEach(node => {
+        selectedIndependentNodes.forEach(node => {
             ({x: node.x, y: node.y} = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
             ({x: node.x100, y: node.y100} = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS));
             node.invalidateDepNodeLocations();                          
@@ -1883,7 +1919,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         adjustLimit();
         setRotation(prev => round(getCyclicValue(prev+angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
         setItemsMoved(prev => [...prev]);                                     
-    }, [selectedNodesDeduplicated, origin, adjustLimit]);
+    }, [selectedIndependentNodes, origin, adjustLimit]);
 
     /**
      * Sets the scaling of the current selection to the indicated value, as a percentage of the respective 'original' size of the selected items.
@@ -1891,13 +1927,15 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const scaleSelection = useCallback((newValue: number) => {
         if (testScaling(newValue)) {
             selectedNodesDeduplicated.forEach(node => {
-                ({x: node.x, y: node.y} = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue/100));
-                node.invalidateDepNodeLocations();
-                if (node instanceof CNode) {
-                    node.dist0 = round(node.dist0_100 * newValue/100, ROUNDING_DIGITS);
-                    node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
+                if (node.isIndependent()) {
+                    ({x: node.x, y: node.y} = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue/100));
+                    node.invalidateDepNodeLocations();
+                    if (node instanceof CNode) {
+                        node.dist0 = round(node.dist0_100 * newValue/100, ROUNDING_DIGITS);
+                        node.dist1 = round(node.dist1_100 * newValue/100, ROUNDING_DIGITS);
+                    }
                 }
-                else if (node instanceof ENode) {
+                if (node instanceof ENode) {
                     if (transformFlags.scaleENodes) {
                         node.radius = node.radius100 * newValue/100;
                         node.ornaments.forEach(o => {
@@ -2145,21 +2183,23 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             newCNGCounter = 0,
             newSGCounter = 0;
         try {
-            [newList, newPixel, newENodeCounter, newCNGCounter, newSGCounter] = replace? 
-                load(code, undefined, displayFontFactor, 0, 0, 0): 
-                load(code, unitScale, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
+            [newList, newPixel, newENodeCounter, newCNGCounter, newSGCounter] = replace
+            ? load(code, undefined, displayFontFactor, 0, 0, 0)
+            : load(code, unitScale, displayFontFactor, eNodeCounter, cngCounter, sgCounter);
+            update({ 
+                list: replace? newList: [...list, ...newList], 
+                unitScale: replace? newPixel: undefined,
+                eNodeCounter: newENodeCounter, 
+                cngCounter: newCNGCounter, 
+                sgCounter: newSGCounter,
+            });
             if (replace) {
-                setUnitScale(prev => newPixel);
                 setPreselection1([]);
                 setPreselection2([]);
                 setSelection([]);
                 setFocusItem(null);
                 setOrigin(true, points, null, [], newList);
             }
-            else {
-                newList = [...list, ...newList];
-            }
-            update({ list: newList, eNodeCounter: newENodeCounter, cngCounter: newCNGCounter, sgCounter: newSGCounter });
             adjustLimit(getItems(newList));
         } 
         catch (e: any) {

@@ -264,7 +264,7 @@ export default function Home() {
                   in any order. (To select all the nodes of a given contour, it is normally enough to click on any one of them or near the contour&rsquo;s center.)
                 </li>
                 <li><span className='font-bold'>Star of David.</span>{' '}
-                  For a more complicated example, suppose you&rsquo;d like to draw a <em>Star of David</em>, which consists of two overlapping triangles. The easiest{' '}
+                  For a more complicated (and controversial) example, suppose you&rsquo;d like to draw a <em>Star of David</em>, which consists of two overlapping triangles. The easiest{' '}
                   way to do this is to start with a regular hexagon, which can be created from a standard eight-node contour by deleting two of its nodes, selecting the{' '}
                   remaining six, and then pressing {key('P')}. Next, press {key('R')}, which will rotate the hexagon by 30 degrees and make it stand on a vertex. {' '}
                   Finally, select any three nodes of the hexagon that form an equilateral triangle, and press {key('G')}. This will create a new group consisting of those{' '}

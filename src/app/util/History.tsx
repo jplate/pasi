@@ -29,7 +29,7 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
 
         history.current = updatedHistory;
         now.current = updatedHistory.length - 1;
-        console.log(`NOW: ${updatedHistory.length - 1}`);
+        //console.log(`NOW: ${updatedHistory.length - 1}`);
     };
     
     const before = (): T => {

@@ -39,8 +39,8 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
     const [scaleDash, setScaleDash] = useState(transformFlags.scaleDash);
     const [flipArrowheads, setFlipArrowheads] = useState(transformFlags.flipArrowheads);
 
-    const originDescription = <><i>either</i>&thinsp; the last-selected location on the canvas <i>or</i>&thinsp; (if no location is selected) the center
-        of either the currently focused or (if no node is focused) the last-selected node</>;
+    const originDescription = <><i>either</i>&thinsp; the last-selected location on the canvas <i>or</i>&thinsp; (if no location is 
+        selected) the center of either the currently focused or (if no node is focused) the last-selected node</>;
 
     return (
         <div className='flex flex-col h-full'>
@@ -50,7 +50,10 @@ const TransformTab = ({rotation, scaling, hFlipPossible, vFlipPossible, logIncre
                 value={rotation} 
                 min={-MAX_ROTATION_INPUT} max={MAX_ROTATION_INPUT} 
                 step={0} width={'long'} onChange={(e) => {
-                    const [val, delta] = parseCyclicInputValue(e.target.value, rotation, logIncrements.rotate, MIN_ROTATION, 360, Math.max(0, -MIN_ROTATION_LOG_INCREMENT));
+                    const [val, delta] = parseCyclicInputValue(
+                        e.target.value, rotation, logIncrements.rotate, MIN_ROTATION, 360, 
+                        Math.max(0, -MIN_ROTATION_LOG_INCREMENT)
+                    );
                     if(!isNaN(val) && val!==rotation && testRotation(delta)) rotate(delta);
                 }} />
             <InputField label='log Increment' value={logIncrements.rotate} min={MIN_ROTATION_LOG_INCREMENT} max={MAX_ROTATION_LOG_INCREMENT} 
