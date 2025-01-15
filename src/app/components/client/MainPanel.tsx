@@ -758,7 +758,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
         const allItems = getItems(list);
         const topTbc = getTopToBeCopied(allItems);        
-        const nodes = new Set<Node>(allItems.filter(it => it instanceof Node));
+        const nodes = new Set<Node>(allItems.filter(it => it instanceof Node) as Node[]);
         const [newList, gnodes, newSelection, newFocusItem] = copyItems(topTbc, nodes, list, selection, focusItem, 
             0, 0, 0, 0, 0, unitScale, displayFontFactor
         );
