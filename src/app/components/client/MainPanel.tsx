@@ -29,7 +29,7 @@ import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathT
 import { copyItems, getTopToBeCopied } from './Copying'
 import { getCode, load } from '../../codec/Codec1'
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General'
-import { sameElements, throttle, useThrottle, matchKeys } from '../../util/Misc'
+import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc'
 import { useHistory } from '../../util/History.tsx'
 import SNode from './items/SNode'
 import Adjunction from './items/snodes/Adjunction.tsx'
@@ -473,11 +473,15 @@ array.reduce((acc: CNodeGroup[], it) =>
 /** 
  * Helper function for deleteSelection().
  */
-const getToBeDeleted = (selection: Item[], acc: Set<Item> = new Set()) => {
+const getToBeDeleted = (selection: Item[], 
+    acc: Set<Item> = new Set(), 
+    visited: Set<Item> = new Set<Item>() // to prevent infinite loops.
+) => {
     for (let it of selection) {
         acc.add(it);
-        if (it instanceof Node) {
-            getToBeDeleted(it.dependentNodes, acc);
+        if (it instanceof Node && !visited.has(it)) {
+            visited.add(it);
+            getToBeDeleted(it.dependentNodes, acc, visited);
         }
     }
     return acc;
@@ -605,10 +609,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLTextAreaElement>(null);
+    const [replace, setReplace] = useState(true);
     const [depItemIndex, setDepItemIndex] = useState(depItemKeys.indexOf('adj'));
     const [unitScale, setUnitScale] = useState(DEFAULT_UNIT_SCALE);
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
-    const [replace, setReplace] = useState(true);
     const [points, setPoints] = useState<Point[]>([]);
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
     const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
@@ -676,9 +680,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     }, []);
 
 
+
 /****************************************************************************************
  * STATE MANAGEMENT
  ***************************************************************************************/
+
 
     const { push, before, after, canRedo, canUndo, history, now } = useHistory<HistoryEntry>({        
         list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale,
@@ -752,6 +758,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             selection = current.selection;
             focusItem = current.focusItem;
             points = current.points;
+            // We ensure that these are the only state variables that can have become stale, because they are the only ones that can change between two calls of the 
+            // same function instance. That is because the only such calls are made from within the mouseMove and the mouseUp handlers, respectively,
+            // of itemMouseDown().
         }
 
         // Next, store a copy of the state in the history:
@@ -814,6 +823,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             throttledRedo();
         }
     }, [undo, redo]);
+
 
 
 /****************************************************************************************
@@ -1230,6 +1240,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     };            
 
                     const handleMouseUp = () => {
+                        window.removeEventListener('mousemove', handleMouseMove);
+                        window.removeEventListener('mouseup', handleMouseUp);
+                        setDragging(false);
+
+                        // Delete GNodes that have been dragged onto some other node:
                         const unselectedNodes = allItems.filter(it => 
                             it instanceof Node && 
                             !selectedNodes.includes(it)
@@ -1247,12 +1262,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     }
                                 }
                             }
-                            deleteItems(toBeDeletedGNodes);
                         }
-                        window.removeEventListener('mousemove', handleMouseMove);
-                        window.removeEventListener('mouseup', handleMouseUp);
-                        setDragging(false);
+                        if (toBeDeletedGNodes.length >  0) {
+                            deleteItems(toBeDeletedGNodes, list, newSelection, undefined, item);                            
+                        }
 
+                        // Some movement-related issues:
                         if ((item.x !== itemX) || (item.y !==itemY)) { 
                             adjustLimit();
                             setOrigin(item!==focusItem && newPoints.length==0, newPoints, item, newSelection);
@@ -1269,7 +1284,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 node.y = node.y100 = round(node.y, ROUNDING_DIGITS);
                             });
 
-                            reportMovement();
+                            // Update history (unless we've deleted GNodes, in which case we've already triggered a history update via deleteItems()):
+                            if (toBeDeletedGNodes.length===0) { 
+                                reportMovement();
+                            }
                         }
                     }
                 
@@ -1281,7 +1299,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     setPreselection1([]);
                     setPreselection2([]);
                 }
-                update({ list: newList, selection: newSelection, focusItem: item, points: newPoints });
+                if (list!==newList 
+                    || !equalArrays(selection, newSelection) 
+                    || focusItem!==item 
+                    || !equalArrays(points, newPoints)
+                ) {
+                    update({ list: newList, selection: newSelection, focusItem: item, points: newPoints });
+                }
             }           
         }, 
         [
@@ -1463,7 +1487,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setAdding(false);
             setDissolveAdding(false);
             // No history update necessary, since that is already done in the mouseup handler.
-        }, [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin]
+        }, 
+        [allItems, selection, yOffset, focusItem, points, origin, scaling, grid, setOrigin, 
+            hDisplacement, vDisplacement, replace, unitScale
+        ]
     );
 
     /**
@@ -1499,9 +1526,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setList(list => newList);
             const nodes = getItems(newCNodeGroups, true);
             const newFocus = nodes[nodes.length-1];
-            setPoints([]);
-            setSelection(nodes);
-            setFocusItem(newFocus);
+            update({ 
+                list: newList, 
+                selection: nodes, 
+                focusItem: newFocus, 
+                points: [],
+                cngCounter: counter
+            }); 
             setOrigin(true, [], newFocus, nodes);
             adjustLimit(getItems(newList)); 
         }
@@ -1560,21 +1591,20 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         return;
                 }
                 const newFocus = newSelection.at(-1);
-                setPoints([]);
-                setList(prev => [...prev]); // This will update allItems.
-                setSelection(prev => newSelection);
+                update({ 
+                    list: counter!==eNodeCounter? [...list, ...snodes]: list,
+                    selection: newSelection, 
+                    focusItem: newFocus ?? focusItem, 
+                    points: [],
+                    eNodeCounter: counter
+                }); 
                 if (newFocus) {
-                    setFocusItem(newFocus);
                     setOrigin(true, [], newFocus, newSelection);
-                }
-                if (counter!==eNodeCounter) {
-                    setENodeCounter(counter);
-                    setList(prev => [...prev, ...snodes]);
-                }
+                }    
                 // Not really any need to call adjustLimit(), since the new Items will be created close to existing nodes.
             }
         }
-    }, [eNodeCounter, selectedNodes, unitScale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
+    }, [list, focusItem, eNodeCounter, selectedNodes, unitScale, displayFontFactor, setList, setFocusItem, setSelection, setOrigin, setENodeCounter, sorry]);
 
 
     const copySelection = () => {
@@ -1597,10 +1627,23 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     /**
      * Deletes the supplied Items from any lists membership in which would cause an Item to be displayed on the canvas. With the help of the second
-     * (optional) argument, this function can also be used to *add* new Items to the canvas. If the third argument is specified, it will be used to
-     * set the new focusItem in case the current one is deleted.
+     * (optional) argument, this function can also be used to *add* new Items to the canvas. 
+     * @param items the Items to be deleted.
+     * @param currentList the array that is to be assumed to be the current list of ENodes and CNodeGroups.
+     * @param currentSelection the Item array that is to be assumed to be the current selection.
+     * @param newSelection the Item array that is to become the new selection. If this is unspecified, the new selection will be constructed from 
+     * the third argument.
+     * @param currentFocus the Item (or null) that is to be assumed to be the current focusItem.
+     * @param newFocus the Item that will be made the new focusItem in case the current one is deleted.
      */
-    const deleteItems = useCallback((items: Item[], currentList = list, newFocus: Item | null = null) => {
+    const deleteItems = useCallback((
+        items: Item[], 
+        currentList = list, 
+        currentSelection: Item[] = selection, 
+        newSelection?: Item[],
+        currentFocus: Item | null = focusItem,
+        newFocus: Item | null = null
+    ) => {
         const toBeDeleted = getToBeDeleted(items);
         const newList: (ENode | CNodeGroup)[]  = [];
         for (let it of currentList) {
@@ -1651,16 +1694,16 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         (!(m instanceof Item) && whitelist.has(m)));
             }
         });
-        setList(newList);
-        setSelection(prev => prune(prev, newList));
+        update({ 
+            list: newList, 
+            selection: newSelection ?? prune(currentSelection, newList), 
+            focusItem: currentFocus && items.includes(currentFocus)? newFocus: currentFocus 
+        });
         setPreselection1(prev => prune(prev, newList));
         setPreselection2(prev => prune(prev, newList));
         adjustLimit(getItems(newList));
-        if (focusItem && items.includes(focusItem)) {
-            setFocusItem(newFocus);
-        }
         setOrigin(true, points, null, []);  
-    }, [focusItem, points, list, setList, setSelection, setFocusItem, adjustLimit, setOrigin, setPreselection1, setPreselection2]);
+    }, [focusItem, points, list, setList, selection, setSelection, setFocusItem, adjustLimit, setOrigin, setPreselection1, setPreselection2]);
 
     /**
      * Creates 'ghost nodes' in place of the supplied nodes, to which all the latter's features are then transferred. The original nodes are deleted
@@ -1686,13 +1729,16 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             }
         });
         deleteItems(
+            // CNodes and nodes that come with connectors aren't deleted, because that would entail a (probably unintended) loss of information.
             selectedNodes.filter(n => !(n instanceof CNode) && n.isIndependent()), 
             [...list, ...gnodes],
+            selection,
+            newSelection,
+            focusItem,
             newFocus
         );
-        setSelection(newSelection);
         setENodeCounter(n);
-    }, [eNodeCounter, list, selection, selectedNodes, unitScale, displayFontFactor, setSelection, setENodeCounter, deleteItems]);
+    }, [eNodeCounter, list, selection, focusItem, selectedNodes, unitScale, displayFontFactor, setSelection, setENodeCounter, deleteItems]);
 
     /**
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers 
@@ -2111,10 +2157,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             else {
                 newList = [...list, ...newList];
             }
-            setList(prev => newList);
-            setENodeCounter(prev => newENodeCounter);
-            setCNGCounter(prev => newCNGCounter);
-            setSGCounter(prev => newSGCounter);            
+            update({ list: newList, eNodeCounter: newENodeCounter, cngCounter: newCNGCounter, sgCounter: newSGCounter });
             adjustLimit(getItems(newList));
         } 
         catch (e: any) {
@@ -2626,7 +2669,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 px = 
                             <input className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                                type='number' min={MIN_UNITSCALE} step={0.01} value={unitScale}
+                                type='number' min={MIN_UNITSCALE} 
+                                step={0.01} 
+                                value={unitScale}
                                 onChange={changeUnitscale}/>
                             pt
                         </div>
@@ -2634,7 +2679,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             tooltip={<>Load diagram from <i>texdraw</i> code.<HotkeyComp mapKey='load diagram' /></>}
                             tooltipPlacement='left'
                             onClick={() => loadDiagram(code, replace)} /> 
-                        <CheckBoxField label='Replace current diagram' value={replace} onChange={()=>{setReplace(!replace)}} />
+                        <CheckBoxField label='Replace current diagram' 
+                            value={replace} 
+                            onChange={() => setReplace(!replace)} />
                     </div>
 
                     <Modal isOpen={modalShown} closeTimeoutMS={750}
