@@ -1,5 +1,4 @@
 import ENode, { ENodeCompProps, DEFAULT_RADIUS as ENODE_DEFAULT_RADIUS } from './ENode';
-import CNodeGroup from '../CNodeGroup';
 import { Entry } from '../ItemEditor';
 
 export const DEFAULT_RADIUS = ENODE_DEFAULT_RADIUS;
@@ -21,7 +20,7 @@ export default class GNode extends ENode {
         return `${this.id}(G)`;
     }
 
-    override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    override getInfo(): Entry[] {
         return [
             ...this.getCoordinateInfo(),
             {
