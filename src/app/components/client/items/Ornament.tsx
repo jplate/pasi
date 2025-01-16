@@ -17,12 +17,36 @@ export const ROUNDING_DIGITS = 3;
  * @abstract
  */
 export default abstract class Ornament extends Item {
-    static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
+    static markBorder = (
+        left: number,
+        top: number,
+        l: number,
+        m: number,
+        mW: number,
+        mH: number,
+        markColor: string
+    ): JSX.Element => (
         <>
-            <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`} fill="none" />
+            <polyline
+                stroke={markColor}
+                points={`${left},${top + m} ${left},${top} ${left + l},${top}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`}
+                fill='none'
+            />
         </>
     );
 

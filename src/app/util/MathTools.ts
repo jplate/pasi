@@ -40,7 +40,14 @@ export const getCyclicValue = (raw: number, min: number, base: number, roundingF
  * Rotates a point around another point by a given angle.
  * @returns The new coordinates {x, y} of the rotated point.
  */
-export const rotatePoint = (px: number, py: number, cx: number, cy: number, angle: number, roundingDigits: number): { x: number; y: number } => {
+export const rotatePoint = (
+    px: number,
+    py: number,
+    cx: number,
+    cy: number,
+    angle: number,
+    roundingDigits: number
+): { x: number; y: number } => {
     // Convert angle from degrees to radians
     const radians: number = (angle * Math.PI) / 180;
 
@@ -49,8 +56,14 @@ export const rotatePoint = (px: number, py: number, cx: number, cy: number, angl
     const translatedY: number = py - cy;
 
     // Rotate point, and apply rounding to get rid of tiny rounding errors that would otherwise accumulate:
-    const rotatedX: number = round(translatedX * Math.cos(radians) - translatedY * Math.sin(radians), roundingDigits);
-    const rotatedY: number = round(translatedX * Math.sin(radians) + translatedY * Math.cos(radians), roundingDigits);
+    const rotatedX: number = round(
+        translatedX * Math.cos(radians) - translatedY * Math.sin(radians),
+        roundingDigits
+    );
+    const rotatedY: number = round(
+        translatedX * Math.sin(radians) + translatedY * Math.cos(radians),
+        roundingDigits
+    );
 
     // Translate point back
     const finalX: number = rotatedX + cx;
@@ -63,7 +76,13 @@ export const rotatePoint = (px: number, py: number, cx: number, cy: number, angl
  * Scales a point around a specified origin by a given scale factor.
  * @returns The new coordinates {x, y} of the scaled point.
  */
-export const scalePoint = (px: number, py: number, ox: number, oy: number, scaleFactor: number): { x: number; y: number } => {
+export const scalePoint = (
+    px: number,
+    py: number,
+    ox: number,
+    oy: number,
+    scaleFactor: number
+): { x: number; y: number } => {
     // Translate point to the origin
     const translatedX = px - ox;
     const translatedY = py - oy;
@@ -252,7 +271,11 @@ export const bezierLength = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, ste
 /**
  * @returns the approximate value of t at which the specified CubicCurve has reached the specified length.
  */
-export const tAtLength = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, targetLength: number, steps: number = 1000): number => {
+export const tAtLength = (
+    { x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve,
+    targetLength: number,
+    steps: number = 1000
+): number => {
     let accumulatedLength = 0;
     let prevX = x0;
     let prevY = y0;
@@ -302,7 +325,16 @@ export const bezierAngle = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, t: n
  * @param d1 distance of the point at t1 from the reference point
  * @param j number of iterations
  */
-const findClosest = (x: number, y: number, c: CubicCurve, t0: number, d0: number, t1: number, d1: number, j: number): number => {
+const findClosest = (
+    x: number,
+    y: number,
+    c: CubicCurve,
+    t0: number,
+    d0: number,
+    t1: number,
+    d1: number,
+    j: number
+): number => {
     if (d0 > d1) {
         // If the curve is closer to the reference point at the end of the search interval, we'll start from there.
         [t0, t1] = [t1, t0];
@@ -360,7 +392,13 @@ export const closestTo = (x: number, y: number, c: CubicCurve, t0: number, t1: n
  * @param closeEnough the difference between the distance traveled and the desired distance that is considered 'close enough'
  * @return the point at the end position
  */
-export const travelFor = (u: number[], distance: number, c: CubicCurve, dt: number, closeEnough: number): [x: number, y: number] => {
+export const travelFor = (
+    u: number[],
+    distance: number,
+    c: CubicCurve,
+    dt: number,
+    closeEnough: number
+): [x: number, y: number] => {
     const t0 = u[0];
     let t = t0;
     let [x0, y0] = cubicBezier(c, t0);

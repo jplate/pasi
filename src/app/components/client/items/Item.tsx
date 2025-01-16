@@ -77,7 +77,14 @@ export default abstract class Item implements GroupMember {
      * @param displayFontFactor
      * @param name the name of this item (as given in the 'hint'), if available. Used for error messages.
      */
-    abstract parse(code: string, info: string | null, dimRatio: number, unitscale?: number, displayFontFactor?: number, name?: string): void;
+    abstract parse(
+        code: string,
+        info: string | null,
+        dimRatio: number,
+        unitscale?: number,
+        displayFontFactor?: number,
+        name?: string
+    ): void;
 
     /**
      * @returns an array of Entries, to be supplied to ItemEditor.

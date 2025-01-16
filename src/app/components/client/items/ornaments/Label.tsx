@@ -125,7 +125,10 @@ export default class Label extends Ornament {
 
     #getPositioning() {
         const angle = this.angle;
-        return [angle < -90 || angle > 90 ? -1 : angle === -90 || angle == 90 ? 0 : 1, angle > 0 && angle < 180 ? 1 : angle === 0 || angle === 180 ? 0 : -1];
+        return [
+            angle < -90 || angle > 90 ? -1 : angle === -90 || angle == 90 ? 0 : 1,
+            angle > 0 && angle < 180 ? 1 : angle === 0 || angle === 180 ? 0 : -1,
+        ];
     }
 
     #getRefPoint(hPos: number, vPos: number, left: number, bottom: number, centeredText: boolean) {
@@ -136,7 +139,10 @@ export default class Label extends Ornament {
         const [nx, ny] = this.node.getLocation();
         return {
             x: centered || hPos === 0 ? nx : hPos === -1 ? left + w : left,
-            y: centered || vPos === 0 ? ny : (vPos === -1 ? bottom + h : bottom) - (centeredText ? vPos * lineH : 0),
+            y:
+                centered || vPos === 0
+                    ? ny
+                    : (vPos === -1 ? bottom + h : bottom) - (centeredText ? vPos * lineH : 0),
         };
     }
 
@@ -154,8 +160,8 @@ export default class Label extends Ornament {
                 disabled: this.centered,
                 tooltip: (
                     <>
-                        The distance between the circumference of the node to which the label is attached and the closest point of the label&rsquo;s own{' '}
-                        bounding box.
+                        The distance between the circumference of the node to which the label is attached and
+                        the closest point of the label&rsquo;s own bounding box.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -170,8 +176,8 @@ export default class Label extends Ornament {
                 disabled: this.centered,
                 tooltip: (
                     <>
-                        The angle of a straight line from the center of the node to which the label is attached to the nearest point of the label&rsquo;s own
-                        bounding box.
+                        The angle of a straight line from the center of the node to which the label is
+                        attached to the nearest point of the label&rsquo;s own bounding box.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -198,7 +204,13 @@ export default class Label extends Ornament {
                 step: 0,
                 disabled: !this.parbox,
             },
-            { type: 'checkbox', key: 'center text', text: 'Center content', value: this.centerText, disabled: !this.parbox },
+            {
+                type: 'checkbox',
+                key: 'center text',
+                text: 'Center content',
+                value: this.centerText,
+                disabled: !this.parbox,
+            },
             {
                 type: 'checkbox',
                 key: 'mathMode',
@@ -222,7 +234,8 @@ export default class Label extends Ornament {
                 step: 0,
                 tooltip: (
                     <>
-                        Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated text.
+                        Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated
+                        text.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -239,8 +252,9 @@ export default class Label extends Ornament {
                 width: 'long',
                 tooltip: (
                     <>
-                        Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code> option is selected, this command will{' '}
-                        be inserted both at the end and at the beginning of the text.)
+                        Include a <code>\vphantom</code> command with the specified string. (If the{' '}
+                        <code>\parbox</code> option is selected, this command will be inserted both at the end
+                        and at the beginning of the text.)
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -254,7 +268,8 @@ export default class Label extends Ornament {
                 step: 1,
                 tooltip: (
                     <>
-                        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>).
+                        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>
+                        ).
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -278,7 +293,12 @@ export default class Label extends Ornament {
                     return [
                         (item, array) => {
                             if (!isNaN(delta) && delta !== 0 && item instanceof Label) {
-                                item.angle = getCyclicValue(item.angle + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+                                item.angle = getCyclicValue(
+                                    item.angle + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** ROUNDING_DIGITS
+                                );
                             }
                             return array;
                         },
@@ -287,7 +307,9 @@ export default class Label extends Ornament {
                 }
             case 'gap':
                 if (e) {
-                    const d = parseInputValue(e.target.value, MIN_GAP, MAX_GAP, this.gap, 0, ROUNDING_DIGITS) - this.gap;
+                    const d =
+                        parseInputValue(e.target.value, MIN_GAP, MAX_GAP, this.gap, 0, ROUNDING_DIGITS) -
+                        this.gap;
                     return [
                         (item, array) => {
                             if (!isNaN(d) && d !== 0 && item instanceof Ornament) {
@@ -371,7 +393,12 @@ export default class Label extends Ornament {
                     return [
                         (item, array) => {
                             if (!isNaN(delta) && delta !== 0 && item instanceof Label) {
-                                item.tilt = getCyclicValue(item.tilt + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+                                item.tilt = getCyclicValue(
+                                    item.tilt + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** ROUNDING_DIGITS
+                                );
                             }
                             return array;
                         },
@@ -426,12 +453,20 @@ export default class Label extends Ornament {
     override reset() {} // Since there is no reset button in the editor, we don't need to do anything here.
 
     override getInfoString() {
-        return [this.gap, this.angle, (this.parbox && this.mathMode) || (!this.parbox && this.centerText) ? 1 : 0].map(encode).join(' ');
+        return [
+            this.gap,
+            this.angle,
+            (this.parbox && this.mathMode) || (!this.parbox && this.centerText) ? 1 : 0,
+        ]
+            .map(encode)
+            .join(' ');
     }
 
     override getTexdrawCode(unitScale: number) {
         const vphantomCmd = this.vphant.length > 0 ? `\\vphantom{${this.vphant}}` : '';
-        const textWithVphantom = this.parbox ? `${vphantomCmd}${this.text}${vphantomCmd}` : `${vphantomCmd}${this.text}`;
+        const textWithVphantom = this.parbox
+            ? `${vphantomCmd}${this.text}${vphantomCmd}`
+            : `${vphantomCmd}${this.text}`;
         const centeredText = this.centerText;
         const textWithoutSizeCmds = this.parbox
             ? `\\parbox{${this.parboxWidth * unitScale}pt}{${centeredText ? '\\begin{center}' : ''}${textWithVphantom}${centeredText ? '\\end{center}' : ''}}`
@@ -452,11 +487,23 @@ export default class Label extends Ornament {
                 centered || hPos === 0 ? Texdraw.CENTER : hPos > 0 ? Texdraw.LEFT : Texdraw.RIGHT,
                 centered || vPos === 0 ? Texdraw.CENTER : vPos > 0 ? Texdraw.BOTTOM : Texdraw.TOP
             ),
-            Texdraw.text(x, y, this.tilt, clsx(this.fontSize !== normalFontSize && fontSizeCmds[fontSizeIndex], textWithoutSizeCmds)),
+            Texdraw.text(
+                x,
+                y,
+                this.tilt,
+                clsx(this.fontSize !== normalFontSize && fontSizeCmds[fontSizeIndex], textWithoutSizeCmds)
+            ),
         ].join('');
     }
 
-    override parse(tex: string, info: string | null, dimRatio: number, unitScale: number, displayFontFactor: number, name?: string) {
+    override parse(
+        tex: string,
+        info: string | null,
+        dimRatio: number,
+        unitScale: number,
+        displayFontFactor: number,
+        name?: string
+    ) {
         // The 'name' in this case is a string that identifies the node to which this Label is supposed to be attached.
         const texts = Texdraw.getTexts(tex);
         if (texts.length < 1) {
@@ -540,7 +587,14 @@ export default class Label extends Ornament {
         if (info) {
             const split = info.split(/\s+/).filter((s) => s.length > 0);
             if (split.length !== 3) {
-                throw new ParseError(<span>Label configuration string should contain exactly three elements, not {split.length}.</span>);
+                throw new ParseError(
+                    (
+                        <span>
+                            Label configuration string should contain exactly three elements, not{' '}
+                            {split.length}.
+                        </span>
+                    )
+                );
             }
             const [gap, angle, specialBit] = split.map((s) => {
                 const val = decode(s);
@@ -556,7 +610,8 @@ export default class Label extends Ornament {
                 throw new ParseError(
                     (
                         <span>
-                            Illegal data in definition of label for {name}: gap {scaledGap} below minimum value.
+                            Illegal data in definition of label for {name}: gap {scaledGap} below minimum
+                            value.
                         </span>
                     )
                 );
@@ -564,7 +619,8 @@ export default class Label extends Ornament {
                 throw new ParseError(
                     (
                         <span>
-                            Illegal data in definition of label for {name}: gap {scaledGap} exceeds maximum value.
+                            Illegal data in definition of label for {name}: gap {scaledGap} exceeds maximum
+                            value.
                         </span>
                     )
                 );
@@ -665,7 +721,8 @@ export default class Label extends Ornament {
             const n = lineStrings.length;
             lineStrings.forEach((s, i) => {
                 const textToMeasureH = s === '' ? 'a' : s;
-                const textToMeasureV = this.vphant && (i === 0 || i === n - 1) ? `${this.vphant}${s}` : s === '' ? 'a' : s;
+                const textToMeasureV =
+                    this.vphant && (i === 0 || i === n - 1) ? `${this.vphant}${s}` : s === '' ? 'a' : s;
                 const textMetricsH = ctx.measureText(textToMeasureH);
                 const textMetricsV = ctx.measureText(textToMeasureV);
                 const w = textMetricsH.width;
@@ -752,7 +809,9 @@ export default class Label extends Ornament {
 
         return (
             <div
-                className={focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'}
+                className={
+                    focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
+                }
                 id={this.id}
                 onMouseDown={(e) => onMouseDown(this, e)}
                 onMouseEnter={(e) => onMouseEnter(this, e)}
@@ -766,10 +825,16 @@ export default class Label extends Ornament {
                     transformOrigin: `${centered || hPos === 0 ? width / 2 : hPos === -1 ? width : 0}px ${centered || vPos === 0 ? height / 2 : vPos === -1 ? 0 : height}px`,
                 }}
             >
-                <svg width={width + MARK_LINEWIDTH * 4} height={height + MARK_LINEWIDTH * 4} xmlns="http://www.w3.org/2000/svg" style={{ overflow: 'visible' }}>
+                <svg
+                    width={width + MARK_LINEWIDTH * 4}
+                    height={height + MARK_LINEWIDTH * 4}
+                    xmlns='http://www.w3.org/2000/svg'
+                    style={{ overflow: 'visible' }}
+                >
                     {(() => {
                         if (lines.length > 0) {
-                            const fontClassName = !parbox && mathMode ? mathFont.className : normalFont.className;
+                            const fontClassName =
+                                !parbox && mathMode ? mathFont.className : normalFont.className;
                             const fillColor = `hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`;
                             if (parbox) {
                                 let next = firstAsc,
@@ -785,7 +850,11 @@ export default class Label extends Ornament {
                                             y={MARK_LINEWIDTH + top + baseLine}
                                             className={fontClassName}
                                             fontSize={fontSize}
-                                            wordSpacing={this.centerText ? 'normal' : `${(width - line.width) / line.text.split(/\s+/).length}px`}
+                                            wordSpacing={
+                                                this.centerText
+                                                    ? 'normal'
+                                                    : `${(width - line.width) / line.text.split(/\s+/).length}px`
+                                            }
                                             fill={fillColor}
                                         >
                                             {line.text}

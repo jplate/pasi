@@ -1,6 +1,7 @@
 import { round } from '../util/MathTools';
 
-const CODE = '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
+const CODE =
+    '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';
 export const ENCODE_BASE = CODE.length;
 export const ENCODE_PRECISION = 2; // The number of digits -- in base 100 -- to which we're rounding numbers when encoding them.
 const ROUNDING_DIGITS = 4; // The number of digits (in base 10) that we're using for the purposes of Math.round()

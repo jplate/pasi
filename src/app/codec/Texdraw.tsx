@@ -39,7 +39,7 @@ export class ParseError extends Error {
 export const makeParseError = (message: React.ReactNode, code: string): ParseError => {
     const long = code.length > 30;
     const codeComp = long ? (
-        <pre className="mt-6 w-[50rem]">
+        <pre className='mt-6 w-[50rem]'>
             <code>{code}</code>
         </pre>
     ) : (
@@ -200,7 +200,9 @@ export class Path extends Shape implements Fillable {
     }
 
     toString(): string {
-        const drawnFilled = [this.drawn ? 'drawn' : '', this.fillLevel > 0 ? 'filled' : ''].filter((s) => s !== '').join(', ');
+        const drawnFilled = [this.drawn ? 'drawn' : '', this.fillLevel > 0 ? 'filled' : '']
+            .filter((s) => s !== '')
+            .join(', ');
         return `(Path: ${drawnFilled} (${this.shapes.map((sh) => sh.toString()).join(', ')})`;
     }
 }
@@ -253,7 +255,12 @@ export class Text {
 export const translateShapes = (shapes: MathShape[]): Shape[] => {
     return shapes.map((sh) => {
         if ('x3' in sh) {
-            return new CubicCurve(new Point2D(sh.x0, sh.y0), new Point2D(sh.x1, sh.y1), new Point2D(sh.x2, sh.y2), new Point2D(sh.x3, sh.y3));
+            return new CubicCurve(
+                new Point2D(sh.x0, sh.y0),
+                new Point2D(sh.x1, sh.y1),
+                new Point2D(sh.x2, sh.y2),
+                new Point2D(sh.x3, sh.y3)
+            );
         } else {
             return new Line(new Point2D(sh.x0, sh.y0), new Point2D(sh.x1, sh.y1));
         }
@@ -287,7 +294,8 @@ const movePattern1 = /\\move\s*\((\S+)\s+(\S+)\)/;
 
 const shapePattern = /(.*?)(\\lvec|\\clvec|\\larc|\\lcir|\\fcir)/; // 1: preamble, 2: shape command
 
-const textPattern = /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\(h|v|r)text\s*(?:\s+td:(\S+)\s+)?\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
+const textPattern =
+    /\\textref\s+h:(.)\s+v:(.)(?!.*\\textref.*).*\\(h|v|r)text\s*(?:\s+td:(\S+)\s+)?\s*\((\S+)\s+(\S+)\)\{(.*)\}/g;
 
 export const extractDashArray = (s: string) => {
     const match = s.match(lpattPattern);
@@ -373,7 +381,10 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
 
         if (match) {
             if (!currentPoint) {
-                throw makeParseError('No specification of a starting point detected in the following code', code);
+                throw makeParseError(
+                    'No specification of a starting point detected in the following code',
+                    code
+                );
             }
 
             stroke = new Stroke(lw, dashArray);
@@ -400,7 +411,12 @@ export const getStrokedShapes = (code: string, defaultLinewidth: number): Stroke
                     } // fall through
                 case '\\larc':
                     if ((shapeMatch = shapeString.match(larcPattern))) {
-                        shape = new Arc(currentPoint, decodeFloat(shapeMatch[1]), decodeFloat(shapeMatch[2]), decodeFloat(shapeMatch[3]));
+                        shape = new Arc(
+                            currentPoint,
+                            decodeFloat(shapeMatch[1]),
+                            decodeFloat(shapeMatch[2]),
+                            decodeFloat(shapeMatch[3])
+                        );
                         break;
                     } // fall through
                 case '\\fcir': // fall through
@@ -520,7 +536,8 @@ export const circ = (r: number) => `\\lcir r:${encodeFloat(r)} `;
 
 export const fcirc = (r: number, f: number) => `\\fcir f:${encodeFloat(1 - f)} r:${encodeFloat(r)} `;
 
-export const textref = (horizontal: Position, vertical: Position) => `\\textref h:${horizontal} v:${vertical} `;
+export const textref = (horizontal: Position, vertical: Position) =>
+    `\\textref h:${horizontal} v:${vertical} `;
 
 export const movePoint = (s: string) => {
     const match = s.match(movePattern1);
@@ -534,7 +551,14 @@ export const movePoint = (s: string) => {
  * 2. There is at least one drawn shape.
  * 3. The specified linewidth is greater than zero.
  */
-export const getCommandSequence = (filledShapes: Shape[], drawnShapes: Shape[], openPath: boolean, lw: number, dash: number[], shading: number): string => {
+export const getCommandSequence = (
+    filledShapes: Shape[],
+    drawnShapes: Shape[],
+    openPath: boolean,
+    lw: number,
+    dash: number[],
+    shading: number
+): string => {
     const result: string[] = [];
     const filled = shading > 0;
     if (filled && filledShapes.length > 0) {

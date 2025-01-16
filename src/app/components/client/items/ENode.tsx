@@ -47,7 +47,9 @@ export interface Info {
 }
 
 export type Handler = {
-    [key: string]: (i: Info) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range];
+    [key: string]: (
+        i: Info
+    ) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range];
 };
 
 /**
@@ -127,12 +129,47 @@ export default class ENode extends Node {
 
     getNodeInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
-            { type: 'number input', key: 'radius', text: 'Radius', width: 'long', value: this.radius, step: 1 },
-            { type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: this.linewidth, step: 0.1 },
-            { type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: this.dashValidator.write(this.dash) },
-            { type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: this.shading, min: 0, max: 1, step: 0.1 },
+            {
+                type: 'number input',
+                key: 'radius',
+                text: 'Radius',
+                width: 'long',
+                value: this.radius,
+                step: 1,
+            },
+            {
+                type: 'number input',
+                key: 'lw',
+                text: 'Line width',
+                width: 'medium',
+                value: this.linewidth,
+                step: 0.1,
+            },
+            {
+                type: 'string input',
+                key: 'dash',
+                text: 'Stroke pattern',
+                width: 'long',
+                value: this.dashValidator.write(this.dash),
+            },
+            {
+                type: 'number input',
+                key: 'shading',
+                text: 'Shading',
+                width: 'medium',
+                value: this.shading,
+                min: 0,
+                max: 1,
+                step: 0.1,
+            },
             { type: 'gloss', text: '(Shading=0: transparent; >0: opaque)', style: 'mb-4 text-right text-xs' },
-            { type: 'number input', key: 'rank', text: 'Rank in paint-order', value: list.indexOf(this), step: 1 },
+            {
+                type: 'number input',
+                key: 'rank',
+                text: 'Rank in paint-order',
+                value: list.indexOf(this),
+                step: 1,
+            },
             { type: 'label', text: '', style: 'flex-1' }, // a filler
             { type: 'button', key: 'defaults', text: 'Defaults' },
         ];
@@ -171,7 +208,8 @@ export default class ENode extends Node {
             if (e)
                 return [
                     (item, array) => {
-                        if (item instanceof Node) item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
+                        if (item instanceof Node)
+                            item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
                         return array;
                     },
                     'ENodesAndCNodeGroups',
@@ -214,8 +252,19 @@ export default class ENode extends Node {
     editHandler: Handler = {
         x: ({ e, logIncrement, selection }: Info) => {
             if (e) {
-                const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce((min, item) => (min < item.x ? min : item.x), this.x);
-                const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
+                const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce(
+                    (min, item) => (min < item.x ? min : item.x),
+                    this.x
+                );
+                const delta =
+                    parseInputValue(
+                        e.target.value,
+                        0,
+                        MAX_X,
+                        this.x,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.x;
                 const dx = delta > dmin ? delta : 0; // this is to avoid items from being moved beyond the left border of the canvas
                 return [
                     (item, array) => {
@@ -230,7 +279,15 @@ export default class ENode extends Node {
         },
         y: ({ e, logIncrement }: Info) => {
             if (e) {
-                const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
+                const dy =
+                    parseInputValue(
+                        e.target.value,
+                        MIN_Y,
+                        MAX_Y,
+                        this.y,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.y;
                 return [
                     (item, array) => {
                         if (item instanceof Node && !isNaN(dy) && dy !== 0) {
@@ -329,13 +386,22 @@ export default class ENode extends Node {
      * @return an array of the remaining shapes.
      * NOT overridden by SNode. Instead, SNode calls this from its own implementation of parse().
      */
-    parseNode(stShapes: Texdraw.StrokedShape[], tex: string, info: string | null, dimRatio: number, name: string): Texdraw.StrokedShape[] {
+    parseNode(
+        stShapes: Texdraw.StrokedShape[],
+        tex: string,
+        info: string | null,
+        dimRatio: number,
+        name: string
+    ): Texdraw.StrokedShape[] {
         const circles = this.extractCircles(stShapes, tex);
         const n = circles.length;
 
         if (n > 0) {
             this.shading = validateShading(circles[0].fillLevel, name);
-            this.linewidth = this.linewidth100 = validateLinewidth(dimRatio * stShapes[n - 1].stroke.linewidth, name);
+            this.linewidth = this.linewidth100 = validateLinewidth(
+                dimRatio * stShapes[n - 1].stroke.linewidth,
+                name
+            );
             this.dash = this.dash100 = validateDash(
                 (this.linewidth > 0 // In this case the dash pattern can be got from the same shape:
                     ? stShapes[n - 1].stroke.pattern // If linewidth is zero, then there will be only one stroked shape (n will be equal
@@ -364,7 +430,14 @@ export default class ENode extends Node {
      *
      *  Overridden by SNode.
      */
-    override parse(tex: string, info: string | null, dimRatio: number, _unitScale?: number, _displayFontFactor?: number, name?: string): void {
+    override parse(
+        tex: string,
+        info: string | null,
+        dimRatio: number,
+        _unitScale?: number,
+        _displayFontFactor?: number,
+        name?: string
+    ): void {
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         this.parseNode(stShapes, tex, info, dimRatio, name ?? 'unnamed');
     }
@@ -414,7 +487,13 @@ export default class ENode extends Node {
             <React.Fragment key={id}>
                 <div
                     className={
-                        focusItem === this ? 'focused' : selectedPositions.length > 0 ? 'selected' : preselection.includes(this) ? 'preselected' : 'unselected'
+                        focusItem === this
+                            ? 'focused'
+                            : selectedPositions.length > 0
+                              ? 'selected'
+                              : preselection.includes(this)
+                                ? 'preselected'
+                                : 'unselected'
                     }
                     id={id}
                     //onClick={(e) => e.stopPropagation()}
@@ -431,12 +510,15 @@ export default class ENode extends Node {
                     <svg
                         width={width + MARK_LINEWIDTH * 2 + linewidth}
                         height={height + MARK_LINEWIDTH * 2 + linewidth + extraHeight}
-                        xmlns="http://www.w3.org/2000/svg"
+                        xmlns='http://www.w3.org/2000/svg'
                     >
                         <defs>
-                            <radialGradient id="Radial">
-                                <stop offset="0%" stopColor={addAlpha(markColor0, GHOST_CENTER_OPACITY)} />
-                                <stop offset="100%" stopColor={addAlpha(markColor0, GHOST_PERIPHERAL_OPACITY)} />
+                            <radialGradient id='Radial'>
+                                <stop offset='0%' stopColor={addAlpha(markColor0, GHOST_CENTER_OPACITY)} />
+                                <stop
+                                    offset='100%'
+                                    stopColor={addAlpha(markColor0, GHOST_PERIPHERAL_OPACITY)}
+                                />
                             </radialGradient>
                         </defs>
                         {!hidden && (

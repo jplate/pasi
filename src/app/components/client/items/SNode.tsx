@@ -21,7 +21,18 @@ import CNodeGroup from '../CNodeGroup';
 import CNode from './CNode';
 import { Entry, MAX_ROTATION_INPUT } from '../ItemEditor';
 import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents';
-import { Shape, round, getBounds, getPath, angle, angleDiff, CubicCurve, cubicBezier, closestTo, getCyclicValue } from '../../../util/MathTools';
+import {
+    Shape,
+    round,
+    getBounds,
+    getPath,
+    angle,
+    angleDiff,
+    CubicCurve,
+    cubicBezier,
+    closestTo,
+    getCyclicValue,
+} from '../../../util/MathTools';
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
@@ -40,7 +51,8 @@ export const validateGap = (gap: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: gap {gap} below minimum value.
+                    Illegal data in definition of state node <code>{name}</code>: gap {gap} below minimum
+                    value.
                 </span>
             )
         );
@@ -48,7 +60,8 @@ export const validateGap = (gap: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: gap {gap} exceeds maximum value.
+                    Illegal data in definition of state node <code>{name}</code>: gap {gap} exceeds maximum
+                    value.
                 </span>
             )
         );
@@ -61,7 +74,8 @@ export const validateT = (t: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: {t} below minimum <span className="whitespace-nowrap">t-value</span>.
+                    Illegal data in definition of state node <code>{name}</code>: {t} below minimum{' '}
+                    <span className='whitespace-nowrap'>t-value</span>.
                 </span>
             )
         );
@@ -69,7 +83,8 @@ export const validateT = (t: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: {t} exceeds maximum <span className="whitespace-nowrap">t-value</span>.
+                    Illegal data in definition of state node <code>{name}</code>: {t} exceeds maximum{' '}
+                    <span className='whitespace-nowrap'>t-value</span>.
                 </span>
             )
         );
@@ -82,7 +97,8 @@ export const validateDistance = (d: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: distance {d} below minimum value.
+                    Illegal data in definition of state node <code>{name}</code>: distance {d} below minimum
+                    value.
                 </span>
             )
         );
@@ -90,7 +106,8 @@ export const validateDistance = (d: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of state node <code>{name}</code>: distance {d} exceeds maximum value.
+                    Illegal data in definition of state node <code>{name}</code>: distance {d} exceeds maximum
+                    value.
                 </span>
             )
         );
@@ -150,11 +167,11 @@ export default abstract class SNode extends ENode {
         this.locationDefined = false;
     }
 
-    override isIndependent() {
+    override isIndependent(): boolean {
         return false;
     }
 
-    override getString() {
+    override getString(): string {
         return `${this.id}(S)`;
     }
 
@@ -170,7 +187,13 @@ export default abstract class SNode extends ENode {
     abstract getDefaultWC(): number;
 
     override isHidden(selected: boolean) {
-        return !selected && this.shading === 0 && this.dash.length === 0 && this.ornaments.length === 0 && this.dependentNodes.length === 0;
+        return (
+            !selected &&
+            this.shading === 0 &&
+            this.dash.length === 0 &&
+            this.ornaments.length === 0 &&
+            this.dependentNodes.length === 0
+        );
     }
 
     override getDefaultRadius() {
@@ -315,7 +338,12 @@ export default abstract class SNode extends ENode {
      * This function is supposed to be called as a result of user input.
      */
     adjustExitAngle(k: number, delta: number): void {
-        const a = getCyclicValue((k === 0 ? this.phi0 : this.phi1) + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+        const a = getCyclicValue(
+            (k === 0 ? this.phi0 : this.phi1) + delta,
+            MIN_ROTATION,
+            360,
+            10 ** ROUNDING_DIGITS
+        );
         if (k === 0) {
             this.phi0 = a;
         } else {
@@ -366,19 +394,25 @@ export default abstract class SNode extends ENode {
             if (n0 instanceof CNode) {
                 if (n1 instanceof CNode) {
                     tooltipExtension = (
-                        <>the connector&rsquo;s end points switch to whichever nodes of the corresponding contour node groups are closest together.</>
+                        <>
+                            the connector&rsquo;s end points switch to whichever nodes of the corresponding
+                            contour node groups are closest together.
+                        </>
                     );
                 } else {
                     tooltipExtension = (
                         <>
-                            the connector&rsquo;s starting point switches to whichever node of the source node&rsquo;s contour node group is closest to the
-                            target node.
+                            the connector&rsquo;s starting point switches to whichever node of the source
+                            node&rsquo;s contour node group is closest to the target node.
                         </>
                     );
                 }
             } else {
                 tooltipExtension = (
-                    <>the connector&rsquo;s end point switches to whichever node of the target node&rsquo;s contour node group is closest to the source node.</>
+                    <>
+                        the connector&rsquo;s end point switches to whichever node of the target node&rsquo;s
+                        contour node group is closest to the source node.
+                    </>
                 );
             }
             checkBoxInfo = [
@@ -394,7 +428,14 @@ export default abstract class SNode extends ENode {
             ];
         }
         return [
-            { type: 'number input', key: 'conLw', text: 'Line width', width: 'medium', value: this.conLinewidth, step: 0.1 },
+            {
+                type: 'number input',
+                key: 'conLw',
+                text: 'Line width',
+                width: 'medium',
+                value: this.conLinewidth,
+                step: 0.1,
+            },
             {
                 type: 'string input',
                 key: 'conDash',
@@ -415,8 +456,9 @@ export default abstract class SNode extends ENode {
                 max: MAX_ROTATION_INPUT,
                 tooltip: (
                     <>
-                        The angle (in degrees) by which a straight line from the center of the connector&rsquo;s source node to its first control point would
-                        deviate from a straight line between the centers of the two nodes.
+                        The angle (in degrees) by which a straight line from the center of the
+                        connector&rsquo;s source node to its first control point would deviate from a straight
+                        line between the centers of the two nodes.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -428,7 +470,9 @@ export default abstract class SNode extends ENode {
                 width: 'long',
                 value: this.d0,
                 step: 0,
-                tooltip: <>The distance from the connector&rsquo;s starting point to its first control point.</>,
+                tooltip: (
+                    <>The distance from the connector&rsquo;s starting point to its first control point.</>
+                ),
                 tooltipPlacement: 'left',
             },
             {
@@ -452,8 +496,9 @@ export default abstract class SNode extends ENode {
                 max: MAX_ROTATION_INPUT,
                 tooltip: (
                     <>
-                        The angle (in degrees) by which a straight line from the center of the connector&rsquo;s target node to its second control point would
-                        deviate from a straight line between the centers of the two nodes.
+                        The angle (in degrees) by which a straight line from the center of the
+                        connector&rsquo;s target node to its second control point would deviate from a
+                        straight line between the centers of the two nodes.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -488,8 +533,21 @@ export default abstract class SNode extends ENode {
      */
     getArrowheadInfo(): Entry[] {
         return [
-            { type: 'number input', key: 'ahLw', text: 'Line width', width: 'medium', value: this.ahLinewidth, step: 0.1 },
-            { type: 'string input', key: 'ahDash', text: 'Stroke pattern', width: 'long', value: this.ahDashValidator.write(this.ahDash) },
+            {
+                type: 'number input',
+                key: 'ahLw',
+                text: 'Line width',
+                width: 'medium',
+                value: this.ahLinewidth,
+                step: 0.1,
+            },
+            {
+                type: 'string input',
+                key: 'ahDash',
+                text: 'Stroke pattern',
+                width: 'long',
+                value: this.ahDashValidator.write(this.ahDash),
+            },
         ];
     }
 
@@ -516,7 +574,8 @@ export default abstract class SNode extends ENode {
             if (e)
                 return [
                     (item, array) => {
-                        if (item instanceof SNode) item.setConnectorLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
+                        if (item instanceof SNode)
+                            item.setConnectorLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
                         return array;
                     },
                     'ENodesAndCNodeGroups',
@@ -551,8 +610,14 @@ export default abstract class SNode extends ENode {
         gap0: ({ e, logIncrement }: Info) => {
             if (e) {
                 const d =
-                    parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.gap0, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) -
-                    this.gap0;
+                    parseInputValue(
+                        e.target.value,
+                        MIN_DISTANCE,
+                        MAX_DISTANCE,
+                        this.gap0,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.gap0;
                 return [
                     (item, array) => {
                         if (!isNaN(d) && d !== 0 && item instanceof SNode) {
@@ -581,7 +646,14 @@ export default abstract class SNode extends ENode {
         d0: ({ e, logIncrement }: Info) => {
             if (e) {
                 const d =
-                    parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.d0, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.d0;
+                    parseInputValue(
+                        e.target.value,
+                        MIN_DISTANCE,
+                        MAX_DISTANCE,
+                        this.d0,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.d0;
                 return [
                     (item, array) => {
                         if (!isNaN(d) && d !== 0 && item instanceof SNode) {
@@ -596,8 +668,14 @@ export default abstract class SNode extends ENode {
         gap1: ({ e, logIncrement }: Info) => {
             if (e) {
                 const d =
-                    parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.gap1, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) -
-                    this.gap1;
+                    parseInputValue(
+                        e.target.value,
+                        MIN_DISTANCE,
+                        MAX_DISTANCE,
+                        this.gap1,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.gap1;
                 return [
                     (item, array) => {
                         if (!isNaN(d) && d !== 0 && item instanceof SNode) {
@@ -626,7 +704,14 @@ export default abstract class SNode extends ENode {
         d1: ({ e, logIncrement }: Info) => {
             if (e) {
                 const d =
-                    parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.d1, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.d1;
+                    parseInputValue(
+                        e.target.value,
+                        MIN_DISTANCE,
+                        MAX_DISTANCE,
+                        this.d1,
+                        logIncrement,
+                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                    ) - this.d1;
                 return [
                     (item, array) => {
                         if (!isNaN(d) && d !== 0 && item instanceof SNode) {
@@ -656,7 +741,8 @@ export default abstract class SNode extends ENode {
             if (e)
                 return [
                     (item, array) => {
-                        if (item instanceof SNode) item.setArrowheadLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
+                        if (item instanceof SNode)
+                            item.setArrowheadLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
                         return array;
                     },
                     'ENodesAndCNodeGroups',
@@ -750,7 +836,11 @@ export default abstract class SNode extends ENode {
 
     override extractCircles(stShapes: Texdraw.StrokedShape[]) {
         const circles: Texdraw.Circle[] = [];
-        for (let i = 0; i < Math.min(2, stShapes.length) && stShapes[i].shape instanceof Texdraw.Circle; i++) {
+        for (
+            let i = 0;
+            i < Math.min(2, stShapes.length) && stShapes[i].shape instanceof Texdraw.Circle;
+            i++
+        ) {
             // We tolerate there being more than two shapes, since there may also be shapes for a connector and arrowhead.
             circles.push(stShapes[i].shape as Texdraw.Circle);
         }
@@ -797,7 +887,11 @@ export default abstract class SNode extends ENode {
      *
      * Expected to be overridden by subclasses that use a connector that is more complex than a single CubicCurve.
      */
-    parseConnector(stShapes: Texdraw.StrokedShape[], dimRatio: number, nodeName: string): [Texdraw.StrokedShape[], number, number] {
+    parseConnector(
+        stShapes: Texdraw.StrokedShape[],
+        dimRatio: number,
+        nodeName: string
+    ): [Texdraw.StrokedShape[], number, number] {
         if (stShapes.length === 0 || !(stShapes[0].shape instanceof Texdraw.CubicCurve)) {
             throw new ParseError(
                 (
@@ -822,7 +916,13 @@ export default abstract class SNode extends ENode {
      * supplied arguments.
      * @return the supplied array of Texdraw.StrokedShapes minus the first shape.
      */
-    parseArrowhead(stShapes: Texdraw.StrokedShape[], cpx: number, cpy: number, dimRatio: number, nodeName: string): Texdraw.StrokedShape[] {
+    parseArrowhead(
+        stShapes: Texdraw.StrokedShape[],
+        cpx: number,
+        cpy: number,
+        dimRatio: number,
+        nodeName: string
+    ): Texdraw.StrokedShape[] {
         if (stShapes.length === 0) {
             throw new ParseError(
                 (
@@ -841,7 +941,14 @@ export default abstract class SNode extends ENode {
         return stShapes.slice(1);
     }
 
-    override parse(tex: string, info: string | null, dimRatio: number, _unitScale?: number, _displayFontFactor?: number, name?: string): void {
+    override parse(
+        tex: string,
+        info: string | null,
+        dimRatio: number,
+        _unitScale?: number,
+        _displayFontFactor?: number,
+        name?: string
+    ): void {
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         //console.log(`stroked shapes: ${stShapes.map(sh => sh.toString()).join()}`);
 
@@ -853,7 +960,12 @@ export default abstract class SNode extends ENode {
         if (!info) {
             throw new ParseError(<span>Missing information: empty info string.</span>);
         }
-        this.parseInfoString(info, dimRatio, stShapes.length > 0 && stShapes[stShapes.length - 1].shape instanceof Texdraw.Circle, nodeName);
+        this.parseInfoString(
+            info,
+            dimRatio,
+            stShapes.length > 0 && stShapes[stShapes.length - 1].shape instanceof Texdraw.Circle,
+            nodeName
+        );
     }
 
     /**
@@ -912,8 +1024,14 @@ export default abstract class SNode extends ENode {
         } else {
             const [chi0, chi1] = this.findPreferredAngles(visited);
             const factor = 10 ** ROUNDING_DIGITS;
-            this.phi0 = round(Math.round((angleDiff(base, chi0) / Math.PI) * 180 * factor) / factor, ROUNDING_DIGITS);
-            this.phi1 = round(Math.round((angleDiff(chi1, base + Math.PI) / Math.PI) * 180 * factor) / factor, ROUNDING_DIGITS);
+            this.phi0 = round(
+                Math.round((angleDiff(base, chi0) / Math.PI) * 180 * factor) / factor,
+                ROUNDING_DIGITS
+            );
+            this.phi1 = round(
+                Math.round((angleDiff(chi1, base + Math.PI) / Math.PI) * 180 * factor) / factor,
+                ROUNDING_DIGITS
+            );
             return [chi0, chi1];
         }
     }
@@ -922,7 +1040,13 @@ export default abstract class SNode extends ENode {
      * @return a CubicCurve corresponding to the supplied parameters.
      * @param visited to prevent infinite loops.
      */
-    getLineFor(psi0: number, cpr0: number, psi1: number, cpr1: number, visited: Set<SNode> = new Set<SNode>()): CubicCurve {
+    getLineFor(
+        psi0: number,
+        cpr0: number,
+        psi1: number,
+        cpr1: number,
+        visited: Set<SNode> = new Set<SNode>()
+    ): CubicCurve {
         const [n0, n1] = this.involutes;
         const [x0, y0] = n0.getLocation(visited);
         const [x1, y1] = n1.getLocation(visited);
@@ -1032,7 +1156,9 @@ export default abstract class SNode extends ENode {
         const width = maxX - minX;
         const height = maxY - minY;
         if (isNaN(width) || isNaN(height)) {
-            console.warn(`Illegal values in connector shapes: minX: ${minX}, maxX: ${maxX}, minY: ${minY}, maxY: ${maxY}.`);
+            console.warn(
+                `Illegal values in connector shapes: minX: ${minX}, maxX: ${maxX}, minY: ${minY}, maxY: ${maxY}.`
+            );
             return null;
         }
         const conLw = this.conLinewidth;
@@ -1057,10 +1183,10 @@ export default abstract class SNode extends ENode {
                     pointerEvents: 'none',
                 }}
             >
-                <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns="http://www.w3.org/2000/svg">
+                <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns='http://www.w3.org/2000/svg'>
                     <path
                         d={conPath}
-                        fill="none"
+                        fill='none'
                         stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                         strokeWidth={conLw}
                         strokeDasharray={this.conDash.join(' ')}
@@ -1069,7 +1195,7 @@ export default abstract class SNode extends ENode {
                     />
                     <path
                         d={ahPath}
-                        fill="none"
+                        fill='none'
                         stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                         strokeWidth={ahLw}
                         strokeDasharray={this.ahDash.join(' ')}

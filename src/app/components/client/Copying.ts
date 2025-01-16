@@ -224,7 +224,14 @@ export const copyStandardGroup = (
             case m instanceof Ornament: {
                 const nodeShouldBeCopied = toBeCopied.has(m.node);
                 if (!nodeShouldBeCopied) {
-                    [mCopy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, gnodes);
+                    [mCopy, enCounter] = copyOrnament(
+                        m,
+                        enCounter,
+                        hDisplacement,
+                        vDisplacement,
+                        copies,
+                        gnodes
+                    );
                 } else if (copies.has(m.id)) {
                     // This will be the case if previously a Node has been copied to which m is attached.
                     const oCopy = copies.get(m.id);
@@ -277,7 +284,14 @@ const copy = (
                 const nodeShouldBeCopied = toBeCopied.has(m.node);
                 if (!nodeShouldBeCopied) {
                     let copy;
-                    [copy, enCounter] = copyOrnament(m, enCounter, hDisplacement, vDisplacement, copies, gnodes);
+                    [copy, enCounter] = copyOrnament(
+                        m,
+                        enCounter,
+                        hDisplacement,
+                        vDisplacement,
+                        copies,
+                        gnodes
+                    );
                     if (m.group) {
                         m.group.members.push(copy);
                     }
@@ -466,7 +480,15 @@ export const copyItems = (
     }
     const newFocusItem = focusItem && ((copies.get(focusItem.id) || null) as Item | null);
 
-    return [copiedList, [...ghosts.values()], newSelection, newFocusItem, newENodeCounter, newCNGCounter, newSGCounter];
+    return [
+        copiedList,
+        [...ghosts.values()],
+        newSelection,
+        newFocusItem,
+        newENodeCounter,
+        newCNGCounter,
+        newSGCounter,
+    ];
 };
 
 /**

@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx/lite';
 //import assert from 'assert'
 import Item, { HSL } from './items/Item';
 import Node, {
@@ -12,7 +13,16 @@ import Node, {
     MAX_DASH_VALUE,
 } from './items/Node';
 import Group from './Group.tsx';
-import { H, MARK_LINEWIDTH, MAX_X, MIN_X, MAX_Y, MIN_Y, ROUNDING_DIGITS, MIN_ROTATION } from '../../Constants';
+import {
+    H,
+    MARK_LINEWIDTH,
+    MAX_X,
+    MIN_X,
+    MAX_Y,
+    MIN_Y,
+    ROUNDING_DIGITS,
+    MIN_ROTATION,
+} from '../../Constants';
 import { DashValidator } from './EditorComponents.tsx';
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx';
 import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools';
@@ -131,7 +141,9 @@ export default class CNodeGroup implements Group<CNode> {
 
     /** Returns the bounds of this NodeGroup, taking into account also the control points of the various (non-omitted) lines connecting the nodes.
      */
-    getBounds = (lines: CubicCurve[] = this.getLines()): { minX: number; maxX: number; minY: number; maxY: number } => {
+    getBounds = (
+        lines: CubicCurve[] = this.getLines()
+    ): { minX: number; maxX: number; minY: number; maxY: number } => {
         const n = this.members.length;
         let minX = Infinity,
             maxX = -Infinity,
@@ -206,12 +218,19 @@ export default class CNodeGroup implements Group<CNode> {
      */
     centerDivDimensions = () => {
         const { minX: nodalMinX, maxX: nodalMaxX, minY: nodalMinY, maxY: nodalMaxY } = this.getNodalBounds();
-        const cdW = Math.min((nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO, CONTOUR_CENTER_DIV_MAX_WIDTH);
-        const cdH = Math.min((nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO, CONTOUR_CENTER_DIV_MAX_HEIGHT);
+        const cdW = Math.min(
+            (nodalMaxX - nodalMinX) * CONTOUR_CENTER_DIV_WIDTH_RATIO,
+            CONTOUR_CENTER_DIV_MAX_WIDTH
+        );
+        const cdH = Math.min(
+            (nodalMaxY - nodalMinY) * CONTOUR_CENTER_DIV_HEIGHT_RATIO,
+            CONTOUR_CENTER_DIV_MAX_HEIGHT
+        );
         return [cdW, cdH];
     };
 
-    getString = () => `CNG${this.id}[${this.members.map((member) => member.getString() + (member.isActiveMember ? '(A)' : '')).join(', ')}]`;
+    getString = () =>
+        `CNG${this.id}[${this.members.map((member) => member.getString() + (member.isActiveMember ? '(A)' : '')).join(', ')}]`;
 
     /**
      * A function called in order to change the locations of one or more members. Member nodes that have the 'fixed Angles' property propagate their movement
@@ -245,7 +264,10 @@ export default class CNodeGroup implements Group<CNode> {
                         if (nodes.includes(next)) break;
 
                         if (x0 == next.x) {
-                            if ((y0 < next.y && y0 + cdy < next.y - bd) || (y0 > next.y && y0 + cdy > next.y + bd)) {
+                            if (
+                                (y0 < next.y && y0 + cdy < next.y - bd) ||
+                                (y0 > next.y && y0 + cdy > next.y + bd)
+                            ) {
                                 cdy = 0;
                             } else if (y0 < next.y) {
                                 cdy = y0 + cdy - next.y + bd;
@@ -254,7 +276,10 @@ export default class CNodeGroup implements Group<CNode> {
                             }
                         }
                         if (y0 == next.y) {
-                            if ((x0 < next.x && x0 + cdx < next.x - bd) || (x0 > next.x && x0 + cdx > next.x + bd)) {
+                            if (
+                                (x0 < next.x && x0 + cdx < next.x - bd) ||
+                                (x0 > next.x && x0 + cdx > next.x + bd)
+                            ) {
                                 cdx = 0;
                             } else if (x0 < next.x) {
                                 cdx = x0 + cdx - next.x + bd;
@@ -407,8 +432,11 @@ export default class CNodeGroup implements Group<CNode> {
 
         // Next, we construct and encode the three arrays of booleans:
         const keys: (keyof CNode)[] = ['omitLine', 'fixedAngles', 'isActiveMember'];
-        const encodeArray = (array: boolean[]): boolean | string => (array.every((b) => b) ? true : array.every((b) => !b) ? false : toBase64(array));
-        const flagReps: (boolean | string)[] = keys.map((key) => encodeArray(this.members.map((m) => m[key]) as boolean[]));
+        const encodeArray = (array: boolean[]): boolean | string =>
+            array.every((b) => b) ? true : array.every((b) => !b) ? false : toBase64(array);
+        const flagReps: (boolean | string)[] = keys.map((key) =>
+            encodeArray(this.members.map((m) => m[key]) as boolean[])
+        );
         if (flagReps.every((f) => typeof f === 'boolean')) {
             let byte = 0;
             for (let i = 0; i < keys.length; i++) {
@@ -475,7 +503,14 @@ export default class CNodeGroup implements Group<CNode> {
             }
             drawnLines.push(...initialSegment);
         }
-        const shapeCommands = Texdraw.getCommandSequence(filledLines, drawnLines, foundGap, this.linewidth, this.dash, this.shading);
+        const shapeCommands = Texdraw.getCommandSequence(
+            filledLines,
+            drawnLines,
+            foundGap,
+            this.linewidth,
+            this.dash,
+            this.shading
+        );
         // If there are no drawnLines, then shapeCommands won't contain any information about linewidth and dash array. Similarly if the linewidth is zero. So, in these cases,
         // we'll supply that information upfront:
         const result: string[] = [];
@@ -491,7 +526,9 @@ export default class CNodeGroup implements Group<CNode> {
 
     parse(tex: string, info: string | null, dimRatio: number): void {
         if (info === null) {
-            throw new ParseError(<span>Incomplete definition of contour node group: info string required.</span>);
+            throw new ParseError(
+                <span>Incomplete definition of contour node group: info string required.</span>
+            );
         }
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
 
@@ -499,8 +536,14 @@ export default class CNodeGroup implements Group<CNode> {
 
         const paths: (Texdraw.CubicCurve | Texdraw.Path)[] = [];
         for (let i = 0; i < stShapes.length; i++) {
-            if (!(stShapes[i].shape instanceof Texdraw.CubicCurve) && !(stShapes[i].shape instanceof Texdraw.Path)) {
-                throw makeParseError(`Expected a curve/line sequence, not ${stShapes[i].shape.genericDescription}`, tex);
+            if (
+                !(stShapes[i].shape instanceof Texdraw.CubicCurve) &&
+                !(stShapes[i].shape instanceof Texdraw.Path)
+            ) {
+                throw makeParseError(
+                    `Expected a curve/line sequence, not ${stShapes[i].shape.genericDescription}`,
+                    tex
+                );
             }
             paths.push(stShapes[i].shape as Texdraw.Path);
         }
@@ -508,7 +551,10 @@ export default class CNodeGroup implements Group<CNode> {
         const split = info.split(/\s*;\s*/);
         // The length of split should be at least 3: two numbers and at least one string representing a node.
         if (split.length < 3) {
-            throw makeParseError(`Info string should contain at least 3 elements, found ${split.length}`, info);
+            throw makeParseError(
+                `Info string should contain at least 3 elements, found ${split.length}`,
+                info
+            );
         }
         // check if the second element represents a number between 0 and 7 (in which case this element will be taken to represent three bits representing boolean arrays):
         const arraysAsNum = split[1].match(/^[0-7]$/) !== null;
@@ -540,17 +586,38 @@ export default class CNodeGroup implements Group<CNode> {
                           result = fromBase64(s);
                   }
                   if (result.length < n) {
-                      throw new ParseError(<span>Corrupt data in definition of contour node group: array length does not match number of nodes ({n}).</span>);
+                      throw new ParseError(
+                          (
+                              <span>
+                                  Corrupt data in definition of contour node group: array length does not
+                                  match number of nodes ({n}).
+                              </span>
+                          )
+                      );
                   }
                   return result;
               });
 
         // Extract information about the fill level and the start index for decoding node information:
-        const fillLevel = stShapes.length > 0 ? (stShapes[0].shape as Texdraw.CubicCurve | Texdraw.Path).fillLevel : 0;
+        const fillLevel =
+            stShapes.length > 0 ? (stShapes[0].shape as Texdraw.CubicCurve | Texdraw.Path).fillLevel : 0;
         if (fillLevel < 0) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: shading value should not be negative.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: shading value should not be
+                        negative.
+                    </span>
+                )
+            );
         } else if (fillLevel > 1) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: shading value {fillLevel} exceeds 1.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: shading value {fillLevel} exceeds 1.
+                    </span>
+                )
+            );
         }
         this.shading = fillLevel;
         const index = fillLevel === 0 ? decode(split[0]) : 0; // If fillLevel is non-zero, we'll use the curves of the filled-in Path rather than those (if any) that
@@ -572,19 +639,52 @@ export default class CNodeGroup implements Group<CNode> {
             this.dash = this.dash100 = stroke.pattern.map((v) => dimRatio * v);
         }
         if (this.linewidth < 0) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: line width should not be negative.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: line width should not be negative.
+                    </span>
+                )
+            );
         } else if (this.linewidth > MAX_LINEWIDTH) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: line width {this.linewidth} exceeds maximum value.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: line width {this.linewidth} exceeds
+                        maximum value.
+                    </span>
+                )
+            );
         }
         if (this.dash.length > MAX_DASH_LENGTH) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: dash array length {this.dash.length} exceeds maximum value.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: dash array length {this.dash.length}{' '}
+                        exceeds maximum value.
+                    </span>
+                )
+            );
         }
         if (this.dash.some((v) => v < 0)) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: dash value should not be negative.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: dash value should not be negative.
+                    </span>
+                )
+            );
         }
         let val;
         if (this.dash.some((v) => (val = v) > MAX_DASH_VALUE)) {
-            throw new ParseError(<span>Illegal data in definition of contour node group: dash value {val} exceeds maximum value.</span>);
+            throw new ParseError(
+                (
+                    <span>
+                        Illegal data in definition of contour node group: dash value {val} exceeds maximum
+                        value.
+                    </span>
+                )
+            );
         }
 
         // We now have to create and configure the individual nodes, and add them as members, to replace any old ones:
@@ -623,7 +723,9 @@ export default class CNodeGroup implements Group<CNode> {
                 });
             } else {
                 const curve = curves[curveIndex];
-                const { x: rawX, y: rawY } = lookingAtEndPoint ? curve.getEndPoint() : curve.getStartingPoint();
+                const { x: rawX, y: rawY } = lookingAtEndPoint
+                    ? curve.getEndPoint()
+                    : curve.getStartingPoint();
                 [x, y] = [rawX, rawY].map((v) => round(dimRatio * v, Texdraw.ROUNDING_DIGITS));
                 if (lookingAtEndPoint || fillLevel > 0) {
                     curveIndex++;
@@ -644,14 +746,40 @@ export default class CNodeGroup implements Group<CNode> {
             prevOmit = omitLine[k];
 
             if (x < MIN_X) {
-                throw new ParseError(<span>Illegal configuration data for contour node: X-coordinate {x} below minimum value.</span>);
+                throw new ParseError(
+                    (
+                        <span>
+                            Illegal configuration data for contour node: X-coordinate {x} below minimum value.
+                        </span>
+                    )
+                );
             } else if (x > MAX_X) {
-                throw new ParseError(<span>Illegal configuration data for contour node: X-coordinate {x} exceeds maximum value.</span>);
+                throw new ParseError(
+                    (
+                        <span>
+                            Illegal configuration data for contour node: X-coordinate {x} exceeds maximum
+                            value.
+                        </span>
+                    )
+                );
             }
             if (y < MIN_Y) {
-                throw new ParseError(<span>Illegal configuration data for contour node: Y-coordinate {y} below minimum value.</span>);
+                throw new ParseError(
+                    (
+                        <span>
+                            Illegal configuration data for contour node: Y-coordinate {y} below minimum value.
+                        </span>
+                    )
+                );
             } else if (y > MAX_Y) {
-                throw new ParseError(<span>Illegal configuration data for contour node: Y-coordinate {y} exceeds maximum value.</span>);
+                throw new ParseError(
+                    (
+                        <span>
+                            Illegal configuration data for contour node: Y-coordinate {y} exceeds maximum
+                            value.
+                        </span>
+                    )
+                );
             }
 
             let [a0, a1, d0, d1] = nodeInfo.slice(0, coordinateIndex).map((s) => {
@@ -705,9 +833,18 @@ export interface ContourProps {
     markColor: string;
     centerDivClickable: boolean;
     showCenterDiv: boolean;
-    onMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void;
-    onMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void;
-    onMouseLeave: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void;
+    onMouseDown: (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => void;
+    onMouseEnter: (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => void;
+    onMouseLeave: (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => void;
 }
 
 export const Contour = ({
@@ -741,7 +878,11 @@ export const Contour = ({
                 .map((line, i) =>
                     group.members[i].omitLine
                         ? `M ${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc} `
-                        : `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc}, ${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc}, ${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                        : clsx(
+                              `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
+                              `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
+                              `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                        )
                 )
                 .join(' ');
 
@@ -750,7 +891,10 @@ export const Contour = ({
             lines
                 .map(
                     (line) =>
-                        `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc}, ${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc}, ${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                        clsx(`C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
+                            `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
+                            `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                        )
                 )
                 .join(' ');
 
@@ -771,7 +915,7 @@ export const Contour = ({
                     <svg
                         width={maxX - minX + 2 * linewidth + 1}
                         height={maxY - minY + 2 * linewidth + 1}
-                        xmlns="http://www.w3.org/2000/svg"
+                        xmlns='http://www.w3.org/2000/svg'
                         pointerEvents={shading > 0 ? 'fill' : 'none'}
                     >
                         {shading > 0 && (
@@ -787,13 +931,13 @@ export const Contour = ({
                                           `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,` +
                                           `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`
                                 }
-                                stroke="none"
+                                stroke='none'
                             />
                         )}
                         {linewidth > 0 && (
                             <path
                                 d={linePath}
-                                fill="none"
+                                fill='none'
                                 stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                                 strokeWidth={linewidth}
                                 strokeDasharray={dash.join(' ')}
@@ -823,7 +967,7 @@ export const Contour = ({
                             <polyline
                                 points={`${mlw2},${mlw2} ${cdW + mlw2},${mlw2} ${cdW + mlw2},${cdH + mlw2} ${mlw2},${cdH + mlw2} ${mlw2},${mlw2} ${3},${mlw2}`}
                                 stroke={markColor}
-                                fill="none"
+                                fill='none'
                             />
                         </svg>
                     </div>
@@ -852,8 +996,14 @@ interface CNodeGroupCompProps {
         clearPreselection?: boolean
     ) => void;
     itemMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-    groupMouseDown: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void;
-    groupMouseEnter: (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => void;
+    groupMouseDown: (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => void;
+    groupMouseEnter: (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => void;
     mouseLeft: () => void;
 }
 
@@ -884,7 +1034,10 @@ export const CNodeGroupComp = ({
         const icx = left + w2;
         const icy = bottom + h2;
         // Return true iff the item is just about covered by the center div:
-        return Math.abs(c.x - icx) + w2 < cdW / 2 + CONTOUR_CENTER_DIV_MARGIN && Math.abs(c.y - icy) + h2 < cdH / 2 + CONTOUR_CENTER_DIV_MARGIN;
+        return (
+            Math.abs(c.x - icx) + w2 < cdW / 2 + CONTOUR_CENTER_DIV_MARGIN &&
+            Math.abs(c.y - icy) + h2 < cdH / 2 + CONTOUR_CENTER_DIV_MARGIN
+        );
     });
     // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by
     // 'next node' and 'previous node' in the tooltips and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected
@@ -911,8 +1064,14 @@ export const CNodeGroupComp = ({
             const next = nodeGroup.members[j == last ? 0 : j + 1];
             const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);
             const arrow =
-                (selected && (defer || (allSelected && j == 0) || (!allSelected && !selectedNodes[j == 0 ? last : j - 1]))) ||
-                (preselected && (defer || (!someSelected && allPreselected && j == 0) || (!allPreselected && !preselectedNodes[j == 0 ? last : j - 1])));
+                (selected &&
+                    (defer ||
+                        (allSelected && j == 0) ||
+                        (!allSelected && !selectedNodes[j == 0 ? last : j - 1]))) ||
+                (preselected &&
+                    (defer ||
+                        (!someSelected && allPreselected && j == 0) ||
+                        (!allPreselected && !preselectedNodes[j == 0 ? last : j - 1])));
             if (arrow && d < MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
                 defer = true;
             } else {
@@ -932,7 +1091,11 @@ export const CNodeGroupComp = ({
                 primaryColor={primaryColor}
                 markColor={markColor}
                 centerDivClickable={centerDivClickable}
-                showCenterDiv={focusItem instanceof CNode && focusItem.fixedAngles && nodeGroup.members.includes(focusItem)}
+                showCenterDiv={
+                    focusItem instanceof CNode &&
+                    focusItem.fixedAngles &&
+                    nodeGroup.members.includes(focusItem)
+                }
                 onMouseDown={groupMouseDown}
                 onMouseEnter={groupMouseEnter}
                 onMouseLeave={() => mouseLeft()}

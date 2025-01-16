@@ -33,7 +33,12 @@ export default class Adjunction extends SNode {
                 return [
                     (item, array) => {
                         if (!isNaN(delta) && delta !== 0 && item instanceof Adjunction) {
-                            item.hookAngle = getCyclicValue(item.hookAngle + delta, MIN_ROTATION, 360, 10 ** ROUNDING_DIGITS);
+                            item.hookAngle = getCyclicValue(
+                                item.hookAngle + delta,
+                                MIN_ROTATION,
+                                360,
+                                10 ** ROUNDING_DIGITS
+                            );
                         }
                         return array;
                     },
@@ -43,7 +48,15 @@ export default class Adjunction extends SNode {
         },
         hookLength: ({ e }: Info) => {
             if (e) {
-                const d = parseInputValue(e.target.value, MINIMUM_HOOK_LENGTH, MAXIMUM_HOOK_LENGTH, this.hookLength, 0, ROUNDING_DIGITS) - this.hookLength;
+                const d =
+                    parseInputValue(
+                        e.target.value,
+                        MINIMUM_HOOK_LENGTH,
+                        MAXIMUM_HOOK_LENGTH,
+                        this.hookLength,
+                        0,
+                        ROUNDING_DIGITS
+                    ) - this.hookLength;
                 return [
                     (item, array) => {
                         if (!isNaN(d) && d !== 0 && item instanceof Adjunction) {
@@ -87,7 +100,12 @@ export default class Adjunction extends SNode {
                 step: 0,
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
-                tooltip: <>The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center line.</>,
+                tooltip: (
+                    <>
+                        The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center
+                        line.
+                    </>
+                ),
                 tooltipPlacement: 'left',
             },
             {
@@ -124,13 +142,20 @@ export default class Adjunction extends SNode {
         ];
     }
 
-    override parseArrowhead(stShapes: Texdraw.StrokedShape[], cpx: number, cpy: number, dimRatio: number, nodeName: string): Texdraw.StrokedShape[] {
+    override parseArrowhead(
+        stShapes: Texdraw.StrokedShape[],
+        cpx: number,
+        cpy: number,
+        dimRatio: number,
+        nodeName: string
+    ): Texdraw.StrokedShape[] {
         super.parseArrowhead(stShapes, cpx, cpy, dimRatio, nodeName);
         if (stShapes.length < 2) {
             throw new ParseError(
                 (
                     <span>
-                        {complain(nodeName)}: expected two shapes for the arrowhead, but got only {stShapes.length}.
+                        {complain(nodeName)}: expected two shapes for the arrowhead, but got only{' '}
+                        {stShapes.length}.
                     </span>
                 )
             );
@@ -162,7 +187,11 @@ export default class Adjunction extends SNode {
             ROUNDING_DIGITS,
             2 // We seem to need a pretty low tolerance to avoid arithmetic errors.
         );
-        this.hookLength = round(Math.round(Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) * factor) / factor, ROUNDING_DIGITS, 3);
+        this.hookLength = round(
+            Math.round(Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2) * factor) / factor,
+            ROUNDING_DIGITS,
+            3
+        );
 
         return stShapes.slice(2);
     }

@@ -30,14 +30,38 @@ export const MARK_BORDER_LINEWIDTH = 1;
  * @abstract
  */
 export default abstract class Node extends Item {
-    static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
+    static markBorder = (
+        left: number,
+        top: number,
+        l: number,
+        m: number,
+        mW: number,
+        mH: number,
+        markColor: string
+    ): JSX.Element => (
         <>
             {' '}
             {/* The stroke width is taken care of by a style applied to polyline elements that is specified in MainPanel's return statement. */}
-            <polyline stroke={markColor} points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`} fill="none" />
-            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`} fill="none" />
+            <polyline
+                stroke={markColor}
+                points={`${left},${top + l} ${left + m},${top + m} ${left + l},${top}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + mW - l},${top} ${left + mW - m},${top + m} ${left + mW},${top + l}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + mW},${top + mH - l} ${left + mW - m},${top + mH - m} ${left + mW - l},${top + mH}`}
+                fill='none'
+            />
+            <polyline
+                stroke={markColor}
+                points={`${left + l},${top + mH} ${left + m},${top + mH - m} ${left},${top + mH - l}`}
+                fill='none'
+            />
         </>
     );
 
@@ -156,7 +180,12 @@ export default abstract class Node extends Item {
 /**
  * @return a Set that contains the supplied Items together with their directly or indirectly 'dependent' Items, namely Ornaments and SNodes.
  */
-export const addDependents = (items: Item[], includeOrnaments: boolean = true, acc = new Set<Item>(), visited = new Set<Node>()): Set<Item> => {
+export const addDependents = (
+    items: Item[],
+    includeOrnaments: boolean = true,
+    acc = new Set<Item>(),
+    visited = new Set<Node>()
+): Set<Item> => {
     for (const it of items) {
         if (includeOrnaments || !(it instanceof Ornament)) {
             acc.add(it);
@@ -175,7 +204,12 @@ export const addDependents = (items: Item[], includeOrnaments: boolean = true, a
 /**
  * @return a Set that contains the supplied Item's directly or indirectly 'dependent' Items, namely Ornaments and SNodes.
  */
-export const getDependents = (it: Item, includeOrnaments: boolean = true, acc = new Set<Item>(), visited = new Set<Node>()): Set<Item> => {
+export const getDependents = (
+    it: Item,
+    includeOrnaments: boolean = true,
+    acc = new Set<Item>(),
+    visited = new Set<Node>()
+): Set<Item> => {
     if (it instanceof Node && !visited.has(it)) {
         visited.add(it);
         if (includeOrnaments) {
@@ -194,7 +228,8 @@ export const validateLinewidth = (lw: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: line width should not be negative.
+                    Illegal data in definition of entity node <code>{name}</code>: line width should not be
+                    negative.
                 </span>
             )
         );
@@ -202,7 +237,8 @@ export const validateLinewidth = (lw: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds
+                    maximum value.
                 </span>
             )
         );
@@ -215,7 +251,8 @@ export const validateShading = (shading: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: shading value should not be negative.
+                    Illegal data in definition of entity node <code>{name}</code>: shading value should not be
+                    negative.
                 </span>
             )
         );
@@ -223,7 +260,8 @@ export const validateShading = (shading: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: shading value {shading} exceeds 1.
+                    Illegal data in definition of entity node <code>{name}</code>: shading value {shading}{' '}
+                    exceeds 1.
                 </span>
             )
         );
@@ -236,7 +274,8 @@ export const validateDash = (dash: number[], name: string): number[] => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash array length {dash.length} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: dash array length{' '}
+                    {dash.length} exceeds maximum value.
                 </span>
             )
         );
@@ -246,7 +285,8 @@ export const validateDash = (dash: number[], name: string): number[] => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash value should not be negative.
+                    Illegal data in definition of entity node <code>{name}</code>: dash value should not be
+                    negative.
                 </span>
             )
         );
@@ -255,7 +295,8 @@ export const validateDash = (dash: number[], name: string): number[] => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds
+                    maximum value.
                 </span>
             )
         );
@@ -268,7 +309,8 @@ export const validateRadius = (radius: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.
+                    Illegal data in definition of entity node <code>{name}</code>: radius should not be
+                    negative.
                 </span>
             )
         );
@@ -276,7 +318,8 @@ export const validateRadius = (radius: number, name: string): number => {
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds
+                    maximum value.
                 </span>
             )
         );
@@ -289,7 +332,8 @@ export const validateCoordinates = (x: number, y: number, name: string): number[
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below minimum value.
+                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below
+                    minimum value.
                 </span>
             )
         );
@@ -297,7 +341,8 @@ export const validateCoordinates = (x: number, y: number, name: string): number[
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds
+                    maximum value.
                 </span>
             )
         );
@@ -307,7 +352,8 @@ export const validateCoordinates = (x: number, y: number, name: string): number[
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below minimum value.
+                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below
+                    minimum value.
                 </span>
             )
         );
@@ -315,7 +361,8 @@ export const validateCoordinates = (x: number, y: number, name: string): number[
         throw new ParseError(
             (
                 <span>
-                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds maximum value.
+                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds
+                    maximum value.
                 </span>
             )
         );

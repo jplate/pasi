@@ -27,17 +27,37 @@ interface PointProps {
 
 export const PointComp = ({ x, y, primaryColor, markColor, visible = true }: PointProps) => {
     return (
-        <div style={{ position: 'absolute', left: `${x - POINT_RADIUS}px`, top: `${H - y - POINT_RADIUS}px` }}>
+        <div
+            style={{ position: 'absolute', left: `${x - POINT_RADIUS}px`, top: `${H - y - POINT_RADIUS}px` }}
+        >
             <svg width={POINT_RADIUS * 2} height={POINT_RADIUS * 2}>
-                <circle cx={POINT_RADIUS} cy={POINT_RADIUS} r={visible ? 0.5 : 0} fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`} />
+                <circle
+                    cx={POINT_RADIUS}
+                    cy={POINT_RADIUS}
+                    r={visible ? 0.5 : 0}
+                    fill={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
+                />
             </svg>
             {visible && (
                 <svg
                     width={POINT_RADIUS * 2 + 2}
                     height={POINT_RADIUS * 2 + 2} // the 'border'
-                    style={{ position: 'absolute', left: '0', top: '0', marginTop: '-1px', marginLeft: '-1px' }}
+                    style={{
+                        position: 'absolute',
+                        left: '0',
+                        top: '0',
+                        marginTop: '-1px',
+                        marginLeft: '-1px',
+                    }}
                 >
-                    <rect x="1" y="1" width={POINT_RADIUS * 2} height={POINT_RADIUS * 2} fill="none" stroke={markColor} />
+                    <rect
+                        x='1'
+                        y='1'
+                        width={POINT_RADIUS * 2}
+                        height={POINT_RADIUS * 2}
+                        fill='none'
+                        stroke={markColor}
+                    />
                 </svg>
             )}
         </div>

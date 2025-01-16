@@ -35,7 +35,14 @@ import Node, {
     addDependents,
 } from './items/Node';
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button';
-import { CheckBoxField, MenuItemList, ChevronSVG, menuButtonClassName, menuItemButtonClassName, validFloat } from './EditorComponents';
+import {
+    CheckBoxField,
+    MenuItemList,
+    ChevronSVG,
+    menuButtonClassName,
+    menuItemButtonClassName,
+    validFloat,
+} from './EditorComponents';
 import CanvasEditor from './CanvasEditor';
 import ItemEditor from './ItemEditor';
 import TransformTab from './TransformTab';
@@ -43,7 +50,14 @@ import GroupTab from './GroupTab';
 import ENode from './items/ENode';
 import GNode from './items/GNode';
 import Point, { PointComp } from './Point';
-import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth, MAX_GROUP_LEVEL } from './Group.tsx';
+import Group, {
+    GroupMember,
+    StandardGroup,
+    getGroups,
+    getLeafMembers,
+    depth,
+    MAX_GROUP_LEVEL,
+} from './Group.tsx';
 import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
@@ -138,22 +152,29 @@ interface DialogConfig {
 }
 
 export const pasi = (s: string) => {
-    return <span className="pasi text-base">{s}</span>;
+    return <span className='pasi text-base'>{s}</span>;
 };
 
-const transformHotkeyDescrRump = (s1: string, s2: string, units: string, addExplanation: boolean, darkMode: boolean): JSX.Element => (
+const transformHotkeyDescrRump = (
+    s1: string,
+    s2: string,
+    units: string,
+    addExplanation: boolean,
+    darkMode: boolean
+): JSX.Element => (
     <>
         {s1} selection {s2} by 10
-        <span className="text-xs align-top">
+        <span className='text-xs align-top'>
             <i>n</i>
         </span>{' '}
-        {units}, where <i>n</i>&thinsp; ranges from -1 to 2 (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}).&nbsp;
+        {units}, where <i>n</i>&thinsp; ranges from -1 to 2 (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}
+        ).&nbsp;
         {addExplanation ? (
             <>
                 The value of <i>n</i>&thinsp; can be set by using the keys &thinsp;
                 {darkMode ? (
                     <>
-                        <span className="font-mono">{1}</span>&ndash;<span className="font-mono">{4}</span>
+                        <span className='font-mono'>{1}</span>&ndash;<span className='font-mono'>{4}</span>
                     </>
                 ) : (
                     <>
@@ -168,9 +189,10 @@ const transformHotkeyDescrRump = (s1: string, s2: string, units: string, addExpl
 
 const scaleDownHotkeyDescr = (darkMode: boolean): JSX.Element => (
     <>
-        Decrease {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', false, darkMode)} The value of 100% corresponds to the size of the
-        selection&mdash;as measured by the distances between selected nodes&mdash;at the time it was initiated. Scaling is affected by the relevant options
-        listed in the &lsquo;Transform&rsquo; tab.
+        Decrease {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', false, darkMode)}{' '}
+        The value of 100% corresponds to the size of the selection&mdash;as measured by the distances between
+        selected nodes&mdash;at the time it was initiated. Scaling is affected by the relevant options listed
+        in the &lsquo;Transform&rsquo; tab.
     </>
 );
 
@@ -187,8 +209,8 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['X'],
         descr: (
             <>
-                Create <i>abstractions</i> of selected nodes: &lsquo;ghost nodes&rsquo; that will transfer their own features onto any nodes they&rsquo;re
-                dragged onto.
+                Create <i>abstractions</i> of selected nodes: &lsquo;ghost nodes&rsquo; that will transfer
+                their own features onto any nodes they&rsquo;re dragged onto.
             </>
         ),
     },
@@ -198,8 +220,8 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['C'],
         descr: (
             <>
-                Create copies of selected items. (This works not just with nodes, but also with labels.) Add new members to an existing group by copying
-                individual members.
+                Create copies of selected items. (This works not just with nodes, but also with labels.) Add
+                new members to an existing group by copying individual members.
             </>
         ),
     },
@@ -210,8 +232,8 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['Space'],
         descr: (
             <>
-                Create one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the currently selected nodes. (Equivalent to clicking
-                the {pasi('Create')} button.)
+                Create one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the
+                currently selected nodes. (Equivalent to clicking the {pasi('Create')} button.)
             </>
         ),
     },
@@ -221,22 +243,42 @@ export const hotkeys: HotkeyInfo[] = [
     { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
     { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
     { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right.</> },
-    { key: 'set increment to 0.1px', keys: '1', rep: ['1'], descr: <>Set movement distance to 0.1 pixels.</> },
+    {
+        key: 'set increment to 0.1px',
+        keys: '1',
+        rep: ['1'],
+        descr: <>Set movement distance to 0.1 pixels.</>,
+    },
     { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set movement distance to 1 pixel.</> },
     { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set movement distance to 10 pixels.</> },
-    { key: 'set increment to 100px', keys: '4', rep: ['4'], descr: <>Set movement distance to 100 pixels.</> },
+    {
+        key: 'set increment to 100px',
+        keys: '4',
+        rep: ['4'],
+        descr: <>Set movement distance to 100 pixels.</>,
+    },
     { key: 'dec sh', keys: '5', rep: ['5'], descr: <>Decrease shading by 0.1.</> },
     { key: 'inc sh', keys: '6', rep: ['6'], descr: <>Increase shading by 0.1 (maximum: 1).</> },
     { key: 'sh 0', keys: '7', rep: ['7'], descr: <>Set shading to 0.</> },
     { key: 'sh 1', keys: 'shift+7', rep: ['Shift+7'], descr: <>Set shading to 1.</> },
     { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
-    { key: 'inc lw', keys: '9', rep: ['9'], descr: <>Increase linewidth by 0.1 pixels (maximum: {MAX_LINEWIDTH} pixels).</> },
+    {
+        key: 'inc lw',
+        keys: '9',
+        rep: ['9'],
+        descr: <>Increase linewidth by 0.1 pixels (maximum: {MAX_LINEWIDTH} pixels).</>,
+    },
     { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
     { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
     { key: 'hflip', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
     { key: 'vflip', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
     { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
-    { key: 'rotate by 45° counter-clockwise', keys: 'q', rep: ['Q'], descr: <>Rotate selection counter-clockwise by 45 degrees.</> },
+    {
+        key: 'rotate by 45° counter-clockwise',
+        keys: 'q',
+        rep: ['Q'],
+        descr: <>Rotate selection counter-clockwise by 45 degrees.</>,
+    },
     {
         key: 'rotate counter-clockwise',
         keys: 'shift+q',
@@ -244,7 +286,12 @@ export const hotkeys: HotkeyInfo[] = [
         descr: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, false)}</>,
         descrDark: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, true)}</>,
     },
-    { key: 'rotate by 45° clockwise', keys: 'e', rep: ['E'], descr: <>Rotate selection clockwise by 45 degrees.</> },
+    {
+        key: 'rotate by 45° clockwise',
+        keys: 'e',
+        rep: ['E'],
+        descr: <>Rotate selection clockwise by 45 degrees.</>,
+    },
     {
         key: 'rotate clockwise',
         keys: 'shift+e',
@@ -258,23 +305,42 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['R'],
         descr: (
             <>
-                Rotate selected contours clockwise by 180 / <i>n</i> degrees, where <i>n</i>&thinsp; is the number of nodes in the respective contour. (E.g., a
-                contour with six nodes is rotated by 30 degrees.)
+                Rotate selected contours clockwise by 180 / <i>n</i> degrees, where <i>n</i>&thinsp; is the
+                number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30
+                degrees.)
             </>
         ),
     },
-    { key: 'scale down', keys: 'u', rep: ['U'], descr: scaleDownHotkeyDescr(false), descrDark: scaleDownHotkeyDescr(true) },
-    { key: 'scale up', keys: 'i', rep: ['I'], descr: scaleUpHotkeyDescr(false), descrDark: scaleUpHotkeyDescr(true) },
-    { key: 'round', keys: 't', rep: ['T'], descr: <>Round the location of each selected node to the nearest pixel.</> },
+    {
+        key: 'scale down',
+        keys: 'u',
+        rep: ['U'],
+        descr: scaleDownHotkeyDescr(false),
+        descrDark: scaleDownHotkeyDescr(true),
+    },
+    {
+        key: 'scale up',
+        keys: 'i',
+        rep: ['I'],
+        descr: scaleUpHotkeyDescr(false),
+        descrDark: scaleUpHotkeyDescr(true),
+    },
+    {
+        key: 'round',
+        keys: 't',
+        rep: ['T'],
+        descr: <>Round the location of each selected node to the nearest pixel.</>,
+    },
     {
         key: 'create group',
         keys: 'g',
         rep: ['G'],
         descr: (
             <>
-                Create a group that contains, for each selected item, either the item itself or the highest group among those with which the item is connected
-                by a chain of active membership and that are such that all their &lsquo;leaf members&rsquo; are among the selected items. (Maximum group level:{' '}
-                {MAX_GROUP_LEVEL}.)
+                Create a group that contains, for each selected item, either the item itself or the highest
+                group among those with which the item is connected by a chain of active membership and that
+                are such that all their &lsquo;leaf members&rsquo; are among the selected items. (Maximum
+                group level: {MAX_GROUP_LEVEL}.)
             </>
         ),
     },
@@ -284,8 +350,8 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['H'],
         descr: (
             <>
-                Deactivate the membership of each selected item or its second-highest &lsquo;active&rsquo; group (where applicable) in its currently highest
-                active group.
+                Deactivate the membership of each selected item or its second-highest &lsquo;active&rsquo;
+                group (where applicable) in its currently highest active group.
             </>
         ),
     },
@@ -293,17 +359,31 @@ export const hotkeys: HotkeyInfo[] = [
         key: 'rejoin',
         keys: 'j',
         rep: ['J'],
-        descr: <>Reactivate the membership of each selected item or (where applicable) its highest active group in the next-lowest group.</>,
+        descr: (
+            <>
+                Reactivate the membership of each selected item or (where applicable) its highest active group
+                in the next-lowest group.
+            </>
+        ),
     },
-    { key: 'restore', keys: 'k', rep: ['K'], descr: <>Reactivate the membership of each member of each selected item&rsquo;s highest active group.</> },
+    {
+        key: 'restore',
+        keys: 'k',
+        rep: ['K'],
+        descr: (
+            <>Reactivate the membership of each member of each selected item&rsquo;s highest active group.</>
+        ),
+    },
     {
         key: 'adding',
         keys: 'comma',
         rep: [','],
         descr: (
             <>
-                Turn on &lsquo;adding&rsquo;. In this mode, selecting an item will add it (or its highest active group, where applicable) to the highest active
-                group of the currently focused item. (This mode can be turned off by clicking on the canvas or by turning on &lsquo;dissolve-adding&rsquo;.)
+                Turn on &lsquo;adding&rsquo;. In this mode, selecting an item will add it (or its highest
+                active group, where applicable) to the highest active group of the currently focused item.
+                (This mode can be turned off by clicking on the canvas or by turning on
+                &lsquo;dissolve-adding&rsquo;.)
             </>
         ),
     },
@@ -313,20 +393,32 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['.'],
         descr: (
             <>
-                Turn on &lsquo;dissolve-adding&rsquo;. In this mode, selecting a item will add <em>all</em> members of its highest active group (or the item
-                itself, if there is no such group) to the highest active group of the currently focused item.
+                Turn on &lsquo;dissolve-adding&rsquo;. In this mode, selecting a item will add <em>all</em>{' '}
+                members of its highest active group (or the item itself, if there is no such group) to the
+                highest active group of the currently focused item.
             </>
         ),
     },
-    { key: 'delete', keys: 'delete, backspace', rep: ['Delete', 'Backspace'], descr: <>Delete all selected items.</> },
-    { key: 'clear points', keys: 'shift+space', rep: ['Shift+Space'], descr: <>Deselect any currently selected locations on the canvas.</> },
+    {
+        key: 'delete',
+        keys: 'delete, backspace',
+        rep: ['Delete', 'Backspace'],
+        descr: <>Delete all selected items.</>,
+    },
+    {
+        key: 'clear points',
+        keys: 'shift+space',
+        rep: ['Shift+Space'],
+        descr: <>Deselect any currently selected locations on the canvas.</>,
+    },
     {
         key: 'generate code',
         keys: 'shift+enter',
         rep: ['Shift+Enter'],
         descr: (
             <>
-                Generate the <i>texdraw</i>&thinsp; code for the current diagram and display it in the text area below the canvas.
+                Generate the <i>texdraw</i>&thinsp; code for the current diagram and display it in the text
+                area below the canvas.
             </>
         ),
     },
@@ -414,7 +506,10 @@ const createGrid = (
 };
 
 const nearestGridPoint = (x: number, y: number, grid: Grid) => {
-    return [x + grid.hGap / 2 - ((x + grid.hGap / 2 - grid.hShift) % grid.hGap), y + grid.vGap / 2 - ((y + grid.vGap / 2 - grid.vShift) % grid.vGap)];
+    return [
+        x + grid.hGap / 2 - ((x + grid.hGap / 2 - grid.hShift) % grid.hGap),
+        y + grid.vGap / 2 - ((y + grid.vGap / 2 - grid.vShift) % grid.vGap),
+    ];
 };
 
 /**
@@ -438,7 +533,8 @@ const getSnapPoint = (
         snapNode: Node | null = null;
     if (grid.snapToContourCenters || grid.snapToNodes) {
         for (const it of list) {
-            const overlap: CNode[] = it instanceof CNodeGroup ? it.members.filter((m) => selectedNodes.includes(m)) : []; // When the focus Item is a CNode,
+            const overlap: CNode[] =
+                it instanceof CNodeGroup ? it.members.filter((m) => selectedNodes.includes(m)) : []; // When the focus Item is a CNode,
             // we have to avoid snapping to the center of the node's CNodeGroup, to prevent stuttery movement as a result of feedback. Similarly, further
             // below we have to avoid snapping to other nodes of that CNodeGroup if there is a danger of feedback due to the CNodeGroup's 'groupMove' feature.
             if (it instanceof CNodeGroup && (!(focus instanceof CNode) || !it.members.includes(focus))) {
@@ -498,7 +594,12 @@ class Lasso {
     ) {}
     contains(item: Item, yOffset: number): boolean {
         const { bottom, left } = item.getBottomLeftCorner();
-        return left >= this.x0 && left + item.getWidth() <= this.x1 && H + yOffset - bottom <= this.y1 && H + yOffset - (bottom + item.getHeight()) >= this.y0;
+        return (
+            left >= this.x0 &&
+            left + item.getWidth() <= this.x1 &&
+            H + yOffset - bottom <= this.y1 &&
+            H + yOffset - (bottom + item.getHeight()) >= this.y0
+        );
     }
 }
 
@@ -512,25 +613,71 @@ class DepItemInfo {
     ) {}
 
     getImageComp(dark: boolean): React.ReactNode {
-        return <NextImage src={this.src} alt={this.alt} width={28} className={clsx('inline object-contain', dark ? 'filter invert sepia' : '')} />;
+        return (
+            <NextImage
+                src={this.src}
+                alt={this.alt}
+                width={28}
+                className={clsx('inline object-contain', dark ? 'filter invert sepia' : '')}
+            />
+        );
     }
 }
 
-type DepItemKey = 'trn' | 'neg' | 'ptr' | 'exs' | 'ins' | 'ent' | 'adj' | 'lbl' | 'inc' | 'cnt' | 'idt' | 'unv' | 'rst' | 'prd' | 'orp';
+type DepItemKey =
+    | 'trn'
+    | 'neg'
+    | 'ptr'
+    | 'exs'
+    | 'ins'
+    | 'ent'
+    | 'adj'
+    | 'lbl'
+    | 'inc'
+    | 'cnt'
+    | 'idt'
+    | 'unv'
+    | 'rst'
+    | 'prd'
+    | 'orp';
 
 const depItemInfos = [
-    new DepItemInfo('Broad tip', 'trn', trnSrc, 'An arrow that has as its tip a closed, reflectionally symmetric figure', 2),
+    new DepItemInfo(
+        'Broad tip',
+        'trn',
+        trnSrc,
+        'An arrow that has as its tip a closed, reflectionally symmetric figure',
+        2
+    ),
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
     new DepItemInfo('Chevron', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
     new DepItemInfo('Dot', 'exs', exsSrc, 'A square-shaped ornament attached to a node', 1),
-    new DepItemInfo('Double hook, circular', 'ins', insSrc, 'An arrow with two curved hooks, each being a segment of a circle', 2),
+    new DepItemInfo(
+        'Double hook, circular',
+        'ins',
+        insSrc,
+        'An arrow with two curved hooks, each being a segment of a circle',
+        2
+    ),
     new DepItemInfo('Double hook, curved', 'ent', entSrc, 'An arrow with two curved hooks (cubic)', 2),
     new DepItemInfo('Harpoon', 'inc', incSrc, 'An arrow with an asymmetric, harpoonlike tip', 2),
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
     new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
     new DepItemInfo('Simple line', 'idt', idtSrc, 'A simple line', 2),
-    new DepItemInfo('Single hook, circular', 'unv', unvSrc, 'An arrow with a single hook that is a segment of a circle', 2),
-    new DepItemInfo('Single hook, composite', 'rst', rstSrc, 'An arrow with a single hook that is made up of a cubic curve followed by a straight line', 2),
+    new DepItemInfo(
+        'Single hook, circular',
+        'unv',
+        unvSrc,
+        'An arrow with a single hook that is a segment of a circle',
+        2
+    ),
+    new DepItemInfo(
+        'Single hook, composite',
+        'rst',
+        rstSrc,
+        'An arrow with a single hook that is made up of a cubic curve followed by a straight line',
+        2
+    ),
     new DepItemInfo('Single hook, curved', 'prd', prdSrc, 'An arrow with a single curved hook (cubic)', 2),
     new DepItemInfo('Single hook, straight', 'orp', orpSrc, 'An arrow with a single straight hook', 2),
     new DepItemInfo('Standard arrow', 'adj', adjSrc, 'An arrow with two straight hooks', 2),
@@ -550,7 +697,9 @@ const limitCompX = (limitX: number, canvas: HTMLDivElement | null, canvasWidth: 
     if (canvas) {
         const { scrollLeft } = canvas;
         const x = Math.min(Math.ceil(limitX / canvasWidth) * canvasWidth, MAX_X);
-        return x <= canvasWidth || x < scrollLeft + SCROLL_X_OFFSET ? x : Math.max(x, scrollLeft + canvasWidth) + (limitX > canvasWidth ? MARGIN : -40); // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+        return x <= canvasWidth || x < scrollLeft + SCROLL_X_OFFSET
+            ? x
+            : Math.max(x, scrollLeft + canvasWidth) + (limitX > canvasWidth ? MARGIN : -40); // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } else {
         return 0;
     }
@@ -563,7 +712,9 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
     if (canvas) {
         const { scrollTop } = canvas;
         const y = Math.max(Math.floor(limitY / H) * H, MIN_Y);
-        return y >= 0 || y > H - scrollTop - SCROLL_Y_OFFSET ? y : Math.min(y, -scrollTop) + (limitY < 0 ? -MARGIN : 40); // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
+        return y >= 0 || y > H - scrollTop - SCROLL_Y_OFFSET
+            ? y
+            : Math.min(y, -scrollTop) + (limitY < 0 ? -MARGIN : 40); // The extra term is to provide a bit of margin and to avoid an unnecessary scroll bar.
     } else {
         return 0;
     }
@@ -573,7 +724,11 @@ const limitCompY = (limitY: number, canvas: HTMLDivElement | null) => {
  * Returns an array of all ENodes in the specified list, as well as any CNodes in any CNodeGroups in that same list, and, if the supplied boolean is false,
  * also all Ornaments attached to any such nodes, that meet the specified test condition (or *any* condition if none is specified).
  */
-export const getItems = (list: (ENode | CNodeGroup)[], onlyNodes: boolean = false, test: (it: Item) => boolean = () => true): Item[] =>
+export const getItems = (
+    list: (ENode | CNodeGroup)[],
+    onlyNodes: boolean = false,
+    test: (it: Item) => boolean = () => true
+): Item[] =>
     list.flatMap((it: ENode | CNodeGroup) => {
         let result: Item[];
         if (it instanceof ENode) {
@@ -592,7 +747,15 @@ export const getItems = (list: (ENode | CNodeGroup)[], onlyNodes: boolean = fals
  * Returns an array of CNodeGroups that are contained (directly or indirectly) in the supplied array of Nodes and Groups.
  */
 const getCNodeGroups = (array: (Item | Group<any>)[]): CNodeGroup[] =>
-    array.reduce((acc: CNodeGroup[], it) => (it instanceof Item ? acc : it instanceof CNodeGroup ? [...acc, it] : [...acc, ...getCNodeGroups(it.members)]), []);
+    array.reduce(
+        (acc: CNodeGroup[], it) =>
+            it instanceof Item
+                ? acc
+                : it instanceof CNodeGroup
+                  ? [...acc, it]
+                  : [...acc, ...getCNodeGroups(it.members)],
+        []
+    );
 
 /**
  * Helper function for deleteSelection().
@@ -639,7 +802,9 @@ const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]): Item[] =>
             (it instanceof ENode && newList.includes(it)) ||
             (it instanceof CNode && newList.includes(it.group as CNodeGroup)) ||
             (it instanceof Ornament && it.node instanceof ENode && newList.includes(it.node)) ||
-            (it instanceof Ornament && it.node instanceof CNode && newList.includes(it.node.group as CNodeGroup))
+            (it instanceof Ornament &&
+                it.node instanceof CNode &&
+                newList.includes(it.node.group as CNodeGroup))
     );
 
 /**
@@ -787,7 +952,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const [rotation, setRotation] = useState(0);
     const [scaling, setScaling] = useState(100); // default is 100%
     const [origin] = useState({ x: 0, y: 0 }); // the point around which to rotate and from which to scale; computed and set by setOrigin()
-    const [logIncrements, setLogIncrements] = useState({ rotate: DEFAULT_ROTATION_LOG_INCREMENT, scale: DEFAULT_SCALING_LOG_INCREMENT }); // for the transform tab
+    const [logIncrements, setLogIncrements] = useState({
+        rotate: DEFAULT_ROTATION_LOG_INCREMENT,
+        scale: DEFAULT_SCALING_LOG_INCREMENT,
+    }); // for the transform tab
     const [transformFlags, setTransformFlags] = useState({
         scaleArrowheads: false,
         scaleENodes: false,
@@ -982,11 +1150,20 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * OTHER CONSTANTS
      ***************************************************************************************/
 
-    const deduplicatedSelection = useMemo(() => selection.filter((item, i) => i === selection.indexOf(item)), [selection]);
+    const deduplicatedSelection = useMemo(
+        () => selection.filter((item, i) => i === selection.indexOf(item)),
+        [selection]
+    );
 
-    const selectedNodes = useMemo(() => selection.filter((item) => item instanceof Node) as Node[], [selection]);
+    const selectedNodes = useMemo(
+        () => selection.filter((item) => item instanceof Node) as Node[],
+        [selection]
+    );
 
-    const selectedNodesDeduplicated = useMemo(() => deduplicatedSelection.filter((item) => item instanceof Node) as Node[], [deduplicatedSelection]);
+    const selectedNodesDeduplicated = useMemo(
+        () => deduplicatedSelection.filter((item) => item instanceof Node) as Node[],
+        [deduplicatedSelection]
+    );
 
     const selectedIndependentNodes = useMemo(
         () => deduplicatedSelection.filter((item) => item instanceof Node && item.isIndependent()) as Node[],
@@ -994,23 +1171,39 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     );
 
     const leftMostSelected = useMemo(
-        () => selectedNodesDeduplicated.reduce((min, item) => (itemsMoved && min < item.x ? min : item.x), Infinity), // added 'itemsMoved &&' to
+        () =>
+            selectedNodesDeduplicated.reduce(
+                (min, item) => (itemsMoved && min < item.x ? min : item.x),
+                Infinity
+            ), // added 'itemsMoved &&' to
         // suppress a warning about 'unnecessary dependencies'
         [selectedNodesDeduplicated, itemsMoved]
     );
 
     const topMostSelected = useMemo(
-        () => selectedNodesDeduplicated.reduce((max, item) => (itemsMoved && max > item.y ? max : item.y), -Infinity),
+        () =>
+            selectedNodesDeduplicated.reduce(
+                (max, item) => (itemsMoved && max > item.y ? max : item.y),
+                -Infinity
+            ),
         [selectedNodesDeduplicated, itemsMoved]
     );
 
     const rightMostSelected = useMemo(
-        () => selectedNodesDeduplicated.reduce((max, item) => (itemsMoved && max > item.x ? max : item.x), -Infinity),
+        () =>
+            selectedNodesDeduplicated.reduce(
+                (max, item) => (itemsMoved && max > item.x ? max : item.x),
+                -Infinity
+            ),
         [selectedNodesDeduplicated, itemsMoved]
     );
 
     const bottomMostSelected = useMemo(
-        () => selectedNodesDeduplicated.reduce((min, item) => (itemsMoved && min < item.y ? min : item.y), Infinity),
+        () =>
+            selectedNodesDeduplicated.reduce(
+                (min, item) => (itemsMoved && min < item.y ? min : item.y),
+                Infinity
+            ),
         [selectedNodesDeduplicated, itemsMoved]
     );
 
@@ -1020,10 +1213,18 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * The highest-level Items/Groups that will need to be copied if the user clicks on 'Copy Selection'. This includes any Ornaments attached to
      * selected Nodes, as well as any SNodes that have one or more selected Nodes as involutes.
      */
-    const topMembers: (Item | Group<any>)[] = useMemo(() => getTopToBeCopied(deduplicatedSelection), [deduplicatedSelection]);
+    const topMembers: (Item | Group<any>)[] = useMemo(
+        () => getTopToBeCopied(deduplicatedSelection),
+        [deduplicatedSelection]
+    );
 
     const showModal = useCallback(
-        (contentLabel: string, content: React.ReactNode, extraWide: boolean = false, title: string = contentLabel) => {
+        (
+            contentLabel: string,
+            content: React.ReactNode,
+            extraWide: boolean = false,
+            title: string = contentLabel
+        ) => {
             setDialog({ contentLabel, title, content, extraWide });
             setModalShown(true);
         },
@@ -1035,7 +1236,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * The first parameter indicates whether the transformation should be reset.
      */
     const setOrigin = useCallback(
-        (resetTransform: boolean, pts: Point[] = points, focus: Item | null = focusItem, sel: Item[] = selection, li: (ENode | CNodeGroup)[] = list) => {
+        (
+            resetTransform: boolean,
+            pts: Point[] = points,
+            focus: Item | null = focusItem,
+            sel: Item[] = selection,
+            li: (ENode | CNodeGroup)[] = list
+        ) => {
             // Compute new origin:
             const selectedNodes = sel.filter((item) => item instanceof Node) as Node[];
             const { x, y } =
@@ -1114,7 +1321,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 const { scrollTop } = canvas;
                 const delta1 = Math.max(0, top - H) - yOffset;
                 const delta2 = Math.ceil((delta1 % H === 0 ? delta1 - 1 : delta1) / H) * H;
-                const adjust = top < H ? -yOffset : yOffset + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2 > 0 ? delta2 : Math.max(-scrollTop, delta2);
+                const adjust =
+                    top < H
+                        ? -yOffset
+                        : yOffset + delta2 < scrollTop - SCROLL_Y_OFFSET || delta2 > 0
+                          ? delta2
+                          : Math.max(-scrollTop, delta2);
                 if (adjust !== 0) {
                     setYOffset(yOffset + adjust);
                     setTimeout(() => {
@@ -1142,7 +1354,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 const icx = left + w / 2; // item center X
                 const icy = bottom + h / 2; // item center Y
                 const dx = icx - canvas.scrollLeft;
-                const scrollRight = Math.floor((dx % canvasWidth === 0 ? dx - 1 : dx) / canvasWidth) * canvasWidth;
+                const scrollRight =
+                    Math.floor((dx % canvasWidth === 0 ? dx - 1 : dx) / canvasWidth) * canvasWidth;
                 const dy = canvas.scrollTop + icy - yOffset;
                 const scrollDown = -Math.floor((dy % H === 0 ? dy + 1 : dy) / H) * H;
                 setTimeout(() => {
@@ -1305,7 +1518,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             adjustLimit(getItems(newList));
             setOrigin(true, points, null, []);
         },
-        [focusItem, points, list, update, selection, adjustLimit, setOrigin, setPreselection1, setPreselection2]
+        [
+            focusItem,
+            points,
+            list,
+            update,
+            selection,
+            adjustLimit,
+            setOrigin,
+            setPreselection1,
+            setPreselection2,
+        ]
     );
 
     /**
@@ -1340,13 +1563,27 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             newFocus
         );
         setENodeCounter(n);
-    }, [eNodeCounter, list, selection, focusItem, selectedNodes, unitScale, displayFontFactor, setENodeCounter, deleteItems]);
+    }, [
+        eNodeCounter,
+        list,
+        selection,
+        focusItem,
+        selectedNodes,
+        unitScale,
+        displayFontFactor,
+        setENodeCounter,
+        deleteItems,
+    ]);
 
     /**
      * Mouse down handler for items on the canvas.
      */
     const itemMouseDown = useCallback(
-        (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>, clearPreselection: boolean = true) => {
+        (
+            item: Item,
+            e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>,
+            clearPreselection: boolean = true
+        ) => {
             e.preventDefault(); // This will prevent material outside of the canvas from being highlighted every time the user drags something outside of the visible
             // portion.
             e.stopPropagation();
@@ -1367,23 +1604,45 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     newPoints = [];
                     const itemToAdd = e.ctrlKey ? item : highestActive(item);
                     const group = highestActive(focusItem);
-                    if (!(group instanceof Item) && (group instanceof CNodeGroup || (group !== itemToAdd && !group.members.includes(itemToAdd)))) {
+                    if (
+                        !(group instanceof Item) &&
+                        (group instanceof CNodeGroup ||
+                            (group !== itemToAdd && !group.members.includes(itemToAdd)))
+                    ) {
                         if (itemToAdd instanceof Item) {
                             newSelection = [...selection, itemToAdd];
                         } else {
                             const lm = getLeafMembers(itemToAdd);
-                            newSelection = [...selection, item, ...allItems.filter((it) => it !== item && !selection.includes(it) && lm.has(it))];
+                            newSelection = [
+                                ...selection,
+                                item,
+                                ...allItems.filter(
+                                    (it) => it !== item && !selection.includes(it) && lm.has(it)
+                                ),
+                            ];
                         }
                         if (group !== itemToAdd && !group.members.includes(itemToAdd)) {
                             if (adding || itemToAdd instanceof Item) {
                                 if (group instanceof CNodeGroup && !(itemToAdd instanceof CNode)) {
-                                    showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
+                                    showModal(
+                                        'Invalid target',
+                                        'A contour node group can only have contour nodes as members.'
+                                    );
                                     return;
-                                } else if (group instanceof CNodeGroup && group.members.length >= MAX_CNODEGROUP_SIZE) {
-                                    showModal('Hungry Caterpillar Alert', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.🐛`);
+                                } else if (
+                                    group instanceof CNodeGroup &&
+                                    group.members.length >= MAX_CNODEGROUP_SIZE
+                                ) {
+                                    showModal(
+                                        'Hungry Caterpillar Alert',
+                                        `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.🐛`
+                                    );
                                     return;
                                 } else if (group instanceof StandardGroup && itemToAdd instanceof CNode) {
-                                    showModal('Invalid target', 'A contour node can only be a member of a contour node group.');
+                                    showModal(
+                                        'Invalid target',
+                                        'A contour node can only be a member of a contour node group.'
+                                    );
                                     return;
                                 } else {
                                     if (focusItem instanceof CNode && group instanceof CNodeGroup) {
@@ -1403,19 +1662,36 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             } else {
                                 // dissolve adding
                                 if (group instanceof CNodeGroup && !(itemToAdd instanceof CNodeGroup)) {
-                                    showModal('Invalid target', 'A contour node group can only have contour nodes as members.');
+                                    showModal(
+                                        'Invalid target',
+                                        'A contour node group can only have contour nodes as members.'
+                                    );
                                     return;
-                                } else if (group instanceof CNodeGroup && group.members.length + itemToAdd.members.length > MAX_CNODEGROUP_SIZE) {
-                                    showModal('Hungry Caterpillar Alert', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.🐛`);
+                                } else if (
+                                    group instanceof CNodeGroup &&
+                                    group.members.length + itemToAdd.members.length > MAX_CNODEGROUP_SIZE
+                                ) {
+                                    showModal(
+                                        'Hungry Caterpillar Alert',
+                                        `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.🐛`
+                                    );
                                     return;
-                                } else if (group instanceof StandardGroup && itemToAdd instanceof CNodeGroup) {
-                                    showModal('Invalid target', 'A contour node can only be a member of a contour node group.');
+                                } else if (
+                                    group instanceof StandardGroup &&
+                                    itemToAdd instanceof CNodeGroup
+                                ) {
+                                    showModal(
+                                        'Invalid target',
+                                        'A contour node can only be a member of a contour node group.'
+                                    );
                                     return;
                                 } else {
                                     if (focusItem instanceof CNode && group instanceof CNodeGroup) {
                                         const i = group.members.indexOf(focusItem); // the index after which to insert
                                         const j = itemToAdd.members.indexOf(item); // indicates the first node to be inserted
-                                        const nodes = (itemToAdd as CNodeGroup).members.slice(j).concat(itemToAdd.members.slice(0, j));
+                                        const nodes = (itemToAdd as CNodeGroup).members
+                                            .slice(j)
+                                            .concat(itemToAdd.members.slice(0, j));
                                         group.members.splice(i + 1, 0, ...nodes);
                                     } else {
                                         group.members.push(...itemToAdd.members);
@@ -1430,7 +1706,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                         newList = purge(itemToAdd, newList);
                                     }
                                     if (itemToAdd.group) {
-                                        itemToAdd.group.members = itemToAdd.group.members.filter((m) => m !== itemToAdd);
+                                        itemToAdd.group.members = itemToAdd.group.members.filter(
+                                            (m) => m !== itemToAdd
+                                        );
                                     }
                                 }
                             }
@@ -1443,12 +1721,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 console.warn('Unexpectedly missing CNode');
                                 return;
                             }
-                            if (i !== j && newList.length < MAX_LIST_SIZE && (i + 1 < j || (j < i && (j > 0 || i < group.members.length - 1)))) {
+                            if (
+                                i !== j &&
+                                newList.length < MAX_LIST_SIZE &&
+                                (i + 1 < j || (j < i && (j > 0 || i < group.members.length - 1)))
+                            ) {
                                 // We're splitting group into two parts:
                                 if (i + 1 < j) {
                                     newMembers = group.members.splice(i + 1, j - i - 1);
                                 } else {
-                                    newMembers = [...group.members.slice(0, j), ...group.members.slice(i + 1)];
+                                    newMembers = [
+                                        ...group.members.slice(0, j),
+                                        ...group.members.slice(i + 1),
+                                    ];
                                     group.members = group.members.slice(j, i + 1);
                                 }
                                 const newGroup = new CNodeGroup(cngCounter);
@@ -1471,7 +1756,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 newSelection = [...selection, item];
                             }
                         } else {
-                            newSelection = [...selection, ...pres.filter((it) => (it instanceof ENode && it === item) || !deduplicatedSelection.includes(it))]; // If the user shift-clicks on an item, she'll usually only want to add that item to the selection, together with
+                            newSelection = [
+                                ...selection,
+                                ...pres.filter(
+                                    (it) =>
+                                        (it instanceof ENode && it === item) ||
+                                        !deduplicatedSelection.includes(it)
+                                ),
+                            ]; // If the user shift-clicks on an item, she'll usually only want to add that item to the selection, together with
                             // any other items in the preselection that have not yet been selected.
                         }
                     } else {
@@ -1494,8 +1786,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 if (item instanceof Node) {
                     // Handle dragging:
                     setDragging(true);
-                    const selectedNodes = newSelection.filter((item, i) => item instanceof Node && i === newSelection.indexOf(item)) as Node[];
-                    const contourDragged = item.group instanceof CNodeGroup && item.group.members.every((m) => selectedNodes.includes(m));
+                    const selectedNodes = newSelection.filter(
+                        (item, i) => item instanceof Node && i === newSelection.indexOf(item)
+                    ) as Node[];
+                    const contourDragged =
+                        item.group instanceof CNodeGroup &&
+                        item.group.members.every((m) => selectedNodes.includes(m));
 
                     // If we're dragging a contour, we need to determine the location of its center, which is then (in handleMouseMove) passed on to getSnapPoint.
                     let dccDx: number | undefined, dccDy: number | undefined; // distances (horizontal and vertical) to the center of the drgged contour (if there is one)
@@ -1544,7 +1840,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         setDragging(false);
 
                         // Delete GNodes that have been dragged onto some other node:
-                        const unselectedNodes = allItems.filter((it) => it instanceof Node && !selectedNodes.includes(it)) as Node[];
+                        const unselectedNodes = allItems.filter(
+                            (it) => it instanceof Node && !selectedNodes.includes(it)
+                        ) as Node[];
                         const toBeDeletedGNodes: GNode[] = [];
                         for (const n0 of selectedNodes) {
                             if (n0 instanceof GNode) {
@@ -1566,7 +1864,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         // Some movement-related issues:
                         if (item.x !== itemX || item.y !== itemY) {
                             adjustLimit();
-                            setOrigin(item !== focusItem && newPoints.length == 0, newPoints, item, newSelection);
+                            setOrigin(
+                                item !== focusItem && newPoints.length == 0,
+                                newPoints,
+                                item,
+                                newSelection
+                            );
                             // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed).
                             // However, if points is non-empty, then we have to 'renormalize' the new selection, since the nodes might have been dragged
                             // around the origin (given by the last element of the points array):
@@ -1596,7 +1899,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     setPreselection1([]);
                     setPreselection2([]);
                 }
-                if (list !== newList || !equalArrays(selection, newSelection) || focusItem !== item || !equalArrays(points, newPoints)) {
+                if (
+                    list !== newList ||
+                    !equalArrays(selection, newSelection) ||
+                    focusItem !== item ||
+                    !equalArrays(points, newPoints)
+                ) {
                     update({ list: newList, selection: newSelection, focusItem: item, points: newPoints });
                 }
             }
@@ -1632,7 +1940,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     /**
      * Mouse down handler for contour center divs.
      */
-    const groupMouseDown = (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => {
+    const groupMouseDown = (
+        group: CNodeGroup,
+        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+    ) => {
         if (group.members.length > 0) {
             itemMouseDown(group.members[group.members.length - 1], e, false); // the 'false' parameter prevents the preselection from being cleared after selecting,
             // which means that the whole current preselection will again be selected if the user clicks on the center div again.
@@ -1660,7 +1971,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
      * Mouse enter handler for the contour center divs.
      */
     const groupMouseEnter = useCallback(
-        (group: CNodeGroup, e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>) => {
+        (
+            group: CNodeGroup,
+            e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+        ) => {
             if (!dragging) {
                 setPreselection1(group.members);
                 if (e.ctrlKey) {
@@ -1697,7 +2011,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 canvas.focus();
             }
             const { left, top } = canvas?.getBoundingClientRect() ?? { left: 0, top: 0 };
-            const { scrollLeft, scrollTop, clientWidth, clientHeight } = canvas ?? { scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0 };
+            const { scrollLeft, scrollTop, clientWidth, clientHeight } = canvas ?? {
+                scrollLeft: 0,
+                scrollTop: 0,
+                clientWidth: 0,
+                clientHeight: 0,
+            };
 
             if (e.clientX - left >= clientWidth || e.clientY - top > clientHeight) {
                 // ignore interactions with the scrollbars
@@ -1717,7 +2036,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 if (dist >= CANVAS_CLICK_THRESHOLD) {
                     // Only in this case do we create a Lasso.
                     setPoints(newPoints);
-                    const lasso = new Lasso(Math.min(x, x + dx), Math.min(y, y + dy), Math.max(x, x + dx), Math.max(y, y + dy), deselect);
+                    const lasso = new Lasso(
+                        Math.min(x, x + dx),
+                        Math.min(y, y + dy),
+                        Math.max(x, x + dx),
+                        Math.max(y, y + dy),
+                        deselect
+                    );
                     const pres = preselection2Ref.current;
                     let changed = false;
                     const newPres = [
@@ -1727,7 +2052,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             return result;
                         }),
                         ...allItems.filter((item) => {
-                            const result = lasso.contains(item, yOffset) && !pres.includes(item) && (!deselect || selection.includes(item));
+                            const result =
+                                lasso.contains(item, yOffset) &&
+                                !pres.includes(item) &&
+                                (!deselect || selection.includes(item));
                             changed = changed || result;
                             return result;
                         }),
@@ -1766,7 +2094,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     // In this case, we need to take care of the lasso, and either select or deselect items.
                     const pres = preselection2Ref.current;
                     if (deselect) {
-                        const toDeselect = pres.reduce((acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)], []);
+                        const toDeselect = pres.reduce(
+                            (acc: number[], item: Item) => [...acc, selection.lastIndexOf(item)],
+                            []
+                        );
                         newSelection = selection.filter((item, index) => !toDeselect.includes(index));
                     } else if (e.shiftKey) {
                         // increase selection
@@ -1787,7 +2118,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         newFocus = null;
                     }
                 }
-                update({ selection: newSelection, focusItem: newFocus, points: newPoints, adding: false, dissolveAdding: false });
+                update({
+                    selection: newSelection,
+                    focusItem: newFocus,
+                    points: newPoints,
+                    adding: false,
+                    dissolveAdding: false,
+                });
                 setLasso(null);
                 setPreselection1([]);
                 setPreselection2([]);
@@ -1894,14 +2231,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             }
                         }
                         const n1 = slice[0];
-                        if (slice.length === 1 || (n1 instanceof CNode && sameElements(slice, n1.group!.members))) {
+                        if (
+                            slice.length === 1 ||
+                            (n1 instanceof CNode && sameElements(slice, n1.group!.members))
+                        ) {
                             relata = [n0, n1];
                         }
                     }
 
                     switch (key) {
                         case 'adj':
-                            snodes = new Array(relata.length - 1).fill(null).map(() => new Adjunction(counter++));
+                            snodes = new Array(relata.length - 1)
+                                .fill(null)
+                                .map(() => new Adjunction(counter++));
                             for (let i = 0; i < snodes.length; i++) {
                                 snodes[i].init([relata[i], relata[i + 1]]);
                             }
@@ -1942,20 +2284,21 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             selection.filter((it) => it instanceof Node),
             false
         ) as Set<Node>;
-        const [copiedList, gnodes, newSelection, newFocusItem, newENodeCounter, newCNGCounter, newSGCounter] = copyItems(
-            topMembers,
-            nodes,
-            list,
-            selection,
-            focusItem,
-            eNodeCounter,
-            cngCounter,
-            sgCounter,
-            hDisplacement,
-            vDisplacement,
-            unitScale,
-            displayFontFactor
-        );
+        const [copiedList, gnodes, newSelection, newFocusItem, newENodeCounter, newCNGCounter, newSGCounter] =
+            copyItems(
+                topMembers,
+                nodes,
+                list,
+                selection,
+                focusItem,
+                eNodeCounter,
+                cngCounter,
+                sgCounter,
+                hDisplacement,
+                vDisplacement,
+                unitScale,
+                displayFontFactor
+            );
         const newList = [...list, ...copiedList, ...gnodes];
         setENodeCounter(newENodeCounter);
         setCNGCounter(newCNGCounter);
@@ -1978,8 +2321,16 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const itemChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null, key: string) => {
             if (focusItem) {
-                const [edit, range] = focusItem.handleEditing(e, logIncrement, deduplicatedSelection, unitScale, displayFontFactor, key);
-                const nodeGroups: Set<CNodeGroup> | null = range === 'ENodesAndCNodeGroups' ? new Set<CNodeGroup>() : null;
+                const [edit, range] = focusItem.handleEditing(
+                    e,
+                    logIncrement,
+                    deduplicatedSelection,
+                    unitScale,
+                    displayFontFactor,
+                    key
+                );
+                const nodeGroups: Set<CNodeGroup> | null =
+                    range === 'ENodesAndCNodeGroups' ? new Set<CNodeGroup>() : null;
                 const nodes =
                     range == 'onlyThis'
                         ? edit(focusItem, list)
@@ -2002,7 +2353,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 setItemsMoved((prev) => [...prev]);
             }
         },
-        [focusItem, logIncrement, deduplicatedSelection, selection, points, list, unitScale, displayFontFactor, adjustLimit, setOrigin, scrollTo]
+        [
+            focusItem,
+            logIncrement,
+            deduplicatedSelection,
+            selection,
+            points,
+            list,
+            unitScale,
+            displayFontFactor,
+            adjustLimit,
+            setOrigin,
+            scrollTo,
+        ]
     );
 
     const adjustSelection = useCallback(
@@ -2034,7 +2397,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             setItemsMoved((prev) => [...prev]);
             throttledReport();
         },
-        [logIncrement, selectedNodesDeduplicated, focusItem, list, points, selection, adjustLimit, setOrigin, scrollTo, setItemsMoved, throttledReport]
+        [
+            logIncrement,
+            selectedNodesDeduplicated,
+            focusItem,
+            list,
+            points,
+            selection,
+            adjustLimit,
+            setOrigin,
+            scrollTo,
+            setItemsMoved,
+            throttledReport,
+        ]
     );
 
     const changeUnitscale = useCallback(
@@ -2089,7 +2464,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             for (const node of selectedIndependentNodes) {
                 const { x, y } = scalePoint(node.x100, node.y100, origin.x, origin.y, val / 100);
                 if (!isFinite(x) || !isFinite(y)) {
-                    showModal('Buzz Lightyear Alert', `Nodes cannot be sent to ${x == -Infinity || y == -Infinity ? '(negative) ' : ''}infinity, or beyond.`);
+                    showModal(
+                        'Buzz Lightyear Alert',
+                        `Nodes cannot be sent to ${x == -Infinity || y == -Infinity ? '(negative) ' : ''}infinity, or beyond.`
+                    );
                 }
                 if (x < 0 || x > MAX_X) return false;
                 if (y < MIN_Y || y > MAX_Y) return false;
@@ -2112,7 +2490,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             }
             return true;
         },
-        [selectedIndependentNodes, origin, transformFlags.scaleDash, transformFlags.scaleENodes, transformFlags.scaleLinewidths, showModal]
+        [
+            selectedIndependentNodes,
+            origin,
+            transformFlags.scaleDash,
+            transformFlags.scaleENodes,
+            transformFlags.scaleLinewidths,
+            showModal,
+        ]
     );
 
     /**
@@ -2121,12 +2506,36 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const rotateSelection = useCallback(
         (angle: number) => {
             selectedIndependentNodes.forEach((node) => {
-                ({ x: node.x, y: node.y } = rotatePoint(node.x, node.y, origin.x, origin.y, angle, ROUNDING_DIGITS));
-                ({ x: node.x100, y: node.y100 } = rotatePoint(node.x100, node.y100, origin.x, origin.y, angle, ROUNDING_DIGITS));
+                ({ x: node.x, y: node.y } = rotatePoint(
+                    node.x,
+                    node.y,
+                    origin.x,
+                    origin.y,
+                    angle,
+                    ROUNDING_DIGITS
+                ));
+                ({ x: node.x100, y: node.y100 } = rotatePoint(
+                    node.x100,
+                    node.y100,
+                    origin.x,
+                    origin.y,
+                    angle,
+                    ROUNDING_DIGITS
+                ));
                 node.invalidateDepNodeLocations();
             });
             adjustLimit();
-            setRotation((prev) => round(getCyclicValue(prev + angle, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)), ROUNDING_DIGITS));
+            setRotation((prev) =>
+                round(
+                    getCyclicValue(
+                        prev + angle,
+                        MIN_ROTATION,
+                        360,
+                        10 ** Math.max(0, -MIN_ROTATION_LOG_INCREMENT)
+                    ),
+                    ROUNDING_DIGITS
+                )
+            );
             setItemsMoved((prev) => [...prev]);
         },
         [selectedIndependentNodes, origin, adjustLimit]
@@ -2140,7 +2549,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             if (testScaling(newValue)) {
                 selectedNodesDeduplicated.forEach((node) => {
                     if (node.isIndependent()) {
-                        ({ x: node.x, y: node.y } = scalePoint(node.x100, node.y100, origin.x, origin.y, newValue / 100));
+                        ({ x: node.x, y: node.y } = scalePoint(
+                            node.x100,
+                            node.y100,
+                            origin.x,
+                            origin.y,
+                            newValue / 100
+                        ));
                         node.invalidateDepNodeLocations();
                         if (node instanceof CNode) {
                             node.dist0 = round((node.dist0_100 * newValue) / 100, ROUNDING_DIGITS);
@@ -2154,8 +2569,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 o.gap = (o.gap100 * newValue) / 100;
                             });
                         }
-                        if (transformFlags.scaleLinewidths) node.linewidth = (node.linewidth100 * newValue) / 100;
-                        if (transformFlags.scaleDash) node.dash = node.dash100.map((l) => (l * newValue) / 100);
+                        if (transformFlags.scaleLinewidths)
+                            node.linewidth = (node.linewidth100 * newValue) / 100;
+                        if (transformFlags.scaleDash)
+                            node.dash = node.dash100.map((l) => (l * newValue) / 100);
                     }
                 });
                 const affectedNodeGroups: CNodeGroup[] = deduplicatedSelection
@@ -2164,8 +2581,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     .filter((g, i, arr) => i === arr.indexOf(g)) as CNodeGroup[];
                 affectedNodeGroups.forEach((group) => {
                     if (group) {
-                        if (transformFlags.scaleLinewidths) group.linewidth = (group.linewidth100 * newValue) / 100;
-                        if (transformFlags.scaleDash) group.dash = group.dash100.map((l) => (l * newValue) / 100);
+                        if (transformFlags.scaleLinewidths)
+                            group.linewidth = (group.linewidth100 * newValue) / 100;
+                        if (transformFlags.scaleDash)
+                            group.dash = group.dash100.map((l) => (l * newValue) / 100);
                     }
                 });
                 adjustLimit();
@@ -2261,8 +2680,22 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 const c = g.getNodalCenter();
                 const angle = -180 / g.members.length;
                 g.members.forEach((node) => {
-                    ({ x: node.x, y: node.y } = rotatePoint(node.x, node.y, c.x, c.y, angle, ROUNDING_DIGITS));
-                    ({ x: node.x100, y: node.y100 } = rotatePoint(node.x100, node.y100, c.x, c.y, angle, ROUNDING_DIGITS));
+                    ({ x: node.x, y: node.y } = rotatePoint(
+                        node.x,
+                        node.y,
+                        c.x,
+                        c.y,
+                        angle,
+                        ROUNDING_DIGITS
+                    ));
+                    ({ x: node.x100, y: node.y100 } = rotatePoint(
+                        node.x100,
+                        node.y100,
+                        c.x,
+                        c.y,
+                        angle,
+                        ROUNDING_DIGITS
+                    ));
                     node.invalidateDepNodeLocations();
                 });
             });
@@ -2280,7 +2713,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             .map((it) => (it.group instanceof CNodeGroup ? it.group : it))
             .filter((it, i, arr) => i === arr.indexOf(it))
             .forEach((obj) => {
-                const newVal = Math.min(Math.max(inc ? round(obj.shading + val, ROUNDING_DIGITS) : val, 0), 1);
+                const newVal = Math.min(
+                    Math.max(inc ? round(obj.shading + val, ROUNDING_DIGITS) : val, 0),
+                    1
+                );
                 obj.shading = newVal;
             });
         setPoints((prev) => [...prev]); // to trigger a re-render
@@ -2294,7 +2730,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             .map((it) => (it.group instanceof CNodeGroup ? it.group : it))
             .filter((it, i, arr) => i === arr.indexOf(it))
             .forEach((obj) => {
-                const newLw = Math.min(Math.max(inc ? round(obj.linewidth + val, ROUNDING_DIGITS) : val, 0), MAX_LINEWIDTH);
+                const newLw = Math.min(
+                    Math.max(inc ? round(obj.linewidth + val, ROUNDING_DIGITS) : val, 0),
+                    MAX_LINEWIDTH
+                );
                 obj.linewidth = obj.linewidth100 = newLw;
             });
         setPoints((prev) => [...prev]); // to trigger a re-render
@@ -2309,17 +2748,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         const createSG = newMembers.every((m) => !(m instanceof CNode));
 
         if (!createCNG && !createSG) {
-            showModal('Invalid group composition', `Cannot create a group that contains both contour nodes and entity nodes or groups.`);
+            showModal(
+                'Invalid group composition',
+                `Cannot create a group that contains both contour nodes and entity nodes or groups.`
+            );
             return;
         }
         if (createCNG && newMembers.length > MAX_CNODEGROUP_SIZE) {
-            showModal('Too damn high!', `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`);
+            showModal(
+                'Too damn high!',
+                `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`
+            );
             return;
         }
         if (createCNG && list.length === MAX_LIST_SIZE) {
             // Here we check whether creating the new CNodeGroup would lead to the deletion of
             // at least one existing CNodeGroup:
-            const affectedGroups = newMembers.map((item) => item.group).filter((g, i, arr) => g && i === arr.indexOf(g)) as CNodeGroup[];
+            const affectedGroups = newMembers
+                .map((item) => item.group)
+                .filter((g, i, arr) => g && i === arr.indexOf(g)) as CNodeGroup[];
             if (!affectedGroups.some((g) => g.members.every((m) => newMembers.includes(m)))) {
                 showModal('Sorry!', `Creating this new group would push our list size over the limit.`);
                 return;
@@ -2381,7 +2828,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     }, [deduplicatedSelection, focusItem, adjustSelection]);
 
     const rejoinGroup = useCallback(() => {
-        const affected = deduplicatedSelection.map((item) => highestActive(item)).filter((item, i, arr) => item.group && i === arr.indexOf(item));
+        const affected = deduplicatedSelection
+            .map((item) => highestActive(item))
+            .filter((item, i, arr) => item.group && i === arr.indexOf(item));
         affected.forEach((item) => {
             item.isActiveMember = true;
         });
@@ -2445,10 +2894,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 }
             }
         },
-        [list, eNodeCounter, cngCounter, sgCounter, points, unitScale, displayFontFactor, update, adjustLimit, setOrigin, showModal]
+        [
+            list,
+            eNodeCounter,
+            cngCounter,
+            sgCounter,
+            points,
+            unitScale,
+            displayFontFactor,
+            update,
+            adjustLimit,
+            setOrigin,
+            showModal,
+        ]
     );
 
-    const numberOfTbcENodes = useMemo(() => deduplicatedSelection.reduce((acc, m) => (m instanceof ENode ? acc + 1 : acc), 0), [deduplicatedSelection]);
+    const numberOfTbcENodes = useMemo(
+        () => deduplicatedSelection.reduce((acc, m) => (m instanceof ENode ? acc + 1 : acc), 0),
+        [deduplicatedSelection]
+    );
 
     const numberOfTbcCNGs = useMemo(() => getCNodeGroups(topMembers).length, [topMembers]);
 
@@ -2456,7 +2920,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         const tbcContainingCNGs = topMembers.filter((it) => it instanceof CNode).map((node) => node.group);
         const dedupTbcContainingCNGs = tbcContainingCNGs.filter((g, i, arr) => i === arr.indexOf(g));
         return dedupTbcContainingCNGs.some(
-            (group) => group && group.members.length + tbcContainingCNGs.reduce((acc, g) => (g === group ? acc + 1 : acc), 0) > MAX_CNODEGROUP_SIZE
+            (group) =>
+                group &&
+                group.members.length +
+                    tbcContainingCNGs.reduce((acc, g) => (g === group ? acc + 1 : acc), 0) >
+                    MAX_CNODEGROUP_SIZE
         );
     }, [topMembers]);
 
@@ -2473,9 +2941,15 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         .map((o) => (o as Ornament).node);
                 }
             });
-        const dedupNonTbcNodesWithTbcOrnaments = nonTbcNodesWithTbcOrnaments.filter((g, i, arr) => i === arr.indexOf(g));
+        const dedupNonTbcNodesWithTbcOrnaments = nonTbcNodesWithTbcOrnaments.filter(
+            (g, i, arr) => i === arr.indexOf(g)
+        );
         return dedupNonTbcNodesWithTbcOrnaments.some(
-            (node) => node && node.ornaments.length + nonTbcNodesWithTbcOrnaments.reduce((acc, n) => (n === node ? acc + 1 : acc), 0) > MAX_NUMBER_OF_ORNAMENTS
+            (node) =>
+                node &&
+                node.ornaments.length +
+                    nonTbcNodesWithTbcOrnaments.reduce((acc, n) => (n === node ? acc + 1 : acc), 0) >
+                    MAX_NUMBER_OF_ORNAMENTS
         );
     }, [topMembers, deduplicatedSelection]);
 
@@ -2514,7 +2988,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const canAddOrnaments: boolean = useMemo(
         () =>
             selectedNodesDeduplicated.length > 0 &&
-            deduplicatedSelection.every((it) => !(it instanceof Node) || it.ornaments.length <= MAX_NUMBER_OF_ORNAMENTS),
+            deduplicatedSelection.every(
+                (it) => !(it instanceof Node) || it.ornaments.length <= MAX_NUMBER_OF_ORNAMENTS
+            ),
         [selectedNodesDeduplicated, deduplicatedSelection]
     );
 
@@ -2557,9 +3033,15 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canRotateCCWBy45Deg: boolean = useMemo(() => testRotation(45), [testRotation]);
 
-    const canRotateCW: boolean = useMemo(() => testRotation(-(10 ** logIncrement)), [logIncrement, testRotation]);
+    const canRotateCW: boolean = useMemo(
+        () => testRotation(-(10 ** logIncrement)),
+        [logIncrement, testRotation]
+    );
 
-    const canRotateCCW: boolean = useMemo(() => testRotation(10 ** logIncrement), [logIncrement, testRotation]);
+    const canRotateCCW: boolean = useMemo(
+        () => testRotation(10 ** logIncrement),
+        [logIncrement, testRotation]
+    );
 
     /* // This doesn't work for some reason:
     useHotkeys(hotkeyMap['undo'], undo, 
@@ -2567,9 +3049,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     useHotkeys(hotkeyMap['redo'], redo, 
         { enabled: canRedo && !modalShown });
 */
-    useHotkeys(hotkeyMap['abstract'], () => abstractSelection(), { enabled: selectedNodes.length > 0 && !modalShown });
+    useHotkeys(hotkeyMap['abstract'], () => abstractSelection(), {
+        enabled: selectedNodes.length > 0 && !modalShown,
+    });
     useHotkeys(hotkeyMap['copy'], copySelection, { enabled: canCopy && !modalShown });
-    useHotkeys(hotkeyMap['delete'], () => deleteItems(deduplicatedSelection), { enabled: canDelete && !modalShown });
+    useHotkeys(hotkeyMap['delete'], () => deleteItems(deduplicatedSelection), {
+        enabled: canDelete && !modalShown,
+    });
     useHotkeys(
         hotkeyMap['clear points'],
         () => {
@@ -2586,44 +3072,92 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     });
     // We enable this even if the Create button is disabled, in order to make sure that the default behavior (which is to scroll down) is
     // prevented as long as the canvas is the active element.
-    useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')), { enabled: canAddOrnaments && !modalShown });
+    useHotkeys(hotkeyMap['add labels'], () => createDepItem(depItemKeys.indexOf('lbl')), {
+        enabled: canAddOrnaments && !modalShown,
+    });
     useHotkeys(hotkeyMap['move up'], () => moveSelection(0, 1), {
-        enabled: canMoveUp && !modalShown && focusItem !== null && (document.activeElement as HTMLElement).closest('.pasi') !== null,
+        enabled:
+            canMoveUp &&
+            !modalShown &&
+            focusItem !== null &&
+            (document.activeElement as HTMLElement).closest('.pasi') !== null,
         preventDefault: true,
     });
     useHotkeys(hotkeyMap['move left'], () => moveSelection(-1, 0), {
-        enabled: canMoveLeft && !modalShown && focusItem !== null && (document.activeElement as HTMLElement).closest('.pasi') !== null,
+        enabled:
+            canMoveLeft &&
+            !modalShown &&
+            focusItem !== null &&
+            (document.activeElement as HTMLElement).closest('.pasi') !== null,
         preventDefault: true,
     });
     useHotkeys(hotkeyMap['move down'], () => moveSelection(0, -1), {
-        enabled: canMoveDown && !modalShown && focusItem !== null && (document.activeElement as HTMLElement).closest('.pasi') !== null,
+        enabled:
+            canMoveDown &&
+            !modalShown &&
+            focusItem !== null &&
+            (document.activeElement as HTMLElement).closest('.pasi') !== null,
         preventDefault: true,
     });
     useHotkeys(hotkeyMap['move right'], () => moveSelection(1, 0), {
-        enabled: canMoveRight && !modalShown && focusItem !== null && (document.activeElement as HTMLElement).closest('.pasi') !== null,
+        enabled:
+            canMoveRight &&
+            !modalShown &&
+            focusItem !== null &&
+            (document.activeElement as HTMLElement).closest('.pasi') !== null,
         preventDefault: true,
     });
     useHotkeys(hotkeyMap['set increment to 0.1px'], () => setLogIncrement(-1), { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 1px'], () => setLogIncrement(0), { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 10px'], () => setLogIncrement(1), { enabled: !modalShown });
     useHotkeys(hotkeyMap['set increment to 100px'], () => setLogIncrement(2), { enabled: !modalShown });
-    useHotkeys(hotkeyMap['dec sh'], () => setShading(selectedNodesDeduplicated, -0.1, true), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['inc sh'], () => setShading(selectedNodesDeduplicated, 0.1, true), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['sh 0'], () => setShading(selectedNodesDeduplicated, 0), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['sh 1'], () => setShading(selectedNodesDeduplicated, 1), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
+    useHotkeys(hotkeyMap['dec sh'], () => setShading(selectedNodesDeduplicated, -0.1, true), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['inc sh'], () => setShading(selectedNodesDeduplicated, 0.1, true), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['sh 0'], () => setShading(selectedNodesDeduplicated, 0), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['sh 1'], () => setShading(selectedNodesDeduplicated, 1), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
     useHotkeys(hotkeyMap['dec lw'], () => setLinewidth(selectedNodesDeduplicated, -0.1, true), {
         enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
     });
-    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(selectedNodesDeduplicated, 0.1, true), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(selectedNodesDeduplicated, 0), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(selectedNodesDeduplicated, 1), { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), { enabled: canRotateCCWBy45Deg && !modalShown });
-    useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), { enabled: canRotateCWBy45Deg && !modalShown });
-    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), { enabled: canRotateCCW && !modalShown });
-    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), { enabled: canRotateCW && !modalShown });
-    useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)), { enabled: !modalShown });
-    useHotkeys(hotkeyMap['round'], roundLocations, { enabled: selectedNodesDeduplicated.length > 0 && !modalShown });
-    useHotkeys(hotkeyMap['scale up'], () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)), { enabled: !modalShown });
+    useHotkeys(hotkeyMap['inc lw'], () => setLinewidth(selectedNodesDeduplicated, 0.1, true), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['lw 0'], () => setLinewidth(selectedNodesDeduplicated, 0), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['lw 1'], () => setLinewidth(selectedNodesDeduplicated, 1), {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(hotkeyMap['rotate by 45° counter-clockwise'], () => rotateSelection(45), {
+        enabled: canRotateCCWBy45Deg && !modalShown,
+    });
+    useHotkeys(hotkeyMap['rotate by 45° clockwise'], () => rotateSelection(-45), {
+        enabled: canRotateCWBy45Deg && !modalShown,
+    });
+    useHotkeys(hotkeyMap['rotate counter-clockwise'], () => rotateSelection(10 ** logIncrement), {
+        enabled: canRotateCCW && !modalShown,
+    });
+    useHotkeys(hotkeyMap['rotate clockwise'], () => rotateSelection(-(10 ** logIncrement)), {
+        enabled: canRotateCW && !modalShown,
+    });
+    useHotkeys(hotkeyMap['scale down'], () => scaleSelection(Math.max(0, scaling - 10 ** logIncrement)), {
+        enabled: !modalShown,
+    });
+    useHotkeys(hotkeyMap['round'], roundLocations, {
+        enabled: selectedNodesDeduplicated.length > 0 && !modalShown,
+    });
+    useHotkeys(
+        hotkeyMap['scale up'],
+        () => scaleSelection(Math.min(MAX_SCALING, scaling + 10 ** logIncrement)),
+        { enabled: !modalShown }
+    );
     useHotkeys(hotkeyMap['hflip'], hFlip, { enabled: canHFlip && !modalShown });
     useHotkeys(hotkeyMap['vflip'], vFlip, { enabled: canVFlip && !modalShown });
     useHotkeys(hotkeyMap['polygons'], () => turnIntoRegularPolygons(selectedNodesDeduplicated), {
@@ -2653,9 +3187,15 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         { enabled: focusItem !== null && !modalShown }
     );
     const throttledGenerate = useThrottle(() => displayCode(unitScale), 500);
-    useHotkeys(hotkeyMap['generate code'], throttledGenerate, { enabled: () => !(document.activeElement instanceof HTMLButtonElement) && !modalShown });
+    useHotkeys(hotkeyMap['generate code'], throttledGenerate, {
+        enabled: () => !(document.activeElement instanceof HTMLButtonElement) && !modalShown,
+    });
     const throttledLoadDiagram = useThrottle(() => loadDiagram(code, replace), 500);
-    useHotkeys(hotkeyMap['load diagram'], throttledLoadDiagram, { enableOnFormTags: ['textarea'], preventDefault: true, enabled: !modalShown });
+    useHotkeys(hotkeyMap['load diagram'], throttledLoadDiagram, {
+        enableOnFormTags: ['textarea'],
+        preventDefault: true,
+        enabled: !modalShown,
+    });
     // 'Secret' hotkey:
     const throttledToggleTrueBlack = useThrottle(() => {
         setTrueBlack((prev) => !prev);
@@ -2686,14 +3226,30 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 onMouseEnter: itemMouseEnter,
                 onMouseLeave: () => mouseLeft(),
             }),
-        [yOffset, unitScale, displayFontFactor, focusItem, selection, preselection2, itemMouseDown, itemMouseEnter, mouseLeft, dark, trueBlack]
+        [
+            yOffset,
+            unitScale,
+            displayFontFactor,
+            focusItem,
+            selection,
+            preselection2,
+            itemMouseDown,
+            itemMouseEnter,
+            mouseLeft,
+            dark,
+            trueBlack,
+        ]
     );
 
     const transformTabDisabled = selectedNodesDeduplicated.length === 0;
 
     const groupTabDisabled = !focusItem;
 
-    const tabIndex = (userSelectedTabIndex === 1 && transformTabDisabled) || (userSelectedTabIndex === 2 && groupTabDisabled) ? 0 : userSelectedTabIndex;
+    const tabIndex =
+        (userSelectedTabIndex === 1 && transformTabDisabled) ||
+        (userSelectedTabIndex === 2 && groupTabDisabled)
+            ? 0
+            : userSelectedTabIndex;
 
     // The delete button gets some special colors:
     const deleteButtonStyle = clsx(
@@ -2726,14 +3282,18 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     */
     return (
         <DarkModeContext.Provider value={dark}>
-            <div id="main-panel" className="pasi flex my-8 p-6">
+            <div id='main-panel' className='pasi flex my-8 p-6'>
                 {' '}
                 {/* We give this div the 'pasi' class to prevent certain css styles from taking effect. */}
-                <div id="canvas-and-code" className="flex flex-col flex-grow scrollbox" style={{ minWidth: canvasWidth }}>
+                <div
+                    id='canvas-and-code'
+                    className='flex flex-col flex-grow scrollbox'
+                    style={{ minWidth: canvasWidth }}
+                >
                     <div
-                        id="canvas"
+                        id='canvas'
                         ref={canvasRef}
-                        className="canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border focus:outline-none"
+                        className='canvas bg-canvasbg border-canvasborder h-[650px] relative overflow-auto border focus:outline-none'
                         tabIndex={0} // This makes the canvas focusable; and that's all the focus management we need to do.
                         onMouseDown={canvasMouseDown}
                         onKeyDown={handleKeyDown}
@@ -2763,7 +3323,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     unitScale={unitScale}
                                     displayFontFactor={displayFontFactor}
                                     bg={dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE}
-                                    primaryColor={trueBlack ? BLACK : dark ? DEFAULT_HSL_DARK_MODE : DEFAULT_HSL_LIGHT_MODE}
+                                    primaryColor={
+                                        trueBlack
+                                            ? BLACK
+                                            : dark
+                                              ? DEFAULT_HSL_DARK_MODE
+                                              : DEFAULT_HSL_LIGHT_MODE
+                                    }
                                     markColor={dark ? MARK_COLOR0_DARK_MODE : MARK_COLOR0_LIGHT_MODE}
                                     itemMouseDown={itemMouseDown}
                                     itemMouseEnter={itemMouseEnter}
@@ -2783,7 +3349,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         <style>
                             {' '}
                             {/* We're using polylines for the 'mark borders' of items. Here is where we're animating them: */}
-                            @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1; {'}'} 100% {'{'} opacity: 1; {'}}'}
+                            @keyframes oscillate {'{'} 0% {'{'} opacity: 1; {'}'} 50% {'{'} opacity: 0.1;{' '}
+                            {'}'} 100% {'{'} opacity: 1; {'}}'}
                             polyline {'{'} stroke-width: {`${MARK_LINEWIDTH}px`}; {'}'}
                             .focused polyline {'{'} opacity: 1; animation: oscillate 1s infinite {'}'}
                             .selected polyline {'{'} opacity: 1; {'}'}
@@ -2803,11 +3370,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 }}
                             >
                                 <rect
-                                    x="1"
-                                    y="1"
+                                    x='1'
+                                    y='1'
                                     width={lasso.x1 - lasso.x0}
                                     height={lasso.y1 - lasso.y0}
-                                    fill={lasso.deselect ? (dark ? LASSO_DESELECT_DARK_MODE : LASSO_DESELECT_LIGHT_MODE) : 'none'}
+                                    fill={
+                                        lasso.deselect
+                                            ? dark
+                                                ? LASSO_DESELECT_DARK_MODE
+                                                : LASSO_DESELECT_LIGHT_MODE
+                                            : 'none'
+                                    }
                                     stroke={dark ? LASSO_COLOR_DARK_MODE : LASSO_COLOR_LIGHT_MODE}
                                     strokeWidth={MARK_LINEWIDTH}
                                     strokeDasharray={LASSO_DASH}
@@ -2821,71 +3394,83 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 x={limitCompX(limit.x, canvasRef.current, canvasWidth)}
                                 y={limitCompY(Math.min(0, limit.y) - yOffset, canvasRef.current)}
                                 primaryColor={DEFAULT_HSL_LIGHT_MODE}
-                                markColor="red"
+                                markColor='red'
                                 visible={false}
                             />
                         )}
                     </div>
-                    <canvas id="real-canvas" className="w-72 h-24 hidden">
+                    <canvas id='real-canvas' className='w-72 h-24 hidden'>
                         {/* This canvas element helps Label components determine the 'true' height of a given piece of text. */}
                     </canvas>
-                    <div id="code-panel" className="relative mt-[25px] h-[190px]" style={{ minWidth: canvasWidth }}>
+                    <div
+                        id='code-panel'
+                        className='relative mt-[25px] h-[190px]'
+                        style={{ minWidth: canvasWidth }}
+                    >
                         <textarea
-                            className="codepanel w-full h-full p-2 shadow-inner text-sm focus:outline-none resize-none"
+                            className='codepanel w-full h-full p-2 shadow-inner text-sm focus:outline-none resize-none'
                             ref={codeRef}
                             value={code}
                             spellCheck={false}
                             onChange={(e) => setCode(e.target.value)}
                         />
-                        <CopyToClipboardButton id="copy-button" iconSize={6} textareaRef={codeRef} />
+                        <CopyToClipboardButton id='copy-button' iconSize={6} textareaRef={codeRef} />
                     </div>
                 </div>
-                <div id="button-panels" className={clsx('flex-grow min-w-[315px] max-w-[380px] select-none')}>
-                    <div id="button-panel-1" className="flex flex-col ml-[25px] h-[650px]">
-                        <div id="add-panel" className="grid grid-cols-2 mb-3">
+                <div id='button-panels' className={clsx('flex-grow min-w-[315px] max-w-[380px] select-none')}>
+                    <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
+                        <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton
-                                id="node-button"
-                                label="Node"
-                                style="rounded-xl mr-1.5"
+                                id='node-button'
+                                label='Node'
+                                style='rounded-xl mr-1.5'
                                 tooltip={
                                     <>
                                         Create entity nodes at the selected locations.
-                                        <HotkeyComp mapKey="add nodes" />
+                                        <HotkeyComp mapKey='add nodes' />
                                     </>
                                 }
-                                tooltipPlacement="top"
+                                tooltipPlacement='top'
                                 disabled={!canAddENodes}
                                 onClick={addEntityNodes}
                             />
                             <BasicColoredButton
-                                id="contour-button"
-                                label="Contour"
-                                style="rounded-xl"
+                                id='contour-button'
+                                label='Contour'
+                                style='rounded-xl'
                                 tooltip={
                                     <>
                                         Create contours at the selected locations.
-                                        <HotkeyComp mapKey="add contours" />
+                                        <HotkeyComp mapKey='add contours' />
                                     </>
                                 }
-                                tooltipPlacement="top"
+                                tooltipPlacement='top'
                                 disabled={!canAddContours}
                                 onClick={addContours}
                             />
                         </div>
-                        <div id="di-panel" className="grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl">
+                        <div
+                            id='di-panel'
+                            className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'
+                        >
                             <Menu>
                                 <MenuButton className={clsx('py-1.5', menuButtonClassName)}>
-                                    <div className="flex-none mx-2">{depItemInfos[depItemIndex].getImageComp(dark)}</div>
-                                    <div className="flex-1">{depItemInfos[depItemIndex].label}</div>
-                                    <div className="flex-none w-[28px] mx-2">
+                                    <div className='flex-none mx-2'>
+                                        {depItemInfos[depItemIndex].getImageComp(dark)}
+                                    </div>
+                                    <div className='flex-1'>{depItemInfos[depItemIndex].label}</div>
+                                    <div className='flex-none w-[28px] mx-2'>
                                         <ChevronSVG />
                                     </div>
                                 </MenuButton>
                                 <MenuItemList>
                                     {depItemInfos.map((label, index) => (
                                         <MenuItem key={'di-' + index}>
-                                            <button className={menuItemButtonClassName} onClick={() => setDepItemIndex(index)}>
-                                                <div className="inline mr-2">{label.getImageComp(dark)}</div>
+                                            <button
+                                                className={menuItemButtonClassName}
+                                                onClick={() => setDepItemIndex(index)}
+                                            >
+                                                <div className='inline mr-2'>{label.getImageComp(dark)}</div>
                                                 {label.label}
                                             </button>
                                         </MenuItem>
@@ -2893,51 +3478,51 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 </MenuItemList>
                             </Menu>
                             <BasicColoredButton
-                                id="create-button"
-                                label="Create"
-                                style="mt-2 rounded-md"
+                                id='create-button'
+                                label='Create'
+                                style='mt-2 rounded-md'
                                 disabled={!canCreateDepItem}
                                 onClick={() => createDepItem(depItemIndex)}
                             />
                         </div>
-                        <div className="grid grid-cols-2 mb-3.5">
+                        <div className='grid grid-cols-2 mb-3.5'>
                             <BasicColoredButton
-                                id="abstract-button"
-                                label="Abstract"
-                                style="rounded-xl mr-1.5"
+                                id='abstract-button'
+                                label='Abstract'
+                                style='rounded-xl mr-1.5'
                                 tooltip={
                                     <>
                                         Create &lsquo;ghost&rsquo; versions of selected nodes.
-                                        <HotkeyComp mapKey="abstract" />
+                                        <HotkeyComp mapKey='abstract' />
                                     </>
                                 }
-                                tooltipPlacement="left"
+                                tooltipPlacement='left'
                                 disabled={selectedNodes.length === 0}
                                 onClick={() => abstractSelection()}
                             />
                             <BasicColoredButton
-                                id="copy-button"
-                                label="Copy"
-                                style="rounded-xl"
+                                id='copy-button'
+                                label='Copy'
+                                style='rounded-xl'
                                 tooltip={
                                     <>
                                         Copy selection.
-                                        <HotkeyComp mapKey="copy" />
+                                        <HotkeyComp mapKey='copy' />
                                     </>
                                 }
-                                tooltipPlacement="right"
+                                tooltipPlacement='right'
                                 disabled={!canCopy}
                                 onClick={copySelection}
                             />
                         </div>
                         <TabGroup
-                            className="flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5"
+                            className='flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5'
                             selectedIndex={tabIndex}
                             onChange={setUserSelectedTabIndex}
                         >
-                            <TabList className="grid grid-cols-10 mb-0.5">
+                            <TabList className='grid grid-cols-10 mb-0.5'>
                                 <Tab
-                                    key="editor-tab"
+                                    key='editor-tab'
                                     className={clsx(
                                         tabClassName,
                                         'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0',
@@ -2948,7 +3533,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     Editor
                                 </Tab>
                                 <Tab
-                                    key="transform-tab"
+                                    key='transform-tab'
                                     className={clsx(
                                         tabClassName,
                                         'col-span-4 data-[selected]:border-x-0',
@@ -2960,7 +3545,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     Transform
                                 </Tab>
                                 <Tab
-                                    key="group-tab"
+                                    key='group-tab'
                                     className={clsx(
                                         tabClassName,
                                         'col-span-3 border-r-0 rounded-tr-xl data-[selected]:border-l-0',
@@ -2972,8 +3557,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     Groups
                                 </Tab>
                             </TabList>
-                            <TabPanels className="flex-1 h-[364px] overflow-auto scrollbox">
-                                <TabPanel key="editor-panel" className="rounded-xl px-2 py-2 h-full">
+                            <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
+                                <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
                                     {focusItem && itemChange ? (
                                         <ItemEditor
                                             info={focusItem.getInfo(list)}
@@ -2987,20 +3572,60 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                             hDisp={hDisplacement}
                                             vDisp={vDisplacement}
                                             displayFontFactor={displayFontFactor}
-                                            changeHGap={(e) => setGrid((prevGrid) => ({ ...prevGrid, hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP) }))}
-                                            changeVGap={(e) => setGrid((prevGrid) => ({ ...prevGrid, vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP) }))}
+                                            changeHGap={(e) =>
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
+                                                }))
+                                            }
+                                            changeVGap={(e) =>
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
+                                                }))
+                                            }
                                             changeHShift={(e) =>
-                                                setGrid((prevGrid) => ({ ...prevGrid, hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT) }))
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
+                                                }))
                                             }
                                             changeVShift={(e) =>
-                                                setGrid((prevGrid) => ({ ...prevGrid, vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT) }))
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
+                                                }))
                                             }
-                                            changeSnapToNode={() => setGrid((prevGrid) => ({ ...prevGrid, snapToNodes: !prevGrid.snapToNodes }))}
+                                            changeSnapToNode={() =>
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    snapToNodes: !prevGrid.snapToNodes,
+                                                }))
+                                            }
                                             changeSnapToCC={() =>
-                                                setGrid((prevGrid) => ({ ...prevGrid, snapToContourCenters: !prevGrid.snapToContourCenters }))
+                                                setGrid((prevGrid) => ({
+                                                    ...prevGrid,
+                                                    snapToContourCenters: !prevGrid.snapToContourCenters,
+                                                }))
                                             }
-                                            changeHDisp={(e) => setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))}
-                                            changeVDisp={(e) => setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))}
+                                            changeHDisp={(e) =>
+                                                setHDisplacement(
+                                                    validFloat(
+                                                        e.target.value,
+                                                        MIN_DISPLACEMENT,
+                                                        MAX_DISPLACEMENT
+                                                    )
+                                                )
+                                            }
+                                            changeVDisp={(e) =>
+                                                setVDisplacement(
+                                                    validFloat(
+                                                        e.target.value,
+                                                        MIN_DISPLACEMENT,
+                                                        MAX_DISPLACEMENT
+                                                    )
+                                                )
+                                            }
                                             changeDFF={changeDisplayFontFactor}
                                             reset={() => {
                                                 setGrid(createGrid());
@@ -3010,7 +3635,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                         />
                                     )}
                                 </TabPanel>
-                                <TabPanel key="transform-panel" className="rounded-xl px-2 py-2">
+                                <TabPanel key='transform-panel' className='rounded-xl px-2 py-2'>
                                     <TransformTab
                                         rotation={rotation}
                                         scaling={scaling}
@@ -3026,7 +3651,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                         vFlip={vFlip}
                                     />
                                 </TabPanel>
-                                <TabPanel key="groups-panel" className="rounded-xl px-3 pt-3 pb-1">
+                                <TabPanel key='groups-panel' className='rounded-xl px-3 pt-3 pb-1'>
                                     {focusItem && (
                                         <GroupTab
                                             item={focusItem}
@@ -3051,98 +3676,112 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 </TabPanel>
                             </TabPanels>
                         </TabGroup>
-                        <div id="undo-panel" className="grid grid-cols-3">
+                        <div id='undo-panel' className='grid grid-cols-3'>
                             <BasicColoredButton
-                                id="undo-button"
-                                label="Undo"
-                                style="rounded-xl mr-1.5"
-                                tooltip="Undo"
+                                id='undo-button'
+                                label='Undo'
+                                style='rounded-xl mr-1.5'
+                                tooltip='Undo'
                                 disabled={!canUndo}
                                 onClick={throttledUndo}
                                 icon={
                                     // source: https://heroicons.com/
                                     <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
+                                        xmlns='http://www.w3.org/2000/svg'
+                                        fill='none'
+                                        viewBox='0 0 24 24'
                                         strokeWidth={1.5}
-                                        stroke="currentColor"
-                                        className="w-6 h-6 mx-auto"
+                                        stroke='currentColor'
+                                        className='w-6 h-6 mx-auto'
                                     >
-                                        <g transform="rotate(-45 12 12)">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                        <g transform='rotate(-45 12 12)'>
+                                            <path
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                                d='M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
+                                            />
                                         </g>
                                     </svg>
                                 }
                             />
                             <BasicColoredButton
-                                id="redo-button"
-                                label="Redo"
-                                style="rounded-xl mr-1.5"
-                                tooltip="Redo"
+                                id='redo-button'
+                                label='Redo'
+                                style='rounded-xl mr-1.5'
+                                tooltip='Redo'
                                 disabled={!canRedo}
                                 onClick={throttledRedo}
                                 icon={
                                     // source: https://heroicons.com/
                                     <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
+                                        xmlns='http://www.w3.org/2000/svg'
+                                        fill='none'
+                                        viewBox='0 0 24 24'
                                         strokeWidth={1.5}
-                                        stroke="currentColor"
-                                        className="w-6 h-6 mx-auto"
+                                        stroke='currentColor'
+                                        className='w-6 h-6 mx-auto'
                                     >
-                                        <g transform="rotate(45 12 12)">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" />
+                                        <g transform='rotate(45 12 12)'>
+                                            <path
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                                d='m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3'
+                                            />
                                         </g>
                                     </svg>
                                 }
                             />
                             <BasicButton
-                                id="del-button"
-                                label="Delete"
+                                id='del-button'
+                                label='Delete'
                                 style={deleteButtonStyle}
-                                tooltip="Delete"
+                                tooltip='Delete'
                                 disabled={!canDelete}
                                 onClick={() => deleteItems(deduplicatedSelection)}
                                 icon={
                                     // source: https://heroicons.com/
                                     <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
+                                        xmlns='http://www.w3.org/2000/svg'
+                                        fill='none'
+                                        viewBox='0 0 24 24'
                                         strokeWidth={1.5}
-                                        stroke="currentColor"
-                                        className="w-6 h-6 mx-auto"
+                                        stroke='currentColor'
+                                        className='w-6 h-6 mx-auto'
                                     >
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        <path
+                                            strokeLinecap='round'
+                                            strokeLinejoin='round'
+                                            d='M6 18 18 6M6 6l12 12'
+                                        />
                                     </svg>
                                 }
                             />
                         </div>
                     </div>
 
-                    <div id="button-panel-2" className="grid justify-items-stretch mt-[25px] ml-[25px]">
+                    <div id='button-panel-2' className='grid justify-items-stretch mt-[25px] ml-[25px]'>
                         <BasicColoredButton
-                            id="generate-button"
-                            label="Generate"
-                            style="rounded-xl mb-2 py-2"
+                            id='generate-button'
+                            label='Generate'
+                            style='rounded-xl mb-2 py-2'
                             disabled={false}
                             tooltip={
                                 <>
-                                    Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
-                                    {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may be lost as a result.){' '}
-                                    <HotkeyComp mapKey="generate code" />
+                                    Generate and display <i>texdraw</i> code. (To save space, all coordinates
+                                    are rounded to the nearest{' '}
+                                    {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a
+                                    pixel. Some information may be lost as a result.){' '}
+                                    <HotkeyComp mapKey='generate code' />
                                 </>
                             }
-                            tooltipPlacement="left"
+                            tooltipPlacement='left'
                             onClick={() => displayCode(unitScale)}
                         />
-                        <div className="flex items-center justify-end mb-4 px-4 py-1 text-sm">
+                        <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 px =
                             <input
-                                className="w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor"
-                                type="number"
+                                className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                                type='number'
                                 min={MIN_UNITSCALE}
                                 step={0.01}
                                 value={unitScale}
@@ -3151,20 +3790,24 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             pt
                         </div>
                         <BasicColoredButton
-                            id="load-btton"
-                            label="Load"
-                            style="rounded-xl mb-2 py-2"
+                            id='load-btton'
+                            label='Load'
+                            style='rounded-xl mb-2 py-2'
                             disabled={false}
                             tooltip={
                                 <>
                                     Load diagram from <i>texdraw</i> code.
-                                    <HotkeyComp mapKey="load diagram" />
+                                    <HotkeyComp mapKey='load diagram' />
                                 </>
                             }
-                            tooltipPlacement="left"
+                            tooltipPlacement='left'
                             onClick={() => loadDiagram(code, replace)}
                         />
-                        <CheckBoxField label="Replace current diagram" value={replace} onChange={() => setReplace(!replace)} />
+                        <CheckBoxField
+                            label='Replace current diagram'
+                            value={replace}
+                            onChange={() => setReplace(!replace)}
+                        />
                     </div>
 
                     <Modal
@@ -3205,20 +3848,20 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             onClick={() => okButtonRef.current?.focus()}
                         >
                             {dialog.title && (
-                                <div className="w-full text-center mb-4">
-                                    <h2 className="text-lg font-semibold mt-2 mb-0 py-2">{dialog.title}</h2>
+                                <div className='w-full text-center mb-4'>
+                                    <h2 className='text-lg font-semibold mt-2 mb-0 py-2'>{dialog.title}</h2>
                                 </div>
                             )}
-                            <div className="grid w-full justify-items-center text-center">
+                            <div className='grid w-full justify-items-center text-center'>
                                 {dialog.content}
                                 <style>
                                     pre {'{'} text-align: left; {'}'}
                                 </style>
                             </div>
                             <BasicColoredButton
-                                id="ok-button"
+                                id='ok-button'
                                 ref={okButtonRef}
-                                label="OK"
+                                label='OK'
                                 style={clsx('w-20 rounded-xl', dialog.title ? 'mt-6 mb-4' : 'mt-4 mb-2')}
                                 disabled={false}
                                 onClick={() => {

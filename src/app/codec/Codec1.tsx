@@ -50,7 +50,10 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string
     const groupInfo = [...gMap.entries()]
         .reduce((acc: string[], [g, name]) => {
             const groupInfoList = g.members.reduce(
-                (acc: string[], m) => (m instanceof StandardGroup ? [...acc, `${m.isActiveMember ? ':' : '.'}${gMap.get(m)}`] : acc),
+                (acc: string[], m) =>
+                    m instanceof StandardGroup
+                        ? [...acc, `${m.isActiveMember ? ':' : '.'}${gMap.get(m)}`]
+                        : acc,
                 []
             );
             return groupInfoList.length > 0 ? [...acc, `${name}${groupInfoList.join('')}`] : acc;
@@ -89,7 +92,9 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string
         let cngName: string | undefined = undefined;
         if (it instanceof CNodeGroup) {
             cngName = gMap.get(it);
-            arr.push(`${code}%${CNODEGROUP_PREFIX}${cngName}{${it.getInfoString()}}${getGroupInfo(it, gMap)}`);
+            arr.push(
+                `${code}%${CNODEGROUP_PREFIX}${cngName}{${it.getInfoString()}}${getGroupInfo(it, gMap)}`
+            );
         }
 
         const nodes: Node[] = it instanceof CNodeGroup ? it.members : [it];
@@ -108,7 +113,9 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string
                     nodeInfo = `${ENODE_PREFIX}${nodeName}`;
                 }
                 const info = node.getInfoString();
-                arr.push(`${code}%${nodeInfo}${info.length > 0 ? `{${info}}` : ''}${getGroupInfo(node, gMap)}`);
+                arr.push(
+                    `${code}%${nodeInfo}${info.length > 0 ? `{${info}}` : ''}${getGroupInfo(node, gMap)}`
+                );
             }
             // We now have to add the codes for any ornaments.
             for (const o of node.ornaments) {
@@ -124,7 +131,8 @@ export const getCode = (list: (ENode | CNodeGroup)[], unitScale: number): string
     return arr.join('\n');
 };
 
-const getGroupInfo = (it: CNodeGroup | Item, gMap: Map<Group<any>, string>) => (it.group ? `${it.isActiveMember ? ':' : '.'}${gMap.get(it.group)}` : '');
+const getGroupInfo = (it: CNodeGroup | Item, gMap: Map<Group<any>, string>) =>
+    it.group ? `${it.isActiveMember ? ':' : '.'}${gMap.get(it.group)}` : '';
 
 const getGroupMap = (str: string, sgCounter: number) => {
     const map = new Map<string, Group<any>>();
@@ -163,16 +171,21 @@ const getGroupMap = (str: string, sgCounter: number) => {
                         throw new ParseError(
                             (
                                 <span>
-                                    Corrupt data: group <code>{ms}</code> is listed as a member more than once.
+                                    Corrupt data: group <code>{ms}</code> is listed as a member more than
+                                    once.
                                 </span>
                             )
                         );
                     }
-                    if (m === g || groups.some((gr) => m === gr || (m instanceof StandardGroup && m.contains(gr)))) {
+                    if (
+                        m === g ||
+                        groups.some((gr) => m === gr || (m instanceof StandardGroup && m.contains(gr)))
+                    ) {
                         throw new ParseError(
                             (
                                 <span>
-                                    Corrupt data: group <code>{ms}</code> cannot be a direct or indirect member of itself.
+                                    Corrupt data: group <code>{ms}</code> cannot be a direct or indirect
+                                    member of itself.
                                 </span>
                             )
                         );
@@ -212,7 +225,9 @@ const extractString = (s: string, pattern: string, offset: number): string | nul
  * This function analyzes the 'hint', returning an array that contains the relevant item's name, the name of its group,
  * a boolean indicating whether it is an active member of that group, and an info string.
  */
-const analyzeHint = (hint: string): [name: string, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
+const analyzeHint = (
+    hint: string
+): [name: string, groupName: string | null, activeMember: boolean | undefined, info: string | null] => {
     let info: string | null = null,
         activeMember: boolean | undefined = undefined;
     const i = hint.indexOf('{'); // the beginning of the info string, if present.
@@ -287,7 +302,13 @@ const validateName = (
  * This function adds the supplied ENode or NodeGroup to the group with the specified name, which is either obtained from gMap or created.
  * Returns an updated StandardGroup counter.
  */
-const addToGroup = (item: Item | CNodeGroup, groupName: string, activeMember: boolean, gMap: Map<string, Group<any>>, sgCounter: number) => {
+const addToGroup = (
+    item: Item | CNodeGroup,
+    groupName: string,
+    activeMember: boolean,
+    gMap: Map<string, Group<any>>,
+    sgCounter: number
+) => {
     if (groupName) {
         let g: StandardGroup<Item | Group<any>>;
         if (gMap.has(groupName)) {
@@ -467,7 +488,8 @@ const parseOrnament = (
             throw new ParseError(
                 (
                     <span>
-                        Entity node <code>{name}</code> should be defined before the definition of any ornaments attached to it.
+                        Entity node <code>{name}</code> should be defined before the definition of any
+                        ornaments attached to it.
                     </span>
                 )
             );
@@ -482,7 +504,8 @@ const parseOrnament = (
             throw new ParseError(
                 (
                     <span>
-                        Contour node group <code>{name}</code> should be defined before the definition of any ornaments attached to it.
+                        Contour node group <code>{name}</code> should be defined before the definition of any
+                        ornaments attached to it.
                     </span>
                 )
             );
@@ -497,7 +520,9 @@ const parseOrnament = (
 
     //console.log(`info: ${info}`);
     if (info === null) {
-        throw new ParseError(<span>Incomplete definition of ornament for {nodeIdentifier}: info string required.</span>);
+        throw new ParseError(
+            <span>Incomplete definition of ornament for {nodeIdentifier}: info string required.</span>
+        );
     }
 
     if (groupName) {
@@ -524,7 +549,8 @@ export const load = (
         throw new ParseError(
             (
                 <span>
-                    Need at least three lines of <i>texdraw</i> code, got {n === 0 ? 'zero' : n === 1 ? 'one' : 'two'}.
+                    Need at least three lines of <i>texdraw</i> code, got{' '}
+                    {n === 0 ? 'zero' : n === 1 ? 'one' : 'two'}.
                 </span>
             )
         );
@@ -601,14 +627,31 @@ export const load = (
                 }
                 case ENODE_PREFIX: {
                     let node: ENode;
-                    [node, sgCounter] = parseENode(tex, isGNode, hint, dimRatio, eMap, gMap, eCounter, sgCounter);
+                    [node, sgCounter] = parseENode(
+                        tex,
+                        isGNode,
+                        hint,
+                        dimRatio,
+                        eMap,
+                        gMap,
+                        eCounter,
+                        sgCounter
+                    );
                     eCounter++;
                     list.push(node);
                     break;
                 }
                 case CNODEGROUP_PREFIX: {
                     let cng: CNodeGroup;
-                    [cng, sgCounter] = parseCNodeGroup(tex, hint, dimRatio, cngMap, gMap, cngCounter, sgCounter);
+                    [cng, sgCounter] = parseCNodeGroup(
+                        tex,
+                        hint,
+                        dimRatio,
+                        cngMap,
+                        gMap,
+                        cngCounter,
+                        sgCounter
+                    );
                     cngCounter++;
                     list.push(cng);
                     break;
@@ -618,13 +661,34 @@ export const load = (
                     const snClass = sNodePrefixMap.getByKey(prefix);
                     if (snClass) {
                         let sn: SNode;
-                        [sn, sgCounter] = parseSNode(tex, hint, dimRatio, snClass, eMap, invMap, gMap, eCounter, sgCounter);
+                        [sn, sgCounter] = parseSNode(
+                            tex,
+                            hint,
+                            dimRatio,
+                            snClass,
+                            eMap,
+                            invMap,
+                            gMap,
+                            eCounter,
+                            sgCounter
+                        );
                         eCounter++;
                         list.push(sn);
                     } else {
                         const oClass = ornamentPrefixMap.getByKey(prefix);
                         if (oClass) {
-                            sgCounter = parseOrnament(tex, hint, dimRatio, oClass, eMap, cngMap, gMap, sgCounter, loadedunitScale, displayFontFactor);
+                            sgCounter = parseOrnament(
+                                tex,
+                                hint,
+                                dimRatio,
+                                oClass,
+                                eMap,
+                                cngMap,
+                                gMap,
+                                sgCounter,
+                                loadedunitScale,
+                                displayFontFactor
+                            );
                         } else {
                             // In this case the prefix has not been recognized.
                             throw new ParseError(
@@ -651,7 +715,8 @@ export const load = (
                     throw new ParseError(
                         (
                             <span>
-                                Incomplete code: missing definition of contour node group <code>{id.name}</code>.
+                                Incomplete code: missing definition of contour node group{' '}
+                                <code>{id.name}</code>.
                             </span>
                         )
                     );
@@ -660,8 +725,8 @@ export const load = (
                     throw new ParseError(
                         (
                             <>
-                                Failed reference to a member with index {id.index} of contour node group <code>{id.name}</code>, which has only{' '}
-                                {cng.members.length} members.
+                                Failed reference to a member with index {id.index} of contour node group{' '}
+                                <code>{id.name}</code>, which has only {cng.members.length} members.
                             </>
                         )
                     );

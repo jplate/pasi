@@ -24,7 +24,11 @@ export default interface Group<T extends GroupMember> extends GroupMember {
 
 export const isGroup = <T extends GroupMember>(obj: any): obj is Group<T> => {
     const g = obj.group;
-    return isGroupMember(obj, g) && Array.isArray((obj as Group<T>).members) && (obj as Group<T>).members.every((m) => isGroupMember(m, obj));
+    return (
+        isGroupMember(obj, g) &&
+        Array.isArray((obj as Group<T>).members) &&
+        (obj as Group<T>).members.every((m) => isGroupMember(m, obj))
+    );
 };
 
 /**
@@ -44,7 +48,10 @@ export const depth = (x: any, d: number = 0): number =>
  * satisfies the supplied test condition.
  * The default test condition is (m => !m.isActiveMember). Hence, in the default case, the returned index indicates the 'highest active' group of the first argument.
  */
-export const getGroups = (member: GroupMember, test: (m: GroupMember) => boolean = (m) => !m.isActiveMember): [g: Group<any>[], index: number] => {
+export const getGroups = (
+    member: GroupMember,
+    test: (m: GroupMember) => boolean = (m) => !m.isActiveMember
+): [g: Group<any>[], index: number] => {
     const groups: Group<any>[] = [];
     let group = member.group,
         i = -1,
@@ -96,10 +103,12 @@ export class StandardGroup<T extends GroupMember> implements GroupMember, Group<
         this.isActiveMember = isActiveMember;
     }
 
-    public getString = () => `${this.id}[${this.members.map((member) => member.getString() + (member.isActiveMember ? '(A)' : '')).join(', ')}]`;
+    public getString = () =>
+        `${this.id}[${this.members.map((member) => member.getString() + (member.isActiveMember ? '(A)' : '')).join(', ')}]`;
 
     /**
      * Returns true iff this group directly or indirectly (via a chain of membership-relationships involving StandardGroups) contains the supplied object.
      */
-    public contains = (obj: any): boolean => this.members.some((m) => m === obj || (m instanceof StandardGroup && m.contains(obj)));
+    public contains = (obj: any): boolean =>
+        this.members.some((m) => m === obj || (m instanceof StandardGroup && m.contains(obj)));
 }

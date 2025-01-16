@@ -27,8 +27,9 @@ export default class GNode extends ENode {
                 type: 'gloss',
                 text: (
                     <>
-                        This is a &lsquo;ghost node&rsquo;: when dragged onto another node, it will transfer its group membership, ornaments (such as labels),
-                        and connector end points to that other node and disappear.
+                        This is a &lsquo;ghost node&rsquo;: when dragged onto another node, it will transfer
+                        its group membership, ornaments (such as labels), and connector end points to that
+                        other node and disappear.
                     </>
                 ),
                 style: 'max-w-64 pl-8 text-sm hyphens-auto',

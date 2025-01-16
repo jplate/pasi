@@ -1,11 +1,34 @@
 import Item, { HSL, Range } from './Item';
-import Node, { DEFAULT_DISTANCE, MIN_DISTANCE, MAX_DISTANCE, DEFAULT_LINEWIDTH, DEFAULT_DASH, DEFAULT_SHADING, MAX_LINEWIDTH } from './Node';
+import Node, {
+    DEFAULT_DISTANCE,
+    MIN_DISTANCE,
+    MAX_DISTANCE,
+    DEFAULT_LINEWIDTH,
+    DEFAULT_DASH,
+    DEFAULT_SHADING,
+    MAX_LINEWIDTH,
+} from './Node';
 import ENode from './ENode';
 import CNodeGroup, { getLine } from '../CNodeGroup';
 import { Entry } from '../ItemEditor';
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MIN_ROTATION } from '@/app/Constants';
+import {
+    H,
+    MAX_X,
+    MAX_Y,
+    MIN_Y,
+    MARK_LINEWIDTH,
+    MIN_TRANSLATION_LOG_INCREMENT,
+    MIN_ROTATION,
+} from '@/app/Constants';
 import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents';
-import { getCyclicValue, cubicBezier, bezierLength, tAtLength, bezierAngle, angle } from '../../../util/MathTools';
+import {
+    getCyclicValue,
+    cubicBezier,
+    bezierLength,
+    tAtLength,
+    bezierAngle,
+    angle,
+} from '../../../util/MathTools';
 import { MAX_ROTATION_INPUT, getRankMover } from '../ItemEditor';
 
 const CNODE_MARK_RADIUS = 7; // Not the 'real' radius (which is 1), but only used for drawing the 'mark border'.
@@ -84,8 +107,8 @@ export default class CNode extends Node {
                 value: this.fixedAngles,
                 tooltip: (
                     <>
-                        When this node is moved, each of its two neighbors will be moved in parallel with it unless the neighbor has exactly the same X- or
-                        Y-coordinate as this node.
+                        When this node is moved, each of its two neighbors will be moved in parallel with it
+                        unless the neighbor has exactly the same X- or Y-coordinate as this node.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -138,10 +161,39 @@ export default class CNode extends Node {
             { type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0 },
             { type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0 },
             { type: 'logIncrement', extraBottomMargin: true },
-            { type: 'number input', key: 'lw', text: 'Line width', width: 'medium', value: group.linewidth, step: 0.1 },
-            { type: 'string input', key: 'dash', text: 'Stroke pattern', width: 'long', value: group.dashValidator.write(group.dash) },
-            { type: 'number input', key: 'shading', text: 'Shading', width: 'medium', value: group.shading, min: 0, max: 1, step: 0.1 },
-            { type: 'number input', key: 'rank', text: 'Rank in paint-order', value: list.indexOf(group), step: 1, extraBottomMargin: true },
+            {
+                type: 'number input',
+                key: 'lw',
+                text: 'Line width',
+                width: 'medium',
+                value: group.linewidth,
+                step: 0.1,
+            },
+            {
+                type: 'string input',
+                key: 'dash',
+                text: 'Stroke pattern',
+                width: 'long',
+                value: group.dashValidator.write(group.dash),
+            },
+            {
+                type: 'number input',
+                key: 'shading',
+                text: 'Shading',
+                width: 'medium',
+                value: group.shading,
+                min: 0,
+                max: 1,
+                step: 0.1,
+            },
+            {
+                type: 'number input',
+                key: 'rank',
+                text: 'Rank in paint-order',
+                value: list.indexOf(group),
+                step: 1,
+                extraBottomMargin: true,
+            },
             { type: 'button', key: 'defaults', text: 'Defaults' },
             { type: 'button', key: 'angles', text: 'Equalize central angles', style: 'text-sm' },
             {
@@ -198,7 +250,12 @@ export default class CNode extends Node {
                     return [
                         (item, array) => {
                             if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
-                                item.angle0 = getCyclicValue(item.angle0 + delta, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT));
+                                item.angle0 = getCyclicValue(
+                                    item.angle0 + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                                );
                             }
                             return array;
                         },
@@ -208,8 +265,14 @@ export default class CNode extends Node {
             case 'd0':
                 if (e) {
                     const d =
-                        parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.dist0, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) -
-                        this.dist0;
+                        parseInputValue(
+                            e.target.value,
+                            MIN_DISTANCE,
+                            MAX_DISTANCE,
+                            this.dist0,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.dist0;
                     return [
                         (item, array) => {
                             if (!isNaN(d) && d !== 0 && item instanceof CNode) {
@@ -226,7 +289,12 @@ export default class CNode extends Node {
                     return [
                         (item, array) => {
                             if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
-                                item.angle1 = getCyclicValue(item.angle1 + delta, MIN_ROTATION, 360, 10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT));
+                                item.angle1 = getCyclicValue(
+                                    item.angle1 + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                                );
                             }
                             return array;
                         },
@@ -236,8 +304,14 @@ export default class CNode extends Node {
             case 'd1':
                 if (e) {
                     const d =
-                        parseInputValue(e.target.value, MIN_DISTANCE, MAX_DISTANCE, this.dist1, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) -
-                        this.dist1;
+                        parseInputValue(
+                            e.target.value,
+                            MIN_DISTANCE,
+                            MAX_DISTANCE,
+                            this.dist1,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.dist1;
                     return [
                         (item, array) => {
                             if (!isNaN(d) && d !== 0 && item instanceof CNode) {
@@ -250,8 +324,19 @@ export default class CNode extends Node {
                 }
             case 'x':
                 if (e) {
-                    const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce((min, item) => (min < item.x ? min : item.x), this.x);
-                    const delta = parseInputValue(e.target.value, 0, MAX_X, this.x, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.x;
+                    const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce(
+                        (min, item) => (min < item.x ? min : item.x),
+                        this.x
+                    );
+                    const delta =
+                        parseInputValue(
+                            e.target.value,
+                            0,
+                            MAX_X,
+                            this.x,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.x;
                     const dx = delta > dmin ? delta : 0; // this is to avoid items from being moved beyond the left border of the canvas
                     return [
                         (item, array) => {
@@ -263,7 +348,15 @@ export default class CNode extends Node {
                 }
             case 'y':
                 if (e) {
-                    const dy = parseInputValue(e.target.value, MIN_Y, MAX_Y, this.y, logIncrement, Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)) - this.y;
+                    const dy =
+                        parseInputValue(
+                            e.target.value,
+                            MIN_Y,
+                            MAX_Y,
+                            this.y,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.y;
                     return [
                         (item, array) => {
                             if (item instanceof Node && !isNaN(dy) && dy !== 0) {
@@ -278,7 +371,8 @@ export default class CNode extends Node {
                 if (e)
                     return [
                         (item, array) => {
-                            if (item instanceof Node) item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
+                            if (item instanceof Node)
+                                item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
                             return array;
                         },
                         'ENodesAndCNodeGroups',
@@ -396,20 +490,29 @@ export const CNodeComp = ({
     let arrowDiv = null;
     if (arrow && cnode.group) {
         const index = cnode.group.members.indexOf(cnode);
-        const next = (cnode.group as CNodeGroup).members[index == cnode.group.members.length - 1 ? 0 : index + 1];
+        const next = (cnode.group as CNodeGroup).members[
+            index == cnode.group.members.length - 1 ? 0 : index + 1
+        ];
         const line = getLine(cnode, next);
         const r = CNODE_ARROW_DIV_RADIUS;
         let nx: number, ny: number, a: number;
         // The arrow should be aimed along the line to the next CNode, unless that line is omitted, in which case we let it point to the next CNode:
         if (cnode.omitLine) {
             const d = Math.sqrt((x - next.x) ** 2 + (y - next.y) ** 2); // distance to center of next CNode
-            const factor = Math.min(Math.max(CNODE_ARROW_DISTANCE_MIN, d * CNODE_ARROW_DISTANCE_RATIO), CNODE_ARROW_DISTANCE_MAX) / d;
+            const factor =
+                Math.min(
+                    Math.max(CNODE_ARROW_DISTANCE_MIN, d * CNODE_ARROW_DISTANCE_RATIO),
+                    CNODE_ARROW_DISTANCE_MAX
+                ) / d;
             nx = x + (next.x - x) * factor - r;
             ny = y + (next.y - y) * factor + r;
             a = -angle(x, y, next.x, next.y);
         } else {
             const totalLength = bezierLength(line);
-            const targetLength = Math.min(Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO), CNODE_ARROW_DISTANCE_MAX);
+            const targetLength = Math.min(
+                Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO),
+                CNODE_ARROW_DISTANCE_MAX
+            );
             // The function tAtLength calculates t iteratively. We use smaller steps in proportion to the ratio by which totalLength exceeds targetLength:
             const t = tAtLength(line, targetLength, (100 * totalLength) / targetLength);
             const [bx, by] = cubicBezier(line, t);
@@ -428,9 +531,14 @@ export const CNodeComp = ({
                     pointerEvents: 'none',
                 }}
             >
-                <svg width={2 * r} height={2 * r} xmlns="http://www.w3.org/2000/svg">
-                    <g opacity="0.5" transform={`rotate(${a} ${r} ${r})`}>
-                        <polyline stroke={markColor} points={CNODE_ARROW_POINTS} fill={markColor} strokeMiterlimit={CNODE_ARROW_MITER_LIMIT} />
+                <svg width={2 * r} height={2 * r} xmlns='http://www.w3.org/2000/svg'>
+                    <g opacity='0.5' transform={`rotate(${a} ${r} ${r})`}>
+                        <polyline
+                            stroke={markColor}
+                            points={CNODE_ARROW_POINTS}
+                            fill={markColor}
+                            strokeMiterlimit={CNODE_ARROW_MITER_LIMIT}
+                        />
                     </g>
                 </svg>
             </div>
@@ -442,7 +550,9 @@ export const CNodeComp = ({
     return (
         <>
             <div
-                className={focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'}
+                className={
+                    focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
+                }
                 id={id}
                 onMouseDown={(e) => onMouseDown(cnode, e)}
                 onMouseEnter={(e) => onMouseEnter(cnode, e)}
@@ -454,7 +564,11 @@ export const CNodeComp = ({
                     cursor: 'pointer',
                 }}
             >
-                <svg width={mW + MARK_LINEWIDTH} height={mH + MARK_LINEWIDTH} xmlns="http://www.w3.org/2000/svg">
+                <svg
+                    width={mW + MARK_LINEWIDTH}
+                    height={mH + MARK_LINEWIDTH}
+                    xmlns='http://www.w3.org/2000/svg'
+                >
                     {Node.markBorder(left, top, l, m, mW, mH, markColor)}
                 </svg>
             </div>
