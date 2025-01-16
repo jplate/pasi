@@ -882,19 +882,19 @@ export const Contour = ({
                               `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
                               `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
                               `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
-                        )
+                          )
                 )
                 .join(' ');
 
         const fillPath =
             `M ${lines[0].x0 - minX + lwc} ${h - lines[0].y0 + minY + lwc} ` +
             lines
-                .map(
-                    (line) =>
-                        clsx(`C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
-                            `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
-                            `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
-                        )
+                .map((line) =>
+                    clsx(
+                        `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
+                        `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
+                        `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                    )
                 )
                 .join(' ');
 
