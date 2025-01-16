@@ -1,30 +1,28 @@
-import react from 'react'
-import Item from './Item'
-import Node from './Node'
-import { HSL } from './Item'
-import { getCyclicValue } from '../../../util/MathTools'
-import { MIN_ROTATION } from '@/app/Constants'
+import react from 'react';
+import Item from './Item';
+import Node from './Node';
+import { HSL } from './Item';
+import { getCyclicValue } from '../../../util/MathTools';
+import { MIN_ROTATION } from '@/app/Constants';
 
 export const DEFAULT_ANGLE = 10;
 export const INCREMENT = 30; // the angle (in degrees) by which the angle of a new Ornament is increased when added to the same node.
 export const DEFAULT_GAP = 2;
-export const MIN_GAP = -999
-export const MAX_GAP = 999
-export const ROUNDING_DIGITS = 3
-
+export const MIN_GAP = -999;
+export const MAX_GAP = 999;
+export const ROUNDING_DIGITS = 3;
 
 /**
  * An Ornament is an object representing an 'ornament', such as a label, attached to a Node. Ornaments do not have their own Z-indices.
  * @abstract
  */
 export default abstract class Ornament extends Item {
-
     static markBorder = (left: number, top: number, l: number, m: number, mW: number, mH: number, markColor: string): JSX.Element => (
         <>
-            <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill='none' />
-            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill='none' />
-            <polyline stroke={markColor} points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`} fill='none' />
-            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`} fill='none' />
+            <polyline stroke={markColor} points={`${left},${top + m} ${left},${top} ${left + l},${top}`} fill="none" />
+            <polyline stroke={markColor} points={`${left + mW - l},${top} ${left + mW},${top} ${left + mW},${top + m}`} fill="none" />
+            <polyline stroke={markColor} points={`${left + mW},${top + mH - m} ${left + mW},${top + mH} ${left + mW - l},${top + mH}`} fill="none" />
+            <polyline stroke={markColor} points={`${left + l},${top + mH} ${left},${top + mH} ${left},${top + mH - m}`} fill="none" />
         </>
     );
 
@@ -67,27 +65,38 @@ export default abstract class Ornament extends Item {
         target.gap100 = this.gap100;
     }
 
-    /** 
-     * Returns a component that represents this Ornament on the canvas. 
+    /**
+     * Returns a component that represents this Ornament on the canvas.
      * @abstract
      */
-    abstract getComponent( 
-        key: number, 
-        { yOffset, unitScale, displayFontFactor, primaryColor, markColor, focus, selected, preselected, onMouseDown, onMouseEnter, onMouseLeave }: OrnamentCompProps
-    ): react.JSX.Element  
-
+    abstract getComponent(
+        key: number,
+        {
+            yOffset,
+            unitScale,
+            displayFontFactor,
+            primaryColor,
+            markColor,
+            focus,
+            selected,
+            preselected,
+            onMouseDown,
+            onMouseEnter,
+            onMouseLeave,
+        }: OrnamentCompProps
+    ): react.JSX.Element;
 }
 
-export interface OrnamentCompProps {    
-    yOffset: number
-    unitScale: number
-    displayFontFactor: number
-    primaryColor: HSL
-    markColor: string
-    focus: boolean
-    selected: boolean
-    preselected: boolean
-    onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
-    onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
+export interface OrnamentCompProps {
+    yOffset: number;
+    unitScale: number;
+    displayFontFactor: number;
+    primaryColor: HSL;
+    markColor: string;
+    focus: boolean;
+    selected: boolean;
+    preselected: boolean;
+    onMouseDown: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseEnter: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseLeave: (item: Ornament, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
 }

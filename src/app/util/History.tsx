@@ -1,14 +1,13 @@
-import { useRef, MutableRefObject  } from "react";
-
+import { useRef, MutableRefObject } from 'react';
 
 type History<T> = {
-    push: (newState: T) => void,
-    before: () => T,
-    after: () => T,
-    canRedo: boolean,
-    canUndo: boolean,
-    history: MutableRefObject<T[]>,
-    now: MutableRefObject<number>
+    push: (newState: T) => void;
+    before: () => T;
+    after: () => T;
+    canRedo: boolean;
+    canUndo: boolean;
+    history: MutableRefObject<T[]>;
+    now: MutableRefObject<number>;
 };
 
 /**
@@ -31,7 +30,7 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
         now.current = updatedHistory.length - 1;
         //console.log(`NOW: ${updatedHistory.length - 1}`);
     };
-    
+
     const before = (): T => {
         let newNow = now.current;
         if (newNow > 0) newNow--;
@@ -43,7 +42,7 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
         let newNow = now.current;
         if (newNow < history.current.length - 1) newNow++;
         now.current = newNow;
-        return history.current[newNow]
+        return history.current[newNow];
     };
 
     return {
@@ -53,6 +52,6 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
         canUndo: now.current > 0,
         canRedo: now.current < history.current.length - 1,
         history,
-        now
+        now,
     };
 }

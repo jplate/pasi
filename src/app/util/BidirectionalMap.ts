@@ -1,5 +1,4 @@
 export default class BidirectionalMap<K, V> {
-
     private keyToValue: Map<K, V> = new Map();
     private valueToKey: Map<V, K> = new Map();
 

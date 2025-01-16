@@ -13,42 +13,41 @@ export const equalArrays = (arr1: any[], arr2: any[]) => {
     }
 
     return true; // All checks passed, arrays are equal
-}
+};
 
 export const sameElements = (ar0: any[], ar1: any[]) => {
     const set0 = new Set(ar0);
     const set1 = new Set(ar1);
-    return set0.size===set1.size && ar0.every(el => set1.has(el));
-}
-
+    return set0.size === set1.size && ar0.every((el) => set1.has(el));
+};
 
 export const throttle = <T extends (...args: any[]) => void>(func: T, limit: number) => {
     let lastFunc: ReturnType<typeof setTimeout>;
     let lastRan: number;
-    return function(...args: Parameters<T>) {
+    return function (...args: Parameters<T>) {
         if (!lastRan) {
             func(...args);
             lastRan = Date.now();
-        } 
-        else {
+        } else {
             clearTimeout(lastFunc);
-            lastFunc = setTimeout(() => {
-                if ((Date.now() - lastRan) >= limit) {
-                    func(...args);
-                    lastRan = Date.now();
-                }
-            }, limit - (Date.now() - lastRan));
+            lastFunc = setTimeout(
+                () => {
+                    if (Date.now() - lastRan >= limit) {
+                        func(...args);
+                        lastRan = Date.now();
+                    }
+                },
+                limit - (Date.now() - lastRan)
+            );
         }
     };
-}
+};
 
-export const useThrottle = <T extends (...args: any[]) => void>(
-    callback: T,
-    delay: number
-) => {
+export const useThrottle = <T extends (...args: any[]) => void>(callback: T, delay: number) => {
     const throttledCallback = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    return useCallback((...args: Parameters<T>) => {
+    return useCallback(
+        (...args: Parameters<T>) => {
             if (!throttledCallback.current) {
                 callback(...args);
                 throttledCallback.current = setTimeout(() => {
@@ -58,23 +57,22 @@ export const useThrottle = <T extends (...args: any[]) => void>(
         },
         [callback, delay]
     );
-}
-
+};
 
 export const debounce = <T extends (...args: any[]) => void>(func: T, wait: number) => {
     let timeout: ReturnType<typeof setTimeout>;
-    return function(...args: Parameters<T>) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
+    return function (...args: Parameters<T>) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
     };
-}
-
+};
 
 export const addAlpha = (hex: string, opacity: number) => {
-    const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
+    const alpha = Math.round(opacity * 255)
+        .toString(16)
+        .padStart(2, '0');
     return `${hex}${alpha}`;
-}
-
+};
 
 export const matchKeys = (event: React.KeyboardEvent<HTMLElement>, combination: string): boolean => {
     const keys = combination.split('+');
@@ -92,7 +90,7 @@ export const matchKeys = (event: React.KeyboardEvent<HTMLElement>, combination: 
     };
 
     // Check if all specified modifiers are pressed
-    const modifiersMatch = keys.every(modifier => modifiers[modifier]);
+    const modifiersMatch = keys.every((modifier) => modifiers[modifier]);
 
     return keyMatches && modifiersMatch;
-}
+};
