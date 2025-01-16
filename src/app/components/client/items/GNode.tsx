@@ -23,7 +23,7 @@ export default class GNode extends ENode {
 
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
         return [
-            ...this.getCoordinateInfo(list),
+            ...this.getCoordinateInfo(),
             {
                 type: 'gloss',
                 text: (
