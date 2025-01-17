@@ -1,12 +1,9 @@
 import react, { useContext, useState, useEffect, useRef } from 'react';
 import clsx from 'clsx/lite';
-import { useFloating, shift, offset, useTransitionStyles } from '@floating-ui/react';
+import { useFloating, shift, offset } from '@floating-ui/react';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { getCyclicValue, round } from '../../util/MathTools';
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/themes/light.css';
-import 'tippy.js/themes/translucent.css';
-import 'tippy.js/animations/shift-toward.css';
+import { TOOLTIP_DELAY } from '@/app/Constants';
 
 import { DarkModeContext } from './MainPanel';
 
@@ -452,8 +449,6 @@ export class DashValidator {
     };
 }
 
-
-
 interface WithToolTipProps {
     comp: react.JSX.Element;
     tooltip: react.ReactNode;
@@ -461,15 +456,14 @@ interface WithToolTipProps {
 }
 
 export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipProps) => {
-    const dark = useContext(DarkModeContext);
     const [, setIsOpen] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
-    const { refs, floatingStyles, strategy, context } = useFloating({
+    const { refs, floatingStyles, strategy } = useFloating({
         placement,
         middleware: [offset(8), shift()],
     });
 
-    const tooltipDelay = 300; // Delay in milliseconds
+    const tooltipDelay = TOOLTIP_DELAY; // Delay in milliseconds
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleMouseEnter = () => {
@@ -495,7 +489,6 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipPro
         };
     }, []);
 
-
     return (
         <>
             <div
@@ -507,7 +500,8 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipPro
                 {comp}
             </div>
             {showTooltip && (
-                <div className='px-4 py-2 border-l border-btnborder text-sm hyphens-auto'
+                <div
+                    className='px-4 py-2 border-l border-btnborder text-sm hyphens-auto'
                     ref={refs.setFloating}
                     style={{
                         ...floatingStyles,

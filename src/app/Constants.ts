@@ -23,3 +23,5 @@ export const DEFAULT_SCALING_LOG_INCREMENT = 1;
 
 export const MAX_HISTORY = 100; // maximum length of history
 export const ROUNDING_DIGITS = 3; // used for rounding values resulting from rotations of points, etc.
+
+export const TOOLTIP_DELAY = 750;
