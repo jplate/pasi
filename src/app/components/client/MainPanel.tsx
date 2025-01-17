@@ -1862,15 +1862,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         }
 
                         setOrigin(
-                            item !== focusItem && newPoints.length == 0, // If the focusItem is still the same or newPoints is non-empty, then don't reset the 
-                            // transform (even if the origin has changed). However, if newPoints is non-empty (in which case it is equal to the current points 
-                            // array), then we have to 'renormalize' the members of newSelection, since the nodes might have been dragged around the origin 
+                            item !== focusItem && newPoints.length == 0, // If the focusItem is still the same or newPoints is non-empty, then don't reset the
+                            // transform (even if the origin has changed). However, if newPoints is non-empty (in which case it is equal to the current points
+                            // array), then we have to 'renormalize' the members of newSelection, since the nodes might have been dragged around the origin
                             // (given by the last element of the points array).
                             newPoints,
                             item,
                             newSelection
                         );
-
 
                         // Some movement-related issues:
                         if (item.x !== itemX || item.y !== itemY) {
