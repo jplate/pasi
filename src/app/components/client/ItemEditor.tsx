@@ -1,7 +1,7 @@
 import react from 'react';
 import clsx from 'clsx/lite';
-import { Placement } from 'tippy.js';
-import { BasicColoredButton } from './Button.tsx';
+import { Placement } from './EditorComponents';
+import { BasicColoredButton } from './Button';
 import {
     CheckBoxField,
     MenuField,
