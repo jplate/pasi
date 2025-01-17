@@ -1,7 +1,6 @@
-import react, { useContext, useEffect, useRef } from 'react';
+import react, { useContext, useState, useEffect, useRef } from 'react';
 import clsx from 'clsx/lite';
-import Tippy from '@tippyjs/react';
-import { Placement, Instance } from 'tippy.js';
+import { useFloating, shift, offset, useTransitionStyles } from '@floating-ui/react';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { getCyclicValue, round } from '../../util/MathTools';
 import 'tippy.js/dist/tippy.css';
@@ -15,6 +14,7 @@ const ACCENT_LIGHT = 'accent-slate-50';
 const ACCENT_DARK = 'accent-amber-600 dark';
 
 export type Width = 'short' | 'medium' | 'long';
+export type Placement = 'top' | 'right' | 'bottom' | 'left';
 
 interface CheckBoxFieldProps {
     label: react.ReactNode;
@@ -452,60 +452,76 @@ export class DashValidator {
     };
 }
 
+
+
 interface WithToolTipProps {
     comp: react.JSX.Element;
     tooltip: react.ReactNode;
     placement?: Placement;
 }
 
-export const WithTooltip = ({ comp, tooltip, placement }: WithToolTipProps) => {
+export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipProps) => {
     const dark = useContext(DarkModeContext);
-    const tippyRef = useRef<Instance | null>(null);
+    const [, setIsOpen] = useState(false);
+    const [showTooltip, setShowTooltip] = useState(false);
+    const { refs, floatingStyles, strategy, context } = useFloating({
+        placement,
+        middleware: [offset(8), shift()],
+    });
 
-    // At least as of early 2025, Tippy tooltips tend to stay visible when the user scrolls away. To counteract this, we add scroll listeners.
-    useEffect(() => {
-        const handleScroll = () => {
-            if (tippyRef.current && !tippyRef.current.state.isDestroyed) {
-                tippyRef.current.hide(); // Hide the tooltip on scroll
-            }
-        };
+    const tooltipDelay = 300; // Delay in milliseconds
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-        window.addEventListener('scroll', handleScroll);
+    const handleMouseEnter = () => {
+        timeoutRef.current = setTimeout(() => {
+            setShowTooltip(true);
+        }, tooltipDelay);
+        setIsOpen(true);
+    };
 
-        // Find closest parent with 'scrollbox' class
-        const element = tippyRef.current?.reference;
-        if (element) {
-            const scrollbox = element.closest('.scrollbox');
-            if (scrollbox) {
-                scrollbox.addEventListener('scroll', handleScroll);
-            }
+    const handleMouseLeave = () => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
         }
+        setShowTooltip(false);
+        setIsOpen(false);
+    };
 
+    useEffect(() => {
         return () => {
-            // Clean up scroll listeners
-            window.removeEventListener('scroll', handleScroll);
-            if (element) {
-                const scrollbox = element.closest('.scrollbox');
-                if (scrollbox) {
-                    scrollbox.removeEventListener('scroll', handleScroll);
-                }
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
             }
         };
     }, []);
 
+
     return (
-        <Tippy
-            theme={dark ? 'translucent' : 'light'}
-            delay={[750, 0]}
-            arrow={true}
-            placement={placement}
-            animation='shift-toward'
-            content={tooltip}
-            onCreate={(instance) => {
-                tippyRef.current = instance; // Store the Tippy instance
-            }}
-        >
-            {comp}
-        </Tippy>
+        <>
+            <div
+                className='justify-items-stretch'
+                ref={refs.setReference}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                {comp}
+            </div>
+            {showTooltip && (
+                <div className='px-4 py-2 border-l border-btnborder text-sm hyphens-auto'
+                    ref={refs.setFloating}
+                    style={{
+                        ...floatingStyles,
+                        position: strategy,
+                        backgroundColor: 'rgba(var(--tooltipbg), 0.92)',
+                        color: 'rgba(var(--btncolor))',
+                        borderRadius: '4px',
+                        zIndex: 1000,
+                        maxWidth: '250px', // Set a max width for the tooltip
+                    }}
+                >
+                    {tooltip}
+                </div>
+            )}
+        </>
     );
 };

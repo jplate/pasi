@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, forwardRef, CSSProperties } from 'react';
 import clsx from 'clsx/lite';
-import { Placement } from 'tippy.js';
-import { WithTooltip } from './EditorComponents';
+import { WithTooltip, Placement } from './EditorComponents';
 import { useThrottle } from '../../util/Misc';
 
 interface ButtonProps {

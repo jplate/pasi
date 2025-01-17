@@ -151,7 +151,7 @@ export default abstract class SNode extends ENode {
     phi0: number = 0; // the connector's exit angles (in degrees) relative to the baseline angle
     phi1: number = 0;
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
-    closest = false; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
+    closest = true; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
 
     t: number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
 

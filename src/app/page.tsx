@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import clsx from 'clsx/lite';
 import { pasi, hotkeys } from './components/client/MainPanel';
 
@@ -238,17 +238,17 @@ export default function Home() {
                                     using the {pasi('Load')} button.
                                 </p>
                             </Section>
-
-                            <div className='hidden lg:block'>
-                                <MainPanel
-                                    dark={isDarkMode}
-                                    toggleTrueBlack={() => {
-                                        setTrueBlack((prev) => !prev);
-                                        setDiscoveredTrueBlack(true);
-                                    }}
-                                />
-                            </div>
-
+                            <Suspense fallback={<div>Loading...</div>}>
+                                <div className='hidden lg:block'>
+                                    <MainPanel
+                                        dark={isDarkMode}
+                                        toggleTrueBlack={() => {
+                                            setTrueBlack((prev) => !prev);
+                                            setDiscoveredTrueBlack(true);
+                                        }}
+                                    />
+                                </div>
+                            </Suspense>
                             <Section id='keyboard-commands' header='Keyboard commands'>
                                 <p>
                                     The following keyboard commands are available for editing the diagram

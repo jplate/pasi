@@ -41,6 +41,7 @@
   --tabselected: 226, 232, 240; /* slate-200 */
   --textfieldbg: 248, 250, 252; /* slate-50 */
   --textfieldcolor: 30, 41, 59; /* slate-800 */
+  --tooltipbg: 248, 250, 252; /* slate-50 */
 }
 
 .dark {
@@ -67,6 +68,7 @@
   --tabselected: 240, 232, 226; /* a slightly orange beige */ 
   --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
   --textfieldcolor: 217, 119, 6; /* amber-600 */
+  --tooltipbg: 12, 10, 9; /* stone-950 */
 }
 
 /*****************************************************
