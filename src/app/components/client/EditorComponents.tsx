@@ -1,6 +1,6 @@
-import react, { useContext, useState, useEffect, useRef } from 'react';
+import react, { useContext, useState, useEffect } from 'react';
 import clsx from 'clsx/lite';
-import { useFloating, shift, offset } from '@floating-ui/react';
+import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { getCyclicValue, round } from '../../util/MathTools';
 import { TOOLTIP_DELAY, TOOLTIP_OPACITY } from '@/app/Constants';
@@ -456,66 +456,74 @@ interface WithToolTipProps {
 }
 
 export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipProps) => {
-    const [, setIsOpen] = useState(false);
     const [showTooltip, setShowTooltip] = useState(false);
     const { refs, floatingStyles, strategy } = useFloating({
         placement,
         middleware: [offset(8), shift()],
     });
 
-    const tooltipDelay = TOOLTIP_DELAY; // Delay in milliseconds
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    const handleMouseEnter = () => {
-        timeoutRef.current = setTimeout(() => {
-            setShowTooltip(true);
-        }, tooltipDelay);
-        setIsOpen(true);
-    };
-
-    const handleMouseLeave = () => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-        setShowTooltip(false);
-        setIsOpen(false);
-    };
-
-    useEffect(() => {
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, []);
-
     return (
         <>
             <div
                 className='justify-items-stretch'
                 ref={refs.setReference}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
             >
                 {comp}
             </div>
             {showTooltip && (
-                <div
-                    className='px-4 py-2 border-l border-btnborder shadow-lg text-sm hyphens-auto'
+                <Tooltip
+                    content={tooltip}
                     ref={refs.setFloating}
-                    style={{
-                        ...floatingStyles,
-                        position: strategy,
-                        backgroundColor: `rgba(var(--tooltipbg), ${TOOLTIP_OPACITY})`,
-                        color: 'rgba(var(--btncolor))',
-                        borderRadius: '4px',
-                        zIndex: 1000,
-                        maxWidth: '250px', // Set a max width for the tooltip
-                    }}
-                >
-                    {tooltip}
-                </div>
+                    styles={floatingStyles}
+                    strategy={strategy}
+                />
             )}
         </>
+    );
+};
+
+interface TooltipProps {
+    content: React.ReactNode;
+    ref: (node: HTMLElement | null) => void;
+    styles: React.CSSProperties;
+    strategy: Strategy;
+}
+
+export const Tooltip = ({ content, ref, styles, strategy }: TooltipProps) => {
+    const [opaque, setOpaque] = useState(false);
+
+    // To keep proper positioning, the tooltip has to be mounted and unmounted every time it appears. To make it ease into view, we let it start
+    // with opacity-0 and then change that after mounting:
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setOpaque(true);
+        }, TOOLTIP_DELAY);
+
+        return () => {
+            clearTimeout(timeout);
+        };
+    }, []);
+
+    return (
+        <div
+            className={clsx(
+                'tooltip px-4 py-2 border-l border-btnborder shadow-lg text-sm hyphens-auto',
+                !opaque ? 'opacity-0' : ''
+            )}
+            ref={ref}
+            style={{
+                ...styles,
+                position: strategy,
+                backgroundColor: `rgba(var(--tooltipbg), ${TOOLTIP_OPACITY})`,
+                color: 'rgba(var(--btncolor))',
+                borderRadius: '4px',
+                zIndex: 1000,
+                maxWidth: '250px', // Set a max width for the tooltip
+            }}
+        >
+            {content}
+        </div>
     );
 };

@@ -180,6 +180,13 @@ em, i {
   backdrop-filter: blur(15px);
 }
 
+.tooltip {
+  font-family: 'Raleway', sans-serif;
+  -webkit-backdrop-filter: blur(15px); /* for Safari */
+  backdrop-filter: blur(15px);
+  transition: opacity 0.5s ease-in-out;
+}
+
 .checkbox.dark {
   filter: brightness(0.85); 
 }

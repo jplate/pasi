@@ -3466,7 +3466,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                 </MenuButton>
                                 <MenuItemList>
                                     {depItemInfos.map((label, index) => (
-                                        <MenuItem key={'di-' + index}>
+                                        <MenuItem key={`di-${index}`}>
                                             <button
                                                 className={menuItemButtonClassName}
                                                 onClick={() => setDepItemIndex(index)}

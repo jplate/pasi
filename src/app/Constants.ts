@@ -26,4 +26,4 @@ export const MAX_HISTORY = 100; // maximum length of history
 export const ROUNDING_DIGITS = 3; // used for rounding values resulting from rotations of points, etc.
 
 export const TOOLTIP_DELAY = 750;
-export const TOOLTIP_OPACITY = 0.92;
+export const TOOLTIP_OPACITY = 0.6;
