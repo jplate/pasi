@@ -258,5 +258,5 @@ export const CopyToClipboardButton = ({ id, iconSize, textareaRef }: CopyToClipb
         </button>
     );
 
-    return <WithTooltip comp={button} tooltip={'Copy to clipboard'} placement={'left'} />;
+    return button;
 };

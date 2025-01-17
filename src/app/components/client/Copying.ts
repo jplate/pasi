@@ -275,7 +275,7 @@ const copy = (
     cngCounter: number,
     sgCounter: number
 ): [number, number, number] => {
-    console.log(`topTbc: ${topTbc.map((m) => m.getString()).join('; ')}`);
+    //console.log(`topTbc: ${topTbc.map((m) => m.getString()).join('; ')}`);
     const snodes: SNode[] = []; // This will contain all the SNodes that we're going to copy.
     topTbc.forEach((m) => {
         switch (true) {

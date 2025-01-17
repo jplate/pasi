@@ -1861,18 +1861,20 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             deleteItems(toBeDeletedGNodes, list, newSelection, undefined, item);
                         }
 
+                        setOrigin(
+                            item !== focusItem && newPoints.length == 0, // If the focusItem is still the same or newPoints is non-empty, then don't reset the 
+                            // transform (even if the origin has changed). However, if newPoints is non-empty (in which case it is equal to the current points 
+                            // array), then we have to 'renormalize' the members of newSelection, since the nodes might have been dragged around the origin 
+                            // (given by the last element of the points array).
+                            newPoints,
+                            item,
+                            newSelection
+                        );
+
+
                         // Some movement-related issues:
                         if (item.x !== itemX || item.y !== itemY) {
                             adjustLimit();
-                            setOrigin(
-                                item !== focusItem && newPoints.length == 0,
-                                newPoints,
-                                item,
-                                newSelection
-                            );
-                            // If the focusItem is still the same or points is non-empty, then don't reset the transform (even if the origin has changed).
-                            // However, if points is non-empty, then we have to 'renormalize' the new selection, since the nodes might have been dragged
-                            // around the origin (given by the last element of the points array):
                             if (newPoints.length > 0)
                                 selectedNodes.forEach((node) => {
                                     node.x100 = origin.x + ((node.x - origin.x) * 100) / scaling;
@@ -3774,7 +3776,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                                     <HotkeyComp mapKey='generate code' />
                                 </>
                             }
-                            tooltipPlacement='left'
+                            tooltipPlacement='top'
                             onClick={() => displayCode(unitScale)}
                         />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>

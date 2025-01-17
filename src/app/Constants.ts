@@ -12,9 +12,9 @@ export const MARK_LINEWIDTH = 1.0; // the linewidth of the border drawn around s
 export const MIN_ROTATION = -180;
 export const MIN_ROTATION_LOG_INCREMENT = -3;
 export const MAX_ROTATION_LOG_INCREMENT = 2;
+export const MAX_ROTATION_INPUT = 360 + 10 ** MAX_ROTATION_LOG_INCREMENT;
 export const MIN_SCALING_LOG_INCREMENT = -3;
 export const MAX_SCALING_LOG_INCREMENT = 3;
-export const MAX_ROTATION_INPUT = 360 + 10 ** MAX_ROTATION_LOG_INCREMENT;
 export const MIN_TRANSLATION_LOG_INCREMENT = -3;
 export const MAX_TRANSLATION_LOG_INCREMENT = 2;
 export const DEFAULT_TRANSLATION_LOG_INCREMENT = 0;
@@ -22,6 +22,8 @@ export const DEFAULT_ROTATION_LOG_INCREMENT = 1;
 export const DEFAULT_SCALING_LOG_INCREMENT = 1;
 
 export const MAX_HISTORY = 100; // maximum length of history
+
 export const ROUNDING_DIGITS = 3; // used for rounding values resulting from rotations of points, etc.
 
 export const TOOLTIP_DELAY = 750;
+export const TOOLTIP_OPACITY = 0.92;

@@ -3,7 +3,7 @@ import clsx from 'clsx/lite';
 import { useFloating, shift, offset } from '@floating-ui/react';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { getCyclicValue, round } from '../../util/MathTools';
-import { TOOLTIP_DELAY } from '@/app/Constants';
+import { TOOLTIP_DELAY, TOOLTIP_OPACITY } from '@/app/Constants';
 
 import { DarkModeContext } from './MainPanel';
 
@@ -501,12 +501,12 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipPro
             </div>
             {showTooltip && (
                 <div
-                    className='px-4 py-2 border-l border-btnborder text-sm hyphens-auto'
+                    className='px-4 py-2 border-l border-btnborder shadow-lg text-sm hyphens-auto'
                     ref={refs.setFloating}
                     style={{
                         ...floatingStyles,
                         position: strategy,
-                        backgroundColor: 'rgba(var(--tooltipbg), 0.92)',
+                        backgroundColor: `rgba(var(--tooltipbg), ${TOOLTIP_OPACITY})`,
                         color: 'rgba(var(--btncolor))',
                         borderRadius: '4px',
                         zIndex: 1000,
