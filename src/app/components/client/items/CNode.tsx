@@ -124,7 +124,10 @@ export default class CNode extends Node {
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
                 tooltip:
-                    'The angle (in degrees) by which a straight line to the previous control point would deviate from a straight line to the previous contour node.',
+                    <>
+                        The angle (in degrees) by which a straight line from this contour node to the second control point of the curve that connects the {' '}
+                        previous node to this one would deviate from a straight line to the previous node.
+                    </>,
                 tooltipPlacement: 'left',
             },
             {
@@ -134,7 +137,7 @@ export default class CNode extends Node {
                 width: 'long',
                 value: this.dist0,
                 step: 0,
-                tooltip: 'The distance from the present contour node to the previous control point.',
+                tooltip: 'The distance from this contour node to the second control point of the curve that connects the previous node to this one.',
                 tooltipPlacement: 'left',
             },
             {
@@ -144,8 +147,11 @@ export default class CNode extends Node {
                 width: 'long',
                 value: this.angle1,
                 step: 0,
-                tooltip:
-                    'The angle (in degrees) by which a straight line to the next control point would deviate from a straight line to the next contour node.',
+                tooltip: 
+                    <>
+                        The angle (in degrees) by which a straight line from this contour node to the first control point of the curve that connects this node {' '}
+                        to the next would deviate from a straight line to the latter.
+                    </>,
                 tooltipPlacement: 'left',
             },
             {
@@ -155,7 +161,7 @@ export default class CNode extends Node {
                 width: 'long',
                 value: this.dist1,
                 step: 0,
-                tooltip: 'The distance from the present contour node to the next control point.',
+                tooltip: 'The distance from this contour node to the first control point of the curve that connects it to the next.',
                 tooltipPlacement: 'left',
             },
             { type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0 },

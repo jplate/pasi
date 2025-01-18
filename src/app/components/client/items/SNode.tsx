@@ -458,7 +458,7 @@ export default abstract class SNode extends ENode {
                     <>
                         The angle (in degrees) by which a straight line from the center of the
                         connector&rsquo;s source node to its first control point would deviate from a straight
-                        line between the centers of the two nodes.
+                        line between the two nodes.
                     </>
                 ),
                 tooltipPlacement: 'left',
@@ -498,7 +498,7 @@ export default abstract class SNode extends ENode {
                     <>
                         The angle (in degrees) by which a straight line from the center of the
                         connector&rsquo;s target node to its second control point would deviate from a
-                        straight line between the centers of the two nodes.
+                        straight line between the two nodes.
                     </>
                 ),
                 tooltipPlacement: 'left',

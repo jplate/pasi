@@ -1,9 +1,9 @@
 import React from 'react';
 
-import Item from './items/Item.tsx';
-import { getGroups } from './Group.tsx';
-import { BasicColoredButton } from './Button.tsx';
-import { HotkeyComp } from './MainPanel.tsx';
+import Item from './items/Item';
+import { getGroups } from './Group';
+import { BasicColoredButton } from './Button';
+import { HotkeyComp } from './MainPanel';
 
 export interface GroupTabProps {
     item: Item;

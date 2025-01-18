@@ -57,7 +57,7 @@ import Group, {
     getLeafMembers,
     depth,
     MAX_GROUP_LEVEL,
-} from './Group.tsx';
+} from './Group';
 import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
@@ -65,11 +65,11 @@ import { copyItems, getTopToBeCopied } from './Copying';
 import { getCode, load } from '../../codec/Codec1';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
-import { useHistory } from '../../util/History.tsx';
+import { useHistory } from '../../util/History';
 import SNode from './items/SNode';
-import Adjunction from './items/snodes/Adjunction.tsx';
-import Ornament from './items/Ornament.tsx';
-import Label from './items/ornaments/Label.tsx';
+import Adjunction from './items/snodes/Adjunction';
+import Ornament from './items/Ornament';
+import Label from './items/ornaments/Label';
 
 import lblSrc from '../../../icons/lbl.png';
 import adjSrc from '../../../icons/adj.png';
