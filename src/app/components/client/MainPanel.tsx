@@ -75,19 +75,21 @@ import Label from './items/ornaments/Label';
 
 import lblSrc from '../../../icons/lbl.png';
 import adjSrc from '../../../icons/adj.png';
+import idtSrc from '../../../icons/idt.png';
+import orpSrc from '../../../icons/orp.png';
+/*
 import cntSrc from '../../../icons/cnt.png';
 import entSrc from '../../../icons/ent.png';
 import exsSrc from '../../../icons/exs.png';
-import idtSrc from '../../../icons/idt.png';
 import incSrc from '../../../icons/inc.png';
 import insSrc from '../../../icons/ins.png';
 import negSrc from '../../../icons/neg.png';
-import orpSrc from '../../../icons/orp.png';
 import prdSrc from '../../../icons/prd.png';
 import ptrSrc from '../../../icons/ptr.png';
 import rstSrc from '../../../icons/rst.png';
 import trnSrc from '../../../icons/trn.png';
 import unvSrc from '../../../icons/unv.png';
+*/
 
 const MAX_LIST_SIZE = 1000; // maximal size of the list of ENodes and CNodeGroups
 
@@ -2655,10 +2657,11 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             origin,
             adjustLimit,
             testScaling,
-            deduplicatedSelection,
             transformFlags.scaleDash,
             transformFlags.scaleENodes,
             transformFlags.scaleLinewidths,
+            transformFlags.scaleArrowheads,
+            transformFlags.flipArrowheads,
         ]
     );
 
@@ -2697,7 +2700,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedIndependentNodes, origin, adjustLimit]);
+    }, [selectedIndependentNodes, origin, adjustLimit, transformFlags.flipArrowheads]);
 
     const vFlip = useCallback(() => {
         selectedIndependentNodes.forEach((node) => {
@@ -2713,7 +2716,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedIndependentNodes, origin, adjustLimit]);
+    }, [selectedIndependentNodes, origin, adjustLimit, transformFlags.flipArrowheads]);
 
     /**
      * Turn all contours that have members in the supplied array into regular polygons.

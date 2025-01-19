@@ -229,7 +229,7 @@ export default abstract class SNode extends ENode {
         return hr;
     }
 
-    scaleArrowhead(val: number) {}
+    scaleArrowhead(_val: number) {}
 
     flipArrowhead() {}
 
