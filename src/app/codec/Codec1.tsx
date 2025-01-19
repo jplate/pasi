@@ -10,6 +10,8 @@ import { ParseError } from './Texdraw';
 import Ornament from '../components/client/items/Ornament';
 import Label from '../components/client/items/ornaments/Label';
 import Adjunction from '../components/client/items/snodes/Adjunction';
+import Identity from '../components/client/items/snodes/Identity';
+import Order from '../components/client/items/snodes/Order';
 import BidirectionalMap from '../util/BidirectionalMap';
 import { getItems } from '../components/client/MainPanel';
 import { encodeInt, decodeInt, encode, decode } from './General';
@@ -25,7 +27,7 @@ const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hi
 
 const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([['L', Label]]);
 
-const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([['A', Adjunction]]);
+const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([['A', Adjunction], ['I', Identity], ['O', Order]]);
 
 type NodeIdentifier = {
     name: string;

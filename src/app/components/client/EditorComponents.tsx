@@ -26,7 +26,7 @@ interface CheckBoxFieldProps {
 
 export const CheckBoxField = ({
     label,
-    style = 'px-4 py-1 text-sm',
+    style = '',
     value,
     extraBottomMargin,
     tooltip,
@@ -36,33 +36,25 @@ export const CheckBoxField = ({
 }: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext);
 
-    const link = (
-        <a
-            className='text-textcolor text-sm hover:text-textcolor'
-            href='#'
-            onClick={(e) => {
-                e.preventDefault();
+    const comp =  (<label className={clsx('flex ml-4 py-1 text-sm whitespace-nowrap items-center', style, extraBottomMargin ? 'mb-4' : '', disabled ? 'opacity-50' : '')}>
+        <input
+            type='checkbox'
+            className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
+            checked={value}
+            disabled={disabled}
+            onChange={() => {
                 onChange();
             }}
-        >
+        />    
+        <span>
             {label}
-        </a>
+        </span>
+        </label>
     );
 
-    return (
-        <span className={clsx(style, extraBottomMargin ? 'mb-4' : '', disabled ? 'opacity-50' : '')}>
-            <input
-                type='checkbox'
-                className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
-                checked={value}
-                disabled={disabled}
-                onChange={() => {
-                    onChange();
-                }}
-            />
-            {tooltip ? <WithTooltip comp={link} tooltip={tooltip} placement={tooltipPlacement} /> : link}
-        </span>
-    );
+    return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
+       
+    
 };
 
 interface InputFieldProps {
@@ -120,7 +112,7 @@ export const InputField = ({
         />
     );
     return (
-        <span
+        <label
             className={clsx(
                 'flex items-center justify-end px-2 py-1 text-sm pointer-events-none', // We disable pointer events for the overall component because of
                 // the possibility of overlap with other components in the case of negativeTopMargin being set to true.
@@ -135,7 +127,7 @@ export const InputField = ({
                 labelComp
             )}
             {inputComp}
-        </span>
+        </label>
     );
 };
 
@@ -450,12 +442,13 @@ export class DashValidator {
 }
 
 interface WithToolTipProps {
-    comp: react.JSX.Element;
+    comp: react.ReactNode;
     tooltip: react.ReactNode;
     placement?: Placement;
+    noStretch?: boolean;
 }
 
-export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipProps) => {
+export const WithTooltip = ({ comp, tooltip, placement = 'top', noStretch = false }: WithToolTipProps) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const { refs, floatingStyles, strategy } = useFloating({
         placement,
@@ -463,9 +456,9 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipPro
     });
 
     return (
-        <>
+        <div>
             <div
-                className='justify-items-stretch'
+                className={noStretch? 'max-w-fit': 'justify-items-stretch'}
                 ref={refs.setReference}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
@@ -480,7 +473,7 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top' }: WithToolTipPro
                     strategy={strategy}
                 />
             )}
-        </>
+        </div>
     );
 };
 

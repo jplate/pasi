@@ -615,24 +615,26 @@ export const getCommandSequenceForDrawnShapes = (
         result.push(linewd(lw));
     }
 
-    const start = shapes[0].getStartingPoint();
-    result.push(move(start.x, start.y));
-    result.push(getShapeCommand(shapes[0]));
+    if (shapes.length > 0) {
+        const start = shapes[0].getStartingPoint();
+        result.push(move(start.x, start.y));
+        result.push(getShapeCommand(shapes[0]));
 
-    let prevPoint = shapes[0].getEndPoint();
-    for (let i = 1; i < shapes.length; i++) {
-        const newPoint = shapes[i].getStartingPoint();
-        if (prevPoint.x === newPoint.x && prevPoint.y === newPoint.y) {
-            result.push(getShapeCommand(shapes[i]));
-        } else {
-            // In this case there's a jump, so we'll have to insert a texdraw move command.
-            result.push(move(newPoint.x, newPoint.y));
-            result.push(getShapeCommand(shapes[i]));
+        let prevPoint = shapes[0].getEndPoint();
+        for (let i = 1; i < shapes.length; i++) {
+            const newPoint = shapes[i].getStartingPoint();
+            if (prevPoint.x === newPoint.x && prevPoint.y === newPoint.y) {
+                result.push(getShapeCommand(shapes[i]));
+            } else {
+                // In this case there's a jump, so we'll have to insert a texdraw move command.
+                result.push(move(newPoint.x, newPoint.y));
+                result.push(getShapeCommand(shapes[i]));
+            }
+            prevPoint = shapes[i].getEndPoint();
         }
-        prevPoint = shapes[i].getEndPoint();
-    }
-    if (dash.length > 0 && !nextDash) {
-        result.push(lpatt([])); // If there is no specified next dash pattern, we let the pattern revert to normal.
+        if (dash.length > 0 && !nextDash) {
+            result.push(lpatt([])); // If there is no specified next dash pattern, we let the pattern revert to normal.
+        }
     }
 
     return result.join('');

@@ -15,13 +15,13 @@ export const DEFAULT_HOOK_ANGLE = 22.5;
 export const DEFAULT_HOOK_LENGTH = 10;
 export const MINIMUM_HOOK_LENGTH = 0;
 export const MAXIMUM_HOOK_LENGTH = 999;
-export const ROUNDING_DIGITS = 1; // precision used for parameters specific to Adjunction. We have to use a relatively low precision here,
+export const ROUNDING_DIGITS = 1; // precision used for parameters specific to Order. We have to use a relatively low precision here,
 // because those parameters will be inferred from the coordinates of points encoded in the texdraw code, and those coordinates are
 // rounded to the nearest 10,000th of a pixel -- which creates inaccuracy.
 
 const EPSILON = 1e-4;
 
-export default class Adjunction extends SNode {
+export default class Order extends SNode {
     hookAngle = DEFAULT_HOOK_ANGLE; // the angle (in degrees) of the 'harpoonhead's' hook
     hookLength = DEFAULT_HOOK_LENGTH; // the length of that hook
     hookLength100 = DEFAULT_HOOK_LENGTH; // the length of that hook
@@ -33,7 +33,7 @@ export default class Adjunction extends SNode {
                 const delta = parseCyclicInputValue(e.target.value, this.hookAngle, 0)[1];
                 return [
                     (item, array) => {
-                        if (!isNaN(delta) && delta !== 0 && item instanceof Adjunction) {
+                        if (!isNaN(delta) && delta !== 0 && item instanceof Order) {
                             item.hookAngle = getCyclicValue(
                                 item.hookAngle + delta,
                                 MIN_ROTATION,
@@ -60,7 +60,7 @@ export default class Adjunction extends SNode {
                     ) - this.hookLength;
                 return [
                     (item, array) => {
-                        if (!isNaN(d) && d !== 0 && item instanceof Adjunction) {
+                        if (!isNaN(d) && d !== 0 && item instanceof Order) {
                             item.hookLength += d;
                         }
                         return array;
@@ -91,7 +91,11 @@ export default class Adjunction extends SNode {
         this.hookLength100 = this.hookLength;
     }
 
-    override copyValuesTo(target: Adjunction) {
+    override flipArrowhead() {
+        this.hookAngle = -this.hookAngle;
+    }
+
+    override copyValuesTo(target: Order) {
         super.copyValuesTo(target);
         target.hookAngle = this.hookAngle;
         target.hookLength = this.hookLength;
@@ -143,11 +147,8 @@ export default class Adjunction extends SNode {
         const gamma = angle(p1x, p1y, p2x, p2y, true);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
-        const bx1 = len * Math.cos(gamma + a);
-        const by1 = len * Math.sin(gamma + a);
         return [
-            { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }, // the left hook
-            { x0: p1x, y0: p1y, x1: p1x + bx1, y1: p1y + by1 }, // the right hook
+            { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }
         ];
     }
 
@@ -159,36 +160,31 @@ export default class Adjunction extends SNode {
         nodeName: string
     ): Texdraw.StrokedShape[] {
         super.parseArrowhead(stShapes, cpx, cpy, dimRatio, nodeName);
-        if (stShapes.length < 2) {
+        if (stShapes.length < 1) {
             throw new ParseError(
                 (
                     <span>
-                        {complain(nodeName)}: expected two shapes for the arrowhead, but got only{' '}
-                        {stShapes.length}.
+                        {complain(nodeName)}: missing arrowhead.
                     </span>
                 )
             );
         }
-        for (let i = 0; i < 2; i++) {
-            const ss = stShapes[i];
-            if (!(ss.shape instanceof Texdraw.Line)) {
-                throw new ParseError(
-                    (
-                        <span>
-                            {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
-                        </span>
-                    )
-                );
-            }
+        const ss = stShapes[0];
+        if (!(ss.shape instanceof Texdraw.Line)) {
+            throw new ParseError(
+                (
+                    <span>
+                        {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
+                    </span>
+                )
+            );
         }
-        const lines = stShapes.map((ss) => ss.shape as Texdraw.Line);
-        const { x: x0, y: y0 } = lines[0].p0;
-        const { x: x1, y: y1 } = lines[0].p1;
-        const { x: x2, y: y2 } = lines[1].p1;
+        const line = stShapes[0].shape as Texdraw.Line;
+        const { x: x0, y: y0 } = line.p0;
+        const { x: x1, y: y1 } = line.p1;
         const a0 = angle(x0, y0, x1, y1, true); // the angle of the left hook, with the arrow's tip as origin
-        const a1 = angle(x0, y0, x2, y2, true); // the angle of the right hook, with the arrow's tip as origin
-        const a2 = angle(x0, y0, cpx, cpy, true); // the angle of the vector that leads from the arrow's tip to the connector's second control point
-        const negativeAngles = angleDiff(a0, a2) + angleDiff(a2, a1) > 2 * Math.PI;
+        const a1 = angle(x0, y0, cpx, cpy, true); // the angle of the vector that leads from the arrow's tip to the connector's second control point
+        const negativeAngles = angleDiff(a0, a1) > Math.PI;
         const aDeg = ((negativeAngles ? -angleDiff(a1, a0) : angleDiff(a0, a1)) / Math.PI) * 90;
         const factor = 10 ** ROUNDING_DIGITS;
         this.hookAngle = round(

@@ -68,6 +68,8 @@ import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Mi
 import { useHistory } from '../../util/History';
 import SNode from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
+import Order from './items/snodes/Order';
+import Identity from './items/snodes/Identity';
 import Ornament from './items/Ornament';
 import Label from './items/ornaments/Label';
 
@@ -624,24 +626,26 @@ class DepItemInfo {
     }
 }
 
+// An array of the strings by which we're going to reference the various classes of 'dependent Item', i.e., Ornaments and SNodes:
 type DepItemKey =
-    | 'trn'
-    | 'neg'
-    | 'ptr'
-    | 'exs'
-    | 'ins'
-    | 'ent'
     | 'adj'
-    | 'lbl'
-    | 'inc'
     | 'cnt'
+    | 'ent'
+    | 'exs'
     | 'idt'
-    | 'unv'
-    | 'rst'
+    | 'inc'
+    | 'ins'
+    | 'lbl'
+    | 'neg'
+    | 'orp'
     | 'prd'
-    | 'orp';
+    | 'ptr'
+    | 'rst'
+    | 'trn'
+    | 'unv';
 
-const depItemInfos = [
+const depItemInfos = [ // Commenting out what hasn't been implemented yet:
+    /*
     new DepItemInfo(
         'Broad tip',
         'trn',
@@ -661,9 +665,11 @@ const depItemInfos = [
     ),
     new DepItemInfo('Double hook, curved', 'ent', entSrc, 'An arrow with two curved hooks (cubic)', 2),
     new DepItemInfo('Harpoon', 'inc', incSrc, 'An arrow with an asymmetric, harpoonlike tip', 2),
+    */
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
-    new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
+    // new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
     new DepItemInfo('Simple line', 'idt', idtSrc, 'A simple line', 2),
+    /*
     new DepItemInfo(
         'Single hook, circular',
         'unv',
@@ -679,11 +685,19 @@ const depItemInfos = [
         2
     ),
     new DepItemInfo('Single hook, curved', 'prd', prdSrc, 'An arrow with a single curved hook (cubic)', 2),
+    */
     new DepItemInfo('Single hook, straight', 'orp', orpSrc, 'An arrow with a single straight hook', 2),
     new DepItemInfo('Standard arrow', 'adj', adjSrc, 'An arrow with two straight hooks', 2),
 ];
 
 const depItemKeys = depItemInfos.map((dl) => dl.key);
+
+// We're mapping string keys to the corresponding classes:
+const sNodeClassMap: Partial<Record<DepItemKey, new (i: number) => SNode>> = {
+    'adj': Adjunction,
+    'orp': Order,
+    'idt': Identity
+}
 
 const highestActive = (item: Item): Item | Group<any> => {
     const groups = getGroups(item);
@@ -1277,6 +1291,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             node.ornaments.forEach((o) => {
                                 o.gap100 = o.gap;
                             });
+                            if (node instanceof SNode) {
+                                node.renormalize();
+                            }
                         } else if (node instanceof CNode) {
                             node.dist0_100 = node.dist0;
                             node.dist1_100 = node.dist1;
@@ -2047,17 +2064,23 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     const pres = preselection2Ref.current;
                     let changed = false;
                     const newPres = [
+                        // old items:
                         ...pres.filter((item) => {
                             const result = lasso.contains(item, yOffset);
-                            changed = changed || !result;
+                            changed ||= !result;
                             return result;
                         }),
+                        // new items:
                         ...allItems.filter((item) => {
                             const result =
                                 lasso.contains(item, yOffset) &&
+                                // Don't include hidden SNodes:
+                                !(item instanceof ENode && item.isHidden(selection.includes(item))) && 
+                                // Don't include items already in the preselection:
                                 !pres.includes(item) &&
+                                // If we're deselecting, don't include items that aren't in the selection:
                                 (!deselect || selection.includes(item));
-                            changed = changed || result;
+                            changed ||= result;
                             return result;
                         }),
                     ];
@@ -2216,6 +2239,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 let newSelection: Item[] = [];
                 let counter = eNodeCounter;
                 let snodes: SNode[] = [];
+                let con: (new (i: number) => SNode) | undefined = undefined;
                 const key = depItemKeys[index];
                 const minNodes = depItemInfos[index].min;
                 if (selectedNodes.length >= minNodes) {
@@ -2241,15 +2265,6 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     }
 
                     switch (key) {
-                        case 'adj':
-                            snodes = new Array(relata.length - 1)
-                                .fill(null)
-                                .map(() => new Adjunction(counter++));
-                            for (let i = 0; i < snodes.length; i++) {
-                                snodes[i].init([relata[i], relata[i + 1]]);
-                            }
-                            newSelection = snodes;
-                            break;
                         case 'lbl':
                             newSelection = selectedNodes.map((node) => {
                                 const label = new Label(node);
@@ -2259,8 +2274,22 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             });
                             break;
                         default:
-                            sorry();
-                            return;
+                            if (key in sNodeClassMap) {
+                                con = sNodeClassMap[key];
+                            }
+                            else {
+                                sorry();
+                                return;
+                            }
+                    }
+                    if (con) {
+                        snodes = new Array(relata.length - 1)
+                            .fill(null)
+                            .map(() => new con!(counter++));
+                        for (let i = 0; i < snodes.length; i++) {
+                            snodes[i].init([relata[i], relata[i + 1]]);
+                        }
+                        newSelection = snodes;
                     }
                     const newFocus = newSelection.at(-1);
                     update({
@@ -2576,7 +2605,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             node.dash = node.dash100.map((l) => (l * newValue) / 100);
                     }
                 });
-                const affectedNodeGroups: CNodeGroup[] = deduplicatedSelection
+                const affectedNodeGroups: CNodeGroup[] = selectedNodesDeduplicated
                     .filter((it) => it instanceof CNode)
                     .map((node) => node.group) // An array of those NodeGroups that have members included in selection.
                     .filter((g, i, arr) => i === arr.indexOf(g)) as CNodeGroup[];
@@ -2588,6 +2617,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             group.dash = group.dash100.map((l) => (l * newValue) / 100);
                     }
                 });
+                if (transformFlags.scaleLinewidths || transformFlags.scaleDash || transformFlags.scaleArrowheads 
+                    || transformFlags.flipArrowheads) 
+                {
+                    const affectedSNodes = Array.from(addDependents(selectedNodesDeduplicated, false).values()).filter(it => 
+                        it instanceof SNode && Array.from(it.getAncestors()).every(node => selectedNodesDeduplicated.includes(node))
+                    ) as SNode[];
+                    for (const node of affectedSNodes) {
+                        if (transformFlags.scaleLinewidths) {
+                            node.conLinewidth = (node.conLinewidth100 * newValue) / 100;
+                            node.ahLinewidth = (node.ahLinewidth100 * newValue) / 100;
+                        }
+                        if (transformFlags.scaleDash) {
+                            [node.conDash, node.ahDash] = [node.conDash100, node.ahDash100].map(dash => dash.map(v => (v * newValue) / 100));
+                        }
+                        if (transformFlags.scaleArrowheads) {
+                            node.scaleArrowhead(newValue);
+                        }
+                    }
+                }
                 adjustLimit();
                 setScaling(newValue);
                 setItemsMoved((prev) => [...prev]);
@@ -2617,6 +2665,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         setItemsMoved((prev) => [...prev]);
     }, [selectedNodesDeduplicated, selection, points, focusItem, list, setOrigin]);
 
+    const flipAffectedArrowheads = (selection: Item[]) => {
+        const affectedSNodes = Array.from(addDependents(selection, false).values()).filter(it => 
+            it instanceof SNode && Array.from(it.getAncestors()).every(node => selection.includes(node))
+        ) as SNode[];
+        for (const node of affectedSNodes) {
+            if (transformFlags.flipArrowheads) {
+                node.flipArrowhead();
+            }
+        }
+    }
+
     const hFlip = useCallback(() => {
         selectedNodesDeduplicated.forEach((node) => {
             node.x = 2 * origin.x - node.x;
@@ -2626,6 +2685,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 node.angle1 = -node.angle1;
             }
         });
+        flipAffectedArrowheads(selectedNodesDeduplicated);
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
     }, [selectedNodesDeduplicated, origin, adjustLimit]);
@@ -2639,6 +2699,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 node.angle1 = -node.angle1;
             }
         });
+        flipAffectedArrowheads(selectedNodesDeduplicated);
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
     }, [selectedNodesDeduplicated, origin, adjustLimit]);

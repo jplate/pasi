@@ -182,9 +182,28 @@ export default abstract class SNode extends ENode {
         }
     }
 
+    /**
+     * @return a set of all the independent nodes on which this node directly or indirectly depends, where an SNode directly depends on a given
+     * Node iff the latter is one of the SNode's involutes.
+     */
+    getAncestors(acc: Set<Node> = new Set<Node>(), visited: Set<Node> = new Set<Node>()) {
+        for (const inv of this.involutes) {
+            if (inv.isIndependent()) {
+                acc.add(inv);
+            }
+            else if (inv instanceof SNode && !visited.has(inv)) {
+                visited.add(inv);
+                inv.getAncestors(acc, visited);
+            }
+        }
+        return acc;
+    }
+
+
     abstract getDefaultW0(): number;
     abstract getDefaultW1(): number;
     abstract getDefaultWC(): number;
+
 
     override isHidden(selected: boolean) {
         return (
@@ -211,6 +230,20 @@ export default abstract class SNode extends ENode {
         const hr = Math.min(MAX_HIDDEN_RADIUS, Math.max(MIN_HIDDEN_RADIUS, d1, d2));
         //console.log(` d: ${d} d1: ${d1)}, d2: ${d2} hr: ${hr}`);
         return hr;
+    }
+
+    scaleArrowhead(val: number) {}
+
+    flipArrowhead() {}
+
+    renormalizeArrowhead() {}
+
+    renormalize() {
+        this.conLinewidth100 = this.conLinewidth;
+        this.ahLinewidth100 = this.ahLinewidth;
+        this.conDash100 = this.conDash;
+        this.ahDash100 = this.ahDash;
+        this.renormalizeArrowhead();
     }
 
     override copyValuesTo(target: SNode) {
@@ -923,7 +956,7 @@ export default abstract class SNode extends ENode {
         dimRatio: number,
         nodeName: string
     ): Texdraw.StrokedShape[] {
-        if (stShapes.length === 0) {
+        if (stShapes.length > 0) {
             throw new ParseError(
                 (
                     <span>
