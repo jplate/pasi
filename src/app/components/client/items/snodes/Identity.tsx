@@ -2,18 +2,15 @@ import SNode from '../SNode';
 import { Entry } from '../../ItemEditor';
 import { ParseError, StrokedShape } from '@/app/codec/Texdraw';
 
-
 export const DEFAULT_W0 = 8;
 export const DEFAULT_W1 = 8;
 export const DEFAULT_WC = 8;
-
 
 /**
  * Identities are SNodes that are originally supposed to represent instantiations of the identity relation. On the canvas
  * they appear as simple lines.
  */
 export default class Identity extends SNode {
-
     getDefaultW0() {
         return DEFAULT_W0;
     }

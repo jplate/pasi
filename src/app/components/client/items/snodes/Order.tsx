@@ -84,7 +84,7 @@ export default class Order extends SNode {
     }
 
     override scaleArrowhead(val: number) {
-        this.hookLength = this.hookLength100 * val / 100;
+        this.hookLength = (this.hookLength100 * val) / 100;
     }
 
     override renormalizeArrowhead() {
@@ -147,9 +147,7 @@ export default class Order extends SNode {
         const gamma = angle(p1x, p1y, p2x, p2y, true);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
-        return [
-            { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }
-        ];
+        return [{ x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }];
     }
 
     override parseArrowhead(
@@ -161,13 +159,7 @@ export default class Order extends SNode {
     ): Texdraw.StrokedShape[] {
         super.parseArrowhead(stShapes, cpx, cpy, dimRatio, nodeName);
         if (stShapes.length < 1) {
-            throw new ParseError(
-                (
-                    <span>
-                        {complain(nodeName)}: missing arrowhead.
-                    </span>
-                )
-            );
+            throw new ParseError(<span>{complain(nodeName)}: missing arrowhead.</span>);
         }
         const ss = stShapes[0];
         if (!(ss.shape instanceof Texdraw.Line)) {

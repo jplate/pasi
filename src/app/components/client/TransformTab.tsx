@@ -65,7 +65,7 @@ const TransformTab = ({
     const originDescription = (
         <>
             <i>either</i>&thinsp; the last-selected location on the canvas <i>or</i>&thinsp; (if no location
-            is selected) the center of either the currently focused or (if no node is focused) the
+            is selected) the center of either the currently focused node or (if no node is focused) the
             last-selected node
         </>
     );
@@ -162,8 +162,8 @@ const TransformTab = ({
                 style='px-2 mx-2 mt-3 rounded-lg text-sm'
                 tooltip={
                     <>
-                        Flips the current selection horizontally, using a vertical axis that runs through{' '}
-                        {originDescription}.<HotkeyComp mapKey='hflip' />
+                        Flips the selected independent nodes horizontally, using an axis that runs vertically
+                        through {originDescription}.<HotkeyComp mapKey='hflip' />
                     </>
                 }
                 tooltipPlacement='right'
@@ -176,8 +176,8 @@ const TransformTab = ({
                 style='px-2 mx-2 mt-2 mb-3 rounded-lg text-sm'
                 tooltip={
                     <>
-                        Flips the current selection vertically, using an horizontal axis that runs through{' '}
-                        {originDescription}.<HotkeyComp mapKey='vflip' />
+                        Flips the selected independent nodes vertically, using an axis that runs horizontally
+                        through {originDescription}.<HotkeyComp mapKey='vflip' />
                     </>
                 }
                 tooltipPlacement='right'

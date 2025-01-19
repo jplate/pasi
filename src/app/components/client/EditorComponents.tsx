@@ -36,25 +36,29 @@ export const CheckBoxField = ({
 }: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext);
 
-    const comp =  (<label className={clsx('flex ml-4 py-1 text-sm whitespace-nowrap items-center', style, extraBottomMargin ? 'mb-4' : '', disabled ? 'opacity-50' : '')}>
-        <input
-            type='checkbox'
-            className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
-            checked={value}
-            disabled={disabled}
-            onChange={() => {
-                onChange();
-            }}
-        />    
-        <span>
-            {label}
-        </span>
+    const comp = (
+        <label
+            className={clsx(
+                'flex ml-4 py-1 text-sm whitespace-nowrap items-center',
+                style,
+                extraBottomMargin ? 'mb-4' : '',
+                disabled ? 'opacity-50' : ''
+            )}
+        >
+            <input
+                type='checkbox'
+                className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
+                checked={value}
+                disabled={disabled}
+                onChange={() => {
+                    onChange();
+                }}
+            />
+            <span>{label}</span>
         </label>
     );
 
     return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
-       
-    
 };
 
 interface InputFieldProps {
@@ -458,7 +462,7 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top', noStretch = fals
     return (
         <div>
             <div
-                className={noStretch? 'max-w-fit': 'justify-items-stretch'}
+                className={noStretch ? 'max-w-fit' : 'justify-items-stretch'}
                 ref={refs.setReference}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}

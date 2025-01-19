@@ -644,7 +644,8 @@ type DepItemKey =
     | 'trn'
     | 'unv';
 
-const depItemInfos = [ // Commenting out what hasn't been implemented yet:
+const depItemInfos = [
+    // Commenting out what hasn't been implemented yet:
     /*
     new DepItemInfo(
         'Broad tip',
@@ -694,10 +695,10 @@ const depItemKeys = depItemInfos.map((dl) => dl.key);
 
 // We're mapping string keys to the corresponding classes:
 const sNodeClassMap: Partial<Record<DepItemKey, new (i: number) => SNode>> = {
-    'adj': Adjunction,
-    'orp': Order,
-    'idt': Identity
-}
+    adj: Adjunction,
+    orp: Order,
+    idt: Identity,
+};
 
 const highestActive = (item: Item): Item | Group<any> => {
     const groups = getGroups(item);
@@ -1175,13 +1176,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     );
 
     const selectedNodesDeduplicated = useMemo(
-        () => deduplicatedSelection.filter((item) => item instanceof Node) as Node[],
-        [deduplicatedSelection]
+        () => selectedNodes.filter((node, i) => i === selectedNodes.indexOf(node)),
+        [selectedNodes]
     );
 
     const selectedIndependentNodes = useMemo(
-        () => deduplicatedSelection.filter((item) => item instanceof Node && item.isIndependent()) as Node[],
-        [deduplicatedSelection]
+        () => selectedNodesDeduplicated.filter((node) => node.isIndependent()),
+        [selectedNodesDeduplicated]
     );
 
     const leftMostSelected = useMemo(
@@ -2075,7 +2076,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             const result =
                                 lasso.contains(item, yOffset) &&
                                 // Don't include hidden SNodes:
-                                !(item instanceof ENode && item.isHidden(selection.includes(item))) && 
+                                !(item instanceof ENode && item.isHidden(selection.includes(item))) &&
                                 // Don't include items already in the preselection:
                                 !pres.includes(item) &&
                                 // If we're deselecting, don't include items that aren't in the selection:
@@ -2276,16 +2277,13 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         default:
                             if (key in sNodeClassMap) {
                                 con = sNodeClassMap[key];
-                            }
-                            else {
+                            } else {
                                 sorry();
                                 return;
                             }
                     }
                     if (con) {
-                        snodes = new Array(relata.length - 1)
-                            .fill(null)
-                            .map(() => new con!(counter++));
+                        snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++));
                         for (let i = 0; i < snodes.length; i++) {
                             snodes[i].init([relata[i], relata[i + 1]]);
                         }
@@ -2617,11 +2615,20 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             group.dash = group.dash100.map((l) => (l * newValue) / 100);
                     }
                 });
-                if (transformFlags.scaleLinewidths || transformFlags.scaleDash || transformFlags.scaleArrowheads 
-                    || transformFlags.flipArrowheads) 
-                {
-                    const affectedSNodes = Array.from(addDependents(selectedNodesDeduplicated, false).values()).filter(it => 
-                        it instanceof SNode && Array.from(it.getAncestors()).every(node => selectedNodesDeduplicated.includes(node))
+                if (
+                    transformFlags.scaleLinewidths ||
+                    transformFlags.scaleDash ||
+                    transformFlags.scaleArrowheads ||
+                    transformFlags.flipArrowheads
+                ) {
+                    const affectedSNodes = Array.from(
+                        addDependents(selectedNodesDeduplicated, false).values()
+                    ).filter(
+                        (it) =>
+                            it instanceof SNode &&
+                            Array.from(it.getAncestors()).every((node) =>
+                                selectedNodesDeduplicated.includes(node)
+                            )
                     ) as SNode[];
                     for (const node of affectedSNodes) {
                         if (transformFlags.scaleLinewidths) {
@@ -2629,7 +2636,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             node.ahLinewidth = (node.ahLinewidth100 * newValue) / 100;
                         }
                         if (transformFlags.scaleDash) {
-                            [node.conDash, node.ahDash] = [node.conDash100, node.ahDash100].map(dash => dash.map(v => (v * newValue) / 100));
+                            [node.conDash, node.ahDash] = [node.conDash100, node.ahDash100].map((dash) =>
+                                dash.map((v) => (v * newValue) / 100)
+                            );
                         }
                         if (transformFlags.scaleArrowheads) {
                             node.scaleArrowhead(newValue);
@@ -2665,19 +2674,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         setItemsMoved((prev) => [...prev]);
     }, [selectedNodesDeduplicated, selection, points, focusItem, list, setOrigin]);
 
-    const flipAffectedArrowheads = (selection: Item[]) => {
-        const affectedSNodes = Array.from(addDependents(selection, false).values()).filter(it => 
-            it instanceof SNode && Array.from(it.getAncestors()).every(node => selection.includes(node))
+    const flipAffectedArrowheads = (nodes: Item[]) => {
+        const affectedSNodes = Array.from(addDependents(nodes, false).values()).filter(
+            (it) => it instanceof SNode && Array.from(it.getAncestors()).every((node) => nodes.includes(node))
         ) as SNode[];
         for (const node of affectedSNodes) {
-            if (transformFlags.flipArrowheads) {
-                node.flipArrowhead();
-            }
+            node.flipArrowhead();
         }
-    }
+    };
 
     const hFlip = useCallback(() => {
-        selectedNodesDeduplicated.forEach((node) => {
+        selectedIndependentNodes.forEach((node) => {
             node.x = 2 * origin.x - node.x;
             node.x100 = 2 * origin.x - node.x100;
             if (node instanceof CNode) {
@@ -2685,13 +2692,15 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 node.angle1 = -node.angle1;
             }
         });
-        flipAffectedArrowheads(selectedNodesDeduplicated);
+        if (transformFlags.flipArrowheads) {
+            flipAffectedArrowheads(selectedIndependentNodes);
+        }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedNodesDeduplicated, origin, adjustLimit]);
+    }, [selectedIndependentNodes, origin, adjustLimit]);
 
     const vFlip = useCallback(() => {
-        selectedNodesDeduplicated.forEach((node) => {
+        selectedIndependentNodes.forEach((node) => {
             node.y = 2 * origin.y - node.y;
             node.y100 = 2 * origin.y - node.y100;
             if (node instanceof CNode) {
@@ -2699,10 +2708,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 node.angle1 = -node.angle1;
             }
         });
-        flipAffectedArrowheads(selectedNodesDeduplicated);
+        if (transformFlags.flipArrowheads) {
+            flipAffectedArrowheads(selectedIndependentNodes);
+        }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedNodesDeduplicated, origin, adjustLimit]);
+    }, [selectedIndependentNodes, origin, adjustLimit]);
 
     /**
      * Turn all contours that have members in the supplied array into regular polygons.
@@ -3075,20 +3086,22 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
 
     const canHFlip: boolean = useMemo(
         () =>
-            !selectedNodesDeduplicated.some((item) => {
+            selectedIndependentNodes.length > 0 &&
+            !selectedIndependentNodes.some((item) => {
                 const x = 2 * origin.x - item.x; // simulate hFlip on item
                 return itemsMoved && (x < 0 || x > MAX_X); // 'itemsMoved &&' added to suppress a warning about an 'unnecessary dependency'
             }),
-        [selectedNodesDeduplicated, origin, itemsMoved]
+        [selectedIndependentNodes, origin, itemsMoved]
     );
 
     const canVFlip: boolean = useMemo(
         () =>
-            !selectedNodesDeduplicated.some((item) => {
+            selectedIndependentNodes.length > 0 &&
+            !selectedIndependentNodes.some((item) => {
                 const y = 2 * origin.y - item.y; // simulate vFlip on item
                 return itemsMoved && (y < MIN_Y || y > MAX_Y);
             }),
-        [selectedNodesDeduplicated, origin, itemsMoved]
+        [selectedIndependentNodes, origin, itemsMoved]
     );
 
     const canRotateCWBy45Deg: boolean = useMemo(() => testRotation(-45), [testRotation]);

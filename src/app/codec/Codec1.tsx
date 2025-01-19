@@ -27,7 +27,11 @@ const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hi
 
 const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([['L', Label]]);
 
-const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([['A', Adjunction], ['I', Identity], ['O', Order]]);
+const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([
+    ['A', Adjunction],
+    ['I', Identity],
+    ['O', Order],
+]);
 
 type NodeIdentifier = {
     name: string;

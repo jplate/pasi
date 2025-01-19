@@ -1,125 +1,120 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+    .text-balance {
+        text-wrap: balance;
+    }
 }
-
-
 
 /*****************************************************
 * COLORS
 *****************************************************/
 
 .light {
-  --foreground-rgb: 30, 41, 59; /* slate-800 */
-  --background-start-rgb: 205, 210, 220;
-  --background-end-rgb: 235, 240, 250;
-  --link-rgb: 190, 18, 60; /* pink-700 */
-  --link-hover-rgb: 244, 63, 94; /* pink-500 */
-  
-  --btnbg: 248, 250, 252; /* slate-50 */
-  --btncolor: 71, 85, 105; /* slate-600 */
-  --btnborder: 148, 163, 184; /* slate-400 */
-  --btnhoverbg: 255, 255, 255; 
-  --btnhovercolor: 105, 115, 136; /* slightly desaturated version of slate-500 */
-  --btnactivebg: 148, 163, 184; /* slate-400 */
-  --btnactivecolor: 71, 85, 105; /* slate-600 */
-  --btnfocusring: 148, 163, 204; /* moderately bluer than slate-400 */
-  --canvasbg: 255, 255, 255; 
-  --canvasborder: 148, 163, 184; /* slate-400 */
-  --codepanelbg: 241, 245, 249; /* slate-100 */
-  --codepanelcolor: 100, 116, 139; /* slate-500 */
-  --menuborder: 203, 213, 225; /* slate-300 */
-  --tabselected: 226, 232, 240; /* slate-200 */
-  --textfieldbg: 248, 250, 252; /* slate-50 */
-  --textfieldcolor: 30, 41, 59; /* slate-800 */
-  --tooltipbg: 248, 250, 252; /* slate-50 */
+    --foreground-rgb: 30, 41, 59; /* slate-800 */
+    --background-start-rgb: 205, 210, 220;
+    --background-end-rgb: 235, 240, 250;
+    --link-rgb: 190, 18, 60; /* pink-700 */
+    --link-hover-rgb: 244, 63, 94; /* pink-500 */
+
+    --btnbg: 248, 250, 252; /* slate-50 */
+    --btncolor: 71, 85, 105; /* slate-600 */
+    --btnborder: 148, 163, 184; /* slate-400 */
+    --btnhoverbg: 255, 255, 255;
+    --btnhovercolor: 105, 115, 136; /* slightly desaturated version of slate-500 */
+    --btnactivebg: 148, 163, 184; /* slate-400 */
+    --btnactivecolor: 71, 85, 105; /* slate-600 */
+    --btnfocusring: 148, 163, 204; /* moderately bluer than slate-400 */
+    --canvasbg: 255, 255, 255;
+    --canvasborder: 148, 163, 184; /* slate-400 */
+    --codepanelbg: 241, 245, 249; /* slate-100 */
+    --codepanelcolor: 100, 116, 139; /* slate-500 */
+    --menuborder: 203, 213, 225; /* slate-300 */
+    --tabselected: 226, 232, 240; /* slate-200 */
+    --textfieldbg: 248, 250, 252; /* slate-50 */
+    --textfieldcolor: 30, 41, 59; /* slate-800 */
+    --tooltipbg: 248, 250, 252; /* slate-50 */
 }
 
 .dark {
-  --foreground-rgb: 190, 169, 150; /* moderately redder than stone-400 */
-  --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
-  --background-end-rgb: 20, 17, 13; /* slightly darker */
-  --link-rgb: 185, 28, 28; /* red-700 */
-  --link-hover-rgb: 239, 68, 68; /* red-500 */
+    --foreground-rgb: 190, 169, 150; /* moderately redder than stone-400 */
+    --background-start-rgb: 23, 20, 16; /* darker and redder than stone-900 */
+    --background-end-rgb: 20, 17, 13; /* slightly darker */
+    --link-rgb: 185, 28, 28; /* red-700 */
+    --link-hover-rgb: 239, 68, 68; /* red-500 */
 
-
-  --btnbg: 66, 50, 40; 
-  --btncolor: 190, 169, 150; /* moderately redder than stone-400 */
-  --btnborder: 95, 73, 58; /* moderately redder than stone-600 */
-  --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
-  --btnhovercolor: 0, 0, 0; 
-  --btnactivebg: 120 53 15; /* amber-800 */
-  --btnactivecolor: 0, 0, 0; 
-  --btnfocusring: 70, 45, 12; /* moderately redder than stone-600 */
-  --canvasbg: 217, 119, 26; /* moderately less saturated than amber-600 */
-  --canvasborder: 0, 0, 0; 
-  --codepanelbg: 12, 10, 9; /* stone-950 */
-  --codepanelcolor: 180, 83, 9; /* amber-700 */
-  --menuborder: 0, 0, 0;
-  --tabselected: 240, 232, 226; /* a slightly orange beige */ 
-  --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
-  --textfieldcolor: 217, 119, 6; /* amber-600 */
-  --tooltipbg: 12, 10, 9; /* stone-950 */
+    --btnbg: 66, 50, 40;
+    --btncolor: 190, 169, 150; /* moderately redder than stone-400 */
+    --btnborder: 95, 73, 58; /* moderately redder than stone-600 */
+    --btnhoverbg: 190, 93, 9; /* slightly redder and brighter than amber-700 */
+    --btnhovercolor: 0, 0, 0;
+    --btnactivebg: 120 53 15; /* amber-800 */
+    --btnactivecolor: 0, 0, 0;
+    --btnfocusring: 70, 45, 12; /* moderately redder than stone-600 */
+    --canvasbg: 217, 119, 26; /* moderately less saturated than amber-600 */
+    --canvasborder: 0, 0, 0;
+    --codepanelbg: 12, 10, 9; /* stone-950 */
+    --codepanelcolor: 180, 83, 9; /* amber-700 */
+    --menuborder: 0, 0, 0;
+    --tabselected: 240, 232, 226; /* a slightly orange beige */
+    --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
+    --textfieldcolor: 217, 119, 6; /* amber-600 */
+    --tooltipbg: 12, 10, 9; /* stone-950 */
 }
 
 /*****************************************************
 * HTML TAGS
 *****************************************************/
 
-html { /* We have to insist on a fixed font-size, to make sure that there won't be any resizing due to hover effects within the MainPanel */
-  font-size: 16px; 
+html {
+    /* We have to insist on a fixed font-size, to make sure that there won't be any resizing due to hover effects within the MainPanel */
+    font-size: 16px;
 }
 
 body {
-  font-family: 'Lora', serif;
-  font-feature-settings: 'dlig'; /* Normally we'd also include 'liga', but then the 'ff' in 'Grid offset' will look ugly, given the wider tracking in the CanvasEditor. */
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+    font-family: 'Lora', serif;
+    font-feature-settings: 'dlig'; /* Normally we'd also include 'liga', but then the 'ff' in 'Grid offset' will look ugly, given the wider tracking in the CanvasEditor. */
+    color: rgb(var(--foreground-rgb));
+    background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb)))
+        rgb(var(--background-start-rgb));
 }
 
-section { /* We're going with slightly bigger font for the surrounding sections. */
-  font-size: 18px; 
+section {
+    /* We're going with slightly bigger font for the surrounding sections. */
+    font-size: 18px;
 }
 
-textarea { /* We're going with slightly bigger font for the surrounding sections. */
-  font-feature-settings: 'none'; /* Ligatures in an editable text area seem out of place. */
+textarea {
+    /* We're going with slightly bigger font for the surrounding sections. */
+    font-feature-settings: 'none'; /* Ligatures in an editable text area seem out of place. */
 }
 
 h2 {
-  font-family: 'Raleway', sans-serif;
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 1.25em 0;
+    font-family: 'Raleway', sans-serif;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 1.25em 0;
 }
 
 h3 {
-  font-family: 'Raleway', sans-serif;
-  -webkit-backdrop-filter: blur(15px); /* for Safari */
-  backdrop-filter: blur(15px);
-  font-size: 1.25em;
-  font-weight: bold;
-  margin: 1.25em 0;
-  padding-top: 0.25em;
-  padding-bottom: 0.25em;
+    font-family: 'Raleway', sans-serif;
+    -webkit-backdrop-filter: blur(15px); /* for Safari */
+    backdrop-filter: blur(15px);
+    font-size: 1.25em;
+    font-weight: bold;
+    margin: 1.25em 0;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
 }
 
 th {
-  font-family: 'Raleway', sans-serif;
-  font-weight: bold;
+    font-family: 'Raleway', sans-serif;
+    font-weight: bold;
 }
 
 p:not(.pasi p) {
@@ -131,106 +126,104 @@ li {
 }
 
 a:not(.pasi a):not(.ReactModal__Body--open a) {
-  color: rgb(var(--link-rgb)); 
-  text-decoration: none; 
-  transition: color 0.5s; 
+    color: rgb(var(--link-rgb));
+    text-decoration: none;
+    transition: color 0.5s;
 }
 
 a:not(.pasi a):not(.ReactModal__Body--open a):hover {
-  color: rgb(var(--link-hover-rgb)); 
-  text-decoration: none; 
-  transition: color 0.1s; 
+    color: rgb(var(--link-hover-rgb));
+    text-decoration: none;
+    transition: color 0.1s;
 }
 
-em, i {
-  font-style: italic; 
+em,
+i {
+    font-style: italic;
 }
-
 
 /*****************************************************
 * PASI-SPECIFIC CUSTOM CLASSES
 *****************************************************/
 
 .pasi {
-  font-family: 'Raleway', sans-serif;
-  font-weight: 500; /* medium font for the app, which also matches the button style. */
+    font-family: 'Raleway', sans-serif;
+    font-weight: 500; /* medium font for the app, which also matches the button style. */
 }
 
 .pasi-logo {
-  font-family: 'Raleway', sans-serif;
-  font-weight: 300; 
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
 }
 
 .codepanel {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-feature-settings: 'none'; /* Ligatures in the code panel (in monospace font!) would look silly, so we turn them off. */
-  background-color: rgb(var(--codepanelbg));
-  color: rgb(var(--codepanelcolor));
-  outline-color: black;
-  border-color: black;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+        monospace;
+    font-feature-settings: 'none'; /* Ligatures in the code panel (in monospace font!) would look silly, so we turn them off. */
+    background-color: rgb(var(--codepanelbg));
+    color: rgb(var(--codepanelcolor));
+    outline-color: black;
+    border-color: black;
 }
 
 .canvas {
-  font-feature-settings: 'none'; /* Ligatures on the canvas also seem out of place. */
+    font-feature-settings: 'none'; /* Ligatures on the canvas also seem out of place. */
 }
 
 .menu {
-  font-family: 'Raleway', sans-serif;
-  -webkit-backdrop-filter: blur(15px); /* for Safari */
-  backdrop-filter: blur(15px);
+    font-family: 'Raleway', sans-serif;
+    -webkit-backdrop-filter: blur(15px); /* for Safari */
+    backdrop-filter: blur(15px);
 }
 
 .tooltip {
-  font-family: 'Raleway', sans-serif;
-  -webkit-backdrop-filter: blur(15px); /* for Safari */
-  backdrop-filter: blur(15px);
-  transition: opacity 0.5s ease-in-out;
+    font-family: 'Raleway', sans-serif;
+    -webkit-backdrop-filter: blur(15px); /* for Safari */
+    backdrop-filter: blur(15px);
+    transition: opacity 0.5s ease-in-out;
 }
 
 .checkbox.dark {
-  filter: brightness(0.85); 
+    filter: brightness(0.85);
 }
-
-
 
 /*****************************************************
 * COPY-TO-CLIPBOARD BUTTON
 *****************************************************/
 
 .copy-button {
-  background-color: rgba(var(--btnbg), 0.6);
-  color: rgba(var(--btncolor), 0.6);
-  transition: all 0.1s ease-in-out;
+    background-color: rgba(var(--btnbg), 0.6);
+    color: rgba(var(--btncolor), 0.6);
+    transition: all 0.1s ease-in-out;
 }
 
 .copy-icon {
-  opacity: 0;
-  transition: opacity 0.8s ease-in-out;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
 }
 
 .original-icon {
-  opacity: 1;
+    opacity: 1;
 }
 
 .copied {
-  .original-icon {
-    opacity: 0;
-  }
-  .copied-icon {
-    opacity: 1;
-  }
+    .original-icon {
+        opacity: 0;
+    }
+    .copied-icon {
+        opacity: 1;
+    }
 }
 
 .copy-button:not(.copied):not(:active):hover {
-  background-color: rgba(var(--btnhoverbg));
-  color: rgba(var(--btnhovercolor));
+    background-color: rgba(var(--btnhoverbg));
+    color: rgba(var(--btnhovercolor));
 }
 
 .copy-button:not(.copied):active {
-  background-color: rgba(var(--btnactivebg));
-  color: rgba(var(--btnactivecolor))
+    background-color: rgba(var(--btnactivebg));
+    color: rgba(var(--btnactivecolor));
 }
-
 
 /*****************************************************
 * SCROLLBARS
@@ -238,114 +231,108 @@ em, i {
 
 /* For browsers that support `scrollbar-*` properties */
 @supports (scrollbar-color: auto) {
+    body.light .scrollbox {
+        scrollbar-color: #bbc5d1 #e0e0e4;
+    }
 
-  body.light .scrollbox {
-    scrollbar-color: #bbc5d1 #e0e0e4;
-  }
-
-  body.dark .scrollbox {
-    scrollbar-color: #4c403c #120a09;
-  } 
+    body.dark .scrollbox {
+        scrollbar-color: #4c403c #120a09;
+    }
 }
-
 
 /* Otherwise, use `::-webkit-scrollbar-*` pseudo-elements */
 @supports selector(::-webkit-scrollbar) {
+    body.light .scrollbox {
+        ::-webkit-scrollbar {
+            width: 13px;
+            height: 13px;
+        }
 
-  body.light .scrollbox {
-    ::-webkit-scrollbar {
-      width: 13px;
-      height: 13px;
-    }
+        ::-webkit-scrollbar-track {
+            background: #0c0c8a;
+        }
 
-    ::-webkit-scrollbar-track {
-      background: #0c0c8a; 
-    }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+            border: 1px solid #c0cad8;
+        }
 
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1; 
-      border-radius: 10px;
-      border: 1px solid #c0cad8; 
-    }
+        ::-webkit-scrollbar-thumb:horizontal:hover {
+            background: #c0cad8;
+            border-radius: 10px;
+        }
 
-    ::-webkit-scrollbar-thumb:horizontal:hover {
-      background: #c0cad8; 
-      border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-corner {
-      background: #e0e0e0; 
-    }
-  }
-
-  body.dark .scrollbox {
-    ::-webkit-scrollbar {
-      width: 13px;
-      height: 13px;
+        ::-webkit-scrollbar-corner {
+            background: #e0e0e0;
+        }
     }
 
-    ::-webkit-scrollbar-track {
-      background: #120a09
-    }
+    body.dark .scrollbox {
+        ::-webkit-scrollbar {
+            width: 13px;
+            height: 13px;
+        }
 
-    ::-webkit-scrollbar-thumb {
-      background: #4c403c; 
-      border-radius: 10px;
-      border: 1px solid #422a29; 
+        ::-webkit-scrollbar-track {
+            background: #120a09;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4c403c;
+            border-radius: 10px;
+            border: 1px solid #422a29;
+        }
+
+        ::-webkit-scrollbar-thumb:horizontal:hover {
+            background: #422a29;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: #0c0a09;
+        }
     }
-    
-    ::-webkit-scrollbar-thumb:horizontal:hover {
-      background: #422a29; 
-      border-radius: 10px;
-    }
-    
-    ::-webkit-scrollbar-corner {
-      background: #0c0a09; 
-    }
-  }
 }
-
 
 /*****************************************************
 * REACT-MODAL
 *****************************************************/
 
 .ReactModal__Overlay {
-  opacity: 0;
-  -webkit-backdrop-filter: blur(2px); /* for Safari */
-  backdrop-filter: blur(2px);
-  transition: opacity 750ms ease-in-out;
+    opacity: 0;
+    -webkit-backdrop-filter: blur(2px); /* for Safari */
+    backdrop-filter: blur(2px);
+    transition: opacity 750ms ease-in-out;
 }
 .ReactModal__Overlay--after-open {
-  opacity: 1;
+    opacity: 1;
 }
 .ReactModal__Overlay--before-close {
-  opacity: 0;
+    opacity: 0;
 }
 
 /* Disable pointer events (and turn off link coloring) if modal dialog is open... */
 .ReactModal__Body--open {
-  pointer-events: none;
-  a:not(.pasi a) {
-    text-decoration: none;
-    transition: color 500ms ease-in-out;
-  }
+    pointer-events: none;
+    a:not(.pasi a) {
+        text-decoration: none;
+        transition: color 500ms ease-in-out;
+    }
 }
 /* ...but allow them on the modal dialog itself and on the overlay. */
 .ReactModal__Content {
-  pointer-events: auto;
+    pointer-events: auto;
 }
 .ReactModal__Overlay {
-  pointer-events: auto;
+    pointer-events: auto;
 }
 /* Using a custom class, we gradually turn link coloring (for links in the surrounding text) back on while the modal dialog is closing: */
 .modal-closing {
-  pointer-events: none;
-  a:not(.pasi a) {
-    color: rgb(var(--link-rgb)); 
-    text-decoration: none;
-    transition: color 500ms ease-in-out;
-  }
+    pointer-events: none;
+    a:not(.pasi a) {
+        color: rgb(var(--link-rgb));
+        text-decoration: none;
+        transition: color 500ms ease-in-out;
+    }
 }
-
-

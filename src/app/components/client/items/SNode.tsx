@@ -190,8 +190,7 @@ export default abstract class SNode extends ENode {
         for (const inv of this.involutes) {
             if (inv.isIndependent()) {
                 acc.add(inv);
-            }
-            else if (inv instanceof SNode && !visited.has(inv)) {
+            } else if (inv instanceof SNode && !visited.has(inv)) {
                 visited.add(inv);
                 inv.getAncestors(acc, visited);
             }
@@ -199,11 +198,9 @@ export default abstract class SNode extends ENode {
         return acc;
     }
 
-
     abstract getDefaultW0(): number;
     abstract getDefaultW1(): number;
     abstract getDefaultWC(): number;
-
 
     override isHidden(selected: boolean) {
         return (
