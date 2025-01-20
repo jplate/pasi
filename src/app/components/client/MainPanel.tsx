@@ -571,7 +571,7 @@ const getSnapPoint = (
                     const dn = Math.sqrt(Math.pow(x - node.x, 2) + Math.pow(y - node.y, 2));
                     if (
                         (dn < d || (snappingToGrid && dn < NODE_SNAP_RADIUS)) &&
-                        !selectedNodes.includes(node) && // No point in trying to snap to a node that'll move away as a result.
+                        !addDependents(selectedNodes, false).has(node) && // No point in trying to snap to a node that'll move away as a result.
                         (!(node instanceof CNode) || isFree(node, overlap)) // Don't try to snap to nodes that might move away due to groupMove.
                     ) {
                         snappingToGrid = false;
@@ -936,9 +936,11 @@ interface HistoryEntry {
 
 interface MainPanelProps {
     dark: boolean;
+    diagramCode: string | null; // code for a diagram passed down from the page.
+    reset: () => void; // callback for resetting the diagram code that is passed down from the page.
 }
 
-const MainPanel = ({ dark }: MainPanelProps) => {
+const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const canvasRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLTextAreaElement>(null);
     const [replace, setReplace] = useState(true);
@@ -2972,6 +2974,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
                     eNodeCounter: newENodeCounter,
                     cngCounter: newCNGCounter,
                     sgCounter: newSGCounter,
+                    code,
                 });
                 if (replace) {
                     setPreselection1([]);
@@ -3003,6 +3006,13 @@ const MainPanel = ({ dark }: MainPanelProps) => {
             showModal,
         ]
     );
+
+    useEffect(() => {
+        if (diagramCode) {
+            loadDiagram(diagramCode, true);
+        }
+        reset();
+    }, [diagramCode, loadDiagram, reset]);
 
     const numberOfTbcENodes = useMemo(
         () => deduplicatedSelection.reduce((acc, m) => (m instanceof ENode ? acc + 1 : acc), 0),
@@ -3368,6 +3378,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
         'data-[selected]:data-[hover]:text-btncolor'
     );
 
+    /*
     console.log(
         clsx(
             `Rendering... ${selectedNodes.map((node) => node.getString())} listLength=${list.length}`,
@@ -3380,6 +3391,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
                 `involutes=[${focusItem.involutes.map((node) => node.getString()).join()}]`
         )
     );
+    */
 
     return (
         <DarkModeContext.Provider value={dark}>

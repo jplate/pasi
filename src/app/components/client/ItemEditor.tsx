@@ -109,6 +109,7 @@ export type Entry = {
     extraBottomMargin?: boolean;
     onMenuChange?: (index: number) => void; // callback for menu change
     fullHeight?: boolean;
+    readOnly?: boolean;
 };
 
 interface ItemEditorProps {
@@ -169,6 +170,7 @@ const ItemEditor = ({ info, logIncrement, onIncrementChange, onChange }: ItemEdi
                                 tooltipPlacement={entry.tooltipPlacement}
                                 disabled={entry.disabled}
                                 onChange={(e) => handleChange(e, entry.key ?? '')}
+                                readOnly={entry.readOnly}
                             />
                         );
                     case 'string input':
@@ -186,6 +188,7 @@ const ItemEditor = ({ info, logIncrement, onIncrementChange, onChange }: ItemEdi
                                 tooltipPlacement={entry.tooltipPlacement}
                                 disabled={entry.disabled}
                                 onChange={(e) => handleChange(e, entry.key ?? '')}
+                                readOnly={entry.readOnly}
                             />
                         );
                     case 'button':

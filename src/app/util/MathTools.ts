@@ -325,63 +325,34 @@ export const bezierAngle = ({ x0, y0, x1, y1, x2, y2, x3, y3 }: CubicCurve, t: n
  * @param d1 distance of the point at t1 from the reference point
  * @param j number of iterations
  */
-const findClosest = (
+export const findClosest = (
     x: number,
     y: number,
     c: CubicCurve,
     t0: number,
-    d0: number,
     t1: number,
-    d1: number,
+    closeEnough: number,
     j: number
 ): number => {
-    if (d0 > d1) {
-        // If the curve is closer to the reference point at the end of the search interval, we'll start from there.
-        [t0, t1] = [t1, t0];
-        [d0, d1] = [d1, d0];
-    }
     const div = 20;
-    const dmin = 0.4;
+    [t0, t1] = [Math.min(t0, t1), Math.max(t0, t1)];
     const incr = (t1 - t0) / div;
     let firstT = t0;
-    let firstD = d0;
-    let secondT = t0;
-    let secondD = d0;
-    let prevD = d0;
-    let prevT = d0;
+    let firstD = Infinity;
     for (let i = 1; i < div; i++) {
         const t = t0 + i * incr;
         const [bx, by] = cubicBezier(c, t);
         const d = Math.sqrt((x - bx) ** 2 + (y - by) ** 2);
         if (d < firstD) {
-            firstD = d;
             firstT = t;
-            secondD = prevD;
-            secondT = prevT;
-        } else if (d < secondD) {
-            secondD = d;
-            secondT = t;
+            firstD = d;
         }
-        prevD = d;
-        prevT = t;
     }
-
-    if (firstD <= dmin || j <= 0 || firstT === secondT) {
+    if (firstD <= closeEnough || j <= 0) {
         return firstT;
     } else {
-        return findClosest(x, y, c, firstT, firstD, secondT, secondD, j - 1);
+        return findClosest(x, y, c, firstT - incr, firstT + incr, closeEnough, j - 1);
     }
-};
-
-/**
- * @return the approximately closest point to (x,y) on the curve c between the t-values t0 and t1 (both should be between 0 and 1)
- */
-export const closestTo = (x: number, y: number, c: CubicCurve, t0: number, t1: number): number => {
-    const [x0, y0] = cubicBezier(c, t0);
-    const [x1, y1] = cubicBezier(c, t1);
-    const d0 = Math.sqrt((x0 - x) ** 2 + (y0 - y) ** 2);
-    const d1 = Math.sqrt((x1 - x) ** 2 + (y1 - y) ** 2);
-    return findClosest(x, y, c, t0, d0, t1, d1, 8);
 };
 
 /**

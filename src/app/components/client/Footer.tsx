@@ -2,6 +2,7 @@ import React from 'react';
 
 interface FooterProps {
     copyRightHolder: string;
+    homepage: string;
     licenseInfo: string;
     sections: {
         header: string;
@@ -17,7 +18,7 @@ const footerStyle = (sectionsLength: number) => `
     }
 `;
 
-const Footer = ({ copyRightHolder, licenseInfo, sections }: FooterProps) => {
+const Footer = ({ copyRightHolder, homepage, licenseInfo, sections }: FooterProps) => {
     return (
         <footer className='py-8 2xl:ml-[-150px]'>
             <style>{footerStyle(sections.length)}</style>
@@ -37,7 +38,11 @@ const Footer = ({ copyRightHolder, licenseInfo, sections }: FooterProps) => {
             </div>
             <div className='xl:max-w-[80vw] 2xl:max-w-[70vw] mx-auto mt-3 border-t border-btnborder/60 pt-4'>
                 <p className='text-xs text-center px-8'>
-                    © {new Date().getFullYear()} {copyRightHolder}. {licenseInfo}
+                    © {new Date().getFullYear()}{' '}
+                    <a href={homepage} target='_blank' rel='noopener noreferrer'>
+                        {copyRightHolder}
+                    </a>
+                    . {licenseInfo}
                 </p>
             </div>
         </footer>

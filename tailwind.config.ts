@@ -28,6 +28,8 @@ const config: Config = {
                 tabselected: 'rgba(var(--tabselected))',
                 textfieldbg: 'rgba(var(--textfieldbg))',
                 textfieldcolor: 'rgba(var(--textfieldcolor))',
+                linkcolor: 'rgba(var(--link-rgb))',
+                linkhovercolor: 'rgba(var(--link-hover-rgb))',
             },
             typography: ({ theme }: { theme: any }) => ({
                 light: {

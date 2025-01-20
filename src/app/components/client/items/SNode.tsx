@@ -30,7 +30,7 @@ import {
     angleDiff,
     CubicCurve,
     cubicBezier,
-    closestTo,
+    findClosest,
     getCyclicValue,
 } from '../../../util/MathTools';
 import * as Texdraw from '../../../codec/Texdraw';
@@ -356,7 +356,8 @@ export default abstract class SNode extends ENode {
         const gx = x + dx;
         const gy = y + dy;
         const line = this.getLine();
-        this.t = closestTo(gx, gy, line, 0.05, 0.95);
+        const closeEnough = 0.1 * 10 ** MIN_TRANSLATION_LOG_INCREMENT;
+        this.t = findClosest(gx, gy, line, 0.05, 0.95, closeEnough, 7);
         const [newX, newY] = cubicBezier(line, this.t);
         this.x = newX;
         this.y = newY;
@@ -594,7 +595,7 @@ export default abstract class SNode extends ENode {
             ...this.getConnectorInfo(),
             ...ahInfo,
             { type: 'label', text: 'Node properties', style: borderedLabelStyle },
-            ...this.getNodeInfo(list),
+            ...this.getNodeInfo(list, true),
             { type: 'label', text: '', style: 'flex-0' }, // a filler, to ensure an appropriate bottom margin
         ];
     }

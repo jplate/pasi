@@ -23,6 +23,7 @@ import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
 import { addAlpha } from '@/app/util/Misc';
+import { round } from '@/app/util/MathTools';
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = (2 * Math.PI) / 100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -127,8 +128,9 @@ export default class ENode extends Node {
         this.radius = this.radius100 = this.getDefaultRadius();
     }
 
-    getNodeInfo(list: (ENode | CNodeGroup)[]): Entry[] {
+    getNodeInfo(list: (ENode | CNodeGroup)[], readOnlyCoordinates: boolean = false): Entry[] {
         return [
+            ...this.getCoordinateInfo(readOnlyCoordinates),
             {
                 type: 'number input',
                 key: 'radius',
@@ -175,19 +177,40 @@ export default class ENode extends Node {
         ];
     }
 
-    getCoordinateInfo(): Entry[] {
-        return [
-            { type: 'number input', key: 'x', text: 'X-coordinate', width: 'long', value: this.x, step: 0 },
-            { type: 'number input', key: 'y', text: 'Y-coordinate', width: 'long', value: this.y, step: 0 },
-            { type: 'logIncrement', extraBottomMargin: true },
+    getCoordinateInfo(readOnly: boolean = false): Entry[] {
+        const digits = Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT);
+        const factor = 10 ** digits;
+        const [x, y] = [this.x, this.y].map((val) => round(Math.round(val * factor) / factor, digits));
+        const coordinateInfo: Entry[] = [
+            {
+                type: 'number input',
+                key: 'x',
+                text: 'X-coordinate',
+                width: 'long',
+                value: x,
+                step: 0,
+                readOnly,
+            },
+            {
+                type: 'number input',
+                key: 'y',
+                text: 'Y-coordinate',
+                width: 'long',
+                value: y,
+                step: 0,
+                readOnly,
+            },
         ];
+        return readOnly
+            ? coordinateInfo
+            : [...coordinateInfo, { type: 'logIncrement', extraBottomMargin: true }];
     }
 
     /**
      * Overridden by SNode and GNode.
      */
     override getInfo(list: (ENode | CNodeGroup)[]): Entry[] {
-        return [...this.getCoordinateInfo(), ...this.getNodeInfo(list)];
+        return this.getNodeInfo(list);
     }
 
     commonEditHandler: Handler = {

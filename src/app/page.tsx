@@ -1,9 +1,13 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
+import React, { useRef, useState, useEffect, useCallback, Suspense } from 'react';
 import clsx from 'clsx/lite';
 import { pasi, hotkeys } from './components/client/MainPanel';
+
+import relationshipSrcLight from '@/images/relationshipLight.png';
+import relationshipSrcDark from '@/images/relationshipDark.png';
 
 const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), { ssr: false });
 const SectionComp = dynamic(() => import('./components/client/Section.tsx'), { ssr: false });
@@ -47,10 +51,24 @@ const LogoSpan: React.FC = () => {
     );
 };
 
+const relationshipCode =
+    '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(400 380)\\lcir r:12 %E0\n\\textref h:C v:B \\htext(400 394.5){\\vphantom{p}Desdemona}%L0{2 U 0}\n\\linewd 1 \\move(600 380)\\lcir r:12 %E1\n\\textref h:C v:B \\htext(600 394.5){\\vphantom{p}Othello}%L1{2 U 0}\n\\linewd 1 \\move(412 380)\\clvec(420 380)(579.6 380)(587.6 380)\\move(587.6 380)\\lvec(578.3612 383.8268)\\move(587.6 380)\\lvec(578.3612 376.1732)\\linewd 1 \\move(500 380)\\lcir r:5 %A2(0 1){.u7 0 .n 1}\n\\textref h:C v:B \\htext(500 387.5){\\vphantom{p}loves}%L2{2 U 0}\n\\linewd 1 \\move(500 280)\\lcir r:12 %E3\n\\textref h:C v:T \\htext(500 265.5){Iago}%L3{2 U- 0}\n\\linewd 1 \\move(500 292)\\clvec(500 300)(500 360.6)(500 371.6)\\move(500 371.6)\\lvec(496.452 373.447)\\move(500 371.6)\\lvec(503.5481 373.447)%A4(3 2){5 0 .u 0 3.n 1}\n\\textref h:L v:C \\htext(507 330.675){\\small disapproves}%L4{2 0 0}\n\\end{texdraw}';
+
+const pentagonCode =
+    '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(368 380)\\clvec(375.7333 356.142)(407.2667 258.858)(415 235)\\clvec(440.08 235)(541.92 235)(567 235)\\clvec(574.5839 258.9059)(605.4161 356.0941)(613 380)\\clvec(592.6812 394.7022)(510.3188 454.2978)(490 469)\\clvec(469.7385 454.219)(388.2615 394.781)(368 380)%S0{0; 3; 0,0,|.8,|.8; 0,0,|.8,|.8; 0,0,|.8,|.8; 0,0,|.8,|.8; 0,0,|.8,|.8}\n\\end{texdraw}';
+
+const hexagonCode =
+    '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(367.02 338.54)\\clvec(377.444 320.5752)(419.576 247.9648)(430 230)\\clvec(450.77 230)(535.19 230)(555.96 230)\\clvec(566.384 247.9648)(608.516 320.5752)(618.94 338.54)\\clvec(608.6115 356.5599)(566.2885 430.4001)(555.96 448.42)\\clvec(535.19 448.42)(450.77 448.42)(430 448.42)\\clvec(419.6715 430.4001)(377.3485 356.5599)(367.02 338.54)%S0{0; 3; 0,0,?.K,?.K; 0,0,?.K,?.K; 0,0,?.K,?.K; 0,0,?.K,?.K; 0,0,?.K,?.K; 0,0,?.K,?.K}\n\\end{texdraw}';
+
+const dodecagonCode =
+    '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(403 253)\\clvec(416.8018 244.8668)(445.1982 228.1332)(459 220)\\clvec(475.02 220)(507.98 220)(524 220)\\clvec(537.8018 228.1332)(566.1982 244.8668)(580 253)\\clvec(588.1332 266.8018)(604.8668 295.1982)(613 309)\\clvec(613 325.02)(613 357.98)(613 374)\\clvec(604.8668 387.8018)(588.1332 416.1982)(580 430)\\clvec(566.1982 438.1332)(537.8018 454.8668)(524 463)\\clvec(507.98 463)(475.02 463)(459 463)\\clvec(445.1982 454.8668)(416.8018 438.1332)(403 430)\\clvec(394.8668 416.1982)(378.1332 387.8018)(370 374)\\clvec(370 357.98)(370 325.02)(370 309)\\clvec(378.1332 295.1982)(394.8668 266.8018)(403 253)%S0{0; 3; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2}\n\\end{texdraw}';
+
 export default function Home() {
     const [isMobile, setIsMobile] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [diagramCode, setDiagramCode] = useState<string | null>(null);
     const [isMac, setIsMac] = useState(false);
+    const mainPanelRef = useRef<HTMLDivElement | null>(null);
 
     // Initialize state
     useEffect(() => {
@@ -121,21 +139,40 @@ export default function Home() {
         [isDarkMode]
     );
 
-    const hyphens = (
-        <>
-            -----<span className='hidden md:inline'>-------------</span>
-        </>
+    interface CodeButtonProps {
+        text: React.ReactNode;
+        code: string;
+    }
+
+    const CodeButton = useCallback(
+        ({ text, code }: CodeButtonProps) => {
+            return (
+                <button
+                    className='text-linkcolor hover:text-linkhovercolor'
+                    onClick={() => {
+                        setDiagramCode(code);
+                        mainPanelRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                >
+                    {text}
+                </button>
+            );
+        },
+        [setDiagramCode, mainPanelRef]
     );
 
     return (
         <>
             {' '}
             {/* We're returning a fragment. */}
-            <div id='sticky-top' className='sticky-top sticky top-0 bg-transparent z-40 hidden sm:block'>
+            <div
+                id='sticky-top'
+                className='sticky-top sticky top-0 bg-transparent z-40 hidden sm:block pointer-events-none'
+            >
                 <span className='flex items-center justify-between px-2 lg:px-4 2xl:px-6 py-1 lg:py-2'>
                     <LogoSpan />
                     <button
-                        className='opacity-60'
+                        className='opacity-60 pointer-events-auto'
                         onClick={() => {
                             setIsDarkMode(!isDarkMode);
                         }}
@@ -195,18 +232,13 @@ export default function Home() {
                         <div id='content' className='flex-1 flex flex-col items-center mb-9'>
                             <Section id='intro-section'>
                                 <p>
-                                    <strong>
-                                        {hyphens}UNDER CONSTRUCTION{hyphens}
-                                    </strong>
-                                </p>
-                                <p>
                                     Suppose you’re writing a paper in LaTeX and want to make a quick diagram
                                     to include in your text.
                                 </p>
                                 <p>Here you can do that.</p>
                                 <p>
-                                    To create a diagram, start by selecting one or (with shift-click) more
-                                    locations on the canvas below
+                                    To create a diagram, start by selecting one or (with {key('Shift')}-click)
+                                    more locations on the canvas below
                                     <span className='xl:hidden'>
                                         {' '}
                                         (if none is visible, you may need to zoom out or increase your screen
@@ -229,11 +261,17 @@ export default function Home() {
                                     using the {pasi('Load')} button.
                                 </p>
                             </Section>
+
                             <Suspense fallback={<div>Loading...</div>}>
-                                <div className='hidden lg:block'>
-                                    <MainPanel dark={isDarkMode} />
+                                <div className='hidden lg:block' ref={mainPanelRef}>
+                                    <MainPanel
+                                        dark={isDarkMode}
+                                        diagramCode={diagramCode}
+                                        reset={() => setDiagramCode(null)}
+                                    />
                                 </div>
                             </Suspense>
+
                             <Section id='keyboard-commands' header='Keyboard commands'>
                                 <p>
                                     The following keyboard commands are available for editing the diagram
@@ -358,70 +396,96 @@ export default function Home() {
                             <Section id='design-principles' header='Basic design features'>
                                 <ol>
                                     <li>
-                                        <span className='font-bold'>Simplicity.</span> Any diagram in{' '}
-                                        <i>pasi</i> consists of two basic building blocks:{' '}
-                                        <em>entity nodes</em> and <em>contour nodes</em>. Any label is
-                                        attached to one of these nodes; and any connector (i.e., line or
-                                        arrow) runs between two of these nodes, or from one node back to
-                                        itself.
+                                        <span className='font-bold'>Simplicity.</span> A diagram in{' '}
+                                        <i>pasi</i> consists of at most three basic kinds of building block:{' '}
+                                        <em>entity</em> nodes, <em>contour</em> nodes, and <em>ornaments</em>{' '}
+                                        (such as labels). Their placement and other properties completely
+                                        determine the appearance of a diagram.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Ease of precise positioning.</span> With
-                                        the cursor keys (or {key('W')}, {key('A')}, {key('S')}, {key('D')}),
-                                        it is possible to position selected items to a precision of a tenth of
-                                        a pixel. The exact coordinates of an item can be inspected and
-                                        manipulated in the {pasi('Editor')} tab. In addition, while dragging
-                                        items across the canvas, the user can take advantage of three kinds of
+                                        <span className='font-bold'>Precision.</span> With the cursor keys (or{' '}
+                                        {key('W')}, {key('A')}, {key('S')}, {key('D')}), it is possible to
+                                        position items to a precision of one-tenth of a pixel. The exact
+                                        coordinates of an item can be inspected and adjusted in the{' '}
+                                        {pasi('Editor')} tab. In addition, while dragging items across the
+                                        canvas, the user can take advantage of three kinds of
                                         &lsquo;snapping&rsquo; behavior: to the centers of contours, to the
                                         centers of nodes, and to a variable grid.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Exporting LaTeX code.</span> While it is
-                                        of course possible to tell LaTeX to include image files in its output,
-                                        a major advantage of having it create a diagram from LaTeX code is
-                                        that this approach allows the diagram code to make use (e.g., in the
-                                        text of a label) of commands defined elsewhere in the document. The
-                                        font of the labels will also normally match that of the rest of the
-                                        document.
+                                        <span className='font-bold'>LaTeX export.</span> When using LaTeX for
+                                        typesetting a document, a major advantage of including the
+                                        document&rsquo;s diagrams in LaTeX-readable form is that this allows
+                                        for commands defined elsewhere in the text to be used in the
+                                        diagrams&rsquo; labels. In addition, the font of the labels will
+                                        automatically match the rest of the document.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>
-                                            Freedom to design one&rsquo;s own shapes.
-                                        </span>{' '}
-                                        While each <em>contour</em> consists of eight nodes carrying
-                                        information about the control points of their connecting curves, it is
-                                        easy to add or delete nodes, and to modify their respective{' '}
-                                        properties. A few examples of how different shapes can be created in
-                                        this way are described <a href='#contour-examples'>below</a>.
+                                        <span className='font-bold'>Custom shapes.</span> While each{' '}
+                                        <em>contour</em> consists of exactly eight nodes carrying information
+                                        about the control points of their connecting curves, it is easy to add
+                                        or delete nodes and to adjust their respective properties. A few
+                                        examples of how different shapes can be created in this way are
+                                        described <a href='#contour-examples'>below</a>.
                                     </li>
                                 </ol>
                             </Section>
 
                             <Section id='connectors' header='Connectors'>
                                 <p>
-                                   To create a <em>connector</em>, select two or more nodes and then click on the {pasi('Create')} button{' '}
-                                   (or press {key('Space')}), having selected the desired kind of connector in the adjacent menu.
+                                    To create a <em>connector</em>, select two or more nodes and then click on
+                                    the {pasi('Create')} button (or press {key('Space')}), having selected the
+                                    desired class of connector in the menu immediately above that button.
                                 </p>
                                 <p>
-                                   One thing to note about connectors is that, roughly speaking, they are implemented as odd-looking entity nodes.{' '}
-                                   Normally, an entity node is represented on the canvas by a circle. In the case of a connector, there is a circle, too, but usually{' '}
-                                   it is invisible, the only visible part being a line or arrow connecting two nodes. (Of course, in a natural sense of the word,{' '}
-                                   a connector <i>just is</i> that line or arrow.) The circle only becomes visible when one clicks somewhere near the center of the{' '}
-                                   line or arrow. 
+                                    One thing to note about connectors is that, roughly speaking, they are
+                                    implemented as odd-looking entity nodes. <em>Normal</em> entity nodes
+                                    appear as circles. In the case of a connector, by contrast, the circle is
+                                    usually invisible, and instead the user only sees a line or arrow
+                                    connecting two nodes. (Of course, in a natural sense, a connector{' '}
+                                    <i>just is</i> that line or arrow.) The circle only becomes visible when
+                                    the user clicks somewhere near the center of the line or arrow.
                                 </p>
                                 <p>
-                                   The reason for this somewhat unusual design is that <i>pasi</i> has originally been developed with the aim of facilitating{' '}
-                                   the creation of a diagrammatic language, and in particular a language that makes it possible to express &lsquo;higher-order&rsquo;{' '}
-                                   relationships, i.e., relationships that involve other relationships:
+                                    The reason for this somewhat unusual design is that <i>pasi</i> has
+                                    originally been developed with the aim of facilitating the creation of
+                                    diagrammatic languages, in particular ones that make it possible to
+                                    represent &lsquo;higher-order&rsquo; relationships:
+                                    relationships&mdash;i.e., instantiations of relations&mdash;that
+                                    non-trivially involve other relationships. An example would be
+                                    Iago&rsquo;s disapproval of Desdemona&rsquo;s loving Othello:
+                                </p>
+                                <div className='flex justify-center mb-4'>
+                                    <Image
+                                        className='bg-canvasbg'
+                                        src={isDarkMode ? relationshipSrcDark : relationshipSrcLight}
+                                        alt={`Iago disapproving of Desdemona's loving Othello`}
+                                        width={380}
+                                        style={{
+                                            borderRadius: '1rem',
+                                            border: '0.25rem solid rgb(var(--canvasbg))',
+                                        }}
+                                        placeholder='blur'
+                                        priority
+                                    />
+                                </div>
+                                <p>
+                                    (Click <CodeButton text='here' code={relationshipCode} /> to load this
+                                    diagram into the app.) The little circle under &lsquo;loves&rsquo;,
+                                    together with the horizontal arrow, represents Desdemona&rsquo;s loving
+                                    Othello, while Iago&rsquo;s disapproval is represented by the vertical
+                                    arrow (which sports a modified arrowhead). The label
+                                    &lsquo;disapproves&rsquo; is attached to its own little circle, but the
+                                    latter is here invisible thanks to having had its linewidth set to zero.
                                 </p>
                             </Section>
 
                             <Section id='contour-examples' header='Contour examples'>
                                 <ul>
                                     <li>
-                                        <span className='font-bold'>Regular octagon.</span> To draw a{' '}
-                                        <em>regular octagon</em>, one can simply select all the nodes of some
-                                        eight-node contour and press {key('P')}&mdash;or, at the bottom of the{' '}
+                                        <span className='font-bold'>Regular octagon.</span> To create a{' '}
+                                        <em>regular octagon</em>, you can simply select all the nodes of some
+                                        eight-node contour and press {key('P')}; or, at the bottom of the{' '}
                                         {pasi('Editor')} tab, click on the buttons labeled &lsquo;
                                         {pasi('Defaults')}&rsquo;, &lsquo;{pasi('Equalize central angles')}
                                         &rsquo;, and &lsquo;
@@ -430,56 +494,86 @@ export default function Home() {
                                         click on any one of them or near the contour&rsquo;s center.)
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Star of David.</span> For a more
-                                        complicated (and controversial) example, suppose you would like to
-                                        draw two regular triangles that overlap to form a{' '}
-                                        <em>Star of David</em>. The easiest way to do this is to start with a
-                                        regular hexagon, which can be created from a standard eight-node
-                                        contour by deleting two of its nodes, selecting the remaining six, and
-                                        then pressing {key('P')}. Next, press {key('R')}, which will rotate
-                                        the hexagon by 30 degrees and make it stand on a vertex. Finally,
-                                        select any three nodes of the hexagon that form a regular{' '}
-                                        triangle, and press {key('G')}. This will create a new group
-                                        consisting of those same three nodes (defining a new, triangular
-                                        contour) while the remaining three will form a group of their own,
-                                        which will define the second triangle.
+                                        <p>
+                                            <span className='font-bold'>Star of David.</span> For a more
+                                            complex example (on more than one level), suppose you wish to
+                                            create two overlapping regular triangles to form a{' '}
+                                            <em>Star of David</em>. The simplest way to do this begins with
+                                            creating a regular{' '}
+                                            <CodeButton text='hexagon' code={hexagonCode} />. Take a standard
+                                            eight-node contour, delete two of its nodes, and select the
+                                            remaining six. Then press {key('P')} to convert these into a
+                                            regular hexagon.
+                                        </p>
+                                        <p>
+                                            Next, press {key('R')} to rotate the hexagon by 30 degrees, so
+                                            that it stands on one of its vertices. To create the triangles,{' '}
+                                            select any three nodes that together form a regular triangle, and
+                                            press {key('G')}. This will cause these nodes to constitute a new
+                                            triangular contour, while the remaining three will form the second
+                                            triangle.
+                                        </p>
                                     </li>
                                     <li>
                                         <span className='font-bold'>Pentagram.</span> It is also possible to
-                                        change the order in which the nodes of a contour are connected to each
-                                        other. For example, to create a <em>pentagram</em>, you would
-                                        typically start with a regular pentagon. Having selected all the nodes
-                                        of such a pentagon, by pressing {key('H')} you can deactivate the
-                                        node&rsquo;s membership in the pentagon&rsquo; &lsquo;node
-                                        group&rsquo;. Now you can select them again in the appropriate order,
-                                        and, by pressing {key('G')}, form a new group in which they will all be
-                                        connected in the same order in which they have just been selected.
+                                        change the order in which contour nodes are connected, which is useful
+                                        for creating shapes like a <em>pentagram</em>. Start with a regular{' '}
+                                        <CodeButton text='pentagon' code={pentagonCode} />, select all its
+                                        nodes, and then press {key('H')} to deactivate their membership in the
+                                        pentagon&rsquo;s &lsquo;node group&rsquo;. (You&rsquo;ll notice that
+                                        it&rsquo;s no longer the case that <em>all</em> the nodes get selected
+                                        whenever you click on any one of them.) Next, by using {key('Shift')}
+                                        -click, select them again in the order in which you want them to be
+                                        connected. Finally, press {key('G')} to create a new group. In this
+                                        group, those nodes will be connected in the same order in which they
+                                        have just been selected.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Swiss cross.</span> An easy way to draw a{' '}
-                                        <em>Swiss cross</em> involves first creating a regular dodecagon.
-                                        Starting from a standard contour, select any four of its eight nodes
-                                        and press {key('C')} (for &lsquo;copy&rsquo;) to turn it into a
-                                        contour with twelve nodes. Select all twelve and press {key('P')} to
-                                        turn it into a regular dodecagon. Next, make sure that the{' '}
-                                        {pasi('Snap to contour centers')} option in the default{' '}
-                                        {pasi('Editor')} tab (which opens whenever you click on the canvas) is
-                                        set. Create an <em>entity node</em> somewhere on the canvas and drag
-                                        it to the center of the dodecagon you&rsquo;ve just created. Holding{' '}
-                                        {key('Ctrl')} pressed, select any one of the four nodes in the NE, SE,
-                                        SW, and NW corners of the contour. Holding {key('Ctrl+Shift')}{' '}
-                                        pressed, select also the other three (in any order), and finally
-                                        select the central entity node as well, again holding{' '}
-                                        {key('Ctrl+Shift')} pressed. Now release those keys and press{' '}
-                                        {key('U')} to gradually shrink the square of selected contour nodes.
-                                        After a few seconds of holding {key('U')} pressed, you&rsquo;ll have a
-                                        Swiss cross.
+                                        <p>
+                                            <span className='font-bold'>Swiss cross.</span> Starting from a
+                                            standard contour, select any four of its eight nodes and press{' '}
+                                            {key('C')} to turn it into a contour with twelve nodes. Select all
+                                            of them and press {key('P')} to create a regular{' '}
+                                            <CodeButton text='dodecagon' code={dodecagonCode} />. Make sure
+                                            that the &lsquo;{pasi('Snap to contour centers')}&rsquo; option
+                                            (in the default {pasi('Editor')} tab) is selected. Place an entity
+                                            node on the canvas and drag it to the center of the dodecagon.
+                                        </p>
+                                        <p>
+                                            Next, hold {key('Ctrl')} and select any one of the four nodes in
+                                            the NE, SE, SW, and NW corners. Holding {key('Ctrl+Shift')},{' '}
+                                            select also the other three (in any order) as well as, lastly, the
+                                            central entity node. Release the keys and press {key('U')} to
+                                            gradually shrink the square of selected nodes. After a few
+                                            seconds, you&rsquo;ll have a <i>Swiss cross</i> with a circle in
+                                            the center. To remove the circle (the entity node), select it and
+                                            press {key('Delete')} or {key('Backspace')}.
+                                        </p>
                                     </li>
                                 </ul>
+                                <div className='flex flex-col items-center mt-12'>
+                                    <svg
+                                        width='156'
+                                        height='156'
+                                        xmlns='http://www.w3.org/2000/svg'
+                                        pointerEvents='none'
+                                    >
+                                        <path
+                                            d='M 0.5 97.5 C 10.5 97.5, 52.8 97.5, 56.5 97.5 C 56.5 101.2, 56.5 143.5, 56.5 153.5 C 66.5 153.5, 87.5 153.5, 97.5 153.5 C 97.5 143.5, 97.5 101.2, 97.5 97.5 C 101.2 97.5, 143.5 97.5, 153.5 97.5 C 153.5 87.5, 153.5 66.5, 153.5 56.5 C 143.5 56.5, 101.2 56.5, 97.5 56.5 C 97.5 52.8, 97.5 10.5, 97.5 0.5 C 87.5 0.5, 66.5 0.5, 56.5 0.5 C 56.5 10.5, 56.5 52.8, 56.5 56.5 C 52.8 56.5, 10.5 56.5, 0.5 56.5 C 0.5 66.5, 0.5 87.5, 0.5 97.5'
+                                            fill='none'
+                                            stroke={isDarkMode ? 'rgb(190, 169, 150)' : 'black'}
+                                            strokeWidth='1'
+                                            strokeDasharray=''
+                                            strokeLinecap='round'
+                                            strokeLinejoin='round'
+                                        ></path>
+                                    </svg>
+                                </div>
                             </Section>
                         </div>
                         <Footer
                             copyRightHolder='Jan Plate'
+                            homepage='https://jplate.github.io/home/Home'
                             licenseInfo='The source code for this webpage is licensed under the MIT License.'
                             sections={[
                                 {

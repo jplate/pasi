@@ -76,6 +76,7 @@ interface InputFieldProps {
     tooltipPlacement?: Placement;
     disabled?: boolean;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    readOnly?: boolean;
 }
 
 export const InputField = ({
@@ -93,6 +94,7 @@ export const InputField = ({
     tooltipPlacement,
     disabled = false,
     onChange,
+    readOnly = false,
 }: InputFieldProps) => {
     const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
     const labelComp = <span className='pointer-events-auto'>{label}</span>;
@@ -113,6 +115,7 @@ export const InputField = ({
             spellCheck={false}
             disabled={disabled}
             onChange={onChange}
+            readOnly={readOnly}
         />
     );
     return (
