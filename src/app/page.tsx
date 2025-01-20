@@ -397,6 +397,25 @@ export default function Home() {
                                 </ol>
                             </Section>
 
+                            <Section id='connectors' header='Connectors'>
+                                <p>
+                                   To create a <em>connector</em>, select two or more nodes and then click on the {pasi('Create')} button{' '}
+                                   (or press {key('Space')}), having selected the desired kind of connector in the adjacent menu.
+                                </p>
+                                <p>
+                                   One thing to note about connectors is that, roughly speaking, they are implemented as odd-looking entity nodes.{' '}
+                                   Normally, an entity node is represented on the canvas by a circle. In the case of a connector, there is a circle, too, but usually{' '}
+                                   it is invisible, the only visible part being a line or arrow connecting two nodes. (Of course, in a natural sense of the word,{' '}
+                                   a connector <i>just is</i> that line or arrow.) The circle only becomes visible when one clicks somewhere near the center of the{' '}
+                                   line or arrow. 
+                                </p>
+                                <p>
+                                   The reason for this somewhat unusual design is that <i>pasi</i> has originally been developed with the aim of facilitating{' '}
+                                   the creation of a diagrammatic language, and in particular a language that makes it possible to express &lsquo;higher-order&rsquo;{' '}
+                                   relationships, i.e., relationships that involve other relationships:
+                                </p>
+                            </Section>
+
                             <Section id='contour-examples' header='Contour examples'>
                                 <ul>
                                     <li>
@@ -419,7 +438,7 @@ export default function Home() {
                                         contour by deleting two of its nodes, selecting the remaining six, and
                                         then pressing {key('P')}. Next, press {key('R')}, which will rotate
                                         the hexagon by 30 degrees and make it stand on a vertex. Finally,
-                                        select any three nodes of the hexagon that form an equilateral
+                                        select any three nodes of the hexagon that form a regular{' '}
                                         triangle, and press {key('G')}. This will create a new group
                                         consisting of those same three nodes (defining a new, triangular
                                         contour) while the remaining three will form a group of their own,
@@ -430,10 +449,10 @@ export default function Home() {
                                         change the order in which the nodes of a contour are connected to each
                                         other. For example, to create a <em>pentagram</em>, you would
                                         typically start with a regular pentagon. Having selected all the nodes
-                                        of such a pentagon, pressing {key('H')} will deactivate the
+                                        of such a pentagon, by pressing {key('H')} you can deactivate the
                                         node&rsquo;s membership in the pentagon&rsquo; &lsquo;node
                                         group&rsquo;. Now you can select them again in the appropriate order,
-                                        and, by pressing {key('G')}, form a new group in which they will be
+                                        and, by pressing {key('G')}, form a new group in which they will all be
                                         connected in the same order in which they have just been selected.
                                     </li>
                                     <li>

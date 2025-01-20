@@ -1134,8 +1134,8 @@ const MainPanel = ({ dark }: MainPanelProps) => {
             const allItems = getItems(list);
             const topTbc = allItems.reduce((acc: (Item | Group<any>)[], it: Item) => {
                 const groups = getGroups(it)[0];
-                const hi = groups.length > 0? groups[groups.length - 1]: it;
-                acc.push(hi);
+                const hi = groups.length > 0 ? groups[groups.length - 1] : it;
+                if (!acc.includes(hi)) acc.push(hi);
                 return acc;
             }, []);
             const nodes = new Set<Node>(allItems.filter((it) => it instanceof Node) as Node[]);
@@ -2697,6 +2697,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
         selectedNodesDeduplicated.forEach((node) => {
             node.x = node.x100 = Math.round(node.x);
             node.y = node.y100 = Math.round(node.y);
+            node.invalidateDepNodeLocations();
         });
         setOrigin(false, points, focusItem, selection, list);
         setItemsMoved((prev) => [...prev]);
@@ -2706,6 +2707,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
         selectedIndependentNodes.forEach((node) => {
             node.x = 2 * origin.x - node.x;
             node.x100 = 2 * origin.x - node.x100;
+            node.invalidateDepNodeLocations();
             if (node instanceof CNode) {
                 node.angle0 = -node.angle0;
                 node.angle1 = -node.angle1;
@@ -2722,6 +2724,7 @@ const MainPanel = ({ dark }: MainPanelProps) => {
         selectedIndependentNodes.forEach((node) => {
             node.y = 2 * origin.y - node.y;
             node.y100 = 2 * origin.y - node.y100;
+            node.invalidateDepNodeLocations();
             if (node instanceof CNode) {
                 node.angle0 = -node.angle0;
                 node.angle1 = -node.angle1;
