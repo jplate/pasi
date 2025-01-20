@@ -492,9 +492,9 @@ export const copyItems = (
 };
 
 /**
- * Returns an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection.
+ * @return an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection.
  */
-export const getTopToBeCopied = (selection: Item[]) => {
+export const getTopToBeCopied = (selection: Item[]): (Item | Group<any>)[] => {
     const toBeCopied: Set<Item> = addDependents(selection);
     const result: (Item | Group<any>)[] = [];
     const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied items

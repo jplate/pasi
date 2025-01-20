@@ -43,7 +43,7 @@ export const depth = (x: any, d: number = 0): number =>
           }, 0);
 
 /**
- * Returns an array whose first element is an array representing the list of groups of which the first argument is a direct or indirect member, and
+ * @return an array whose first element is an array representing the list of groups of which the first argument is a direct or indirect member, and
  * whose second element indicates the first group whose predecessor (which, in the case of the first element of the list, is the first argument)
  * satisfies the supplied test condition.
  * The default test condition is (m => !m.isActiveMember). Hence, in the default case, the returned index indicates the 'highest active' group of the first argument.

@@ -229,7 +229,7 @@ export const hotkeys: HotkeyInfo[] = [
             </>
         ),
     },
-    { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Add a label to each selected node.</> },
+    { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Attach a label to each selected node.</> },
     {
         key: 'create',
         keys: 'space',
@@ -810,14 +810,15 @@ const purge = (group: Group<any>, list: (ENode | CNodeGroup)[]): (ENode | CNodeG
 };
 
 /**
- * A function to be called on arrays of Items when the list of underlying ENodes and CNodeGroups has been changed. All those Items that are either
- * ENodes or CNodeGroups not in that list or that are Ornaments of some ENode or CNode of a CNodeGroup not in the list will be filtered out.
+ * A function to be called on arrays of Items when the list of underlying ENodes and CNodeGroups has been changed. All those Items that are
+ * ENodes not in that list, or CNodes that either belong to a CNodeGroup not in the list or no longer belong to the  or that are Ornaments of some ENode or CNode of a CNodeGroup not in the list will be filtered out.
+ * @return the filtered list.
  */
 const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]): Item[] =>
     selection.filter(
         (it) =>
             (it instanceof ENode && newList.includes(it)) ||
-            (it instanceof CNode && newList.includes(it.group as CNodeGroup)) ||
+            (it instanceof CNode && it.group) || // We here rely on deleteItems() making sure that to-be-deleted CNodes have their groups set to null.
             (it instanceof Ornament && it.node instanceof ENode && newList.includes(it.node)) ||
             (it instanceof Ornament &&
                 it.node instanceof CNode &&
@@ -828,7 +829,7 @@ const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]): Item[] =>
  * Transfers features (ornaments and end points of connectors) from one Node to another. The third and second argument are needed in order
  * properly to initalize Labels.
  */
-const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFactor: number) => {
+const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFactor: number): void => {
     if (n0 instanceof CNode === n1 instanceof CNode) {
         n1.group = n0.group;
         n1.isActiveMember = n0.isActiveMember;
@@ -935,10 +936,9 @@ interface HistoryEntry {
 
 interface MainPanelProps {
     dark: boolean;
-    toggleTrueBlack: () => void;
 }
 
-const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
+const MainPanel = ({ dark }: MainPanelProps) => {
     const canvasRef = useRef<HTMLDivElement>(null);
     const codeRef = useRef<HTMLTextAreaElement>(null);
     const [replace, setReplace] = useState(true);
@@ -1106,8 +1106,8 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             }: Partial<HistoryEntry>,
             changeState: boolean = true
         ): void => {
-            // We first update the state, if desired:
 
+            // We first update the state, if desired:
             if (changeState) {
                 updateState({
                     list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
@@ -1117,6 +1117,10 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 // If we don't have to update the state, the only thing that has changed are the coordinates of nodes. But the values stored in 'stored'
                 // may have become stale by the time this update function is called. So we fetch the current values from the history hook.
                 const current = history.current[now.current];
+                list = current.list; // While list won't have become stale, selection may have; and since we're getting the selection from the history,
+                    // we need the corresponding list, or else we may not be able, below, to match the members of selection with the correct nodes in
+                    // newList. This issue can arise because, when a CNodeGroup is copied, the copied CNodes may receive IDs that don't match the IDs
+                    // of the originals. 
                 selection = current.selection;
                 focusItem = current.focusItem;
                 points = current.points;
@@ -1128,7 +1132,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
             // Next, store a copy of the state in the history:
 
             const allItems = getItems(list);
-            const topTbc = getTopToBeCopied(allItems);
+            const topTbc = allItems.reduce((acc: (Item | Group<any>)[], it: Item) => {
+                const groups = getGroups(it)[0];
+                const hi = groups.length > 0? groups[groups.length - 1]: it;
+                acc.push(hi);
+                return acc;
+            }, []);
             const nodes = new Set<Node>(allItems.filter((it) => it instanceof Node) as Node[]);
             const [newList, gnodes, newSelection, newFocusItem] = copyItems(
                 topTbc, nodes, list, selection, focusItem, 0, 0, 0, 0, 0, unitScale, displayFontFactor
@@ -1495,7 +1504,14 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                         it.dependentNodes = it.dependentNodes.filter((sn) => !toBeDeleted.has(sn));
                     }
                 } else if (it instanceof CNodeGroup) {
-                    const newMembers = it.members.filter((node) => !toBeDeleted.has(node));
+                    const newMembers: CNode[] = [];
+                    for (const node of it.members) {
+                        if (toBeDeleted.has(node)) {
+                            node.group = null;
+                        } else {
+                            newMembers.push(node);
+                        }
+                    }
                     if (newMembers.length > 0) {
                         it.members = newMembers;
                         newList.push(it);
@@ -3277,7 +3293,6 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     // 'Secret' hotkey:
     const throttledToggleTrueBlack = useThrottle(() => {
         setTrueBlack((prev) => !prev);
-        toggleTrueBlack();
     }, 100);
     useHotkeys('mod+b', throttledToggleTrueBlack);
 
@@ -3350,14 +3365,19 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         'data-[selected]:data-[hover]:text-btncolor'
     );
 
-    /*
-    if (true) console.log(clsx(`Rendering... ${selectedNodes.map(node => node.getString())} listLength=${list.length}`,
-        `focusItem=${focusItem && focusItem.getString()}`,
-        focusItem instanceof Node && `ornaments=[${focusItem.ornaments.map(o => o.getString()).join()}]`,
-        `(${focusItem instanceof Node && focusItem.x}, ${focusItem instanceof Node && focusItem.y})`,
-        `ha=${focusItem && highestActive(focusItem).getString()}`,
-        focusItem instanceof SNode && `involutes=[${focusItem.involutes.map(node => node.getString()).join()}]`));
-    */
+    console.log(
+        clsx(
+            `Rendering... ${selectedNodes.map((node) => node.getString())} listLength=${list.length}`,
+            `focusItem=${focusItem && focusItem.getString()}`,
+            focusItem instanceof Node &&
+                `ornaments=[${focusItem.ornaments.map((o) => o.getString()).join()}]`,
+            `(${focusItem instanceof Node && focusItem.x}, ${focusItem instanceof Node && focusItem.y})`,
+            `ha=${focusItem && highestActive(focusItem).getString()}`,
+            focusItem instanceof SNode &&
+                `involutes=[${focusItem.involutes.map((node) => node.getString()).join()}]`
+        )
+    );
+
     return (
         <DarkModeContext.Provider value={dark}>
             <div id='main-panel' className='pasi flex my-8 p-6'>

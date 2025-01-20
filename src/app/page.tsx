@@ -51,8 +51,6 @@ export default function Home() {
     const [isMobile, setIsMobile] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isMac, setIsMac] = useState(false);
-    const [trueBlack, setTrueBlack] = useState(false);
-    const [discoveredTrueBlack, setDiscoveredTrueBlack] = useState(false);
 
     // Initialize state
     useEffect(() => {
@@ -122,13 +120,6 @@ export default function Home() {
         ),
         [isDarkMode]
     );
-
-    interface OneWordProps {
-        children: React.ReactNode;
-    }
-    const OneWord = useCallback(({ children }: OneWordProps) => {
-        return <span className='whitespace-nowrap'>{children}</span>;
-    }, []);
 
     const hyphens = (
         <>
@@ -240,13 +231,7 @@ export default function Home() {
                             </Section>
                             <Suspense fallback={<div>Loading...</div>}>
                                 <div className='hidden lg:block'>
-                                    <MainPanel
-                                        dark={isDarkMode}
-                                        toggleTrueBlack={() => {
-                                            setTrueBlack((prev) => !prev);
-                                            setDiscoveredTrueBlack(true);
-                                        }}
-                                    />
+                                    <MainPanel dark={isDarkMode} />
                                 </div>
                             </Suspense>
                             <Section id='keyboard-commands' header='Keyboard commands'>
@@ -373,58 +358,41 @@ export default function Home() {
                             <Section id='design-principles' header='Basic design features'>
                                 <ol>
                                     <li>
-                                        <span className='font-bold'>Exporting LaTeX code.</span> While
-                                        it&rsquo;s of course possible to tell LaTeX to include an image file
-                                        in its output, the major advantage of having it create a diagram{' '}
-                                        <i>from LaTeX code</i> is that this approach allows the diagram to
-                                        contain text processed by LaTeX. In the case of <i>pasi</i>, this
-                                        means that you may feel free to use any command you&rsquo;ve defined
-                                        in your document in the text of a label. That text will then be
-                                        included <em>verbatim</em> in the code that gets generated when you
-                                        click on {pasi('Generate')}, and will be processed like any other text
-                                        when you run LaTeX on the document into which you&rsquo;ve pasted that
-                                        code. The{' '}
-                                        <OneWord>
-                                            <i>dis</i>advantage
-                                        </OneWord>{' '}
-                                        of this approach (but arguably it&rsquo;s relatively minor) is that
-                                        the app can usually only guess how a label will appear in the output
-                                        produced by LaTeX.
+                                        <span className='font-bold'>Simplicity.</span> Any diagram in{' '}
+                                        <i>pasi</i> consists of two basic building blocks:{' '}
+                                        <em>entity nodes</em> and <em>contour nodes</em>. Any label is
+                                        attached to one of these nodes; and any connector (i.e., line or
+                                        arrow) runs between two of these nodes, or from one node back to
+                                        itself.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Freedom to design your own shapes.</span>{' '}
-                                        Many editors offer a range of different predefined shapes, such as
-                                        circles, boxes, and stars. <i>Pasi</i> takes a very different route in
-                                        that it lets you define your own shapes as long as these can be
-                                        described by a series of cubic curves. The starting point in each case
-                                        is a rounded rectangle&mdash;a &lsquo;splinegon&rsquo;, or what is
-                                        here called a <i>contour</i>, with eight nodes carrying information
-                                        about control points&mdash;that you can then modify to suit your
-                                        needs. A few examples of how different shapes can be created in this
-                                        way are described <a href='#contour-examples'>below</a>.
+                                        <span className='font-bold'>Ease of precise positioning.</span> With
+                                        the cursor keys (or {key('W')}, {key('A')}, {key('S')}, {key('D')}),
+                                        it is possible to position selected items to a precision of a tenth of
+                                        a pixel. The exact coordinates of an item can be inspected and
+                                        manipulated in the {pasi('Editor')} tab. In addition, while dragging
+                                        items across the canvas, the user can take advantage of three kinds of
+                                        &lsquo;snapping&rsquo; behavior: to the centers of contours, to the
+                                        centers of nodes, and to a variable grid.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Ease of precise positioning.</span>{' '}
-                                        <i>Pasi</i> tries hard to make it easy to position elements precisely.
-                                        With the cursor keys (or {key('W')}, {key('A')}, {key('S')}, and{' '}
-                                        {key('D')}) it is possible to position selected items to a precision
-                                        of a tenth of a pixel. The exact coordinates of an item can be
-                                        inspected and manipulated in the {pasi('Editor')} tab. In addition,
-                                        while dragging items across the canvas, you can make use of three
-                                        kinds of &lsquo;snapping&rsquo; behavior: to the centers of contours,
-                                        to the centers of contour <em>nodes</em>, and to a variable grid.
+                                        <span className='font-bold'>Exporting LaTeX code.</span> While it is
+                                        of course possible to tell LaTeX to include image files in its output,
+                                        a major advantage of having it create a diagram from LaTeX code is
+                                        that this approach allows the diagram code to make use (e.g., in the
+                                        text of a label) of commands defined elsewhere in the document. The
+                                        font of the labels will also normally match that of the rest of the
+                                        document.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>No colors or mobile support.</span> What{' '}
-                                        <i>pasi</i> mainly tries to do is to facilitate the expression, in the
-                                        form of diagrams, of abstract ideas, typically with a view to
-                                        publishing those ideas in an academic journal. For this reason, it
-                                        seems appropriate that <i>pasi</i> should only support diagrams in
-                                        grayscale. Similarly, it does not support freeform drawing or mobile
-                                        devices. After all, the app is primarily meant to be used while
-                                        composing an academic paper in LaTeX, which does not usually happen on
-                                        a mobile device, and a diagram suitable for this format does not
-                                        usually contain freeform drawings.
+                                        <span className='font-bold'>
+                                            Freedom to design one&rsquo;s own shapes.
+                                        </span>{' '}
+                                        While each <em>contour</em> consists of eight nodes carrying
+                                        information about the control points of their connecting curves, it is
+                                        easy to add or delete nodes, and to modify their respective{' '}
+                                        properties. A few examples of how different shapes can be created in
+                                        this way are described <a href='#contour-examples'>below</a>.
                                     </li>
                                 </ol>
                             </Section>
@@ -432,11 +400,9 @@ export default function Home() {
                             <Section id='contour-examples' header='Contour examples'>
                                 <ul>
                                     <li>
-                                        <span className='font-bold'>Regular octagon.</span> By default, each
-                                        &lsquo;contour&rsquo; contains exactly eight nodes that define its
-                                        shape. Now suppose you&rsquo;d like to draw a <em>regular octagon</em>
-                                        . To do so, you can simply select all the nodes of some eight-node
-                                        contour and press {key('P')}&mdash;or, at the bottom of the{' '}
+                                        <span className='font-bold'>Regular octagon.</span> To draw a{' '}
+                                        <em>regular octagon</em>, one can simply select all the nodes of some
+                                        eight-node contour and press {key('P')}&mdash;or, at the bottom of the{' '}
                                         {pasi('Editor')} tab, click on the buttons labeled &lsquo;
                                         {pasi('Defaults')}&rsquo;, &lsquo;{pasi('Equalize central angles')}
                                         &rsquo;, and &lsquo;
@@ -446,104 +412,49 @@ export default function Home() {
                                     </li>
                                     <li>
                                         <span className='font-bold'>Star of David.</span> For a more
-                                        complicated (and controversial) example, suppose you&rsquo;d like to
-                                        draw a <em>Star of David</em>, which consists of two overlapping
-                                        triangles. The easiest way to do this is to start with a regular
-                                        hexagon, which can be created from a standard eight-node contour by
-                                        deleting two of its nodes, selecting the remaining six, and then
-                                        pressing {key('P')}. Next, press {key('R')}, which will rotate the
-                                        hexagon by 30 degrees and make it stand on a vertex. Finally, select
-                                        any three nodes of the hexagon that form an equilateral triangle, and
-                                        press {key('G')}. This will create a new group consisting of those
-                                        same three nodes (defining a new, triangular contour) while the
-                                        remaining three will form a group of their own, which will define the
-                                        second triangle.
+                                        complicated (and controversial) example, suppose you would like to
+                                        draw two regular triangles that overlap to form a{' '}
+                                        <em>Star of David</em>. The easiest way to do this is to start with a
+                                        regular hexagon, which can be created from a standard eight-node
+                                        contour by deleting two of its nodes, selecting the remaining six, and
+                                        then pressing {key('P')}. Next, press {key('R')}, which will rotate
+                                        the hexagon by 30 degrees and make it stand on a vertex. Finally,
+                                        select any three nodes of the hexagon that form an equilateral
+                                        triangle, and press {key('G')}. This will create a new group
+                                        consisting of those same three nodes (defining a new, triangular
+                                        contour) while the remaining three will form a group of their own,
+                                        which will define the second triangle.
                                     </li>
                                     <li>
-                                        <span className='font-bold'>Pentagram.</span> It&rsquo;s also possible
-                                        to change the order in which the nodes of a contour are connected to
-                                        each other. For example, to create a <em>pentagram</em>, you&rsquo;d
-                                        typically start with a regular pentagon, which can be created by
-                                        essentially the same method as the regular hexagon from the previous
-                                        example. Next, select all the nodes of this pentagon and press{' '}
-                                        {key('H')}, which will deactivate their membership in this node group.
-                                        Now you can select all of them in the appropriate order, and press{' '}
-                                        {key('G')} to form a new group in which these nodes will be connected
-                                        in the same order in which you&rsquo;ve just selected them.
+                                        <span className='font-bold'>Pentagram.</span> It is also possible to
+                                        change the order in which the nodes of a contour are connected to each
+                                        other. For example, to create a <em>pentagram</em>, you would
+                                        typically start with a regular pentagon. Having selected all the nodes
+                                        of such a pentagon, pressing {key('H')} will deactivate the
+                                        node&rsquo;s membership in the pentagon&rsquo; &lsquo;node
+                                        group&rsquo;. Now you can select them again in the appropriate order,
+                                        and, by pressing {key('G')}, form a new group in which they will be
+                                        connected in the same order in which they have just been selected.
                                     </li>
                                     <li>
                                         <span className='font-bold'>Swiss cross.</span> An easy way to draw a{' '}
                                         <em>Swiss cross</em> involves first creating a regular dodecagon.
-                                        Starting from a standard contour, select one of its eight nodes and
-                                        press {key('C')} (for &lsquo;copy&rsquo;) four times to turn it into a
+                                        Starting from a standard contour, select any four of its eight nodes
+                                        and press {key('C')} (for &lsquo;copy&rsquo;) to turn it into a
                                         contour with twelve nodes. Select all twelve and press {key('P')} to
                                         turn it into a regular dodecagon. Next, make sure that the{' '}
                                         {pasi('Snap to contour centers')} option in the default{' '}
                                         {pasi('Editor')} tab (which opens whenever you click on the canvas) is
                                         set. Create an <em>entity node</em> somewhere on the canvas and drag
                                         it to the center of the dodecagon you&rsquo;ve just created. Holding{' '}
-                                        {key('Ctrl')} pressed, select one of the four nodes in the NE, SE, SW,
-                                        and NW corners of the contour. Holding {key('Ctrl+Shift')} pressed,
-                                        select also the other three (in any order), and finally select the
-                                        central entity node as well, again holding {key('Ctrl+Shift')}{' '}
-                                        pressed. Now release those keys and press {key('U')} to gradually
-                                        shrink the square of selected contour nodes. After a few seconds of
-                                        holding {key('U')} pressed, you&rsquo;ll have a cross. If you&rsquo;d
-                                        now also like to turn this cross black, you can simply press{' '}
-                                        {key('Shift+7')}
-                                        {isDarkMode ? (
-                                            '.'
-                                        ) : (
-                                            <>
-                                                :
-                                                <div className='flex flex-col items-center my-5'>
-                                                    <svg
-                                                        width='156'
-                                                        height='156'
-                                                        xmlns='http://www.w3.org/2000/svg'
-                                                        pointerEvents='none'
-                                                    >
-                                                        <path
-                                                            d='M 0.5 97.5 C 10.5 97.5, 52.78 97.5, 56.5 97.5 C 56.5 101.2, 56.5 143.5, 56.5 153.5 C 66.5 153.5, 87.5 153.5, 97.5 153.5 C 97.5 143.5, 97.5 101.2, 97.5 97.5 C 101.2 97.5, 143.5 97.5, 153.5 97.5 C 153.5 87.5, 153.5 66.5, 153.5 56.5 C 143.5 56.5, 101.2 56.5, 97.5 56.5 C 97.5 52.8, 97.5 10.5, 97.5 0.5 C 87.5 0.5, 66.5 0.5, 56.5 0.5 C 56.5 10.5, 56.5 52.8, 56.5 56.5 C 52.8 56.5, 10.5 56.5, 0.5 56.5 C 0.5 66.5, 0.5 87.5, 0.5 97.5'
-                                                            fill={`hsla(0,0%,${trueBlack ? 0 : 19}%,1)`}
-                                                            stroke='none'
-                                                        ></path>
-                                                        <path
-                                                            d='M 0.5 97.5 C 10.5 97.5, 52.8 97.5, 56.5 97.5 C 56.5 101.2, 56.5 143.5, 56.5 153.5 C 66.5 153.5, 87.5 153.5, 97.5 153.5 C 97.5 143.5, 97.5 101.2, 97.5 97.5 C 101.2 97.5, 143.5 97.5, 153.5 97.5 C 153.5 87.5, 153.5 66.5, 153.5 56.5 C 143.5 56.5, 101.2 56.5, 97.5 56.5 C 97.5 52.8, 97.5 10.5, 97.5 0.5 C 87.5 0.5, 66.5 0.5, 56.5 0.5 C 56.5 10.5, 56.5 52.8, 56.5 56.5 C 52.8 56.5, 10.5 56.5, 0.5 56.5 C 0.5 66.5, 0.5 87.5, 0.5 97.5'
-                                                            fill='none'
-                                                            stroke={`hsla(0,0%,${trueBlack ? 0 : 19}%,1)`}
-                                                            strokeWidth='1'
-                                                            strokeDasharray=''
-                                                            strokeLinecap='round'
-                                                            strokeLinejoin='round'
-                                                        ></path>
-                                                    </svg>
-                                                </div>
-                                                {!trueBlack && (
-                                                    <>
-                                                        (Admittedly this isn&rsquo;t <em>really</em> black,
-                                                        but a kind of dark grey, which is the color that{' '}
-                                                        <i>pasi</i> normally uses to <em>represent</em> black
-                                                        when it is in &lsquo;light mode&rsquo;.
-                                                        {!discoveredTrueBlack && (
-                                                            <>
-                                                                {' '}
-                                                                To experience <em>true</em> black,
-                                                                you&rsquo;ll need to either turn on
-                                                                &lsquo;dark mode&rsquo; or press{' '}
-                                                                {key('Ctrl+B')}. Except for this one
-                                                                combination&mdash;a well-earned secret if
-                                                                you&rsquo;ve read this far&mdash;all the other
-                                                                keyboard commands used in these examples have
-                                                                already been described{' '}
-                                                                <a href='#keyboard-commands'>above</a>.
-                                                            </>
-                                                        )}
-                                                        )
-                                                    </>
-                                                )}
-                                            </>
-                                        )}
+                                        {key('Ctrl')} pressed, select any one of the four nodes in the NE, SE,
+                                        SW, and NW corners of the contour. Holding {key('Ctrl+Shift')}{' '}
+                                        pressed, select also the other three (in any order), and finally
+                                        select the central entity node as well, again holding{' '}
+                                        {key('Ctrl+Shift')} pressed. Now release those keys and press{' '}
+                                        {key('U')} to gradually shrink the square of selected contour nodes.
+                                        After a few seconds of holding {key('U')} pressed, you&rsquo;ll have a
+                                        Swiss cross.
                                     </li>
                                 </ul>
                             </Section>
