@@ -888,6 +888,15 @@ const move = (nodes: Node[], dx: number, dy: number) => {
     });
 };
 
+const flipAffectedArrowheads = (nodes: Item[]) => {
+    const affectedSNodes = Array.from(addDependents(nodes, false).values()).filter(
+        (it) => it instanceof SNode && Array.from(it.getAncestors()).every((node) => nodes.includes(node))
+    ) as SNode[];
+    for (const node of affectedSNodes) {
+        node.flipArrowhead();
+    }
+};
+
 interface LogIncrements {
     rotate: number;
     scale: number;
@@ -2492,7 +2501,7 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
     const testScaling = useCallback(
         (val: number) => {
             for (const node of selectedIndependentNodes) {
-                const { x, y } = scalePoint(node.x100, node.y100, origin.x, origin.y, val / 100);
+                const { x, y } = scalePoint(node.x100, node.y100, origin.x, origin.y, val * 1e-2);
                 if (!isFinite(x) || !isFinite(y)) {
                     showModal(
                         'Buzz Lightyear Alert',
@@ -2502,17 +2511,17 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 if (x < 0 || x > MAX_X) return false;
                 if (y < MIN_Y || y > MAX_Y) return false;
                 if (transformFlags.scaleENodes && node instanceof ENode) {
-                    const v = (node.radius100 * val) / 100;
+                    const v = node.radius100 * val * 1e-2;
                     if (v < 0 || v > MAX_RADIUS) return false;
                 }
                 if (transformFlags.scaleLinewidths) {
-                    const v = (node.linewidth100 * val) / 100;
+                    const v = node.linewidth100 * val * 1e-2;
                     if (v < 0 || v > MAX_LINEWIDTH) return false;
                 }
                 if (
                     transformFlags.scaleDash &&
                     node.dash100.some((l) => {
-                        const v = (l * val) / 100;
+                        const v = l * val * 1e-2;
                         return v < 0 || v > MAX_DASH_VALUE;
                     })
                 )
@@ -2584,25 +2593,25 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                             node.y100,
                             origin.x,
                             origin.y,
-                            newValue / 100
+                            newValue * 1e-2
                         ));
                         node.invalidateDepNodeLocations();
                         if (node instanceof CNode) {
-                            node.dist0 = round((node.dist0_100 * newValue) / 100, ROUNDING_DIGITS);
-                            node.dist1 = round((node.dist1_100 * newValue) / 100, ROUNDING_DIGITS);
+                            node.dist0 = round(node.dist0_100 * newValue * 1e-2, ROUNDING_DIGITS);
+                            node.dist1 = round(node.dist1_100 * newValue * 1e-2, ROUNDING_DIGITS);
                         }
                     }
                     if (node instanceof ENode) {
                         if (transformFlags.scaleENodes) {
-                            node.radius = (node.radius100 * newValue) / 100;
+                            node.radius = node.radius100 * newValue * 1e-2;
                             node.ornaments.forEach((o) => {
-                                o.gap = (o.gap100 * newValue) / 100;
+                                o.gap = o.gap100 * newValue * 1e-2;
                             });
                         }
                         if (transformFlags.scaleLinewidths)
-                            node.linewidth = (node.linewidth100 * newValue) / 100;
+                            node.linewidth = node.linewidth100 * newValue * 1e-2;
                         if (transformFlags.scaleDash)
-                            node.dash = node.dash100.map((l) => (l * newValue) / 100);
+                            node.dash = node.dash100.map((l) => l * newValue * 1e-2);
                     }
                 });
                 const affectedNodeGroups: CNodeGroup[] = selectedNodesDeduplicated
@@ -2612,9 +2621,9 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                 affectedNodeGroups.forEach((group) => {
                     if (group) {
                         if (transformFlags.scaleLinewidths)
-                            group.linewidth = (group.linewidth100 * newValue) / 100;
+                            group.linewidth = group.linewidth100 * newValue * 1e-2;
                         if (transformFlags.scaleDash)
-                            group.dash = group.dash100.map((l) => (l * newValue) / 100);
+                            group.dash = group.dash100.map((l) => l * newValue * 1e-2);
                     }
                 });
                 if (
@@ -2634,12 +2643,12 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
                     ) as SNode[];
                     for (const node of affectedSNodes) {
                         if (transformFlags.scaleLinewidths) {
-                            node.conLinewidth = (node.conLinewidth100 * newValue) / 100;
-                            node.ahLinewidth = (node.ahLinewidth100 * newValue) / 100;
+                            node.conLinewidth = node.conLinewidth100 * newValue * 1e-2;
+                            node.ahLinewidth = node.ahLinewidth100 * newValue * 1e-2;
                         }
                         if (transformFlags.scaleDash) {
                             [node.conDash, node.ahDash] = [node.conDash100, node.ahDash100].map((dash) =>
-                                dash.map((v) => (v * newValue) / 100)
+                                dash.map((v) => v * newValue * 1e-2)
                             );
                         }
                         if (transformFlags.scaleArrowheads) {
@@ -2676,15 +2685,6 @@ const MainPanel = ({ dark, toggleTrueBlack }: MainPanelProps) => {
         setOrigin(false, points, focusItem, selection, list);
         setItemsMoved((prev) => [...prev]);
     }, [selectedNodesDeduplicated, selection, points, focusItem, list, setOrigin]);
-
-    const flipAffectedArrowheads = (nodes: Item[]) => {
-        const affectedSNodes = Array.from(addDependents(nodes, false).values()).filter(
-            (it) => it instanceof SNode && Array.from(it.getAncestors()).every((node) => nodes.includes(node))
-        ) as SNode[];
-        for (const node of affectedSNodes) {
-            node.flipArrowhead();
-        }
-    };
 
     const hFlip = useCallback(() => {
         selectedIndependentNodes.forEach((node) => {

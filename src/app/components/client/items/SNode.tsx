@@ -953,7 +953,7 @@ export default abstract class SNode extends ENode {
         dimRatio: number,
         nodeName: string
     ): Texdraw.StrokedShape[] {
-        if (stShapes.length > 0) {
+        if (stShapes.length === 0) {
             throw new ParseError(
                 (
                     <span>

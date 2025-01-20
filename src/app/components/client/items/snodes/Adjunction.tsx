@@ -84,7 +84,7 @@ export default class Adjunction extends SNode {
     }
 
     override scaleArrowhead(val: number) {
-        this.hookLength = (this.hookLength100 * val) / 100;
+        this.hookLength = this.hookLength100 * val * 1e-2;
     }
 
     override renormalizeArrowhead() {

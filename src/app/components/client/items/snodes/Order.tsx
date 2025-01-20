@@ -84,7 +84,7 @@ export default class Order extends SNode {
     }
 
     override scaleArrowhead(val: number) {
-        this.hookLength = (this.hookLength100 * val) / 100;
+        this.hookLength = this.hookLength100 * val * 1e-2;
     }
 
     override renormalizeArrowhead() {
@@ -176,8 +176,8 @@ export default class Order extends SNode {
         const { x: x1, y: y1 } = line.p1;
         const a0 = angle(x0, y0, x1, y1, true); // the angle of the left hook, with the arrow's tip as origin
         const a1 = angle(x0, y0, cpx, cpy, true); // the angle of the vector that leads from the arrow's tip to the connector's second control point
-        const negativeAngles = angleDiff(a0, a1) > Math.PI;
-        const aDeg = ((negativeAngles ? -angleDiff(a1, a0) : angleDiff(a0, a1)) / Math.PI) * 90;
+        const d = angleDiff(a0, a1);
+        const aDeg = ((d > Math.PI ? d - 2 * Math.PI : d) / Math.PI) * 180;
         const factor = 10 ** ROUNDING_DIGITS;
         this.hookAngle = round(
             Math.round(aDeg * factor) / factor,
