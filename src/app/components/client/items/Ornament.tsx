@@ -51,7 +51,7 @@ export default abstract class Ornament extends Item {
     );
 
     readonly node: Node; // The node to which this Ornament is attached
-    angle: number = DEFAULT_ANGLE; // the preferred angle at which this Ornament is attached to this.node
+    angle: number = DEFAULT_ANGLE; // the preferred angle (in degrees) at which this Ornament is attached to this.node
     gap: number = DEFAULT_GAP;
     gap100: number = DEFAULT_GAP;
 

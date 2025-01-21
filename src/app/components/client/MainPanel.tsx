@@ -2732,13 +2732,18 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     }, [selectedNodesDeduplicated, selection, points, focusItem, list, setOrigin]);
 
     const hFlip = useCallback(() => {
-        selectedIndependentNodes.forEach((node) => {
-            node.x = 2 * origin.x - node.x;
-            node.x100 = 2 * origin.x - node.x100;
-            node.invalidateDepNodeLocations();
-            if (node instanceof CNode) {
-                node.angle0 = -node.angle0;
-                node.angle1 = -node.angle1;
+        selectedNodesDeduplicated.forEach((node) => {
+            if (node.isIndependent()) {
+                node.x = 2 * origin.x - node.x;
+                node.x100 = 2 * origin.x - node.x100;
+                node.invalidateDepNodeLocations();
+                if (node instanceof CNode) {
+                    node.angle0 = -node.angle0;
+                    node.angle1 = -node.angle1;
+                }
+            }
+            for (const o of node.ornaments) {
+                o.angle = getCyclicValue(180 - o.angle, MIN_ROTATION, 360, ROUNDING_DIGITS);
             }
         });
         if (transformFlags.flipArrowheads) {
@@ -2746,16 +2751,27 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedIndependentNodes, origin, adjustLimit, transformFlags.flipArrowheads]);
+    }, [
+        selectedNodesDeduplicated,
+        selectedIndependentNodes,
+        origin,
+        adjustLimit,
+        transformFlags.flipArrowheads,
+    ]);
 
     const vFlip = useCallback(() => {
-        selectedIndependentNodes.forEach((node) => {
-            node.y = 2 * origin.y - node.y;
-            node.y100 = 2 * origin.y - node.y100;
-            node.invalidateDepNodeLocations();
-            if (node instanceof CNode) {
-                node.angle0 = -node.angle0;
-                node.angle1 = -node.angle1;
+        selectedNodesDeduplicated.forEach((node) => {
+            if (node.isIndependent()) {
+                node.y = 2 * origin.y - node.y;
+                node.y100 = 2 * origin.y - node.y100;
+                node.invalidateDepNodeLocations();
+                if (node instanceof CNode) {
+                    node.angle0 = -node.angle0;
+                    node.angle1 = -node.angle1;
+                }
+            }
+            for (const o of node.ornaments) {
+                o.angle = getCyclicValue(-o.angle, MIN_ROTATION, 360, ROUNDING_DIGITS);
             }
         });
         if (transformFlags.flipArrowheads) {
@@ -2763,7 +2779,13 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         }
         adjustLimit();
         setItemsMoved((prev) => [...prev]);
-    }, [selectedIndependentNodes, origin, adjustLimit, transformFlags.flipArrowheads]);
+    }, [
+        selectedNodesDeduplicated,
+        selectedIndependentNodes,
+        origin,
+        adjustLimit,
+        transformFlags.flipArrowheads,
+    ]);
 
     /**
      * Turn all contours that have members in the supplied array into regular polygons.

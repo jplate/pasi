@@ -418,7 +418,13 @@ export const travelFor = (
  * @param closeEnough the tolerance for distance matching
  * @return the point at the end position
  */
-export const travel = (u: number[], distance: number, c: CubicCurve, dt: number, closeEnough: number) => {
+export const travel = (
+    u: number[],
+    distance: number,
+    c: CubicCurve,
+    dt: number,
+    closeEnough: number
+): [number, number] => {
     return travelFor(u, distance, c, dt, closeEnough);
 };
 
@@ -437,12 +443,12 @@ export const angle = (x1: number, y1: number, x2: number, y2: number, inRadians:
 };
 
 /**
- * Normalize the specified angle with respect to a reference angle alpha. The returned angle will lie between alpha-PI and alpha+PI.
- * @param angle
- * @param alpha
- * @return
+ * Normalize the specified angle (in radians) with respect to a reference angle alpha. The returned angle will lie between alpha-PI and alpha+PI.
+ * @param angle the angle to be normalized
+ * @param alpha the reference angle, by default 0
+ * @return the normalized angle
  */
-export const normalize = (angle: number, alpha: number) => {
+export const normalize = (angle: number, alpha: number = 0): number => {
     return angle >= alpha + Math.PI
         ? angle - 2 * Math.PI * (1 + Math.floor((angle - alpha - Math.PI) / 2 / Math.PI))
         : angle < alpha - Math.PI
@@ -453,7 +459,7 @@ export const normalize = (angle: number, alpha: number) => {
 /*
  * Returns the difference between a and b, in positive direction. Ranges over [0..2*Math.PI[
  */
-export const angleDiff = (a: number, b: number) => {
+export const angleDiff = (a: number, b: number): number => {
     const epsilon = 1e-8;
     let d = normalize(b, a + Math.PI) - a;
     if (Math.abs(d - 2 * Math.PI) < epsilon) {
