@@ -904,8 +904,9 @@ interface LogIncrements {
 }
 
 interface TransformFlags {
-    scaleArrowheads: boolean;
     scaleENodes: boolean;
+    scaleConnectors: boolean;
+    scaleArrowheads: boolean;
     scaleDash: boolean;
     scaleLinewidths: boolean;
     flipArrowheads: boolean;
@@ -985,8 +986,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         scale: DEFAULT_SCALING_LOG_INCREMENT,
     }); // for the transform tab
     const [transformFlags, setTransformFlags] = useState({
-        scaleArrowheads: false,
         scaleENodes: false,
+        scaleConnectors: false,
+        scaleArrowheads: false,
         scaleDash: false,
         scaleLinewidths: false,
         flipArrowheads: false,
@@ -2621,15 +2623,14 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     }
                     if (node instanceof ENode) {
                         if (transformFlags.scaleENodes) {
-                            node.radius = node.radius100 * newValue * 1e-2;
-                            node.ornaments.forEach((o) => {
-                                o.gap = o.gap100 * newValue * 1e-2;
-                            });
+                            node.scaleNode(newValue)
+                            if (transformFlags.scaleLinewidths) {
+                                node.linewidth = round(node.linewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
+                            }
+                            if (transformFlags.scaleDash) {
+                                node.dash = node.dash100.map((l) => round(l * newValue * 1e-2, ROUNDING_DIGITS));
+                            }
                         }
-                        if (transformFlags.scaleLinewidths)
-                            node.linewidth = node.linewidth100 * newValue * 1e-2;
-                        if (transformFlags.scaleDash)
-                            node.dash = node.dash100.map((l) => l * newValue * 1e-2);
                     }
                 });
                 const affectedNodeGroups: CNodeGroup[] = selectedNodesDeduplicated
@@ -2639,16 +2640,17 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 affectedNodeGroups.forEach((group) => {
                     if (group) {
                         if (transformFlags.scaleLinewidths)
-                            group.linewidth = group.linewidth100 * newValue * 1e-2;
+                            group.linewidth = round(group.linewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
                         if (transformFlags.scaleDash)
-                            group.dash = group.dash100.map((l) => l * newValue * 1e-2);
+                            group.dash = group.dash100.map((l) => round(l * newValue * 1e-2, ROUNDING_DIGITS));
                     }
                 });
                 if (
                     transformFlags.scaleLinewidths ||
                     transformFlags.scaleDash ||
-                    transformFlags.scaleArrowheads ||
-                    transformFlags.flipArrowheads
+                    transformFlags.scaleConnectors ||
+                    transformFlags.flipArrowheads ||
+                    transformFlags.scaleENodes
                 ) {
                     const affectedSNodes = Array.from(
                         addDependents(selectedNodesDeduplicated, false).values()
@@ -2660,17 +2662,26 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             )
                     ) as SNode[];
                     for (const node of affectedSNodes) {
-                        if (transformFlags.scaleLinewidths) {
-                            node.conLinewidth = node.conLinewidth100 * newValue * 1e-2;
-                            node.ahLinewidth = node.ahLinewidth100 * newValue * 1e-2;
-                        }
-                        if (transformFlags.scaleDash) {
-                            [node.conDash, node.ahDash] = [node.conDash100, node.ahDash100].map((dash) =>
-                                dash.map((v) => v * newValue * 1e-2)
-                            );
+                        if (transformFlags.scaleConnectors) {
+                            node.scaleConnector(newValue);
+                            if (transformFlags.scaleLinewidths) {
+                                node.conLinewidth = round(node.conLinewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
+                            }
+                            if (transformFlags.scaleDash) {
+                                node.conDash = node.conDash100.map((v) => round(v * newValue * 1e-2, ROUNDING_DIGITS));
+                            }
                         }
                         if (transformFlags.scaleArrowheads) {
                             node.scaleArrowhead(newValue);
+                            if (transformFlags.scaleLinewidths) {
+                                node.ahLinewidth = round(node.ahLinewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
+                            }
+                            if (transformFlags.scaleDash) {
+                                node.ahDash = node.ahDash100.map((v) => round(v * newValue * 1e-2, ROUNDING_DIGITS));
+                            }
+                        }
+                        if (transformFlags.scaleENodes) {
+                            node.scaleNode(newValue);
                         }
                     }
                 }
@@ -2687,7 +2698,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             transformFlags.scaleDash,
             transformFlags.scaleENodes,
             transformFlags.scaleLinewidths,
-            transformFlags.scaleArrowheads,
+            transformFlags.scaleConnectors,
             transformFlags.flipArrowheads,
         ]
     );

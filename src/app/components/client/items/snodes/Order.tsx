@@ -84,10 +84,12 @@ export default class Order extends SNode {
     }
 
     override scaleArrowhead(val: number) {
-        this.hookLength = this.hookLength100 * val * 1e-2;
+        super.scaleArrowhead(val);
+        this.hookLength = round(this.hookLength100 * val * 1e-2, ROUNDING_DIGITS);
     }
 
     override renormalizeArrowhead() {
+        super.renormalizeArrowhead();
         this.hookLength100 = this.hookLength;
     }
 

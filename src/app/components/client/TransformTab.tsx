@@ -22,8 +22,9 @@ interface TransformTabProps {
     hFlipPossible: boolean;
     vFlipPossible: boolean;
     transformFlags: {
-        scaleArrowheads: boolean;
         scaleENodes: boolean;
+        scaleConnectors: boolean;
+        scaleArrowheads: boolean;
         scaleDash: boolean;
         scaleLinewidths: boolean;
         flipArrowheads: boolean;
@@ -56,8 +57,9 @@ const TransformTab = ({
 }: TransformTabProps) => {
     const [, setRotationIncrement] = useState(logIncrements.rotate);
     const [, setScalingIncrement] = useState(logIncrements.scale);
-    const [scaleArrowheads, setScaleArrowheads] = useState(transformFlags.scaleArrowheads);
     const [scaleENodes, setScaleENodes] = useState(transformFlags.scaleENodes);
+    const [scaleConnectors, setScaleConnectors] = useState(transformFlags.scaleConnectors);
+    const [scaleArrowheads, setScaleArrowheads] = useState(transformFlags.scaleArrowheads);
     const [scaleLinewidths, setScaleLinewidths] = useState(transformFlags.scaleLinewidths);
     const [scaleDash, setScaleDash] = useState(transformFlags.scaleDash);
     const [flipArrowheads, setFlipArrowheads] = useState(transformFlags.flipArrowheads);
@@ -156,43 +158,50 @@ const TransformTab = ({
                     )
                 }
             />
-            <BasicColoredButton
-                id='hflip-button'
-                label='Horizontal flip'
-                style='px-2 mx-2 mt-3 rounded-lg text-sm'
-                tooltip={
-                    <>
-                        Flips the selected independent nodes horizontally, using an axis that runs vertically
-                        through {originDescription}.<HotkeyComp mapKey='hflip' />
-                    </>
-                }
-                tooltipPlacement='right'
-                disabled={!hFlipPossible}
-                onClick={hFlip}
+            <div className='grid grid-cols-2 mx-1.5 my-4'>
+                <BasicColoredButton
+                    id='hflip-button'
+                    label='Horiz. flip'
+                    style='px-2 mr-1.5 rounded-lg text-sm'
+                    tooltip={
+                        <>
+                            Flips the selected independent nodes horizontally, using an axis that runs vertically
+                            through {originDescription}.<HotkeyComp mapKey='hflip' />
+                        </>
+                    }
+                    tooltipPlacement='left'
+                    disabled={!hFlipPossible}
+                    onClick={hFlip}
+                />
+                <BasicColoredButton
+                    id='vflip-button'
+                    label='Vert. flip'
+                    style='px-2 rounded-lg text-sm'
+                    tooltip={
+                        <>
+                            Flips the selected independent nodes vertically, using an axis that runs horizontally
+                            through {originDescription}.<HotkeyComp mapKey='vflip' />
+                        </>
+                    }
+                    tooltipPlacement='right'
+                    disabled={!vFlipPossible}
+                    onClick={vFlip}
+                />
+            </div>
+            <CheckBoxField
+                label='Scale entity nodes'
+                value={scaleENodes}
+                onChange={() => setScaleENodes((prev) => (transformFlags.scaleENodes = !prev))}
             />
-            <BasicColoredButton
-                id='vflip-button'
-                label='Vertical flip'
-                style='px-2 mx-2 mt-2 mb-3 rounded-lg text-sm'
-                tooltip={
-                    <>
-                        Flips the selected independent nodes vertically, using an axis that runs horizontally
-                        through {originDescription}.<HotkeyComp mapKey='vflip' />
-                    </>
-                }
-                tooltipPlacement='right'
-                disabled={!vFlipPossible}
-                onClick={vFlip}
+            <CheckBoxField
+                label='Scale connectors'
+                value={scaleConnectors}
+                onChange={() => setScaleConnectors((prev) => (transformFlags.scaleConnectors = !prev))}
             />
             <CheckBoxField
                 label='Scale arrowheads'
                 value={scaleArrowheads}
                 onChange={() => setScaleArrowheads((prev) => (transformFlags.scaleArrowheads = !prev))}
-            />
-            <CheckBoxField
-                label='Scale entity nodes'
-                value={scaleENodes}
-                onChange={() => setScaleENodes((prev) => (transformFlags.scaleENodes = !prev))}
             />
             <CheckBoxField
                 label='Scale linewidths'

@@ -142,12 +142,19 @@ export default abstract class SNode extends ENode {
     ahDash100: number[] = DEFAULT_DASH;
 
     gap0: number = DEFAULT_GAP0;
+    gap0_100: number = DEFAULT_GAP0;
     gap1: number = DEFAULT_GAP1;
+    gap1_100: number = DEFAULT_GAP1;
     protected w0 = 0; // parameter controlling the length of the 'stiff part' at the beginning of the connector
+    protected w0_100 = 0; 
     protected w1 = 0; // ditto for the end of the connector
+    protected w1_100 = 0; 
     protected wc = 0; // ditto for the center of the connector
+    protected wc_100 = 0;
     d0: number = DEFAULT_DISTANCE; // the distances from the involutes to the corresponding control points of the connector
+    d0_100: number = DEFAULT_DISTANCE; 
     d1: number = DEFAULT_DISTANCE;
+    d1_100: number = DEFAULT_DISTANCE;
     phi0: number = 0; // the connector's exit angles (in degrees) relative to the baseline angle
     phi1: number = 0;
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
@@ -229,17 +236,36 @@ export default abstract class SNode extends ENode {
         return hr;
     }
 
-    scaleArrowhead(_val: number) {}
+    scaleArrowhead(val: number) {
+        this.w0 = round(this.w0_100 * val * 1e-2, ROUNDING_DIGITS);
+        this.w1 = round(this.w1_100 * val * 1e-2, ROUNDING_DIGITS);
+        this.wc = round(this.wc_100 * val * 1e-2, ROUNDING_DIGITS);
+    }
 
     flipArrowhead() {}
 
-    renormalizeArrowhead() {}
+    renormalizeArrowhead() {
+        this.w0_100 = this.w0;
+        this.w1_100 = this.w1;
+        this.wc_100 = this.wc;
+    }
+
+    scaleConnector(val: number) {
+        this.gap0 = round(this.gap0_100 * val * 1e-2, ROUNDING_DIGITS);
+        this.gap1 = round(this.gap1_100 * val * 1e-2, ROUNDING_DIGITS);
+        this.d0 = round(this.d0_100 * val * 1e-2, ROUNDING_DIGITS);
+        this.d1 = round(this.d1_100 * val * 1e-2, ROUNDING_DIGITS);
+    }
 
     renormalize() {
         this.conLinewidth100 = this.conLinewidth;
         this.ahLinewidth100 = this.ahLinewidth;
         this.conDash100 = this.conDash;
         this.ahDash100 = this.ahDash;
+        this.gap0_100 = this.gap0;
+        this.gap1_100 = this.gap1;
+        this.d0_100 = this.d0;
+        this.d1_100 = this.d1;
         this.renormalizeArrowhead();
     }
 

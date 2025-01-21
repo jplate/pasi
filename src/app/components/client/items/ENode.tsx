@@ -16,7 +16,7 @@ import Node, {
     validateRadius,
 } from './Node';
 import { Entry, getRankMover } from '../ItemEditor';
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT } from '../../../Constants';
+import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants';
 import { validFloat, parseInputValue, DashValidator } from '../EditorComponents';
 import CNodeGroup from '../CNodeGroup';
 import * as Texdraw from '../../../codec/Texdraw';
@@ -105,6 +105,13 @@ export default class ENode extends Node {
      */
     getHiddenRadius(): number {
         return this.getDefaultRadius();
+    }
+
+    scaleNode(val: number) {
+        this.radius = round(this.radius100 * val * 1e-2, ROUNDING_DIGITS);
+        this.ornaments.forEach((o) => {
+            o.gap = round(o.gap100 * val * 1e-2, ROUNDING_DIGITS);
+        });
     }
 
     /**
