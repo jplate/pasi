@@ -165,8 +165,8 @@ const TransformTab = ({
                     style='px-2 mr-1.5 rounded-lg text-sm'
                     tooltip={
                         <>
-                            Flips the selected independent nodes horizontally, using an axis that runs vertically
-                            through {originDescription}.<HotkeyComp mapKey='hflip' />
+                            Flips the selected independent nodes horizontally, using an axis that runs
+                            vertically through {originDescription}.<HotkeyComp mapKey='hflip' />
                         </>
                     }
                     tooltipPlacement='left'
@@ -179,8 +179,8 @@ const TransformTab = ({
                     style='px-2 rounded-lg text-sm'
                     tooltip={
                         <>
-                            Flips the selected independent nodes vertically, using an axis that runs horizontally
-                            through {originDescription}.<HotkeyComp mapKey='vflip' />
+                            Flips the selected independent nodes vertically, using an axis that runs
+                            horizontally through {originDescription}.<HotkeyComp mapKey='vflip' />
                         </>
                     }
                     tooltipPlacement='right'

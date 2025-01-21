@@ -16,7 +16,15 @@ import Node, {
     validateRadius,
 } from './Node';
 import { Entry, getRankMover } from '../ItemEditor';
-import { H, MAX_X, MAX_Y, MIN_Y, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS } from '../../../Constants';
+import {
+    H,
+    MAX_X,
+    MAX_Y,
+    MIN_Y,
+    MARK_LINEWIDTH,
+    MIN_TRANSLATION_LOG_INCREMENT,
+    ROUNDING_DIGITS,
+} from '../../../Constants';
 import { validFloat, parseInputValue, DashValidator } from '../EditorComponents';
 import CNodeGroup from '../CNodeGroup';
 import * as Texdraw from '../../../codec/Texdraw';

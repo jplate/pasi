@@ -146,13 +146,13 @@ export default abstract class SNode extends ENode {
     gap1: number = DEFAULT_GAP1;
     gap1_100: number = DEFAULT_GAP1;
     protected w0 = 0; // parameter controlling the length of the 'stiff part' at the beginning of the connector
-    protected w0_100 = 0; 
+    protected w0_100 = 0;
     protected w1 = 0; // ditto for the end of the connector
-    protected w1_100 = 0; 
+    protected w1_100 = 0;
     protected wc = 0; // ditto for the center of the connector
     protected wc_100 = 0;
     d0: number = DEFAULT_DISTANCE; // the distances from the involutes to the corresponding control points of the connector
-    d0_100: number = DEFAULT_DISTANCE; 
+    d0_100: number = DEFAULT_DISTANCE;
     d1: number = DEFAULT_DISTANCE;
     d1_100: number = DEFAULT_DISTANCE;
     phi0: number = 0; // the connector's exit angles (in degrees) relative to the baseline angle

@@ -2623,12 +2623,14 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     }
                     if (node instanceof ENode) {
                         if (transformFlags.scaleENodes) {
-                            node.scaleNode(newValue)
+                            node.scaleNode(newValue);
                             if (transformFlags.scaleLinewidths) {
                                 node.linewidth = round(node.linewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
                             }
                             if (transformFlags.scaleDash) {
-                                node.dash = node.dash100.map((l) => round(l * newValue * 1e-2, ROUNDING_DIGITS));
+                                node.dash = node.dash100.map((l) =>
+                                    round(l * newValue * 1e-2, ROUNDING_DIGITS)
+                                );
                             }
                         }
                     }
@@ -2642,7 +2644,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         if (transformFlags.scaleLinewidths)
                             group.linewidth = round(group.linewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
                         if (transformFlags.scaleDash)
-                            group.dash = group.dash100.map((l) => round(l * newValue * 1e-2, ROUNDING_DIGITS));
+                            group.dash = group.dash100.map((l) =>
+                                round(l * newValue * 1e-2, ROUNDING_DIGITS)
+                            );
                     }
                 });
                 if (
@@ -2665,19 +2669,29 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         if (transformFlags.scaleConnectors) {
                             node.scaleConnector(newValue);
                             if (transformFlags.scaleLinewidths) {
-                                node.conLinewidth = round(node.conLinewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
+                                node.conLinewidth = round(
+                                    node.conLinewidth100 * newValue * 1e-2,
+                                    ROUNDING_DIGITS
+                                );
                             }
                             if (transformFlags.scaleDash) {
-                                node.conDash = node.conDash100.map((v) => round(v * newValue * 1e-2, ROUNDING_DIGITS));
+                                node.conDash = node.conDash100.map((v) =>
+                                    round(v * newValue * 1e-2, ROUNDING_DIGITS)
+                                );
                             }
                         }
                         if (transformFlags.scaleArrowheads) {
                             node.scaleArrowhead(newValue);
                             if (transformFlags.scaleLinewidths) {
-                                node.ahLinewidth = round(node.ahLinewidth100 * newValue * 1e-2, ROUNDING_DIGITS);
+                                node.ahLinewidth = round(
+                                    node.ahLinewidth100 * newValue * 1e-2,
+                                    ROUNDING_DIGITS
+                                );
                             }
                             if (transformFlags.scaleDash) {
-                                node.ahDash = node.ahDash100.map((v) => round(v * newValue * 1e-2, ROUNDING_DIGITS));
+                                node.ahDash = node.ahDash100.map((v) =>
+                                    round(v * newValue * 1e-2, ROUNDING_DIGITS)
+                                );
                             }
                         }
                         if (transformFlags.scaleENodes) {
@@ -2699,6 +2713,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             transformFlags.scaleENodes,
             transformFlags.scaleLinewidths,
             transformFlags.scaleConnectors,
+            transformFlags.scaleArrowheads,
             transformFlags.flipArrowheads,
         ]
     );
