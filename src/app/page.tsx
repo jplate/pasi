@@ -532,12 +532,13 @@ export default function Home() {
                                         <p>
                                             <span className='font-bold'>Swiss cross.</span> Starting from a
                                             standard contour, select any four of its eight nodes and press{' '}
-                                            {key('C')} to turn it into a contour with twelve nodes. Select all
-                                            of them and press {key('P')} to create a regular{' '}
-                                            <CodeButton text='dodecagon' code={dodecagonCode} />. Make sure
-                                            that the &lsquo;{pasi('Snap to contour centers')}&rsquo; option
-                                            (in the default {pasi('Editor')} tab) is selected. Place an entity
-                                            node on the canvas and drag it to the center of the dodecagon.
+                                            {key('C')} (for &lsquo;copy&rsquo;) to turn it into a contour with
+                                            twelve nodes. Select all of them and press {key('P')} to create a
+                                            regular <CodeButton text='dodecagon' code={dodecagonCode} />. Make
+                                            sure that the &lsquo;{pasi('Snap to contour centers')}&rsquo;
+                                            option (in the default {pasi('Editor')} tab) is selected. Place an
+                                            entity node on the canvas and drag it to the center of the
+                                            dodecagon.
                                         </p>
                                         <p>
                                             Next, hold {key('Ctrl')} and select any one of the four nodes in
