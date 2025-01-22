@@ -85,12 +85,10 @@ body {
 }
 
 section {
-    /* We're going with slightly bigger font for the surrounding sections. */
-    font-size: 18px;
+    font-size: 16px;
 }
 
 textarea {
-    /* We're going with slightly bigger font for the surrounding sections. */
     font-feature-settings: 'none'; /* Ligatures in an editable text area seem out of place. */
 }
 
