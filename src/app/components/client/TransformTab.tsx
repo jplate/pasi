@@ -206,18 +206,26 @@ const TransformTab = ({
             <CheckBoxField
                 label='Scale linewidths'
                 value={scaleLinewidths}
-                tooltip={<>This option affects the linewidth of contours, entity nodes, connectors, and arrowheads, but these last three <em>only</em> if the corresponding{' '}
-                    options (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
-                </>}
+                tooltip={
+                    <>
+                        This option affects the linewidth of contours, entity nodes, connectors, and
+                        arrowheads, but these last three <em>only</em> if the corresponding options
+                        (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
+                    </>
+                }
                 tooltipPlacement='left'
                 onChange={() => setScaleLinewidths((prev) => (transformFlags.scaleLinewidths = !prev))}
             />
             <CheckBoxField
                 label='Scale stroke patterns'
                 value={scaleDash}
-                tooltip={<>This option affects the stroke pattern of contours, entity nodes, connectors, and arrowheads, but these last three <em>only</em> if the corresponding{' '}
-                    options (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
-                </>}
+                tooltip={
+                    <>
+                        This option affects the stroke pattern of contours, entity nodes, connectors, and
+                        arrowheads, but these last three <em>only</em> if the corresponding options
+                        (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
+                    </>
+                }
                 tooltipPlacement='left'
                 onChange={() => setScaleDash((prev) => (transformFlags.scaleDash = !prev))}
             />
