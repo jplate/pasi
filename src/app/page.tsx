@@ -422,10 +422,10 @@ export default function Home() {
                                     </li>
                                     <li>
                                         <span className='font-bold'>Custom shapes.</span> While each{' '}
-                                        <em>contour</em> consists of exactly eight nodes carrying information
-                                        about the control points of their connecting curves, it is easy to add
-                                        or delete nodes and to adjust their respective properties. A few
-                                        examples of how different shapes can be created in this way are
+                                        <em>contour</em> initially consists of exactly eight nodes carrying
+                                        information about the control points of their connecting curves, it is
+                                        easy to add or delete nodes and to adjust their respective properties.
+                                        A few examples of how different shapes can be created in this way are
                                         described <a href='#contour-examples'>below</a>.
                                     </li>
                                 </ol>
