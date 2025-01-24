@@ -1028,7 +1028,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
      ***************************************************************************************/
 
     // prettier-ignore
-    const { push, before, after, canRedo, canUndo, history, now } = useHistory<HistoryEntry>(
+    const { push, before, after, canRedo, canUndo } = useHistory<HistoryEntry>(
         {
             list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
             hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
@@ -1117,21 +1117,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
                     hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
                 });
-            } else {
-                // If we don't have to update the state, the only thing that has changed are the coordinates of nodes. But the values stored in 'stored'
-                // may have become stale by the time this update function is called. So we fetch the current values from the history hook.
-                const current = history.current[now.current];
-                list = current.list; // While list won't have become stale, selection may have; and since we're getting the selection from the history,
-                    // we need the corresponding list, or else we may not be able, below, to match the members of selection with the correct nodes in
-                    // newList. This issue can arise because, when a CNodeGroup is copied, the copied CNodes may receive IDs that don't match the IDs
-                    // of the originals. 
-                selection = current.selection;
-                focusItem = current.focusItem;
-                points = current.points;
-                // We have to ensure that these are the only state variables that can have become stale. The reason why they can become stale is that,
-                // from within itemMouseDown() and its mouseUp handler, there can be two calls to the same instance of update(): one that changes the selection,
-                // focusItem, and points, and another that only reports the changed location of some nodes.
-            }
+            } 
 
             // Next, store a copy of the state in the history:
 
@@ -1174,14 +1160,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 code,
             });
         },
-        [stored, history, now, push, updateState]
+        [stored, push, updateState]
     );
-
-    const reportMovement = useCallback(() => {
-        // Signal to the updaters of, e.g., canCopy that the positions of items may have changed:
-        setItemsMoved((prev) => [...prev]);
-        update({}, false);
-    }, [update, setItemsMoved]);
 
     const throttledReport = useThrottle(() => update({}, false), MOVE_UPDATE_DELAY);
 
@@ -1806,14 +1786,15 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             }
                         } else {
                             newSelection = [
+                                // If the user shift-clicks on an item, she'll usually only want to add that item to the selection, together with
+                                // any other items in the preselection that have not yet been selected.
                                 ...selection,
                                 ...pres.filter(
                                     (it) =>
                                         (it instanceof ENode && it === item) ||
                                         !deduplicatedSelection.includes(it)
                                 ),
-                            ]; // If the user shift-clicks on an item, she'll usually only want to add that item to the selection, together with
-                            // any other items in the preselection that have not yet been selected.
+                            ];
                         }
                     } else {
                         // replace selection
@@ -1936,7 +1917,17 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
 
                             // Update history (unless we've deleted GNodes, in which case we've already triggered a history update via deleteItems()):
                             if (toBeDeletedGNodes.length === 0) {
-                                reportMovement();
+                                setItemsMoved((prev) => [...prev]);
+                                // Update history (without changing state, which has already been done):
+                                update(
+                                    {
+                                        list: newList,
+                                        selection: newSelection,
+                                        focusItem: item,
+                                        points: newPoints,
+                                    },
+                                    false
+                                );
                             }
                         }
                     };
@@ -1979,7 +1970,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             origin.x,
             origin.y,
             update,
-            reportMovement,
             setOrigin,
             updateSecondaryPreselection,
             showModal,
@@ -2359,14 +2349,16 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 displayFontFactor
             );
         const newList = [...list, ...copiedList, ...gnodes];
-        setENodeCounter(newENodeCounter);
-        setCNGCounter(newCNGCounter);
-        setSGCounter(newSGCounter);
-        setList(newList);
-        setFocusItem(newFocusItem);
+        update({
+            list: newList,
+            selection: newSelection,
+            focusItem: newFocusItem,
+            eNodeCounter: newENodeCounter,
+            cngCounter: newCNGCounter,
+            sgCounter: newSGCounter,
+        });
         setOrigin(true, points, newFocusItem, newSelection);
         adjustLimit(getItems(newList));
-        setSelection(newSelection);
         if (newFocusItem) {
             scrollTo(newFocusItem);
         }
