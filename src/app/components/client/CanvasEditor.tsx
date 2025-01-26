@@ -48,7 +48,7 @@ const CanvasEditor = ({
                         tooltip={
                             <>
                                 Adjust this value to increase or decrease the fontsize of any labels displayed
-                                on the canvas. (Some adjustment may be needed to make the labels&apos;
+                                on the canvas. (Some adjustment may be needed to make the labels&rsquo;
                                 appearance match the LaTeX output more closely.)
                             </>
                         }

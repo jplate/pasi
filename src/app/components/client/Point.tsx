@@ -4,6 +4,9 @@ import { H } from '../../Constants';
 
 export const POINT_RADIUS = 4;
 
+/**
+ * A Point represents a location on the canvas. It appears in the form of a small square, the PointComp.
+ */
 export default class Point {
     x: number; // These coordinates are 'TeX coordinates': (0,0) is the bottom-left corner of the canvas.
     y: number;
