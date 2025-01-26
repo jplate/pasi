@@ -208,9 +208,9 @@ const TransformTab = ({
                 value={scaleLinewidths}
                 tooltip={
                     <>
-                        This option affects the linewidth of contours, entity nodes, connectors, and
-                        arrowheads, but these last three <em>only</em> if the corresponding options
-                        (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
+                        This option affects the linewidths of contours, as well as&mdash;provided that the
+                        corresponding options (&lsquo;Scale entity nodes&rsquo;, etc.) have been
+                        selected&mdash;the linewidths of entity nodes, connectors, and arrowheads.
                     </>
                 }
                 tooltipPlacement='left'
@@ -221,9 +221,9 @@ const TransformTab = ({
                 value={scaleDash}
                 tooltip={
                     <>
-                        This option affects the stroke pattern of contours, entity nodes, connectors, and
-                        arrowheads, but these last three <em>only</em> if the corresponding options
-                        (&lsquo;Scale entity nodes&rsquo; etc.) are selected.
+                        This option affects the stroke patterns of contours, as well as&mdash;provided that
+                        the corresponding options (&lsquo;Scale entity nodes&rsquo;, etc.) have been
+                        selected&mdash;the stroke patterns of entity nodes, connectors, and arrowheads.
                     </>
                 }
                 tooltipPlacement='left'
