@@ -1,4 +1,4 @@
-import react, { useContext, useState, useEffect } from 'react';
+import react, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import clsx from 'clsx/lite';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
@@ -36,7 +36,7 @@ export const CheckBoxField = ({
 }: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext);
 
-    const comp = (
+    const comp = useMemo(() => (
         <label
             className={clsx(
                 'flex ml-4 py-1 text-sm whitespace-nowrap items-center',
@@ -56,7 +56,7 @@ export const CheckBoxField = ({
             />
             <span>{label}</span>
         </label>
-    );
+    ), [style, extraBottomMargin, disabled, dark, value, onChange]);
 
     return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
 };
@@ -98,7 +98,8 @@ export const InputField = ({
 }: InputFieldProps) => {
     const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
     const labelComp = <span className='pointer-events-auto'>{label}</span>;
-    const inputComp = (
+    
+    const inputComp = useMemo(() => (
         <input
             className={clsx(
                 w,
@@ -117,7 +118,8 @@ export const InputField = ({
             onChange={onChange}
             readOnly={readOnly}
         />
-    );
+    ), [type, value, type, step, min, max, disabled, readOnly]);
+
     return (
         <label
             className={clsx(
@@ -462,13 +464,17 @@ export const WithTooltip = ({ comp, tooltip, placement = 'top', noStretch = fals
         middleware: [offset(8), shift()],
     });
 
+    const handleMouseEnter = useCallback(() => setShowTooltip(true), [setShowTooltip]);
+
+    const handleMouseLeave = useCallback(() => setShowTooltip(false), [setShowTooltip]);
+
     return (
         <div>
             <div
                 className={noStretch ? 'max-w-fit' : 'justify-items-stretch'}
                 ref={refs.setReference}
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
             >
                 {comp}
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, CSSProperties } from 'react';
+import React, { useState, useEffect, useMemo, useRef, forwardRef, CSSProperties } from 'react';
 import clsx from 'clsx/lite';
 import { WithTooltip, Placement } from './EditorComponents';
 import { useThrottle } from '../../util/Misc';
@@ -40,6 +40,7 @@ export const BasicButton = forwardRef(
         const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
         const [active, setActive] = useState(false);
 
+        
         const handleKeyDown = useThrottle((e: React.KeyboardEvent<HTMLButtonElement>) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -55,7 +56,7 @@ export const BasicButton = forwardRef(
             setActive(false);
         }
 
-        const button = (
+        const button = useMemo(() => (
             <button
                 id={id}
                 className={clsx(
@@ -90,7 +91,8 @@ export const BasicButton = forwardRef(
                       ]
                     : label}
             </button>
-        );
+        ), [active, id, ref, style, pressed, activeStyle, inactiveStyle, icon, label, onClick, handleKeyDown, setActive, setButtonElement]);
+
         return tooltip ? (
             <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />
         ) : (
