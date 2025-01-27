@@ -40,7 +40,6 @@ export const BasicButton = forwardRef(
         const [buttonElement, setButtonElement] = useState<HTMLButtonElement | null>(null);
         const [active, setActive] = useState(false);
 
-        
         const handleKeyDown = useThrottle((e: React.KeyboardEvent<HTMLButtonElement>) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -56,42 +55,60 @@ export const BasicButton = forwardRef(
             setActive(false);
         }
 
-        const button = useMemo(() => (
-            <button
-                id={id}
-                className={clsx(
-                    'block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none',
-                    'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
-                    'focus:outline-none focus:ring-1',
-                    style,
-                    pressed || active ? activeStyle : inactiveStyle
-                )}
-                disabled={disabled}
-                onClick={onClick}
-                onKeyDown={handleKeyDown}
-                onKeyUp={() => setActive(false)}
-                onBlur={() => setTimeout(() => setActive(false), 50)}
-                ref={(element) => {
-                    setButtonElement(element); // Save the DOM element in the state.
-                    if (typeof ref === 'function') {
-                        ref(element);
-                    } else if (ref) {
-                        ref.current = element;
-                    }
-                }}
-            >
-                {icon
-                    ? [
-                          <span key={0} id={id + 'span0'}>
-                              {icon}
-                          </span>,
-                          <span key={1} id={id + 'span1'} className='sr-only'>
-                              {label ?? ''}
-                          </span>,
-                      ]
-                    : label}
-            </button>
-        ), [active, id, ref, style, pressed, activeStyle, inactiveStyle, icon, label, onClick, handleKeyDown, setActive, setButtonElement]);
+        const button = useMemo(
+            () => (
+                <button
+                    id={id}
+                    className={clsx(
+                        'block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none',
+                        'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
+                        'focus:outline-none focus:ring-1',
+                        style,
+                        pressed || active ? activeStyle : inactiveStyle
+                    )}
+                    disabled={disabled}
+                    onClick={onClick}
+                    onKeyDown={handleKeyDown}
+                    onKeyUp={() => setActive(false)}
+                    onBlur={() => setTimeout(() => setActive(false), 50)}
+                    ref={(element) => {
+                        setButtonElement(element); // Save the DOM element in the state.
+                        if (typeof ref === 'function') {
+                            ref(element);
+                        } else if (ref) {
+                            ref.current = element;
+                        }
+                    }}
+                >
+                    {icon
+                        ? [
+                              <span key={0} id={id + 'span0'}>
+                                  {icon}
+                              </span>,
+                              <span key={1} id={id + 'span1'} className='sr-only'>
+                                  {label ?? ''}
+                              </span>,
+                          ]
+                        : label}
+                </button>
+            ),
+            [
+                active,
+                disabled,
+                id,
+                ref,
+                style,
+                pressed,
+                activeStyle,
+                inactiveStyle,
+                icon,
+                label,
+                onClick,
+                handleKeyDown,
+                setActive,
+                setButtonElement,
+            ]
+        );
 
         return tooltip ? (
             <WithTooltip comp={button} tooltip={tooltip} placement={tooltipPlacement} />

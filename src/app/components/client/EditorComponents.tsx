@@ -36,27 +36,30 @@ export const CheckBoxField = ({
 }: CheckBoxFieldProps) => {
     const dark = useContext(DarkModeContext);
 
-    const comp = useMemo(() => (
-        <label
-            className={clsx(
-                'flex ml-4 py-1 text-sm whitespace-nowrap items-center',
-                style,
-                extraBottomMargin ? 'mb-4' : '',
-                disabled ? 'opacity-50' : ''
-            )}
-        >
-            <input
-                type='checkbox'
-                className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
-                checked={value}
-                disabled={disabled}
-                onChange={() => {
-                    onChange();
-                }}
-            />
-            <span>{label}</span>
-        </label>
-    ), [style, extraBottomMargin, disabled, dark, value, onChange]);
+    const comp = useMemo(
+        () => (
+            <label
+                className={clsx(
+                    'flex ml-4 py-1 text-sm whitespace-nowrap items-center',
+                    style,
+                    extraBottomMargin ? 'mb-4' : '',
+                    disabled ? 'opacity-50' : ''
+                )}
+            >
+                <input
+                    type='checkbox'
+                    className={clsx('checkbox mr-2', dark ? ACCENT_DARK : ACCENT_LIGHT)}
+                    checked={value}
+                    disabled={disabled}
+                    onChange={() => {
+                        onChange();
+                    }}
+                />
+                <span>{label}</span>
+            </label>
+        ),
+        [label, style, extraBottomMargin, disabled, dark, value, onChange]
+    );
 
     return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
 };
@@ -98,27 +101,30 @@ export const InputField = ({
 }: InputFieldProps) => {
     const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
     const labelComp = <span className='pointer-events-auto'>{label}</span>;
-    
-    const inputComp = useMemo(() => (
-        <input
-            className={clsx(
-                w,
-                type === 'number' ? 'text-right' : 'pr-2', // string inputs need extra padding on the right;
-                // whereas number inputs have space reserved on the right for the arrow buttons, which is already a sort of padding.
-                'ml-2 pl-2 border border-btnborder rounded-md pointer-events-auto focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor'
-            )}
-            value={value}
-            type={type}
-            step={step === 0 ? 'any' : step}
-            min={min}
-            max={max}
-            style={{ fontVariantLigatures: 'none' }}
-            spellCheck={false}
-            disabled={disabled}
-            onChange={onChange}
-            readOnly={readOnly}
-        />
-    ), [type, value, type, step, min, max, disabled, readOnly]);
+
+    const inputComp = useMemo(
+        () => (
+            <input
+                className={clsx(
+                    w,
+                    type === 'number' ? 'text-right' : 'pr-2', // string inputs need extra padding on the right;
+                    // whereas number inputs have space reserved on the right for the arrow buttons, which is already a sort of padding.
+                    'ml-2 pl-2 border border-btnborder rounded-md pointer-events-auto focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor'
+                )}
+                value={value}
+                type={type}
+                step={step === 0 ? 'any' : step}
+                min={min}
+                max={max}
+                style={{ fontVariantLigatures: 'none' }}
+                spellCheck={false}
+                disabled={disabled}
+                onChange={onChange}
+                readOnly={readOnly}
+            />
+        ),
+        [type, value, step, min, max, w, disabled, readOnly, onChange]
+    );
 
     return (
         <label
