@@ -21,6 +21,7 @@ export const DEFAULT_TRANSLATION_LOG_INCREMENT = 0;
 export const DEFAULT_ROTATION_LOG_INCREMENT = 1;
 export const DEFAULT_SCALING_LOG_INCREMENT = 1;
 
+export const MAX_GROUP_LEVEL = 32; // maximum depth of group hierarchy
 export const MAX_HISTORY = 256; // maximum length of history
 
 export const ROUNDING_DIGITS = 3; // used for rounding values resulting from rotations of points, etc.

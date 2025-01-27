@@ -3,6 +3,13 @@ import { Grid } from './MainPanel';
 import { BasicColoredButton } from './Button';
 import { LabelField, InputField, CheckBoxField } from './EditorComponents';
 
+const dffTooltip = (
+    <>
+        Adjust this value to increase or decrease the fontsize of any labels displayed on the canvas. (Some
+        adjustment may be needed to make the labels&rsquo; appearance match the LaTeX output more closely.)
+    </>
+);
+
 interface CanvasEditorProps {
     grid: Grid;
     hDisp: number;
@@ -45,13 +52,7 @@ const CanvasEditor = ({
                         value={displayFontFactor}
                         step={0.01}
                         onChange={changeDFF}
-                        tooltip={
-                            <>
-                                Adjust this value to increase or decrease the fontsize of any labels displayed
-                                on the canvas. (Some adjustment may be needed to make the labels&rsquo;
-                                appearance match the LaTeX output more closely.)
-                            </>
-                        }
+                        tooltip={dffTooltip}
                         tooltipPlacement='left'
                     />
                 </span>

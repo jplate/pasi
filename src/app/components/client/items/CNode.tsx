@@ -1,3 +1,4 @@
+import { CSSProperties, useCallback, useMemo } from 'react';
 import Item, { HSL, Range } from './Item';
 import Node, {
     DEFAULT_DISTANCE,
@@ -39,6 +40,28 @@ const CNODE_ARROW_DISTANCE_MIN = 15;
 const CNODE_ARROW_DISTANCE_MAX = 40;
 const CNODE_ARROW_POINTS = '6,10 5,7 15,10 5,13, 6,10';
 const CNODE_ARROW_MITER_LIMIT = 5;
+
+const fixedAnglesTooltip = (
+    <>
+        When this node is moved, each of its two neighbors will be moved in parallel with it unless the
+        neighbor has exactly the same X- or Y-coordinate as this node.
+    </>
+);
+
+const a0Tooltip = (
+    <>
+        The angle (in degrees) by which a straight line from this contour node to the second control point of
+        the curve that connects the previous node to this one would deviate from a straight line to the
+        previous node.
+    </>
+);
+
+const a1Tooltip = (
+    <>
+        The angle (in degrees) by which a straight line from this contour node to the first control point of
+        the curve that connects this node to the next would deviate from a straight line to the latter.
+    </>
+);
 
 /**
  * CNodes ('contour nodes') are members of CNodeGroups ('contour node groups'). They define the shape and beheavior of contours. Although each CNode inherits
@@ -105,12 +128,7 @@ export default class CNode extends Node {
                 key: 'fixed',
                 text: 'Keep angles fixed',
                 value: this.fixedAngles,
-                tooltip: (
-                    <>
-                        When this node is moved, each of its two neighbors will be moved in parallel with it
-                        unless the neighbor has exactly the same X- or Y-coordinate as this node.
-                    </>
-                ),
+                tooltip: fixedAnglesTooltip,
                 tooltipPlacement: 'left',
             },
             { type: 'checkbox', key: 'line', text: 'No line to next node', value: this.omitLine },
@@ -123,13 +141,7 @@ export default class CNode extends Node {
                 step: 0,
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
-                tooltip: (
-                    <>
-                        The angle (in degrees) by which a straight line from this contour node to the second
-                        control point of the curve that connects the previous node to this one would deviate
-                        from a straight line to the previous node.
-                    </>
-                ),
+                tooltip: a0Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -150,13 +162,7 @@ export default class CNode extends Node {
                 width: 'long',
                 value: this.angle1,
                 step: 0,
-                tooltip: (
-                    <>
-                        The angle (in degrees) by which a straight line from this contour node to the first
-                        control point of the curve that connects this node to the next would deviate from a
-                        straight line to the latter.
-                    </>
-                ),
+                tooltip: a1Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -449,6 +455,75 @@ export default class CNode extends Node {
     override parse() {} // Since there are no texdraw commands corresponding to individual CNodes, there is nothing to parse.
 }
 
+interface ArrowDivProps {
+    cnode: CNode;
+    nodes: CNode[];
+    yOffset: number;
+    focus: boolean;
+    selected: boolean;
+    x: number;
+    y: number;
+    markColor: string;
+}
+
+const ArrowDiv = ({ cnode, nodes, yOffset, focus, selected, x, y, markColor }: ArrowDivProps) => {
+    const index = nodes.indexOf(cnode);
+    const next = nodes[index == nodes.length - 1 ? 0 : index + 1];
+    const line = getLine(cnode, next);
+    const r = CNODE_ARROW_DIV_RADIUS;
+    let nx: number, ny: number, a: number;
+    // The arrow should be aimed along the line to the next CNode, unless that line is omitted, in which case we let it point to the next CNode:
+    if (cnode.omitLine) {
+        const d = Math.sqrt((x - next.x) ** 2 + (y - next.y) ** 2); // distance to center of next CNode
+        const factor =
+            Math.min(
+                Math.max(CNODE_ARROW_DISTANCE_MIN, d * CNODE_ARROW_DISTANCE_RATIO),
+                CNODE_ARROW_DISTANCE_MAX
+            ) / d;
+        nx = x + (next.x - x) * factor - r;
+        ny = y + (next.y - y) * factor + r;
+        a = -angle(x, y, next.x, next.y);
+    } else {
+        const totalLength = bezierLength(line);
+        const targetLength = Math.min(
+            Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO),
+            CNODE_ARROW_DISTANCE_MAX
+        );
+        // The function tAtLength calculates t iteratively. We use smaller steps in proportion to the ratio by which totalLength exceeds targetLength:
+        const t = tAtLength(line, targetLength, (100 * totalLength) / targetLength);
+        const [bx, by] = cubicBezier(line, t);
+        nx = bx - r;
+        ny = by + r;
+        a = -bezierAngle(line, t);
+    }
+
+    const arrowDivStyle = useMemo(
+        () =>
+            ({
+                position: 'absolute',
+                left: `${nx}px`,
+                top: `${H + yOffset - ny}px`,
+                pointerEvents: 'none',
+            }) as CSSProperties,
+        [nx, ny, yOffset]
+    );
+
+    return (
+        <div className={focus || selected ? 'selected' : 'preselected'} style={arrowDivStyle}>
+            <svg width={2 * r} height={2 * r} xmlns='http://www.w3.org/2000/svg'>
+                <g opacity='0.5' transform={`rotate(${a} ${r} ${r})`}>
+                    <polyline
+                        stroke={markColor}
+                        points={CNODE_ARROW_POINTS}
+                        fill={markColor}
+                        strokeMiterlimit={CNODE_ARROW_MITER_LIMIT}
+                    />
+                </g>
+            </svg>
+        </div>
+    );
+};
+
 export interface CNodeCompProps {
     id: string;
     cnode: CNode;
@@ -499,63 +574,48 @@ export const CNodeComp = ({
     const l = Math.min(Math.max(5, mW / 5), 25);
     const m = 0.9 * l;
 
-    let arrowDiv = null;
-    if (arrow && cnode.group) {
-        const index = cnode.group.members.indexOf(cnode);
-        const next = (cnode.group as CNodeGroup).members[
-            index == cnode.group.members.length - 1 ? 0 : index + 1
-        ];
-        const line = getLine(cnode, next);
-        const r = CNODE_ARROW_DIV_RADIUS;
-        let nx: number, ny: number, a: number;
-        // The arrow should be aimed along the line to the next CNode, unless that line is omitted, in which case we let it point to the next CNode:
-        if (cnode.omitLine) {
-            const d = Math.sqrt((x - next.x) ** 2 + (y - next.y) ** 2); // distance to center of next CNode
-            const factor =
-                Math.min(
-                    Math.max(CNODE_ARROW_DISTANCE_MIN, d * CNODE_ARROW_DISTANCE_RATIO),
-                    CNODE_ARROW_DISTANCE_MAX
-                ) / d;
-            nx = x + (next.x - x) * factor - r;
-            ny = y + (next.y - y) * factor + r;
-            a = -angle(x, y, next.x, next.y);
-        } else {
-            const totalLength = bezierLength(line);
-            const targetLength = Math.min(
-                Math.max(CNODE_ARROW_DISTANCE_MIN, totalLength * CNODE_ARROW_DISTANCE_RATIO),
-                CNODE_ARROW_DISTANCE_MAX
-            );
-            // The function tAtLength calculates t iteratively. We use smaller steps in proportion to the ratio by which totalLength exceeds targetLength:
-            const t = tAtLength(line, targetLength, (100 * totalLength) / targetLength);
-            const [bx, by] = cubicBezier(line, t);
-            nx = bx - r;
-            ny = by + r;
-            a = -bezierAngle(line, t);
-        }
+    const style = useMemo(
+        () =>
+            ({
+                position: 'absolute',
+                left: `${x - radius - MARK_LINEWIDTH / 2}px`,
+                top: `${H + yOffset - y - radius - MARK_LINEWIDTH / 2}px`,
+                cursor: 'pointer',
+            }) as CSSProperties,
+        [x, y, radius, yOffset]
+    );
 
-        arrowDiv = (
-            <div
-                className={focus || selected ? 'selected' : 'preselected'}
-                style={{
-                    position: 'absolute',
-                    left: `${nx}px`,
-                    top: `${H + yOffset - ny}px`,
-                    pointerEvents: 'none',
-                }}
-            >
-                <svg width={2 * r} height={2 * r} xmlns='http://www.w3.org/2000/svg'>
-                    <g opacity='0.5' transform={`rotate(${a} ${r} ${r})`}>
-                        <polyline
-                            stroke={markColor}
-                            points={CNODE_ARROW_POINTS}
-                            fill={markColor}
-                            strokeMiterlimit={CNODE_ARROW_MITER_LIMIT}
-                        />
-                    </g>
-                </svg>
-            </div>
-        );
-    }
+    const handleMouseDown = useCallback(
+        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown(cnode, e),
+        [cnode, onMouseDown]
+    );
+    const handleMouseEnter = useCallback(
+        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseEnter(cnode, e),
+        [cnode, onMouseEnter]
+    );
+    const handleMouseLeave = useCallback(
+        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseLeave(cnode, e),
+        [cnode, onMouseLeave]
+    );
+
+    const markBorder = useMemo(
+        () => Node.markBorder(left, top, l, m, mW, mH, markColor),
+        [left, top, l, m, mW, mH, markColor]
+    );
+
+    const arrowDiv =
+        arrow && cnode.group ? (
+            <ArrowDiv
+                cnode={cnode}
+                nodes={(cnode.group as CNodeGroup).members}
+                yOffset={yOffset}
+                focus={focus}
+                selected={selected}
+                x={x}
+                y={y}
+                markColor={markColor}
+            />
+        ) : null;
 
     //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
@@ -566,22 +626,17 @@ export const CNodeComp = ({
                     focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
                 }
                 id={id}
-                onMouseDown={(e) => onMouseDown(cnode, e)}
-                onMouseEnter={(e) => onMouseEnter(cnode, e)}
-                onMouseLeave={(e) => onMouseLeave(cnode, e)}
-                style={{
-                    position: 'absolute',
-                    left: `${x - radius - MARK_LINEWIDTH / 2}px`,
-                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH / 2}px`,
-                    cursor: 'pointer',
-                }}
+                onMouseDown={handleMouseDown}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                style={style}
             >
                 <svg
                     width={mW + MARK_LINEWIDTH}
                     height={mH + MARK_LINEWIDTH}
                     xmlns='http://www.w3.org/2000/svg'
                 >
-                    {Node.markBorder(left, top, l, m, mW, mH, markColor)}
+                    {markBorder}
                 </svg>
             </div>
             {cnode.ornaments.map((o, i) =>

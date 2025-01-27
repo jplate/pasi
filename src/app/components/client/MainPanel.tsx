@@ -21,6 +21,7 @@ import {
     DEFAULT_SCALING_LOG_INCREMENT,
     CANVAS_WIDTH_THRESHOLD,
     MAX_HISTORY,
+    MAX_GROUP_LEVEL,
 } from '../../Constants';
 import Item from './items/Item';
 import Node, {
@@ -50,14 +51,7 @@ import GroupTab from './GroupTab';
 import ENode from './items/ENode';
 import GNode from './items/GNode';
 import Point, { PointComp } from './Point';
-import Group, {
-    GroupMember,
-    StandardGroup,
-    getGroups,
-    getLeafMembers,
-    depth,
-    MAX_GROUP_LEVEL,
-} from './Group';
+import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
 import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
@@ -66,6 +60,7 @@ import { getCode, load } from '../../codec/Codec1';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
 import { useHistory } from '../../util/History';
+import { HotkeyComp, hotkeyMap } from './Hotkeys';
 import SNode from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
 import Order from './items/snodes/Order';
@@ -140,14 +135,6 @@ const GHOST_TOLERANCE = 0.5; // A GNode has to be closer than this distance (in 
 // features transferred to the latter.
 const NUMBER_FORMAT = Intl.NumberFormat('en-US');
 
-interface HotkeyInfo {
-    key: string;
-    keys: string;
-    rep: string[];
-    descr: JSX.Element;
-    descrDark?: JSX.Element;
-}
-
 interface DialogConfig {
     contentLabel?: string;
     title?: string;
@@ -155,337 +142,62 @@ interface DialogConfig {
     extraWide?: boolean;
 }
 
-export const pasi = (s: string) => {
-    return <span className='pasi text-base'>{s}</span>;
-};
-
-const transformHotkeyDescrRump = (
-    s1: string,
-    s2: string,
-    units: string,
-    addExplanation: boolean,
-    darkMode: boolean
-): JSX.Element => (
+const addNodeButtonTooltip = (
     <>
-        {s1} selection {s2} by 10
-        <span className='text-xs align-top'>
-            <i>n</i>
-        </span>{' '}
-        {units}, where <i>n</i>&thinsp; ranges from -1 to 2 (default: {DEFAULT_TRANSLATION_LOG_INCREMENT}
-        ).&nbsp;
-        {addExplanation ? (
-            <>
-                The value of <i>n</i>&thinsp; can be set by using the keys &thinsp;
-                {darkMode ? (
-                    <>
-                        <span className='font-mono'>{1}</span>&ndash;<span className='font-mono'>{4}</span>
-                    </>
-                ) : (
-                    <>
-                        <kbd>1</kbd>&thinsp;&ndash;&thinsp;<kbd>4</kbd>&thinsp;
-                    </>
-                )}
-                .
-            </>
-        ) : null}
+        Create entity nodes at the selected locations.
+        <HotkeyComp mapKey='add nodes' />
     </>
 );
 
-const scaleDownHotkeyDescr = (darkMode: boolean): JSX.Element => (
+const addContourButtonTooltip = (
     <>
-        Decrease {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', false, darkMode)}{' '}
-        The value of 100% corresponds to the size of the selection&mdash;as measured by the distances between
-        selected nodes&mdash;at the time it was initiated. Scaling is affected by the relevant options listed
-        in the &lsquo;Transform&rsquo; tab.
+        Create contours at the selected locations.
+        <HotkeyComp mapKey='add contours' />
     </>
 );
 
-const scaleUpHotkeyDescr = (darkMode: boolean): JSX.Element => (
-    <>Increase {transformHotkeyDescrRump('the scaling of the', '', 'percentage points', true, darkMode)}</>
+const abstractButtonTooltip = (
+    <>
+        Create &lsquo;ghost&rsquo; versions of selected nodes.
+        <HotkeyComp mapKey='abstract' />
+    </>
 );
 
-export const hotkeys: HotkeyInfo[] = [
-    { key: 'add nodes', keys: 'n', rep: ['N'], descr: <>Add entity nodes at selected locations.</> },
-    { key: 'add contours', keys: 'm', rep: ['M'], descr: <>Add contours at selected locations.</> },
-    {
-        key: 'abstract',
-        keys: 'x',
-        rep: ['X'],
-        descr: (
-            <>
-                Create <i>abstractions</i> of selected nodes: &lsquo;ghost nodes&rsquo; that will transfer
-                their own features onto any nodes they&rsquo;re dragged onto.
-            </>
-        ),
-    },
-    {
-        key: 'copy',
-        keys: 'c',
-        rep: ['C'],
-        descr: (
-            <>
-                Create copies of selected items. (This works not just with nodes, but also with labels.) Add
-                new members to an existing group by copying individual members.
-            </>
-        ),
-    },
-    { key: 'add labels', keys: 'l', rep: ['L'], descr: <>Attach a label to each selected node.</> },
-    {
-        key: 'create',
-        keys: 'space',
-        rep: ['Space'],
-        descr: (
-            <>
-                Create one or more &lsquo;dependent items&rsquo;, such as labels or arrows, attached to the
-                currently selected nodes. (Equivalent to clicking the {pasi('Create')} button.)
-            </>
-        ),
-    },
-    { key: 'undo', keys: 'z', rep: ['Z'], descr: <>Undo.</> },
-    { key: 'redo', keys: 'y', rep: ['Y'], descr: <>Redo.</> },
-    { key: 'move up', keys: 'w, up', rep: ['W', '↑'], descr: <>Move selection upwards.</> },
-    { key: 'move left', keys: 'a, left', rep: ['A', '←'], descr: <>Move selection to the left.</> },
-    { key: 'move down', keys: 's, down', rep: ['S', '↓'], descr: <>Move selection downwards.</> },
-    { key: 'move right', keys: 'd, right', rep: ['D', '→'], descr: <>Move selection to the right.</> },
-    {
-        key: 'set increment to 0.1px',
-        keys: '1',
-        rep: ['1'],
-        descr: <>Set movement distance to 0.1 pixels.</>,
-    },
-    { key: 'set increment to 1px', keys: '2', rep: ['2'], descr: <>Set movement distance to 1 pixel.</> },
-    { key: 'set increment to 10px', keys: '3', rep: ['3'], descr: <>Set movement distance to 10 pixels.</> },
-    {
-        key: 'set increment to 100px',
-        keys: '4',
-        rep: ['4'],
-        descr: <>Set movement distance to 100 pixels.</>,
-    },
-    { key: 'dec sh', keys: '5', rep: ['5'], descr: <>Decrease shading by 0.1.</> },
-    { key: 'inc sh', keys: '6', rep: ['6'], descr: <>Increase shading by 0.1 (maximum: 1).</> },
-    { key: 'sh 0', keys: '7', rep: ['7'], descr: <>Set shading to 0.</> },
-    { key: 'sh 1', keys: 'shift+7', rep: ['Shift+7'], descr: <>Set shading to 1.</> },
-    { key: 'dec lw', keys: '8', rep: ['8'], descr: <>Decrease linewidth by 0.1 pixels.</> },
-    {
-        key: 'inc lw',
-        keys: '9',
-        rep: ['9'],
-        descr: <>Increase linewidth by 0.1 pixels (maximum: {MAX_LINEWIDTH} pixels).</>,
-    },
-    { key: 'lw 0', keys: '0', rep: ['0'], descr: <>Set linewidth to 0.</> },
-    { key: 'lw 1', keys: 'shift+0', rep: ['Shift+0'], descr: <>Set linewidth to 1 pixel.</> },
-    { key: 'hflip', keys: 'f', rep: ['F'], descr: <>Flip selection horizontally.</> },
-    { key: 'vflip', keys: 'v', rep: ['V'], descr: <>Flip selection vertically.</> },
-    { key: 'polygons', keys: 'p', rep: ['P'], descr: <>Turn selected contours into regular polygons.</> },
-    {
-        key: 'rotate by 45° counter-clockwise',
-        keys: 'q',
-        rep: ['Q'],
-        descr: <>Rotate selection counter-clockwise by 45 degrees.</>,
-    },
-    {
-        key: 'rotate counter-clockwise',
-        keys: 'shift+q',
-        rep: ['Shift+Q'],
-        descr: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, false)}</>,
-        descrDark: <>{transformHotkeyDescrRump('Rotate', 'counter-clockwise', 'degrees', true, true)}</>,
-    },
-    {
-        key: 'rotate by 45° clockwise',
-        keys: 'e',
-        rep: ['E'],
-        descr: <>Rotate selection clockwise by 45 degrees.</>,
-    },
-    {
-        key: 'rotate clockwise',
-        keys: 'shift+e',
-        rep: ['Shift+E'],
-        descr: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, false)}</>,
-        descrDark: <>{transformHotkeyDescrRump('Rotate', 'clockwise', 'degrees', true, true)}</>,
-    },
-    {
-        key: 'rotate by 180/n deg',
-        keys: 'r',
-        rep: ['R'],
-        descr: (
-            <>
-                Rotate selected contours clockwise by 180 / <i>n</i> degrees, where <i>n</i>&thinsp; is the
-                number of nodes in the respective contour. (E.g., a contour with six nodes is rotated by 30
-                degrees.)
-            </>
-        ),
-    },
-    {
-        key: 'scale down',
-        keys: 'u',
-        rep: ['U'],
-        descr: scaleDownHotkeyDescr(false),
-        descrDark: scaleDownHotkeyDescr(true),
-    },
-    {
-        key: 'scale up',
-        keys: 'i',
-        rep: ['I'],
-        descr: scaleUpHotkeyDescr(false),
-        descrDark: scaleUpHotkeyDescr(true),
-    },
-    {
-        key: 'round',
-        keys: 't',
-        rep: ['T'],
-        descr: <>Round the location of each selected node to the nearest pixel.</>,
-    },
-    {
-        key: 'create group',
-        keys: 'g',
-        rep: ['G'],
-        descr: (
-            <>
-                Create a group that contains, for each selected item, either the item itself or the highest
-                group among those with which the item is connected by a chain of active membership and that
-                are such that all their &lsquo;leaf members&rsquo; are among the selected items. (Maximum
-                group level: {MAX_GROUP_LEVEL}.)
-            </>
-        ),
-    },
-    {
-        key: 'leave',
-        keys: 'h',
-        rep: ['H'],
-        descr: (
-            <>
-                Deactivate the membership of each selected item or its second-highest &lsquo;active&rsquo;
-                group (where applicable) in its currently highest active group.
-            </>
-        ),
-    },
-    {
-        key: 'rejoin',
-        keys: 'j',
-        rep: ['J'],
-        descr: (
-            <>
-                Reactivate the membership of each selected item or (where applicable) its highest active group
-                in the next-lowest group.
-            </>
-        ),
-    },
-    {
-        key: 'restore',
-        keys: 'k',
-        rep: ['K'],
-        descr: (
-            <>Reactivate the membership of each member of each selected item&rsquo;s highest active group.</>
-        ),
-    },
-    {
-        key: 'adding',
-        keys: 'comma',
-        rep: [','],
-        descr: (
-            <>
-                Turn on &lsquo;adding&rsquo;. In this mode, selecting an item will add it (or its highest
-                active group, where applicable) to the highest active group of the currently focused item.
-                (This mode can be turned off by clicking on the canvas or by turning on
-                &lsquo;dissolve-adding&rsquo;.)
-            </>
-        ),
-    },
-    {
-        key: 'dissolve-adding',
-        keys: '.',
-        rep: ['.'],
-        descr: (
-            <>
-                Turn on &lsquo;dissolve-adding&rsquo;. In this mode, selecting a item will add <em>all</em>{' '}
-                members of its highest active group (or the item itself, if there is no such group) to the
-                highest active group of the currently focused item.
-            </>
-        ),
-    },
-    {
-        key: 'delete',
-        keys: 'delete, backspace',
-        rep: ['Delete', 'Backspace'],
-        descr: <>Delete all selected items.</>,
-    },
-    {
-        key: 'clear points',
-        keys: 'shift+space',
-        rep: ['Shift+Space'],
-        descr: <>Deselect any currently selected locations on the canvas.</>,
-    },
-    {
-        key: 'generate code',
-        keys: 'shift+enter',
-        rep: ['Shift+Enter'],
-        descr: (
-            <>
-                Generate the <i>texdraw</i>&thinsp; code for the current diagram and display it in the text
-                area below the canvas.
-            </>
-        ),
-    },
-    {
-        key: 'load diagram',
-        keys: 'mod+enter',
-        rep: ['Ctrl+Enter'],
-        descr: (
-            <>
-                (Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.
-            </>
-        ),
-    },
-];
-
-const hotkeyMap: Record<string, string> = hotkeys.reduce(
-    (acc, info) => {
-        acc[info.key] = info.keys;
-        return acc;
-    },
-    {} as Record<string, string>
+const copyButtonTooltip = (
+    <>
+        Copy selection.
+        <HotkeyComp mapKey='copy' />
+    </>
 );
 
-const hotkeyRepMap: Record<string, string[]> = hotkeys.reduce(
-    (acc, info) => {
-        acc[info.key] = info.rep;
-        return acc;
-    },
-    {} as Record<string, string[]>
+const generateButtonTooltip = (
+    <>
+        Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
+        {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may
+        be lost as a result.) <HotkeyComp mapKey='generate code' />
+    </>
 );
 
-interface HotkeyCompProps {
-    mapKey: string;
-}
-
-export const HotkeyComp = ({ mapKey }: HotkeyCompProps) => {
-    let result: React.ReactNode | null = null;
-    if (mapKey in hotkeyRepMap) {
-        const keyReps = hotkeyRepMap[mapKey];
-        const n = keyReps.length;
-        if (n > 0) {
-            result = (
-                <>
-                    <br />
-                    {n > 1 ? 'Hotkeys' : 'Hotkey'}
-                    :&nbsp;
-                    {keyReps.map((s, i) => (
-                        <React.Fragment key={i}>
-                            <kbd>{s}</kbd>
-                            {i < n - 1 && <>,&nbsp;</>}
-                        </React.Fragment>
-                    ))}
-                </>
-            );
-        }
-    }
-    return result;
-};
+const loadButtonTooltip = (
+    <>
+        Load diagram from <i>texdraw</i> code.
+        <HotkeyComp mapKey='load diagram' />
+    </>
+);
 
 // For some reaon, hotkeys-react-hook doesn't work for undo/redo, so we have to do this manually:
 const keyChecker = (key: string) => (event: React.KeyboardEvent<HTMLElement>) => matchKeys(event, key);
 const undoChecker = keyChecker(hotkeyMap['undo']);
 const redoChecker = keyChecker(hotkeyMap['redo']);
+
+const menuButtonClass = clsx('py-1.5', menuButtonClassName);
+
+const tabClass = clsx(
+    'py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
+    'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
+    'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
+    'data-[selected]:data-[hover]:text-btncolor'
+);
 
 export const DarkModeContext = createContext(false);
 
@@ -1561,50 +1273,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     );
 
     /**
-     * Creates 'ghost nodes' in place of the supplied nodes, to which all the latter's features are then transferred. The original nodes are deleted
-     * unless they are CNodes.
-     */
-    const abstractSelection = useCallback(() => {
-        let n = eNodeCounter;
-        const gnodes: GNode[] = [];
-        let newFocus: Item | null = null;
-        const newSelection: Item[] = selection.map((node) => {
-            if (node instanceof Node) {
-                const [x, y] = node.getLocation();
-                const gn = new GNode(n++, x, y);
-                gnodes.push(gn);
-                transferFeatures(node, gn, unitScale, displayFontFactor);
-                if (focusItem === node) {
-                    newFocus = gn;
-                }
-                return gn;
-            } else {
-                return node;
-            }
-        });
-        deleteItems(
-            // CNodes and nodes that come with connectors aren't deleted, because that would entail a (probably unintended) loss of information.
-            selectedNodes.filter((n) => !(n instanceof CNode) && n.isIndependent()),
-            [...list, ...gnodes],
-            selection,
-            newSelection,
-            focusItem,
-            newFocus
-        );
-        setENodeCounter(n);
-    }, [
-        eNodeCounter,
-        list,
-        selection,
-        focusItem,
-        selectedNodes,
-        unitScale,
-        displayFontFactor,
-        setENodeCounter,
-        deleteItems,
-    ]);
-
-    /**
      * Mouse down handler for items on the canvas.
      */
     const itemMouseDown = useCallback(
@@ -2252,9 +1920,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         showModal('Apology', 'Sorry, this feature has not yet been implemented!', false, '');
     }, [showModal]);
 
-    /**
-     * OnClick handler for the 'Create' button.
-     */
     const createDepItem = useCallback(
         (index: number) => {
             if (selectedNodes.length > 0 && index >= 0 && index < depItemKeys.length) {
@@ -2328,7 +1993,58 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         [list, focusItem, selectedNodes, unitScale, displayFontFactor, eNodeCounter, update, setOrigin, sorry]
     );
 
-    const copySelection = () => {
+    /**
+     * OnClick handler for the 'Create' button.
+     */
+    const handleCreateDepItem = useCallback(() => {
+        createDepItem(depItemIndex);
+    }, [depItemIndex, createDepItem]);
+
+    /**
+     * Creates 'ghost nodes' in place of the supplied nodes, to which all the latter's features are then transferred. The original nodes are deleted
+     * unless they are CNodes.
+     */
+    const abstractSelection = useCallback(() => {
+        let n = eNodeCounter;
+        const gnodes: GNode[] = [];
+        let newFocus: Item | null = null;
+        const newSelection: Item[] = selection.map((node) => {
+            if (node instanceof Node) {
+                const [x, y] = node.getLocation();
+                const gn = new GNode(n++, x, y);
+                gnodes.push(gn);
+                transferFeatures(node, gn, unitScale, displayFontFactor);
+                if (focusItem === node) {
+                    newFocus = gn;
+                }
+                return gn;
+            } else {
+                return node;
+            }
+        });
+        deleteItems(
+            // CNodes and nodes that come with connectors aren't deleted, because that would entail a (probably unintended) loss of information.
+            selectedNodes.filter((n) => !(n instanceof CNode) && n.isIndependent()),
+            [...list, ...gnodes],
+            selection,
+            newSelection,
+            focusItem,
+            newFocus
+        );
+        setENodeCounter(n);
+    }, [
+        eNodeCounter,
+        list,
+        selection,
+        focusItem,
+        selectedNodes,
+        unitScale,
+        displayFontFactor,
+        setENodeCounter,
+        deleteItems,
+    ]);
+
+    const copySelection = useCallback(() => {
         const nodes = addDependents(
             selection.filter((it) => it instanceof Node),
             false
@@ -2362,7 +2078,24 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         if (newFocusItem) {
             scrollTo(newFocusItem);
         }
-    };
+    }, [
+        selection,
+        topMembers,
+        list,
+        focusItem,
+        eNodeCounter,
+        cngCounter,
+        sgCounter,
+        hDisplacement,
+        vDisplacement,
+        unitScale,
+        displayFontFactor,
+        points,
+        update,
+        setOrigin,
+        adjustLimit,
+        scrollTo,
+    ]);
 
     /**
      * The callback function for the ItemEditor. Only needed if focusItem is not null. The ItemEditor will use this in constructing change handlers
@@ -3054,6 +2787,36 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         reset();
     }, [diagramCode, loadDiagram, reset]);
 
+    const handleTextAreaChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            setCode(e.target.value);
+        },
+        [setCode]
+    );
+
+    const handleChangeAdding = useCallback(() => {
+        const add = !adding;
+        setAdding(add);
+        if (add) setDissolveAdding(!add);
+    }, [adding, setAdding, setDissolveAdding]);
+
+    const handleChangeDissolveAdding = useCallback(() => {
+        const add = !dissolveAdding;
+        setDissolveAdding(add);
+        if (add) setAdding(!add);
+    }, [dissolveAdding, setDissolveAdding, setAdding]);
+
+    const handleDelete = useCallback(
+        () => deleteItems(deduplicatedSelection),
+        [deleteItems, deduplicatedSelection]
+    );
+
+    const handleGenerate = useCallback(() => displayCode(unitScale), [displayCode, unitScale]);
+
+    const handleLoad = useCallback(() => loadDiagram(code, replace), [loadDiagram, code, replace]);
+
+    const handleReplace = useCallback(() => setReplace(!replace), [setReplace, replace]);
+
     const numberOfTbcENodes = useMemo(
         () => deduplicatedSelection.reduce((acc, m) => (m instanceof ENode ? acc + 1 : acc), 0),
         [deduplicatedSelection]
@@ -3097,6 +2860,10 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     MAX_NUMBER_OF_ORNAMENTS
         );
     }, [topMembers, deduplicatedSelection]);
+
+    /************************************************************************************************
+     * HOTKEYS
+     ************************************************************************************************/
 
     const canCopy: boolean = useMemo(
         () =>
@@ -3349,6 +3116,68 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     }, 100);
     useHotkeys('mod+b', throttledToggleTrueBlack);
 
+    /************************************************************************************************
+     * MODAL DIALOG CALLBACKS ETC.
+     ************************************************************************************************/
+
+    const dialogStyle = useMemo(
+        () => ({
+            content: {
+                top: '50%',
+                left: '50%',
+                width: dialog.extraWide ? '60rem' : '40rem', // We use wider boxes to display more complex content.
+                right: 'auto',
+                bottom: 'auto',
+                marginRight: '-50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: 'none',
+            },
+        }),
+        [dialog]
+    );
+
+    const overlayClass = useMemo(
+        () => clsx('fixed inset-0', dark ? 'bg-black/70' : 'bg-gray-900/70'),
+        [dark]
+    );
+
+    const modalDialogClass = useMemo(
+        () =>
+            clsx(
+                'pasi prose prose-lg',
+                dark ? 'prose-dark' : 'prose-light',
+                dialog.extraWide ? 'min-w-[60rem]' : 'min-w-[40rem]',
+                'grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'
+            ),
+        [dark, dialog]
+    );
+
+    const okButtonClass = useMemo(
+        () => clsx('w-20 rounded-xl', dialog.title ? 'mt-6 mb-4' : 'mt-4 mb-2'),
+        [dialog]
+    );
+
+    const modalOnAfterOpen = useCallback(() => setTimeout(() => okButtonRef.current?.focus(), 500), []);
+
+    const modalOnRequestClose = useCallback(() => {
+        document.body.classList.add('modal-closing');
+        setModalShown(false);
+    }, [setModalShown]);
+
+    const modalOnAfterClose = useCallback(() => {
+        document.body.classList.remove('modal-closing');
+    }, []);
+
+    const modalOnClick = useCallback(() => okButtonRef.current?.focus(), []);
+
+    const okButtonOnClick = useCallback(() => {
+        document.body.classList.add('modal-closing'); // This will tell any anchor elements visible under the Overlay to return to
+        // their original color.
+        setModalShown(false);
+    }, [setModalShown]);
+
     /********************************************************************************************
      * RENDERING
      *******************************************************************************************/
@@ -3387,6 +3216,24 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         ]
     );
 
+    const codePanelStyle = useMemo(() => ({ minWidth: canvasWidth }), [canvasWidth]);
+
+    const menuItemList = useMemo(
+        () => (
+            <MenuItemList>
+                {depItemInfos.map((label, index) => (
+                    <MenuItem key={`di-${index}`}>
+                        <button className={menuItemButtonClassName} onClick={() => setDepItemIndex(index)}>
+                            <div className='inline mr-2'>{label.getImageComp(dark)}</div>
+                            {label.label}
+                        </button>
+                    </MenuItem>
+                ))}
+            </MenuItemList>
+        ),
+        [dark, setDepItemIndex]
+    );
+
     const transformTabDisabled = selectedNodesDeduplicated.length === 0;
 
     const groupTabDisabled = !focusItem;
@@ -3397,25 +3244,124 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             ? 0
             : userSelectedTabIndex;
 
-    // The delete button gets some special colors:
-    const deleteButtonStyle = clsx(
-        'rounded-xl',
-        dark
-            ? clsx(
-                  'bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
-                  'enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring'
-              )
-            : clsx(
-                  'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200',
-                  'enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'
-              )
+    const editorTabClass = useMemo(
+        () =>
+            clsx(
+                tabClass,
+                'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0',
+                tabIndex === 1 && 'rounded-br-xl',
+                tabIndex === 2 && 'border-r-0'
+            ),
+        [tabIndex]
     );
 
-    const tabClassName = clsx(
-        'py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
-        'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
-        'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
-        'data-[selected]:data-[hover]:text-btncolor'
+    const transformTabClass = useMemo(
+        () =>
+            clsx(
+                tabClass,
+                'col-span-4 data-[selected]:border-x-0',
+                tabIndex === 0 && 'border-l-[1px] rounded-bl-xl border-l-0',
+                tabIndex == 2 && 'border-r-[1px] rounded-br-xl border-r-0'
+            ),
+        [tabIndex]
+    );
+
+    const groupTabClass = useMemo(
+        () =>
+            clsx(
+                tabClass,
+                'col-span-3 border-r-0 rounded-tr-xl data-[selected]:border-l-0',
+                tabIndex === 0 && 'border-l-0',
+                tabIndex === 1 && 'rounded-bl-xl'
+            ),
+        [tabIndex]
+    );
+
+    const canvasEditor = useMemo(
+        () => (
+            <CanvasEditor
+                grid={grid}
+                hDisp={hDisplacement}
+                vDisp={vDisplacement}
+                displayFontFactor={displayFontFactor}
+                changeHGap={(e) =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
+                    }))
+                }
+                changeVGap={(e) =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
+                    }))
+                }
+                changeHShift={(e) =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
+                    }))
+                }
+                changeVShift={(e) =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
+                    }))
+                }
+                changeSnapToNode={() =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        snapToNodes: !prevGrid.snapToNodes,
+                    }))
+                }
+                changeSnapToCC={() =>
+                    setGrid((prevGrid) => ({
+                        ...prevGrid,
+                        snapToContourCenters: !prevGrid.snapToContourCenters,
+                    }))
+                }
+                changeHDisp={(e) =>
+                    setHDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))
+                }
+                changeVDisp={(e) =>
+                    setVDisplacement(validFloat(e.target.value, MIN_DISPLACEMENT, MAX_DISPLACEMENT))
+                }
+                changeDFF={changeDisplayFontFactor}
+                reset={() => {
+                    setGrid(createGrid());
+                    setHDisplacement(DEFAULT_HDISPLACEMENT);
+                    setVDisplacement(DEFAULT_VDISPLACEMENT);
+                }}
+            />
+        ),
+        [
+            grid,
+            hDisplacement,
+            vDisplacement,
+            displayFontFactor,
+            setGrid,
+            setHDisplacement,
+            setVDisplacement,
+            changeDisplayFontFactor,
+        ]
+    );
+
+    // The delete button gets some special colors:
+    const deleteButtonStyle = useMemo(
+        () =>
+            clsx(
+                'rounded-xl',
+                dark
+                    ? clsx(
+                          'bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
+                          'enabled:hover:bg-btnhoverbg enabled:active:bg-btnactivebg enabled:active:text-black focus:ring-btnfocusring'
+                      )
+                    : clsx(
+                          'bg-pink-50/85 text-pink-600 border-pink-600/50 enabled:hover:text-pink-600 enabled:hover:bg-pink-200',
+                          'enabled:active:bg-red-400 enabled:active:text-white focus:ring-pink-400'
+                      )
+            ),
+        [dark]
     );
 
     /*
@@ -3555,34 +3501,25 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     <canvas id='real-canvas' className='w-72 h-24 hidden'>
                         {/* This canvas element helps Label components determine the 'true' height of a given piece of text. */}
                     </canvas>
-                    <div
-                        id='code-panel'
-                        className='relative mt-[25px] h-[190px]'
-                        style={{ minWidth: canvasWidth }}
-                    >
+                    <div id='code-panel' className='relative mt-[25px] h-[190px]' style={codePanelStyle}>
                         <textarea
                             className='codepanel w-full h-full p-2 shadow-inner text-sm focus:outline-none resize-none'
                             ref={codeRef}
                             value={code}
                             spellCheck={false}
-                            onChange={(e) => setCode(e.target.value)}
+                            onChange={handleTextAreaChange}
                         />
                         <CopyToClipboardButton id='copy-button' iconSize={6} textareaRef={codeRef} />
                     </div>
                 </div>
-                <div id='button-panels' className={clsx('flex-grow min-w-[315px] max-w-[380px] select-none')}>
+                <div id='button-panels' className='flex-grow min-w-[315px] max-w-[380px] select-none'>
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <BasicColoredButton
                                 id='node-button'
                                 label='Node'
                                 style='rounded-xl mr-1.5'
-                                tooltip={
-                                    <>
-                                        Create entity nodes at the selected locations.
-                                        <HotkeyComp mapKey='add nodes' />
-                                    </>
-                                }
+                                tooltip={addNodeButtonTooltip}
                                 tooltipPlacement='top'
                                 disabled={!canAddENodes}
                                 onClick={addEntityNodes}
@@ -3591,12 +3528,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 id='contour-button'
                                 label='Contour'
                                 style='rounded-xl'
-                                tooltip={
-                                    <>
-                                        Create contours at the selected locations.
-                                        <HotkeyComp mapKey='add contours' />
-                                    </>
-                                }
+                                tooltip={addContourButtonTooltip}
                                 tooltipPlacement='top'
                                 disabled={!canAddContours}
                                 onClick={addContours}
@@ -3607,7 +3539,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'
                         >
                             <Menu>
-                                <MenuButton className={clsx('py-1.5', menuButtonClassName)}>
+                                <MenuButton className={menuButtonClass}>
                                     <div className='flex-none mx-2'>
                                         {depItemInfos[depItemIndex].getImageComp(dark)}
                                     </div>
@@ -3616,26 +3548,14 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                         <ChevronSVG />
                                     </div>
                                 </MenuButton>
-                                <MenuItemList>
-                                    {depItemInfos.map((label, index) => (
-                                        <MenuItem key={`di-${index}`}>
-                                            <button
-                                                className={menuItemButtonClassName}
-                                                onClick={() => setDepItemIndex(index)}
-                                            >
-                                                <div className='inline mr-2'>{label.getImageComp(dark)}</div>
-                                                {label.label}
-                                            </button>
-                                        </MenuItem>
-                                    ))}
-                                </MenuItemList>
+                                {menuItemList}
                             </Menu>
                             <BasicColoredButton
                                 id='create-button'
                                 label='Create'
                                 style='mt-2 rounded-md'
                                 disabled={!canCreateDepItem}
-                                onClick={() => createDepItem(depItemIndex)}
+                                onClick={handleCreateDepItem}
                             />
                         </div>
                         <div className='grid grid-cols-2 mb-3.5'>
@@ -3643,26 +3563,16 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 id='abstract-button'
                                 label='Abstract'
                                 style='rounded-xl mr-1.5'
-                                tooltip={
-                                    <>
-                                        Create &lsquo;ghost&rsquo; versions of selected nodes.
-                                        <HotkeyComp mapKey='abstract' />
-                                    </>
-                                }
+                                tooltip={abstractButtonTooltip}
                                 tooltipPlacement='left'
                                 disabled={selectedNodes.length === 0}
-                                onClick={() => abstractSelection()}
+                                onClick={abstractSelection}
                             />
                             <BasicColoredButton
                                 id='copy-button'
                                 label='Copy'
                                 style='rounded-xl'
-                                tooltip={
-                                    <>
-                                        Copy selection.
-                                        <HotkeyComp mapKey='copy' />
-                                    </>
-                                }
+                                tooltip={copyButtonTooltip}
                                 tooltipPlacement='right'
                                 disabled={!canCopy}
                                 onClick={copySelection}
@@ -3674,39 +3584,17 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             onChange={setUserSelectedTabIndex}
                         >
                             <TabList className='grid grid-cols-10 mb-0.5'>
-                                <Tab
-                                    key='editor-tab'
-                                    className={clsx(
-                                        tabClassName,
-                                        'col-span-3 border-l-0 rounded-tl-xl data-[selected]:border-r-0',
-                                        tabIndex === 1 && 'rounded-br-xl',
-                                        tabIndex === 2 && 'border-r-0'
-                                    )}
-                                >
+                                <Tab key='editor-tab' className={editorTabClass}>
                                     Editor
                                 </Tab>
                                 <Tab
                                     key='transform-tab'
-                                    className={clsx(
-                                        tabClassName,
-                                        'col-span-4 data-[selected]:border-x-0',
-                                        tabIndex === 0 && 'border-l-[1px] rounded-bl-xl border-l-0',
-                                        tabIndex == 2 && 'border-r-[1px] rounded-br-xl border-r-0'
-                                    )}
+                                    className={transformTabClass}
                                     disabled={transformTabDisabled}
                                 >
                                     Transform
                                 </Tab>
-                                <Tab
-                                    key='group-tab'
-                                    className={clsx(
-                                        tabClassName,
-                                        'col-span-3 border-r-0 rounded-tr-xl data-[selected]:border-l-0',
-                                        tabIndex === 0 && 'border-l-0',
-                                        tabIndex === 1 && 'rounded-bl-xl'
-                                    )}
-                                    disabled={groupTabDisabled}
-                                >
+                                <Tab key='group-tab' className={groupTabClass} disabled={groupTabDisabled}>
                                     Groups
                                 </Tab>
                             </TabList>
@@ -3720,72 +3608,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                             onChange={itemChange}
                                         />
                                     ) : (
-                                        <CanvasEditor
-                                            grid={grid}
-                                            hDisp={hDisplacement}
-                                            vDisp={vDisplacement}
-                                            displayFontFactor={displayFontFactor}
-                                            changeHGap={(e) =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    hGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
-                                                }))
-                                            }
-                                            changeVGap={(e) =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    vGap: validFloat(e.target.value, MIN_GAP, MAX_GAP),
-                                                }))
-                                            }
-                                            changeHShift={(e) =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    hShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
-                                                }))
-                                            }
-                                            changeVShift={(e) =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    vShift: validFloat(e.target.value, MIN_SHIFT, MAX_SHIFT),
-                                                }))
-                                            }
-                                            changeSnapToNode={() =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    snapToNodes: !prevGrid.snapToNodes,
-                                                }))
-                                            }
-                                            changeSnapToCC={() =>
-                                                setGrid((prevGrid) => ({
-                                                    ...prevGrid,
-                                                    snapToContourCenters: !prevGrid.snapToContourCenters,
-                                                }))
-                                            }
-                                            changeHDisp={(e) =>
-                                                setHDisplacement(
-                                                    validFloat(
-                                                        e.target.value,
-                                                        MIN_DISPLACEMENT,
-                                                        MAX_DISPLACEMENT
-                                                    )
-                                                )
-                                            }
-                                            changeVDisp={(e) =>
-                                                setVDisplacement(
-                                                    validFloat(
-                                                        e.target.value,
-                                                        MIN_DISPLACEMENT,
-                                                        MAX_DISPLACEMENT
-                                                    )
-                                                )
-                                            }
-                                            changeDFF={changeDisplayFontFactor}
-                                            reset={() => {
-                                                setGrid(createGrid());
-                                                setHDisplacement(DEFAULT_HDISPLACEMENT);
-                                                setVDisplacement(DEFAULT_VDISPLACEMENT);
-                                            }}
-                                        />
+                                        canvasEditor
                                     )}
                                 </TabPanel>
                                 <TabPanel key='transform-panel' className='rounded-xl px-2 py-2'>
@@ -3814,16 +3637,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                             leave={leaveGroup}
                                             rejoin={rejoinGroup}
                                             restore={restoreGroup}
-                                            changeAdding={() => {
-                                                const add = !adding;
-                                                setAdding(add);
-                                                if (add) setDissolveAdding(!add);
-                                            }}
-                                            changeDissolveAdding={() => {
-                                                const add = !dissolveAdding;
-                                                setDissolveAdding(add);
-                                                if (add) setAdding(!add);
-                                            }}
+                                            changeAdding={handleChangeAdding}
+                                            changeDissolveAdding={handleChangeDissolveAdding}
                                         />
                                     )}
                                 </TabPanel>
@@ -3890,7 +3705,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 style={deleteButtonStyle}
                                 tooltip='Delete'
                                 disabled={!canDelete}
-                                onClick={() => deleteItems(deduplicatedSelection)}
+                                onClick={handleDelete}
                                 icon={
                                     // source: https://heroicons.com/
                                     <svg
@@ -3918,17 +3733,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             label='Generate'
                             style='rounded-xl mb-2 py-2'
                             disabled={false}
-                            tooltip={
-                                <>
-                                    Generate and display <i>texdraw</i> code. (To save space, all coordinates
-                                    are rounded to the nearest{' '}
-                                    {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a
-                                    pixel. Some information may be lost as a result.){' '}
-                                    <HotkeyComp mapKey='generate code' />
-                                </>
-                            }
+                            tooltip={generateButtonTooltip}
                             tooltipPlacement='top'
-                            onClick={() => displayCode(unitScale)}
+                            onClick={handleGenerate}
                         />
                         <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
                             1 px =
@@ -3947,59 +3754,27 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             label='Load'
                             style='rounded-xl mb-2 py-2'
                             disabled={false}
-                            tooltip={
-                                <>
-                                    Load diagram from <i>texdraw</i> code.
-                                    <HotkeyComp mapKey='load diagram' />
-                                </>
-                            }
+                            tooltip={loadButtonTooltip}
                             tooltipPlacement='left'
-                            onClick={() => loadDiagram(code, replace)}
+                            onClick={handleLoad}
                         />
                         <CheckBoxField
                             label='Replace current diagram'
                             value={replace}
-                            onChange={() => setReplace(!replace)}
+                            onChange={handleReplace}
                         />
                     </div>
-
                     <Modal
                         isOpen={modalShown}
                         closeTimeoutMS={750}
-                        onAfterOpen={() => setTimeout(() => okButtonRef.current?.focus(), 500)}
-                        style={{
-                            content: {
-                                top: '50%',
-                                left: '50%',
-                                width: dialog.extraWide ? '60rem' : '40rem', // We use wider boxes to display more complex content.
-                                right: 'auto',
-                                bottom: 'auto',
-                                marginRight: '-50%',
-                                transform: 'translate(-50%, -50%)',
-                                backgroundColor: 'transparent',
-                                border: 'none',
-                                padding: 'none',
-                            },
-                        }}
-                        overlayClassName={clsx('fixed inset-0', dark ? 'bg-black/70' : 'bg-gray-900/70')}
+                        onAfterOpen={modalOnAfterOpen}
+                        style={dialogStyle}
+                        overlayClassName={overlayClass}
                         contentLabel={dialog.contentLabel}
-                        onRequestClose={() => {
-                            document.body.classList.add('modal-closing');
-                            setModalShown(false);
-                        }}
-                        onAfterClose={() => {
-                            document.body.classList.remove('modal-closing');
-                        }}
+                        onRequestClose={modalOnRequestClose}
+                        onAfterClose={modalOnAfterClose}
                     >
-                        <div
-                            className={clsx(
-                                'prose prose-lg',
-                                dark ? 'prose-dark' : 'prose-light',
-                                dialog.extraWide ? 'min-w-[60rem]' : 'min-w-[40rem]',
-                                'grid justify-items-center bg-modalbg px-8 py-4 border border-btnfocusring rounded-2xl'
-                            )}
-                            onClick={() => okButtonRef.current?.focus()}
-                        >
+                        <div className={modalDialogClass} onClick={modalOnClick}>
                             {dialog.title && (
                                 <div className='w-full text-center mb-4'>
                                     <h2 className='text-lg font-semibold mt-2 mb-0 py-2'>{dialog.title}</h2>
@@ -4015,13 +3790,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 id='ok-button'
                                 ref={okButtonRef}
                                 label='OK'
-                                style={clsx('w-20 rounded-xl', dialog.title ? 'mt-6 mb-4' : 'mt-4 mb-2')}
+                                style={okButtonClass}
                                 disabled={false}
-                                onClick={() => {
-                                    document.body.classList.add('modal-closing'); // This will tell any anchor elements visible under the Overlay to return to
-                                    // their original color.
-                                    setModalShown(false);
-                                }}
+                                onClick={okButtonOnClick}
                             />
                         </div>
                     </Modal>

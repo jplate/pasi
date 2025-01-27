@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, CSSProperties } from 'react';
 import clsx from 'clsx/lite';
 import { Lora } from 'next/font/google';
 import Item, { Range } from '../Item';
@@ -56,6 +56,55 @@ const vphantPattern0 = /^\s?\\vphantom\{(.*?)\}/;
 const vphantPattern1 = /\\vphantom\{(.*)\}$/;
 const centeredTextPattern = /^\\begin\{center\}(.*)\\(?:\\\\)*end\{center\}$/;
 const parboxPattern = /^\s*\\parbox\{(\d+(?:\.\d+)?)pt\}\{(.*)\}$/;
+
+const parboxLabel = <code>\parbox</code>;
+const vphantLabel = <code>\vphantom</code>;
+
+const gapTooltip = (
+    <>
+        The distance between the circumference of the node to which the label is attached and the closest
+        point of the label&rsquo;s own bounding box.
+    </>
+);
+
+const angleTooltip = (
+    <>
+        The angle of a straight line from the center of the node to which the label is attached to the nearest
+        point of the label&rsquo;s own bounding box.
+    </>
+);
+
+const parboxTooltip = (
+    <>
+        Wrap the content of the label in a <code>\parbox</code> command.
+    </>
+);
+
+const mathModeTooltip = (
+    <>
+        Enclose the content of the label in a pair of <code>$</code> characters.
+    </>
+);
+
+const tiltTooltip = (
+    <>
+        Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated text.
+    </>
+);
+
+const vphantTooltip = (
+    <>
+        Include a <code>\vphantom</code> command with the specified string. (If the <code>\parbox</code>{' '}
+        option is selected, this command will be inserted both at the end and at the beginning of the text.)
+    </>
+);
+
+const fontSizeTooltip = (
+    <>
+        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>
+        ).
+    </>
+);
 
 export default class Label extends Ornament {
     text: string = '';
@@ -158,12 +207,7 @@ export default class Label extends Ornament {
                 value: this.gap,
                 step: 0,
                 disabled: this.centered,
-                tooltip: (
-                    <>
-                        The distance between the circumference of the node to which the label is attached and
-                        the closest point of the label&rsquo;s own bounding box.
-                    </>
-                ),
+                tooltip: gapTooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -174,24 +218,15 @@ export default class Label extends Ornament {
                 value: this.angle,
                 step: 0,
                 disabled: this.centered,
-                tooltip: (
-                    <>
-                        The angle of a straight line from the center of the node to which the label is
-                        attached to the nearest point of the label&rsquo;s own bounding box.
-                    </>
-                ),
+                tooltip: angleTooltip,
                 tooltipPlacement: 'left',
             },
             {
                 type: 'checkbox',
                 key: 'parbox',
-                text: <code>\parbox</code>,
+                text: parboxLabel,
                 value: this.parbox,
-                tooltip: (
-                    <>
-                        Wrap the content of the label in a <code>\parbox</code> command.
-                    </>
-                ),
+                tooltip: parboxTooltip,
                 tooltipPlacement: 'right',
             },
             {
@@ -217,11 +252,7 @@ export default class Label extends Ornament {
                 text: 'Math mode',
                 value: this.mathMode,
                 disabled: this.parbox,
-                tooltip: (
-                    <>
-                        Enclose the content of the label in a pair of <code>$</code> characters.
-                    </>
-                ),
+                tooltip: mathModeTooltip,
                 tooltipPlacement: 'right',
             },
             {
@@ -232,31 +263,16 @@ export default class Label extends Ornament {
                 width: 'medium',
                 value: this.tilt,
                 step: 0,
-                tooltip: (
-                    <>
-                        Rotation angle (in degrees). Note: not every <i>PostScript</i> driver supports rotated
-                        text.
-                    </>
-                ),
+                tooltip: tiltTooltip,
                 tooltipPlacement: 'left',
             },
             {
                 type: 'string input',
                 key: 'vphant',
-                text: (
-                    <>
-                        <code>\vphantom</code>
-                    </>
-                ),
+                text: vphantLabel,
                 value: this.vphant,
                 width: 'long',
-                tooltip: (
-                    <>
-                        Include a <code>\vphantom</code> command with the specified string. (If the{' '}
-                        <code>\parbox</code> option is selected, this command will be inserted both at the end
-                        and at the beginning of the text.)
-                    </>
-                ),
+                tooltip: vphantTooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -266,12 +282,7 @@ export default class Label extends Ornament {
                 values: fontSizeCmdReps,
                 value: fontSizes.indexOf(this.fontSize),
                 step: 1,
-                tooltip: (
-                    <>
-                        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>
-                        ).
-                    </>
-                ),
+                tooltip: fontSizeTooltip,
                 tooltipPlacement: 'left',
             },
             { type: 'textarea', key: 'text', fullHeight: true, value: this.text },
@@ -807,23 +818,43 @@ export default class Label extends Ornament {
         const m = Math.min(Math.max(5, mH / 5), 25);
         const firstAsc = lines.length > 0 ? Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc) : MIN_HEIGHT;
 
+        const handleMouseDown = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown(this, e),
+            [onMouseDown]
+        );
+        const handleMouseEnter = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseEnter(this, e),
+            [onMouseEnter]
+        );
+        const handleMouseLeave = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseLeave(this, e),
+            [onMouseLeave]
+        );
+
+        const tilt = this.tilt;
+        const divStyle = useMemo(
+            () =>
+                ({
+                    position: 'absolute',
+                    left: `${divLeft}px`,
+                    top: `${divTop}px`,
+                    cursor: 'pointer',
+                    transform: `rotate(${-tilt}deg)`,
+                    transformOrigin: `${centered || hPos === 0 ? width / 2 : hPos === -1 ? width : 0}px ${centered || vPos === 0 ? height / 2 : vPos === -1 ? 0 : height}px`,
+                }) as CSSProperties,
+            [divLeft, divTop, tilt, centered, hPos, width, vPos, height]
+        );
+
         return (
             <div
                 className={
                     focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
                 }
                 id={this.id}
-                onMouseDown={(e) => onMouseDown(this, e)}
-                onMouseEnter={(e) => onMouseEnter(this, e)}
-                onMouseLeave={(e) => onMouseLeave(this, e)}
-                style={{
-                    position: 'absolute',
-                    left: `${divLeft}px`,
-                    top: `${divTop}px`,
-                    cursor: 'pointer',
-                    transform: `rotate(${-this.tilt}deg)`,
-                    transformOrigin: `${centered || hPos === 0 ? width / 2 : hPos === -1 ? width : 0}px ${centered || vPos === 0 ? height / 2 : vPos === -1 ? 0 : height}px`,
-                }}
+                onMouseDown={handleMouseDown}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                style={divStyle}
             >
                 <svg
                     width={width + MARK_LINEWIDTH * 4}

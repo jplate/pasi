@@ -477,7 +477,7 @@ const parseOrnament = (
     const { name, index } = validateName(nameString, true);
     let o: Ornament,
         nodeIdentifier = ''; // This will be passed on to Ornapment.parse() for the purpose of constructing error messages.
-    if (!index) {
+    if (index === undefined) {
         // In this case we're dealing with an Ornament attached to an ENode.
         const eNodeIndex = decode(name);
         if (!isFinite(eNodeIndex)) {

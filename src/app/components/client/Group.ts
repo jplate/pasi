@@ -1,5 +1,3 @@
-export const MAX_GROUP_LEVEL = 32;
-
 export interface GroupMember {
     group: Group<any> | null;
     isActiveMember: boolean;

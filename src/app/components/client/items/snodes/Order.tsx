@@ -21,6 +21,12 @@ export const ROUNDING_DIGITS = 1; // precision used for parameters specific to O
 
 const EPSILON = 1e-4;
 
+const hookAngleTooltip = (
+    <>The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center line.</>
+);
+
+const hookLengthTooltip = <>The length of the arrowhead&rsquo;s hook.</>;
+
 export default class Order extends SNode {
     hookAngle = DEFAULT_HOOK_ANGLE; // the angle (in degrees) of the 'harpoonhead's' hook
     hookLength = DEFAULT_HOOK_LENGTH; // the length of that hook
@@ -115,12 +121,7 @@ export default class Order extends SNode {
                 step: 0,
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
-                tooltip: (
-                    <>
-                        The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center
-                        line.
-                    </>
-                ),
+                tooltip: hookAngleTooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -130,7 +131,7 @@ export default class Order extends SNode {
                 width: 'medium',
                 value: this.hookLength,
                 step: 0,
-                tooltip: <>The length of the arrowhead&rsquo;s hook.</>,
+                tooltip: hookLengthTooltip,
                 tooltipPlacement: 'left',
             },
         ];

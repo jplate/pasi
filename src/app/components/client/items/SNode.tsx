@@ -126,6 +126,49 @@ export const complain = (nodeName: string): React.ReactNode => {
     );
 };
 
+const tExt0 = (
+    <>
+        the connector&rsquo;s end points switch to whichever nodes of the corresponding contour node groups
+        are closest together.
+    </>
+);
+
+const tExt1 = (
+    <>
+        the connector&rsquo;s starting point switches to whichever node of the source node&rsquo;s contour
+        node group is closest to the target node.
+    </>
+);
+
+const tExt2 = (
+    <>
+        the connector&rsquo;s end point switches to whichever node of the target node&rsquo;s contour node
+        group is closest to the source node.
+    </>
+);
+
+const phi0Tooltip = (
+    <>
+        The angle (in degrees) by which a straight line from the center of the connector&rsquo;s source node
+        to its first control point would deviate from a straight line between the two nodes.
+    </>
+);
+
+const d0Tooltip = <>The distance from the connector&rsquo;s starting point to its first control point.</>;
+
+const gap0Tooltip = <>The gap between the connector&rsquo;s source node and its starting point.</>;
+
+const phi1Tooltip = (
+    <>
+        The angle (in degrees) by which a straight line from the center of the connector&rsquo;s target node
+        to its second control point would deviate from a straight line between the two nodes.
+    </>
+);
+
+const d1Tooltip = <>The distance from the connector&rsquo;s second control point to its end point.</>;
+
+const gap1Tooltip = <>The gap between the connector&rsquo;s end point and its target node.</>;
+
 /**
  * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
  * This class roughly corresponds to the Connector class of the 2007 applet.
@@ -446,32 +489,8 @@ export default abstract class SNode extends ENode {
     getConnectorInfo(): Entry[] {
         const [n0, n1] = this.involutes;
         let checkBoxInfo: Entry[] = [];
-        let tooltipExtension: React.ReactNode = '';
         if (n0 instanceof CNode || n1 instanceof CNode) {
-            if (n0 instanceof CNode) {
-                if (n1 instanceof CNode) {
-                    tooltipExtension = (
-                        <>
-                            the connector&rsquo;s end points switch to whichever nodes of the corresponding
-                            contour node groups are closest together.
-                        </>
-                    );
-                } else {
-                    tooltipExtension = (
-                        <>
-                            the connector&rsquo;s starting point switches to whichever node of the source
-                            node&rsquo;s contour node group is closest to the target node.
-                        </>
-                    );
-                }
-            } else {
-                tooltipExtension = (
-                    <>
-                        the connector&rsquo;s end point switches to whichever node of the target node&rsquo;s
-                        contour node group is closest to the source node.
-                    </>
-                );
-            }
+            const tooltipExtension = n0 instanceof CNode ? (n1 instanceof CNode ? tExt0 : tExt1) : tExt2;
             checkBoxInfo = [
                 {
                     type: 'checkbox',
@@ -511,13 +530,7 @@ export default abstract class SNode extends ENode {
                 step: 0,
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
-                tooltip: (
-                    <>
-                        The angle (in degrees) by which a straight line from the center of the
-                        connector&rsquo;s source node to its first control point would deviate from a straight
-                        line between the two nodes.
-                    </>
-                ),
+                tooltip: phi0Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -527,9 +540,7 @@ export default abstract class SNode extends ENode {
                 width: 'long',
                 value: this.d0,
                 step: 0,
-                tooltip: (
-                    <>The distance from the connector&rsquo;s starting point to its first control point.</>
-                ),
+                tooltip: d0Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -539,7 +550,7 @@ export default abstract class SNode extends ENode {
                 width: 'medium',
                 value: this.gap0,
                 step: 0,
-                tooltip: <>The gap between the connector&rsquo;s source node and its starting point.</>,
+                tooltip: gap0Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -551,13 +562,7 @@ export default abstract class SNode extends ENode {
                 step: 0,
                 min: -MAX_ROTATION_INPUT,
                 max: MAX_ROTATION_INPUT,
-                tooltip: (
-                    <>
-                        The angle (in degrees) by which a straight line from the center of the
-                        connector&rsquo;s target node to its second control point would deviate from a
-                        straight line between the two nodes.
-                    </>
-                ),
+                tooltip: phi1Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -567,7 +572,7 @@ export default abstract class SNode extends ENode {
                 width: 'long',
                 value: this.d1,
                 step: 0,
-                tooltip: <>The distance from the connector&rsquo;s second control point to its end point.</>,
+                tooltip: d1Tooltip,
                 tooltipPlacement: 'left',
             },
             {
@@ -577,7 +582,7 @@ export default abstract class SNode extends ENode {
                 width: 'medium',
                 value: this.gap1,
                 step: 0,
-                tooltip: <>The gap between the connector&rsquo;s end point and its target node.</>,
+                tooltip: gap1Tooltip,
                 tooltipPlacement: 'left',
             },
             { type: 'logIncrement', extraBottomMargin: false },

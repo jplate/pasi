@@ -3,7 +3,56 @@ import React from 'react';
 import Item from './items/Item';
 import { getGroups } from './Group';
 import { BasicColoredButton } from './Button';
-import { HotkeyComp } from './MainPanel';
+import { HotkeyComp } from './Hotkeys';
+
+const createTooltip = (
+    <>
+        Creates a new group that contains all selected items (or, where applicable, the highest among their
+        respective &lsquo;active&rsquo; groups that are also such that all their leaf members are selected),
+        and removes these from their current groups.
+        <HotkeyComp mapKey='create group' />
+    </>
+);
+
+const leaveTooltip = (
+    <>
+        Deactivates the membership of each selected item (or of its second-highest active group, where
+        applicable) in its currently highest active group. Items will still be members of their respective
+        groups, but selecting them will no longer select the other members as well.
+        <HotkeyComp mapKey='leave' />
+    </>
+);
+
+const rejoinTooltip = (
+    <>
+        Reactivates the membership of the each selected item (or its highest active group, where applicable)
+        in the next-lowest group. <HotkeyComp mapKey='rejoin' />
+    </>
+);
+
+const restoreTooltip = (
+    <>
+        Reactivates the membership of each member of each selected item&apos;s highest active group.
+        <HotkeyComp mapKey='restore' />
+    </>
+);
+
+const addTooltip = (
+    <>
+        Selecting items (while not holding <kbd>Ctrl</kbd> pressed) adds their highest active groups to the
+        present group. Selecting items while holding <kbd>Ctrl</kbd> pressed adds only the individual items.
+        <HotkeyComp mapKey='adding' />
+    </>
+);
+
+const dissolveAddTooltip = (
+    <>
+        Selecting items adds either the members of their highest active groups (where applicable) or the items
+        themselves to the present group. Selecting items while holding <kbd>Ctrl</kbd> pressed adds only the
+        individual items.
+        <HotkeyComp mapKey='dissolve-adding' />
+    </>
+);
 
 export interface GroupTabProps {
     item: Item;
@@ -44,15 +93,8 @@ const GroupTab = ({
                 style='px-2 mx-2 mt-1 rounded-lg text-sm'
                 disabled={false}
                 onClick={create}
-                tooltip={
-                    <>
-                        Creates a new group that contains all selected items (or, where applicable, the
-                        highest among their respective &lsquo;active&rsquo; groups that are also such that all
-                        their leaf members are selected), and removes these from their current groups.
-                        <HotkeyComp mapKey='create group' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={createTooltip}
+                tooltipPlacement='left'
             />
             <div className='text-center mt-3 text-sm'>
                 Group level:&nbsp;&nbsp;{groups[1] + 1} / {groups[0].length}
@@ -63,16 +105,8 @@ const GroupTab = ({
                 style='px-2 mx-2 mt-3 rounded-lg text-sm'
                 disabled={!canLeave}
                 onClick={leave}
-                tooltip={
-                    <>
-                        Deactivates the membership of each selected item (or of its second-highest active
-                        group, where applicable) in its currently highest active group. Items will still be
-                        members of their respective groups, but selecting them will no longer select the other
-                        members as well.
-                        <HotkeyComp mapKey='leave' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={leaveTooltip}
+                tooltipPlacement='left'
             />
             <BasicColoredButton
                 id='rejoin-button'
@@ -80,13 +114,8 @@ const GroupTab = ({
                 style='px-2 mx-2 mt-2 rounded-lg text-sm'
                 disabled={!canRejoin}
                 onClick={rejoin}
-                tooltip={
-                    <>
-                        Reactivates the membership of the each selected item (or its highest active group,
-                        where applicable) in the next-lowest group. <HotkeyComp mapKey='rejoin' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={rejoinTooltip}
+                tooltipPlacement='left'
             />
             <BasicColoredButton
                 id='restore-button'
@@ -94,14 +123,8 @@ const GroupTab = ({
                 style='px-2 mx-2 mt-2 rounded-lg text-sm'
                 disabled={!canRestore}
                 onClick={restore}
-                tooltip={
-                    <>
-                        Reactivates the membership of each member of each selected item&apos;s highest active
-                        group.
-                        <HotkeyComp mapKey='restore' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={restoreTooltip}
+                tooltipPlacement='left'
             />
             <BasicColoredButton
                 id='add-button'
@@ -110,15 +133,8 @@ const GroupTab = ({
                 pressed={adding}
                 disabled={!canAdd}
                 onClick={changeAdding}
-                tooltip={
-                    <>
-                        Selecting items (while not holding <kbd>Ctrl</kbd> pressed) adds their highest active
-                        groups to the present group. Selecting items while holding <kbd>Ctrl</kbd> pressed
-                        adds only the individual items.
-                        <HotkeyComp mapKey='adding' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={addTooltip}
+                tooltipPlacement='left'
             />
             <BasicColoredButton
                 id='dissolve-add-button'
@@ -127,15 +143,8 @@ const GroupTab = ({
                 pressed={dissolveAdding}
                 disabled={!canAdd}
                 onClick={changeDissolveAdding}
-                tooltip={
-                    <>
-                        Selecting items adds either the members of their highest active groups (where
-                        applicable) or the items themselves to the present group. Selecting items while
-                        holding <kbd>Ctrl</kbd> pressed adds only the individual items.
-                        <HotkeyComp mapKey='dissolve-adding' />
-                    </>
-                }
-                tooltipPlacement='right'
+                tooltip={dissolveAddTooltip}
+                tooltipPlacement='left'
             />
         </div>
     );

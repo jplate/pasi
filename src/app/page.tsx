@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import React, { useRef, useState, useEffect, useCallback, Suspense } from 'react';
 import clsx from 'clsx/lite';
-import { pasi, hotkeys } from './components/client/MainPanel';
+import { pasi, hotkeys } from './components/client/Hotkeys';
 
 import relationshipSrcLight from '@/images/relationshipLight.png';
 import relationshipSrcDark from '@/images/relationshipDark.png';
