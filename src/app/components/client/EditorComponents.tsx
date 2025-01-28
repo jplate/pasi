@@ -1,4 +1,4 @@
-import react, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import clsx from 'clsx/lite';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
@@ -14,30 +14,30 @@ export type Width = 'short' | 'medium' | 'long';
 export type Placement = 'top' | 'right' | 'bottom' | 'left';
 
 interface CheckBoxFieldProps {
-    label: react.ReactNode;
+    label: React.ReactNode;
     style?: string;
     value: boolean;
     extraBottomMargin?: boolean;
-    tooltip?: react.ReactNode;
+    tooltip?: React.ReactNode;
     tooltipPlacement?: Placement;
     disabled?: boolean;
     onChange: () => void;
 }
 
-export const CheckBoxField = ({
-    label,
-    style = '',
-    value,
-    extraBottomMargin,
-    tooltip,
-    tooltipPlacement,
-    disabled = false,
-    onChange,
-}: CheckBoxFieldProps) => {
-    const dark = useContext(DarkModeContext);
+export const CheckBoxField = React.memo(
+    ({
+        label,
+        style = '',
+        value,
+        extraBottomMargin,
+        tooltip,
+        tooltipPlacement,
+        disabled = false,
+        onChange,
+    }: CheckBoxFieldProps) => {
+        const dark = useContext(DarkModeContext);
 
-    const comp = useMemo(
-        () => (
+        const comp = (
             <label
                 className={clsx(
                     'flex ml-4 py-1 text-sm whitespace-nowrap items-center',
@@ -57,15 +57,15 @@ export const CheckBoxField = ({
                 />
                 <span>{label}</span>
             </label>
-        ),
-        [label, style, extraBottomMargin, disabled, dark, value, onChange]
-    );
+        );
 
-    return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
-};
+        return tooltip ? <WithTooltip comp={comp} tooltip={tooltip} placement={tooltipPlacement} /> : comp;
+    }
+);
+CheckBoxField.displayName = 'CheckBoxField';
 
 interface InputFieldProps {
-    label: react.ReactNode;
+    label: React.ReactNode;
     value: any;
     type?: string;
     step?: number;
@@ -75,7 +75,7 @@ interface InputFieldProps {
     negativeTopMargin?: boolean;
     lowTopMargin?: boolean;
     extraBottomMargin?: boolean;
-    tooltip?: react.ReactNode;
+    tooltip?: React.ReactNode;
     tooltipPlacement?: Placement;
     disabled?: boolean;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -187,22 +187,21 @@ export const menuButtonClassName = clsx(
 export const menuItemButtonClassName =
     'flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor';
 
-export const ChevronSVG = () => {
-    return (
-        <svg
-            className='size-4' // source: https://heroicons.com/
-            xmlns='http://www.w3.org/2000/svg'
-            fill='none'
-            viewBox='0 0 24 24'
-            strokeWidth={1.5}
-            stroke='currentColor'
-        >
-            <path strokeLinecap='round' strokeLinejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5' />
-        </svg>
-    );
-};
+export const ChevronSVG = React.memo(() => (
+    <svg
+        className='size-4' // source: https://heroicons.com/
+        xmlns='http://www.w3.org/2000/svg'
+        fill='none'
+        viewBox='0 0 24 24'
+        strokeWidth={1.5}
+        stroke='currentColor'
+    >
+        <path strokeLinecap='round' strokeLinejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5' />
+    </svg>
+));
+ChevronSVG.displayName = 'ChevronSVG';
 
-export const MenuItemList = ({ children }: Readonly<{ children: react.ReactNode }>) => {
+export const MenuItemList = React.memo(({ children }: Readonly<{ children: React.ReactNode }>) => {
     return (
         <Transition
             enter='transition ease-out duration-75'
@@ -223,15 +222,16 @@ export const MenuItemList = ({ children }: Readonly<{ children: react.ReactNode 
             </MenuItems>
         </Transition>
     );
-};
+});
+MenuItemList.displayName = 'MenuItemList';
 
 interface MenuFieldProps {
-    label: react.ReactNode;
-    values: react.ReactNode[];
+    label: React.ReactNode;
+    values: React.ReactNode[];
     value: number; // the index of the currently selected value in values
     lowTopMargin?: boolean;
     extraBottomMargin?: boolean;
-    tooltip?: react.ReactNode;
+    tooltip?: React.ReactNode;
     tooltipPlacement?: Placement;
     onChange: (index: number) => void;
 }
@@ -457,44 +457,47 @@ export class DashValidator {
 }
 
 interface WithToolTipProps {
-    comp: react.ReactNode;
-    tooltip: react.ReactNode;
+    comp: React.ReactNode;
+    tooltip: React.ReactNode;
     placement?: Placement;
     noStretch?: boolean;
 }
 
-export const WithTooltip = ({ comp, tooltip, placement = 'top', noStretch = false }: WithToolTipProps) => {
-    const [showTooltip, setShowTooltip] = useState(false);
-    const { refs, floatingStyles, strategy } = useFloating({
-        placement,
-        middleware: [offset(8), shift()],
-    });
+export const WithTooltip = React.memo(
+    ({ comp, tooltip, placement = 'top', noStretch = false }: WithToolTipProps) => {
+        const [showTooltip, setShowTooltip] = useState(false);
+        const { refs, floatingStyles, strategy } = useFloating({
+            placement,
+            middleware: [offset(8), shift()],
+        });
 
-    const handleMouseEnter = useCallback(() => setShowTooltip(true), [setShowTooltip]);
+        const handleMouseEnter = useCallback(() => setShowTooltip(true), [setShowTooltip]);
 
-    const handleMouseLeave = useCallback(() => setShowTooltip(false), [setShowTooltip]);
+        const handleMouseLeave = useCallback(() => setShowTooltip(false), [setShowTooltip]);
 
-    return (
-        <div>
-            <div
-                className={noStretch ? 'max-w-fit' : 'justify-items-stretch'}
-                ref={refs.setReference}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-            >
-                {comp}
+        return (
+            <div>
+                <div
+                    className={noStretch ? 'max-w-fit' : 'justify-items-stretch'}
+                    ref={refs.setReference}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    {comp}
+                </div>
+                {showTooltip && (
+                    <Tooltip
+                        content={tooltip}
+                        ref={refs.setFloating}
+                        styles={floatingStyles}
+                        strategy={strategy}
+                    />
+                )}
             </div>
-            {showTooltip && (
-                <Tooltip
-                    content={tooltip}
-                    ref={refs.setFloating}
-                    styles={floatingStyles}
-                    strategy={strategy}
-                />
-            )}
-        </div>
-    );
-};
+        );
+    }
+);
+WithTooltip.displayName = 'WithTooltip';
 
 interface TooltipProps {
     content: React.ReactNode;

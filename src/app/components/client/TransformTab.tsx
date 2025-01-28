@@ -15,7 +15,7 @@ import {
     MIN_SCALING_LOG_INCREMENT,
     MAX_SCALING_LOG_INCREMENT,
     MAX_ROTATION_INPUT,
-} from '../../Constants';
+} from '../../Constants.ts';
 
 const slwTooltip = (
     <>

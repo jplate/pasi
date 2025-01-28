@@ -12,7 +12,7 @@ import {
     Width,
     validInt,
 } from './EditorComponents.tsx';
-import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from '../../Constants';
+import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from '../../Constants.ts';
 import Item from './items/Item';
 import ENode from './items/ENode';
 import CNode from './items/CNode';

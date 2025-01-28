@@ -1,9 +1,9 @@
-import { useRef, MutableRefObject } from 'react';
+import { useCallback, useRef, MutableRefObject } from 'react';
 
 type History<T> = {
     push: (newState: T) => void;
-    before: () => T;
-    after: () => T;
+    before: () => T; // goes one step back in history and returns the state from that time
+    after: () => T; // goes one step forward in history and returns the state from that time
     canRedo: boolean;
     canUndo: boolean;
     history: MutableRefObject<T[]>;
@@ -18,32 +18,35 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
     const history = useRef<T[]>([initialState]);
     const now = useRef(0);
 
-    const push = (newState: T) => {
-        const updatedHistory = history.current.slice(0, now.current + 1);
-        updatedHistory.push(newState);
+    const push = useCallback(
+        (newState: T): void => {
+            const updatedHistory = history.current.slice(0, now.current + 1);
+            updatedHistory.push(newState);
 
-        if (updatedHistory.length > max) {
-            updatedHistory.shift(); // Remove the oldest state
-        }
+            if (updatedHistory.length > max) {
+                updatedHistory.shift(); // Remove the oldest state
+            }
 
-        history.current = updatedHistory;
-        now.current = updatedHistory.length - 1;
-        //console.log(`NOW: ${updatedHistory.length - 1}`);
-    };
+            history.current = updatedHistory;
+            now.current = updatedHistory.length - 1;
+            //console.log(`NOW: ${updatedHistory.length - 1}`);
+        },
+        [history, now, max]
+    );
 
-    const before = (): T => {
+    const before = useCallback((): T => {
         let newNow = now.current;
         if (newNow > 0) newNow--;
         now.current = newNow;
         return history.current[newNow];
-    };
+    }, [history, now]);
 
-    const after = (): T => {
+    const after = useCallback((): T => {
         let newNow = now.current;
         if (newNow < history.current.length - 1) newNow++;
         now.current = newNow;
         return history.current[newNow];
-    };
+    }, [history, now]);
 
     return {
         push,

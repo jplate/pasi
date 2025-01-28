@@ -61,6 +61,7 @@ import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
 import { useHistory } from '../../util/History';
 import { HotkeyComp, hotkeyMap } from './Hotkeys';
+import { undoIcon, redoIcon, deleteIcon } from './Icons';
 import SNode from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
 import Order from './items/snodes/Order';
@@ -170,7 +171,7 @@ const copyButtonTooltip = (
     </>
 );
 
-const generateButtonTooltip = (
+export const generateButtonTooltip = (
     <>
         Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
         {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may
@@ -1112,9 +1113,13 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         [points, updateState, setOrigin, adjustLimit, scrollTo]
     );
 
-    const throttledUndo = useThrottle(() => revertTo(before()), UNDO_REDO_DELAY);
+    const undo = useCallback(() => revertTo(before()), [revertTo, before]);
 
-    const throttledRedo = useThrottle(() => revertTo(after()), UNDO_REDO_DELAY);
+    const redo = useCallback(() => revertTo(after()), [revertTo, after]);
+
+    const throttledUndo = useThrottle(undo, UNDO_REDO_DELAY);
+
+    const throttledRedo = useThrottle(redo, UNDO_REDO_DELAY);
 
     /**
      * Dedicated keydown handler for undo/redo, because react-hotkeys-hook refuses to work for undo and redo (even though
@@ -3652,25 +3657,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 tooltip='Undo'
                                 disabled={!canUndo}
                                 onClick={throttledUndo}
-                                icon={
-                                    // source: https://heroicons.com/
-                                    <svg
-                                        xmlns='http://www.w3.org/2000/svg'
-                                        fill='none'
-                                        viewBox='0 0 24 24'
-                                        strokeWidth={1.5}
-                                        stroke='currentColor'
-                                        className='w-6 h-6 mx-auto'
-                                    >
-                                        <g transform='rotate(-45 12 12)'>
-                                            <path
-                                                strokeLinecap='round'
-                                                strokeLinejoin='round'
-                                                d='M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3'
-                                            />
-                                        </g>
-                                    </svg>
-                                }
+                                icon={undoIcon}
                             />
                             <BasicColoredButton
                                 id='redo-button'
@@ -3679,25 +3666,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 tooltip='Redo'
                                 disabled={!canRedo}
                                 onClick={throttledRedo}
-                                icon={
-                                    // source: https://heroicons.com/
-                                    <svg
-                                        xmlns='http://www.w3.org/2000/svg'
-                                        fill='none'
-                                        viewBox='0 0 24 24'
-                                        strokeWidth={1.5}
-                                        stroke='currentColor'
-                                        className='w-6 h-6 mx-auto'
-                                    >
-                                        <g transform='rotate(45 12 12)'>
-                                            <path
-                                                strokeLinecap='round'
-                                                strokeLinejoin='round'
-                                                d='m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3'
-                                            />
-                                        </g>
-                                    </svg>
-                                }
+                                icon={redoIcon}
                             />
                             <BasicButton
                                 id='del-button'
@@ -3706,23 +3675,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 tooltip='Delete'
                                 disabled={!canDelete}
                                 onClick={handleDelete}
-                                icon={
-                                    // source: https://heroicons.com/
-                                    <svg
-                                        xmlns='http://www.w3.org/2000/svg'
-                                        fill='none'
-                                        viewBox='0 0 24 24'
-                                        strokeWidth={1.5}
-                                        stroke='currentColor'
-                                        className='w-6 h-6 mx-auto'
-                                    >
-                                        <path
-                                            strokeLinecap='round'
-                                            strokeLinejoin='round'
-                                            d='M6 18 18 6M6 6l12 12'
-                                        />
-                                    </svg>
-                                }
+                                icon={deleteIcon}
                             />
                         </div>
                     </div>
