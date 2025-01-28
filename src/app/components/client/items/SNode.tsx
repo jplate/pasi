@@ -414,7 +414,7 @@ export default abstract class SNode extends ENode {
                     if (old !== cn) {
                         const prevNodes = old.dependentNodes;
                         const newNodes = cn.dependentNodes;
-                        old.dependentNodes = prevNodes.filter((node) => node === this);
+                        old.dependentNodes = prevNodes.filter((node) => node !== this);
                         if (!newNodes.includes(this)) {
                             cn.dependentNodes = [...newNodes, this];
                         }
