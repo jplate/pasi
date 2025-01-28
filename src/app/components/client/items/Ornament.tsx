@@ -2,7 +2,7 @@ import react from 'react';
 import Item from './Item';
 import Node from './Node';
 import { HSL } from './Item';
-import { getCyclicValue } from '../../../util/MathTools';
+import { getCyclicValue } from '../../../util/mathTools';
 import { MIN_ROTATION } from '@/app/Constants';
 
 export const DEFAULT_ANGLE = 10;

@@ -20,21 +20,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     );
 }
 
+
 /**
  * Version with react-scan:
  *
-export default function RootLayout({
-    children,
-  }: {
-    children: React.ReactNode
-  }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-      <html lang='en'>
-        <head>
-          <script src='https://unpkg.com/react-scan/dist/auto.global.js' async />
-        </head>
-        <body>{children}</body>
-      </html>
-    )
-  }
+        <html lang='en'>
+            <head>
+                <script src='https://unpkg.com/react-scan/dist/auto.global.js' async />
+            </head>
+            <body>{children}</body>
+        </html>
+    );
+}
 */

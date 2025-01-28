@@ -31,7 +31,7 @@ import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
 import { addAlpha } from '@/app/util/Misc';
-import { round } from '@/app/util/MathTools';
+import { round } from '@/app/util/mathTools';
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = (2 * Math.PI) / 100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -479,12 +479,34 @@ export default class ENode extends Node {
         const stShapes = Texdraw.getStrokedShapes(tex, DEFAULT_LINEWIDTH);
         this.parseNode(stShapes, tex, info, dimRatio, name ?? 'unnamed');
     }
+}
 
-    /**
-     * Overridden by SNode, but also called from there.
-     */
-    getComponent({
+export interface ENodeCompProps {
+    id: string;
+    node: ENode;
+    yOffset: number;
+    unitScale: number;
+    displayFontFactor: number;
+    bg: HSL;
+    primaryColor: HSL;
+    markColor0: string;
+    markColor1: string;
+    titleColor: string;
+    gradient?: boolean;
+    focusItem: Item | null;
+    selection: Item[];
+    preselection: Item[];
+    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
+    // rerender the component.
+}
+
+export const ENodeComp = React.memo(
+    ({
         id,
+        node,
         yOffset,
         unitScale,
         displayFontFactor,
@@ -500,14 +522,14 @@ export default class ENode extends Node {
         onMouseDown,
         onMouseEnter,
         onMouseLeave,
-    }: ENodeCompProps) {
-        const [x, y] = this.getLocation();
-        const linewidth = this.linewidth;
-        const shading = this.shading;
-        const selectedPositions = this.getSelectedPositions(selection);
+    }: ENodeCompProps) => {
+        const [x, y] = node.getLocation();
+        const linewidth = node.linewidth;
+        const shading = node.shading;
+        const selectedPositions = node.getSelectedPositions(selection);
         // The parameter hiddenByDefault will be true if this method is called from the SNode override.
-        const hidden = this.isHidden(selectedPositions.length > 0);
-        const radius = hidden ? this.getHiddenRadius() : this.radius;
+        const hidden = node.isHidden(selectedPositions.length > 0);
+        const radius = hidden ? node.getHiddenRadius() : node.radius;
 
         const width = radius * 2;
         const height = radius * 2;
@@ -525,19 +547,19 @@ export default class ENode extends Node {
             <React.Fragment key={id}>
                 <div
                     className={
-                        focusItem === this
+                        focusItem === node
                             ? 'focused'
                             : selectedPositions.length > 0
                               ? 'selected'
-                              : preselection.includes(this)
+                              : preselection.includes(node)
                                 ? 'preselected'
                                 : 'unselected'
                     }
                     id={id}
                     //onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => onMouseDown(this, e)}
-                    onMouseEnter={(e) => onMouseEnter(this, e)}
-                    onMouseLeave={(e) => onMouseLeave(this, e)}
+                    onMouseDown={(e) => onMouseDown(node, e)}
+                    onMouseEnter={(e) => onMouseEnter(node, e)}
+                    onMouseLeave={(e) => onMouseLeave(node, e)}
                     style={{
                         position: 'absolute',
                         left: `${x - radius - MARK_LINEWIDTH - linewidth / 2}px`,
@@ -576,7 +598,7 @@ export default class ENode extends Node {
                                 }
                                 stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%`}
                                 strokeWidth={linewidth}
-                                strokeDasharray={this.dash.join(' ')}
+                                strokeDasharray={node.dash.join(' ')}
                                 strokeLinecap={LINECAP_STYLE}
                                 strokeLinejoin={LINEJOIN_STYLE}
                             />
@@ -604,7 +626,7 @@ export default class ENode extends Node {
                         </div>
                     )}
                 </div>
-                {this.ornaments.map((o, i) =>
+                {node.ornaments.map((o, i) =>
                     o.getComponent(i, {
                         yOffset,
                         unitScale,
@@ -622,23 +644,5 @@ export default class ENode extends Node {
             </React.Fragment>
         );
     }
-}
-
-export interface ENodeCompProps {
-    id: string;
-    yOffset: number;
-    unitScale: number;
-    displayFontFactor: number;
-    bg: HSL;
-    primaryColor: HSL;
-    markColor0: string;
-    markColor1: string;
-    titleColor: string;
-    gradient?: boolean;
-    focusItem: Item | null;
-    selection: Item[];
-    preselection: Item[];
-    onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-    onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-    onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-}
+);
+ENodeComp.displayName = 'ENodeComp';

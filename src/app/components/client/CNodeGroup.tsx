@@ -25,7 +25,7 @@ import {
 } from '../../Constants.ts';
 import { DashValidator } from './EditorComponents.tsx';
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx';
-import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools.ts';
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/mathTools.ts';
 import * as Texdraw from '../../codec/Texdraw.tsx';
 import { ParseError, makeParseError } from '../../codec/Texdraw';
 import { encode, decode } from '../../codec/General';
@@ -845,137 +845,141 @@ export interface ContourProps {
         group: CNodeGroup,
         e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
     ) => void;
+    rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
+    // rerender the component.
 }
 
-export const Contour = ({
-    id,
-    group,
-    yOffset,
-    bg,
-    primaryColor,
-    markColor,
-    centerDivClickable,
-    showCenterDiv,
-    onMouseDown,
-    onMouseEnter,
-    onMouseLeave,
-}: ContourProps) => {
-    const linewidth = group.linewidth;
-    const shading = group.shading;
-    const dash = group.dash;
-    const lines = group.getLines();
-    if (lines.length > 0) {
-        const { minX, maxX, minY, maxY } = group.getBounds();
-        if (!isFinite(minX)) return null;
-        const h = maxY - minY;
-        const lwc = linewidth / 2; // linewidth correction
-        const mlw = MARK_LINEWIDTH;
-        const mlw2 = mlw / 2;
+export const Contour = React.memo(
+    ({
+        id,
+        group,
+        yOffset,
+        bg,
+        primaryColor,
+        markColor,
+        centerDivClickable,
+        showCenterDiv,
+        onMouseDown,
+        onMouseEnter,
+        onMouseLeave,
+    }: ContourProps) => {
+        const linewidth = group.linewidth;
+        const shading = group.shading;
+        const dash = group.dash;
+        const lines = group.getLines();
+        if (lines.length > 0) {
+            const { minX, maxX, minY, maxY } = group.getBounds();
+            if (!isFinite(minX)) return null;
+            const h = maxY - minY;
+            const lwc = linewidth / 2; // linewidth correction
+            const mlw = MARK_LINEWIDTH;
+            const mlw2 = mlw / 2;
 
-        const linePath =
-            `M ${lines[0].x0 - minX + lwc} ${h - lines[0].y0 + minY + lwc} ` +
-            lines
-                .map((line, i) =>
-                    group.members[i].omitLine
-                        ? `M ${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc} `
-                        : clsx(
-                              `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
-                              `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
-                              `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
-                          )
-                )
-                .join(' ');
-
-        const fillPath =
-            `M ${lines[0].x0 - minX + lwc} ${h - lines[0].y0 + minY + lwc} ` +
-            lines
-                .map((line) =>
-                    clsx(
-                        `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
-                        `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
-                        `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+            const linePath =
+                `M ${lines[0].x0 - minX + lwc} ${h - lines[0].y0 + minY + lwc} ` +
+                lines
+                    .map((line, i) =>
+                        group.members[i].omitLine
+                            ? `M ${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc} `
+                            : clsx(
+                                  `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
+                                  `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
+                                  `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                              )
                     )
-                )
-                .join(' ');
+                    .join(' ');
 
-        const [cdW, cdH] = group.centerDivDimensions();
-        const c = group.getNodalCenter();
+            const fillPath =
+                `M ${lines[0].x0 - minX + lwc} ${h - lines[0].y0 + minY + lwc} ` +
+                lines
+                    .map((line) =>
+                        clsx(
+                            `C ${line.x1 - minX + lwc} ${h - line.y1 + minY + lwc},`,
+                            `${line.x2 - minX + lwc} ${h - line.y2 + minY + lwc},`,
+                            `${line.x3 - minX + lwc} ${h - line.y3 + minY + lwc}`
+                        )
+                    )
+                    .join(' ');
 
-        return (
-            <>
-                <div
-                    id={id}
-                    style={{
-                        position: 'absolute',
-                        left: `${minX - lwc}px`,
-                        top: `${H + yOffset - maxY - lwc}px`,
-                        pointerEvents: 'none',
-                    }}
-                >
-                    <svg
-                        width={maxX - minX + 2 * linewidth + 1}
-                        height={maxY - minY + 2 * linewidth + 1}
-                        xmlns='http://www.w3.org/2000/svg'
-                        pointerEvents={shading > 0 ? 'fill' : 'none'}
-                    >
-                        {shading > 0 && (
-                            <path
-                                d={fillPath}
-                                onMouseDown={(e) => onMouseDown(group, e)}
-                                onMouseEnter={(e) => onMouseEnter(group, e)}
-                                onMouseLeave={(e) => onMouseLeave(group, e)}
-                                fill={
-                                    shading == 0
-                                        ? 'hsla(0,0%,0%,0)' // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
-                                        : `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
-                                          `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,` +
-                                          `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`
-                                }
-                                stroke='none'
-                            />
-                        )}
-                        {linewidth > 0 && (
-                            <path
-                                d={linePath}
-                                fill='none'
-                                stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
-                                strokeWidth={linewidth}
-                                strokeDasharray={dash.join(' ')}
-                                strokeLinecap={LINECAP_STYLE}
-                                strokeLinejoin={LINEJOIN_STYLE}
-                            />
-                        )}
-                    </svg>
-                </div>
-                {cdW >= CONTOUR_CENTER_DIV_MIN_WIDTH && cdH >= CONTOUR_CENTER_DIV_MIN_HEIGHT && (
+            const [cdW, cdH] = group.centerDivDimensions();
+            const c = group.getNodalCenter();
+
+            return (
+                <>
                     <div
-                        className={showCenterDiv ? 'selected' : 'unselected'}
-                        onMouseDown={(e) => onMouseDown(group, e)}
-                        onMouseEnter={(e) => onMouseEnter(group, e)}
-                        onMouseLeave={(e) => onMouseLeave(group, e)}
+                        id={id}
                         style={{
                             position: 'absolute',
-                            left: `${c.x - cdW / 2 - mlw2}px`,
-                            top: `${H + yOffset - c.y - cdH / 2 - mlw2}px`,
-                            cursor: centerDivClickable ? 'pointer' : 'auto',
-                            pointerEvents: centerDivClickable ? 'auto' : 'none',
+                            left: `${minX - lwc}px`,
+                            top: `${H + yOffset - maxY - lwc}px`,
+                            pointerEvents: 'none',
                         }}
                     >
-                        <svg width={cdW + mlw + 1} height={cdH + mlw + 1} opacity={0.5}>
-                            {' '}
-                            {/* The '+ 1' provides a bit of safety.*/}
-                            <polyline
-                                points={`${mlw2},${mlw2} ${cdW + mlw2},${mlw2} ${cdW + mlw2},${cdH + mlw2} ${mlw2},${cdH + mlw2} ${mlw2},${mlw2} ${3},${mlw2}`}
-                                stroke={markColor}
-                                fill='none'
-                            />
+                        <svg
+                            width={maxX - minX + 2 * linewidth + 1}
+                            height={maxY - minY + 2 * linewidth + 1}
+                            xmlns='http://www.w3.org/2000/svg'
+                            pointerEvents={shading > 0 ? 'fill' : 'none'}
+                        >
+                            {shading > 0 && (
+                                <path
+                                    d={fillPath}
+                                    onMouseDown={(e) => onMouseDown(group, e)}
+                                    onMouseEnter={(e) => onMouseEnter(group, e)}
+                                    onMouseLeave={(e) => onMouseLeave(group, e)}
+                                    fill={
+                                        shading == 0
+                                            ? 'hsla(0,0%,0%,0)' // Otherwise we assmilate the background color to the primary color, to the extent that shading approximates 1.
+                                            : `hsla(${bg.hue - Math.floor((bg.hue - primaryColor.hue) * shading)},` +
+                                              `${bg.sat - Math.floor((bg.sat - primaryColor.sat) * shading)}%,` +
+                                              `${bg.lgt - Math.floor((bg.lgt - primaryColor.lgt) * shading)}%,1)`
+                                    }
+                                    stroke='none'
+                                />
+                            )}
+                            {linewidth > 0 && (
+                                <path
+                                    d={linePath}
+                                    fill='none'
+                                    stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
+                                    strokeWidth={linewidth}
+                                    strokeDasharray={dash.join(' ')}
+                                    strokeLinecap={LINECAP_STYLE}
+                                    strokeLinejoin={LINEJOIN_STYLE}
+                                />
+                            )}
                         </svg>
                     </div>
-                )}
-            </>
-        );
-    } else return null;
-};
+                    {cdW >= CONTOUR_CENTER_DIV_MIN_WIDTH && cdH >= CONTOUR_CENTER_DIV_MIN_HEIGHT && (
+                        <div
+                            className={showCenterDiv ? 'selected' : 'unselected'}
+                            onMouseDown={(e) => onMouseDown(group, e)}
+                            onMouseEnter={(e) => onMouseEnter(group, e)}
+                            onMouseLeave={(e) => onMouseLeave(group, e)}
+                            style={{
+                                position: 'absolute',
+                                left: `${c.x - cdW / 2 - mlw2}px`,
+                                top: `${H + yOffset - c.y - cdH / 2 - mlw2}px`,
+                                cursor: centerDivClickable ? 'pointer' : 'auto',
+                                pointerEvents: centerDivClickable ? 'auto' : 'none',
+                            }}
+                        >
+                            <svg width={cdW + mlw + 1} height={cdH + mlw + 1} opacity={0.5}>
+                                {/* The '+ 1' provides a bit of safety.*/}
+                                <polyline
+                                    points={`${mlw2},${mlw2} ${cdW + mlw2},${mlw2} ${cdW + mlw2},${cdH + mlw2} ${mlw2},${cdH + mlw2} ${mlw2},${mlw2} ${3},${mlw2}`}
+                                    stroke={markColor}
+                                    fill='none'
+                                />
+                            </svg>
+                        </div>
+                    )}
+                </>
+            );
+        } else return null;
+    }
+);
+Contour.displayName = 'Contour';
 
 interface CNodeGroupCompProps {
     id: number;
@@ -1005,124 +1009,131 @@ interface CNodeGroupCompProps {
         e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
     ) => void;
     mouseLeft: () => void;
+    rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
+    // rerender the component.
 }
 
-export const CNodeGroupComp = ({
-    nodeGroup,
-    focusItem,
-    preselection,
-    selection,
-    allItems,
-    yOffset,
-    unitScale,
-    displayFontFactor,
-    bg,
-    primaryColor,
-    markColor,
-    itemMouseDown,
-    itemMouseEnter,
-    groupMouseDown,
-    groupMouseEnter,
-    mouseLeft,
-}: CNodeGroupCompProps) => {
-    const centerDivClickable = !allItems.some((item) => {
-        const c = nodeGroup.getNodalCenter(); // the location of the center div
-        const [cdW, cdH] = nodeGroup.centerDivDimensions();
-        const w2 = item.getWidth() / 2;
-        const h2 = item.getHeight() / 2;
-        const { bottom, left } = item.getBottomLeftCorner();
-        const icx = left + w2;
-        const icy = bottom + h2;
-        // Return true iff the item is just about covered by the center div:
-        return (
-            Math.abs(c.x - icx) + w2 < cdW / 2 + CONTOUR_CENTER_DIV_MARGIN &&
-            Math.abs(c.y - icy) + h2 < cdH / 2 + CONTOUR_CENTER_DIV_MARGIN
-        );
-    });
-    // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by
-    // 'next node' and 'previous node' in the tooltips and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected
-    // nodes should be decorated in this way.
-    let allSelected = true,
-        someSelected = false,
-        allPreselected = true;
-    const selectedNodes = nodeGroup.members.map((m) => {
-        if (selection.includes(m)) return (someSelected = true);
-        else return (allSelected = false);
-    });
-    const preselectedNodes = nodeGroup.members.map((m) => {
-        if (preselection.includes(m)) return true;
-        else return (allPreselected = false);
-    });
-    const last = nodeGroup.members.length - 1;
-    const arrowNodes: boolean[] = new Array(last + 1).fill(false);
-    let defer = false;
-    for (let i = 0; i <= 1 && (i == 0 || defer); i++) {
-        for (let j = 0; j <= last && (i == 0 || defer); j++) {
-            const node = nodeGroup.members[j];
-            const selected = selectedNodes[j];
-            const preselected = preselectedNodes[j];
-            const next = nodeGroup.members[j == last ? 0 : j + 1];
-            const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);
-            const arrow =
-                (selected &&
-                    (defer ||
-                        (allSelected && j == 0) ||
-                        (!allSelected && !selectedNodes[j == 0 ? last : j - 1]))) ||
-                (preselected &&
-                    (defer ||
-                        (!someSelected && allPreselected && j == 0) ||
-                        (!allPreselected && !preselectedNodes[j == 0 ? last : j - 1])));
-            if (arrow && d < MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
-                defer = true;
-            } else {
-                defer = false;
-            }
-            arrowNodes[j] = arrow && !defer;
-        }
-    }
-    //console.log(`Rendering CNodeGroup ${nodeGroup.id} time: ${performance.now()}`);
-    return (
-        <React.Fragment key={nodeGroup.id}>
-            <Contour
-                id={nodeGroup.id + 'Contour'}
-                group={nodeGroup}
-                yOffset={yOffset}
-                bg={bg}
-                primaryColor={primaryColor}
-                markColor={markColor}
-                centerDivClickable={centerDivClickable}
-                showCenterDiv={
-                    focusItem instanceof CNode &&
-                    focusItem.fixedAngles &&
-                    nodeGroup.members.includes(focusItem)
+export const CNodeGroupComp = React.memo(
+    ({
+        nodeGroup,
+        focusItem,
+        preselection,
+        selection,
+        allItems,
+        yOffset,
+        unitScale,
+        displayFontFactor,
+        bg,
+        primaryColor,
+        markColor,
+        itemMouseDown,
+        itemMouseEnter,
+        groupMouseDown,
+        groupMouseEnter,
+        mouseLeft,
+    }: CNodeGroupCompProps) => {
+        const centerDivClickable = !allItems.some((item) => {
+            const c = nodeGroup.getNodalCenter(); // the location of the center div
+            const [cdW, cdH] = nodeGroup.centerDivDimensions();
+            const w2 = item.getWidth() / 2;
+            const h2 = item.getHeight() / 2;
+            const { bottom, left } = item.getBottomLeftCorner();
+            const icx = left + w2;
+            const icy = bottom + h2;
+            // Return true iff the item is just about covered by the center div:
+            return (
+                Math.abs(c.x - icx) + w2 < cdW / 2 + CONTOUR_CENTER_DIV_MARGIN &&
+                Math.abs(c.y - icy) + h2 < cdH / 2 + CONTOUR_CENTER_DIV_MARGIN
+            );
+        });
+        // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by
+        // 'next node' and 'previous node' in the tooltips and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected
+        // nodes should be decorated in this way.
+        let allSelected = true,
+            someSelected = false,
+            allPreselected = true;
+        const selectedNodes = nodeGroup.members.map((m) => {
+            if (selection.includes(m)) return (someSelected = true);
+            else return (allSelected = false);
+        });
+        const preselectedNodes = nodeGroup.members.map((m) => {
+            if (preselection.includes(m)) return true;
+            else return (allPreselected = false);
+        });
+        const last = nodeGroup.members.length - 1;
+        const arrowNodes: boolean[] = new Array(last + 1).fill(false);
+        let defer = false;
+        for (let i = 0; i <= 1 && (i == 0 || defer); i++) {
+            for (let j = 0; j <= last && (i == 0 || defer); j++) {
+                const node = nodeGroup.members[j];
+                const selected = selectedNodes[j];
+                const preselected = preselectedNodes[j];
+                const next = nodeGroup.members[j == last ? 0 : j + 1];
+                const d = Math.sqrt((node.x - next.x) ** 2 + (node.y - next.y) ** 2);
+                const arrow =
+                    (selected &&
+                        (defer ||
+                            (allSelected && j == 0) ||
+                            (!allSelected && !selectedNodes[j == 0 ? last : j - 1]))) ||
+                    (preselected &&
+                        (defer ||
+                            (!someSelected && allPreselected && j == 0) ||
+                            (!allPreselected && !preselectedNodes[j == 0 ? last : j - 1])));
+                if (arrow && d < MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW) {
+                    defer = true;
+                } else {
+                    defer = false;
                 }
-                onMouseDown={groupMouseDown}
-                onMouseEnter={groupMouseEnter}
-                onMouseLeave={() => mouseLeft()}
-            />
-            {nodeGroup.members.map((node, i) => {
-                return (
-                    <CNodeComp
-                        key={node.id}
-                        id={node.id}
-                        cnode={node}
-                        yOffset={yOffset}
-                        unitScale={unitScale}
-                        displayFontFactor={displayFontFactor}
-                        primaryColor={primaryColor}
-                        markColor={markColor}
-                        focusItem={focusItem}
-                        selected={selectedNodes[i]}
-                        preselected={preselectedNodes[i]}
-                        selection={selection}
-                        preselection={preselection}
-                        arrow={arrowNodes[i]}
-                        onMouseDown={itemMouseDown}
-                        onMouseEnter={itemMouseEnter}
-                        onMouseLeave={() => mouseLeft()}
-                    />
-                );
-            })}
-        </React.Fragment>
-    );
-};
+                arrowNodes[j] = arrow && !defer;
+            }
+        }
+        //console.log(`Rendering CNodeGroup ${nodeGroup.id} time: ${performance.now()}`);
+        return (
+            <React.Fragment key={nodeGroup.id}>
+                <Contour
+                    id={nodeGroup.id + 'Contour'}
+                    group={nodeGroup}
+                    yOffset={yOffset}
+                    bg={bg}
+                    primaryColor={primaryColor}
+                    markColor={markColor}
+                    centerDivClickable={centerDivClickable}
+                    showCenterDiv={
+                        focusItem instanceof CNode &&
+                        focusItem.fixedAngles &&
+                        nodeGroup.members.includes(focusItem)
+                    }
+                    onMouseDown={groupMouseDown}
+                    onMouseEnter={groupMouseEnter}
+                    onMouseLeave={mouseLeft}
+                    rerender={[]} // We'll let the Contour be rerendered if the CNodeGroupComp itself is rerendered
+                />
+                {nodeGroup.members.map((node, i) => {
+                    return (
+                        <CNodeComp
+                            key={node.id}
+                            id={node.id}
+                            cnode={node}
+                            yOffset={yOffset}
+                            unitScale={unitScale}
+                            displayFontFactor={displayFontFactor}
+                            primaryColor={primaryColor}
+                            markColor={markColor}
+                            focusItem={focusItem}
+                            selected={selectedNodes[i]}
+                            preselected={preselectedNodes[i]}
+                            selection={selection}
+                            preselection={preselection}
+                            arrow={arrowNodes[i]}
+                            onMouseDown={itemMouseDown}
+                            onMouseEnter={itemMouseEnter}
+                            onMouseLeave={mouseLeft}
+                            rerender={[]} // We'll let all CNodeComps be rerendered if the CNodeGroupComp itself is rerendered
+                        />
+                    );
+                })}
+            </React.Fragment>
+        );
+    }
+);
+CNodeGroupComp.displayName = 'CNodeGroupComp';

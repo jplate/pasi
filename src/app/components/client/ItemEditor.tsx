@@ -1,4 +1,4 @@
-import react from 'react';
+import React from 'react';
 import clsx from 'clsx/lite';
 import { Placement } from './EditorComponents';
 import { BasicColoredButton } from './Button';
@@ -92,7 +92,7 @@ type Type =
 
 export type Entry = {
     type: Type;
-    text?: react.ReactNode;
+    text?: React.ReactNode;
     key?: string;
     value?: any;
     step?: number;
@@ -100,9 +100,9 @@ export type Entry = {
     max?: number;
     style?: string;
     disabled?: boolean;
-    tooltip?: react.ReactNode;
+    tooltip?: React.ReactNode;
     tooltipPlacement?: Placement;
-    values?: react.ReactNode[]; // the values of a menu
+    values?: React.ReactNode[]; // the values of a menu
     width?: Width;
     negativeTopMargin?: boolean;
     lowTopMargin?: boolean;
@@ -122,7 +122,7 @@ interface ItemEditorProps {
     ) => void;
 }
 
-const ItemEditor = ({ info, logIncrement, onIncrementChange, onChange }: ItemEditorProps) => {
+const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange }: ItemEditorProps) => {
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null,
         key: string
@@ -263,6 +263,7 @@ const ItemEditor = ({ info, logIncrement, onIncrementChange, onChange }: ItemEdi
             })}
         </div>
     );
-};
+});
+ItemEditor.displayName = 'ItemEditor';
 
 export default ItemEditor;

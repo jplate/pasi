@@ -1,7 +1,7 @@
 import { Info, Handler } from '../ENode';
 import SNode, { complain } from '../SNode';
 import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor';
-import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/MathTools';
+import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/mathTools';
 import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import * as Texdraw from '@/app/codec/Texdraw';

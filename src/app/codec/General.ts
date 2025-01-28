@@ -1,4 +1,4 @@
-import { round } from '../util/MathTools';
+import { round } from '../util/mathTools';
 
 const CODE =
     '0123456789=#$&*+/<>!?@^_`|~abcdefghijklmnoóòöpqrstuúùüvwxyýzAÁÀÄBCDEÉÈFGHIÍÌJKLMNOÓÒÖPQRSTUÚÙÜVWXYÝZ';

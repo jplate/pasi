@@ -48,13 +48,13 @@ import CanvasEditor from './CanvasEditor';
 import ItemEditor from './ItemEditor';
 import TransformTab from './TransformTab';
 import GroupTab from './GroupTab';
-import ENode from './items/ENode';
+import ENode, { ENodeComp } from './items/ENode';
 import GNode from './items/GNode';
 import Point, { PointComp } from './Point';
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
 import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
-import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
+import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/mathTools';
 import { copyItems, getTopToBeCopied } from './Copying';
 import { getCode, load } from '../../codec/Codec1';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
@@ -62,7 +62,7 @@ import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Mi
 import { useHistory } from '../../util/History';
 import { HotkeyComp, hotkeyMap } from './Hotkeys';
 import { undoIcon, redoIcon, deleteIcon } from './Icons';
-import SNode from './items/SNode';
+import SNode, { ConnectorComp } from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
 import Order from './items/snodes/Order';
 import Identity from './items/snodes/Identity';
@@ -663,7 +663,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const [displayFontFactor, setDisplayFontFactor] = useState(DEFAULT_DISPLAY_FONT_FACTOR);
     const [points, setPoints] = useState<Point[]>([]);
     const [itemsMoved, setItemsMoved] = useState([]); // used to signal to the updaters of, e.g., canCopy that the positions of items may have changed.
-    const [, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
+    const [itemsDragged, setItemsDragged] = useState([]); // used to force a re-render without updating any constants.
     const [list, setList] = useState<(ENode | CNodeGroup)[]>([]);
     const [eNodeCounter, setENodeCounter] = useState(0); // used for generating keys
     const [cngCounter, setCNGCounter] = useState(0); // used for generating keys
@@ -882,6 +882,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
      * OTHER CONSTANTS
      ***************************************************************************************/
 
+    /**
+     * A deduplicated version of selection.
+     */
     const deduplicatedSelection = useMemo(
         () => selection.filter((item, i) => i === selection.indexOf(item)),
         [selection]
@@ -902,13 +905,17 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         [selectedNodesDeduplicated]
     );
 
+    /**
+     * A Set of all those nodes that depend (directly or indirectly, in the sense in which an SNode depends on its involutes) on one or more selected nodes.
+     */
+    const dependents = useMemo(() => addDependents(deduplicatedSelection, false), [deduplicatedSelection]);
+
     const leftMostSelected = useMemo(
         () =>
             selectedNodesDeduplicated.reduce(
                 (min, item) => (itemsMoved && min < item.x ? min : item.x),
                 Infinity
-            ), // added 'itemsMoved &&' to
-        // suppress a warning about 'unnecessary dependencies'
+            ),
         [selectedNodesDeduplicated, itemsMoved]
     );
 
@@ -939,7 +946,10 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         [selectedNodesDeduplicated, itemsMoved]
     );
 
-    const allItems = useMemo(() => getItems(list) as Item[], [list]); // an array of all Items, including Ornaments.
+    /**
+     * An array of all Items, including Ornaments.
+     */
+    const allItems = useMemo(() => getItems(list) as Item[], [list]);
 
     /**
      * The highest-level Items/Groups that will need to be copied if the user clicks on 'Copy Selection'. This includes any Ornaments attached to
@@ -1653,15 +1663,18 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     /**
      * Mouse down handler for contour center divs.
      */
-    const groupMouseDown = (
-        group: CNodeGroup,
-        e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
-    ) => {
-        if (group.members.length > 0) {
-            itemMouseDown(group.members[group.members.length - 1], e, false); // the 'false' parameter prevents the preselection from being cleared after selecting,
-            // which means that the whole current preselection will again be selected if the user clicks on the center div again.
-        }
-    };
+    const groupMouseDown = useCallback(
+        (
+            group: CNodeGroup,
+            e: React.MouseEvent<HTMLDivElement, MouseEvent> | React.MouseEvent<SVGPathElement, MouseEvent>
+        ) => {
+            if (group.members.length > 0) {
+                itemMouseDown(group.members[group.members.length - 1], e, false); // the 'false' parameter prevents the preselection from being cleared after selecting,
+                // which means that the whole current preselection will again be selected if the user clicks on the center div again.
+            }
+        },
+        [itemMouseDown]
+    );
 
     /**
      * Mouse enter handler for items on the canvas
@@ -1780,6 +1793,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         }),
                     ];
                     if (changed) {
+                        //console.log(`changed: ${newPres.length}`);
                         setPreselection2(newPres);
                     }
                     setLasso(lasso);
@@ -2156,6 +2170,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             scrollTo,
         ]
     );
+
+    const incrementChange = useCallback((val: number) => setLogIncrement(val), [setLogIncrement]);
 
     const adjustSelection = useCallback(
         (item: Item) => {
@@ -2618,9 +2634,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
      * Creates a group of the currently selected nodes or (where applicable) their respective highest active groups.
      */
     const createGroup = useCallback(() => {
-        const newMembers = topMembers;
-        const createCNG = newMembers.every((m) => m instanceof CNode);
-        const createSG = newMembers.every((m) => !(m instanceof CNode));
+        const toBeGrouped = getTopToBeCopied(deduplicatedSelection, true);
+        const createCNG = toBeGrouped.every((m) => m instanceof CNode);
+        const createSG = toBeGrouped.every((m) => !(m instanceof CNode));
 
         if (!createCNG && !createSG) {
             showModal(
@@ -2629,7 +2645,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             );
             return;
         }
-        if (createCNG && newMembers.length > MAX_CNODEGROUP_SIZE) {
+        if (createCNG && toBeGrouped.length > MAX_CNODEGROUP_SIZE) {
             showModal(
                 'Too damn high!',
                 `The maximum size of a contour node group is ${MAX_CNODEGROUP_SIZE} nodes.`
@@ -2639,16 +2655,16 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         if (createCNG && list.length === MAX_LIST_SIZE) {
             // Here we check whether creating the new CNodeGroup would lead to the deletion of
             // at least one existing CNodeGroup:
-            const affectedGroups = newMembers
+            const affectedGroups = toBeGrouped
                 .map((item) => item.group)
                 .filter((g, i, arr) => g && i === arr.indexOf(g)) as CNodeGroup[];
-            if (!affectedGroups.some((g) => g.members.every((m) => newMembers.includes(m)))) {
+            if (!affectedGroups.some((g) => g.members.every((m) => toBeGrouped.includes(m)))) {
                 showModal('Sorry!', `Creating this new group would push our list size over the limit.`);
                 return;
             }
         }
         if (createSG) {
-            const maxDepth = newMembers.reduce((acc, it) => {
+            const maxDepth = toBeGrouped.reduce((acc, it) => {
                 const d = depth(it);
                 return acc > d ? acc : d;
             }, 0);
@@ -2658,34 +2674,34 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             }
         }
 
-        const oldGroups = newMembers.map((m) => m.group).filter((g, i, arr) => g && i === arr.indexOf(g));
+        const oldGroups = toBeGrouped.map((m) => m.group).filter((g, i, arr) => g && i === arr.indexOf(g));
         let newList = list,
             group: Group<any>;
         if (createCNG) {
             group = new CNodeGroup(cngCounter);
-            group.members = newMembers;
+            group.members = toBeGrouped;
             (group as CNodeGroup).copyNonMemberValuesFrom(...(oldGroups as CNodeGroup[]));
             newList = [...newList, group as CNodeGroup];
             setCNGCounter((prev) => prev + 1);
         } else {
-            group = new StandardGroup<Item | Group<any>>(sgCounter, newMembers);
+            group = new StandardGroup<Item | Group<any>>(sgCounter, toBeGrouped);
             setSGCounter((prev) => prev + 1);
         }
         oldGroups.forEach((g) => {
             if (g) {
-                g.members = g.members.filter((m) => !newMembers.includes(m));
+                g.members = g.members.filter((m) => !toBeGrouped.includes(m));
                 if (g.members.length == 0) {
                     newList = purge(g, newList);
                 }
             }
         });
-        newMembers.forEach((member) => {
+        toBeGrouped.forEach((member) => {
             member.group = group;
             member.isActiveMember = true;
         });
-        setList(newList);
+        update({ list: newList });
         if (focusItem) adjustSelection(focusItem);
-    }, [topMembers, list, cngCounter, sgCounter, focusItem, adjustSelection, showModal]);
+    }, [deduplicatedSelection, update, cngCounter, sgCounter, focusItem, adjustSelection, showModal]);
 
     const leaveGroup = useCallback(() => {
         const affected = deduplicatedSelection
@@ -3187,56 +3203,36 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
      * RENDERING
      *******************************************************************************************/
 
-    const getENodeComp = useCallback(
-        (node: ENode) =>
-            node.getComponent({
-                id: node.id,
-                yOffset: yOffset,
-                unitScale: unitScale,
-                displayFontFactor: displayFontFactor,
-                bg: dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE,
-                primaryColor: trueBlack ? BLACK : dark ? DEFAULT_HSL_DARK_MODE : DEFAULT_HSL_LIGHT_MODE,
-                markColor0: dark ? MARK_COLOR0_DARK_MODE : MARK_COLOR0_LIGHT_MODE,
-                markColor1: dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE,
-                titleColor: dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE,
-                focusItem: focusItem,
-                selection: selection,
-                preselection: preselection2,
-                onMouseDown: itemMouseDown,
-                onMouseEnter: itemMouseEnter,
-                onMouseLeave: () => mouseLeft(),
-            }),
-        [
-            yOffset,
-            unitScale,
-            displayFontFactor,
-            focusItem,
-            selection,
-            preselection2,
-            itemMouseDown,
-            itemMouseEnter,
-            mouseLeft,
-            dark,
-            trueBlack,
-        ]
-    );
+    const primaryColor = trueBlack ? BLACK : dark ? DEFAULT_HSL_DARK_MODE : DEFAULT_HSL_LIGHT_MODE;
 
     const codePanelStyle = useMemo(() => ({ minWidth: canvasWidth }), [canvasWidth]);
 
-    const menuItemList = useMemo(
+    const depItemMenu = useMemo(
         () => (
-            <MenuItemList>
-                {depItemInfos.map((label, index) => (
-                    <MenuItem key={`di-${index}`}>
-                        <button className={menuItemButtonClassName} onClick={() => setDepItemIndex(index)}>
-                            <div className='inline mr-2'>{label.getImageComp(dark)}</div>
-                            {label.label}
-                        </button>
-                    </MenuItem>
-                ))}
-            </MenuItemList>
+            <Menu>
+                <MenuButton className={menuButtonClass}>
+                    <div className='flex-none mx-2'>{depItemInfos[depItemIndex].getImageComp(dark)}</div>
+                    <div className='flex-1'>{depItemInfos[depItemIndex].label}</div>
+                    <div className='flex-none w-[28px] mx-2'>
+                        <ChevronSVG />
+                    </div>
+                </MenuButton>
+                <MenuItemList>
+                    {depItemInfos.map((label, index) => (
+                        <MenuItem key={`di-${index}`}>
+                            <button
+                                className={menuItemButtonClassName}
+                                onClick={() => setDepItemIndex(index)}
+                            >
+                                <div className='inline mr-2'>{label.getImageComp(dark)}</div>
+                                {label.label}
+                            </button>
+                        </MenuItem>
+                    ))}
+                </MenuItemList>
+            </Menu>
         ),
-        [dark, setDepItemIndex]
+        [dark, depItemIndex, setDepItemIndex]
     );
 
     const transformTabDisabled = selectedNodesDeduplicated.length === 0;
@@ -3351,6 +3347,14 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         ]
     );
 
+    /* eslint-disable react-hooks/exhaustive-deps */
+    // The dependencies points, itemsMoved, and itemsDragged are needed because when they change, this can mean that focusItem has changed.
+    const focusItemInfo = useMemo(
+        () => focusItem?.getInfo(list) || [],
+        [list, focusItem, points, itemsMoved, itemsDragged]
+    );
+    /* eslint-enable react-hooks/exhaustive-deps */
+
     // The delete button gets some special colors:
     const deleteButtonStyle = useMemo(
         () =>
@@ -3413,7 +3417,40 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         ))}
                         {list.map((it) =>
                             it instanceof ENode && !(it instanceof GNode) ? (
-                                getENodeComp(it)
+                                <React.Fragment key={it.id}>
+                                    {it instanceof SNode ? (
+                                        <ConnectorComp
+                                            id={`${it.id}con`}
+                                            node={it}
+                                            yOffset={yOffset}
+                                            primaryColor={primaryColor}
+                                            rerender={!it.locationDefined || dependents.has(it) ? [] : null}
+                                        />
+                                    ) : null}
+                                    <ENodeComp
+                                        id={`${it.id}node`}
+                                        node={it}
+                                        yOffset={yOffset}
+                                        unitScale={unitScale}
+                                        displayFontFactor={displayFontFactor}
+                                        bg={dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE}
+                                        primaryColor={primaryColor}
+                                        markColor0={dark ? MARK_COLOR0_DARK_MODE : MARK_COLOR0_LIGHT_MODE}
+                                        markColor1={dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE}
+                                        titleColor={dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE}
+                                        focusItem={focusItem}
+                                        selection={selection}
+                                        preselection={preselection2}
+                                        onMouseDown={itemMouseDown}
+                                        onMouseEnter={itemMouseEnter}
+                                        onMouseLeave={mouseLeft}
+                                        rerender={
+                                            !it.locationDefined || selectedNodes.includes(it)
+                                                ? []
+                                                : null
+                                        }
+                                    />
+                                </React.Fragment>
                             ) : it instanceof CNodeGroup ? (
                                 <CNodeGroupComp
                                     key={it.id}
@@ -3427,28 +3464,51 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                     unitScale={unitScale}
                                     displayFontFactor={displayFontFactor}
                                     bg={dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE}
-                                    primaryColor={
-                                        trueBlack
-                                            ? BLACK
-                                            : dark
-                                              ? DEFAULT_HSL_DARK_MODE
-                                              : DEFAULT_HSL_LIGHT_MODE
-                                    }
+                                    primaryColor={primaryColor}
                                     markColor={dark ? MARK_COLOR0_DARK_MODE : MARK_COLOR0_LIGHT_MODE}
                                     itemMouseDown={itemMouseDown}
                                     itemMouseEnter={itemMouseEnter}
                                     groupMouseDown={groupMouseDown}
                                     groupMouseEnter={groupMouseEnter}
                                     mouseLeft={mouseLeft}
+                                    rerender={
+                                        selectedIndependentNodes.some(
+                                            (node) => node instanceof CNode && node.group === it
+                                        )
+                                            ? []
+                                            : null
+                                    }
                                 />
                             ) : (
                                 (null as never)
                             )
                         )}
                         {list.map(
-                            (
-                                it // We let the GNodes float above all other visible items.
-                            ) => (it instanceof GNode ? getENodeComp(it) : null)
+                            // We let the GNodes float above all other visible items.
+                            (it) =>
+                                it instanceof GNode ? (
+                                    <ENodeComp
+                                        key={it.id}
+                                        id={it.id}
+                                        node={it}
+                                        yOffset={yOffset}
+                                        unitScale={unitScale}
+                                        displayFontFactor={displayFontFactor}
+                                        bg={dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE}
+                                        primaryColor={primaryColor}
+                                        markColor0={dark ? MARK_COLOR0_DARK_MODE : MARK_COLOR0_LIGHT_MODE}
+                                        markColor1={dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE}
+                                        titleColor={dark ? MARK_COLOR1_DARK_MODE : MARK_COLOR1_LIGHT_MODE}
+                                        focusItem={focusItem}
+                                        selection={selection}
+                                        preselection={preselection2}
+                                        onMouseDown={itemMouseDown}
+                                        onMouseEnter={itemMouseEnter}
+                                        onMouseLeave={mouseLeft}
+                                        rerender={selectedIndependentNodes.includes(it) ? [] : null}
+                                        gradient
+                                    />
+                                ) : null
                         )}
                         <style>
                             {' '}
@@ -3543,18 +3603,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             id='di-panel'
                             className='grid justify-items-stretch border border-btnborder/50 p-2 mb-3 rounded-xl'
                         >
-                            <Menu>
-                                <MenuButton className={menuButtonClass}>
-                                    <div className='flex-none mx-2'>
-                                        {depItemInfos[depItemIndex].getImageComp(dark)}
-                                    </div>
-                                    <div className='flex-1'>{depItemInfos[depItemIndex].label}</div>
-                                    <div className='flex-none w-[28px] mx-2'>
-                                        <ChevronSVG />
-                                    </div>
-                                </MenuButton>
-                                {menuItemList}
-                            </Menu>
+                            {depItemMenu}
                             <BasicColoredButton
                                 id='create-button'
                                 label='Create'
@@ -3605,11 +3654,11 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             </TabList>
                             <TabPanels className='flex-1 h-[364px] overflow-auto scrollbox'>
                                 <TabPanel key='editor-panel' className='rounded-xl px-2 py-2 h-full'>
-                                    {focusItem && itemChange ? (
+                                    {focusItem ? (
                                         <ItemEditor
-                                            info={focusItem.getInfo(list)}
+                                            info={focusItemInfo}
                                             logIncrement={logIncrement}
-                                            onIncrementChange={(val) => setLogIncrement(val)}
+                                            onIncrementChange={incrementChange}
                                             onChange={itemChange}
                                         />
                                     ) : (

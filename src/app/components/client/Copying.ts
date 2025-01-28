@@ -492,10 +492,12 @@ export const copyItems = (
 };
 
 /**
- * @return an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection.
+ * @return an array of the highest-level Groups (or Items) that would need to be copied, based on the supplied selection. Normally this includes items that
+ * depend on nodes in the selection; but if the optional argument is true, then those dependent items will be left out of account (unless they are included
+ * in the selection).
  */
-export const getTopToBeCopied = (selection: Item[]): (Item | Group<any>)[] => {
-    const toBeCopied: Set<Item> = addDependents(selection);
+export const getTopToBeCopied = (selection: Item[], noDependents: boolean = false): (Item | Group<any>)[] => {
+    const toBeCopied: Set<Item> = noDependents? new Set<Item>(selection): addDependents(selection);
     const result: (Item | Group<any>)[] = [];
     const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied items
     const nonNtbcContaining = new Set<Group<any>>(); // already-visited groups that do NOT contain any not-to-be-copied items

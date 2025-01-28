@@ -89,197 +89,208 @@ interface TransformTabProps {
     vFlip: () => void;
 }
 
-const TransformTab = ({
-    rotation,
-    scaling,
-    hFlipPossible,
-    vFlipPossible,
-    logIncrements,
-    transformFlags,
-    testRotation,
-    rotate,
-    testScaling,
-    scale,
-    hFlip,
-    vFlip,
-}: TransformTabProps) => {
-    const [, setRotationIncrement] = useState(logIncrements.rotate);
-    const [, setScalingIncrement] = useState(logIncrements.scale);
-    const [scaleENodes, setScaleENodes] = useState(transformFlags.scaleENodes);
-    const [scaleConnectors, setScaleConnectors] = useState(transformFlags.scaleConnectors);
-    const [scaleArrowheads, setScaleArrowheads] = useState(transformFlags.scaleArrowheads);
-    const [scaleLinewidths, setScaleLinewidths] = useState(transformFlags.scaleLinewidths);
-    const [scaleDash, setScaleDash] = useState(transformFlags.scaleDash);
-    const [flipArrowheads, setFlipArrowheads] = useState(transformFlags.flipArrowheads);
+const TransformTab = React.memo(
+    ({
+        rotation,
+        scaling,
+        hFlipPossible,
+        vFlipPossible,
+        logIncrements,
+        transformFlags,
+        testRotation,
+        rotate,
+        testScaling,
+        scale,
+        hFlip,
+        vFlip,
+    }: TransformTabProps) => {
+        const [, setRotationIncrement] = useState(logIncrements.rotate);
+        const [, setScalingIncrement] = useState(logIncrements.scale);
+        const [scaleENodes, setScaleENodes] = useState(transformFlags.scaleENodes);
+        const [scaleConnectors, setScaleConnectors] = useState(transformFlags.scaleConnectors);
+        const [scaleArrowheads, setScaleArrowheads] = useState(transformFlags.scaleArrowheads);
+        const [scaleLinewidths, setScaleLinewidths] = useState(transformFlags.scaleLinewidths);
+        const [scaleDash, setScaleDash] = useState(transformFlags.scaleDash);
+        const [flipArrowheads, setFlipArrowheads] = useState(transformFlags.flipArrowheads);
 
-    const handleRotation = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) => {
-            const [val, delta] = parseCyclicInputValue(
-                e.target.value,
-                rotation,
-                logIncrements.rotate,
-                MIN_ROTATION,
-                360,
-                Math.max(0, -MIN_ROTATION_LOG_INCREMENT)
-            );
-            if (!isNaN(val) && val !== rotation && testRotation(delta)) rotate(delta);
-        },
-        [rotation, logIncrements.rotate, testRotation, rotate]
-    );
-
-    const handleChangeRotationIncrement = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) =>
-            setRotationIncrement(
-                (logIncrements.rotate = validInt(
+        const handleRotation = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                const [val, delta] = parseCyclicInputValue(
                     e.target.value,
-                    MIN_ROTATION_LOG_INCREMENT,
-                    MAX_ROTATION_LOG_INCREMENT
-                ))
-            ),
-        [logIncrements, setRotationIncrement]
-    );
+                    rotation,
+                    logIncrements.rotate,
+                    MIN_ROTATION,
+                    360,
+                    Math.max(0, -MIN_ROTATION_LOG_INCREMENT)
+                );
+                if (!isNaN(val) && val !== rotation && testRotation(delta)) rotate(delta);
+            },
+            [rotation, logIncrements.rotate, testRotation, rotate]
+        );
 
-    const handleScaling = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) => {
-            const val = parseInputValue(
-                e.target.value,
-                0,
-                MAX_SCALING,
-                scaling,
-                logIncrements.scale,
-                Math.max(0, -MIN_SCALING_LOG_INCREMENT)
-            );
-            if (!isNaN(val) && val !== scaling && testScaling(val)) scale(val);
-        },
-        [scaling, logIncrements.scale, testScaling, scale]
-    );
+        const handleChangeRotationIncrement = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) =>
+                setRotationIncrement(
+                    (logIncrements.rotate = validInt(
+                        e.target.value,
+                        MIN_ROTATION_LOG_INCREMENT,
+                        MAX_ROTATION_LOG_INCREMENT
+                    ))
+                ),
+            [logIncrements, setRotationIncrement]
+        );
 
-    const handleChangeScalingIncrement = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) =>
-            setScalingIncrement(
-                (logIncrements.scale = validInt(
+        const handleScaling = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                const val = parseInputValue(
                     e.target.value,
-                    MIN_SCALING_LOG_INCREMENT,
-                    MAX_SCALING_LOG_INCREMENT
-                ))
-            ),
-        [logIncrements, setScalingIncrement]
-    );
+                    0,
+                    MAX_SCALING,
+                    scaling,
+                    logIncrements.scale,
+                    Math.max(0, -MIN_SCALING_LOG_INCREMENT)
+                );
+                if (!isNaN(val) && val !== scaling && testScaling(val)) scale(val);
+            },
+            [scaling, logIncrements.scale, testScaling, scale]
+        );
 
-    const handleScENodeChange = useCallback(
-        () => setScaleENodes((prev) => (transformFlags.scaleENodes = !prev)),
-        [setScaleENodes, transformFlags]
-    );
+        const handleChangeScalingIncrement = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) =>
+                setScalingIncrement(
+                    (logIncrements.scale = validInt(
+                        e.target.value,
+                        MIN_SCALING_LOG_INCREMENT,
+                        MAX_SCALING_LOG_INCREMENT
+                    ))
+                ),
+            [logIncrements, setScalingIncrement]
+        );
 
-    const handleScConChange = useCallback(
-        () => setScaleConnectors((prev) => (transformFlags.scaleConnectors = !prev)),
-        [setScaleConnectors, transformFlags]
-    );
+        const handleScENodeChange = useCallback(
+            () => setScaleENodes((prev) => (transformFlags.scaleENodes = !prev)),
+            [setScaleENodes, transformFlags]
+        );
 
-    const handleScAhChange = useCallback(
-        () => setScaleArrowheads((prev) => (transformFlags.scaleArrowheads = !prev)),
-        [setScaleArrowheads, transformFlags]
-    );
+        const handleScConChange = useCallback(
+            () => setScaleConnectors((prev) => (transformFlags.scaleConnectors = !prev)),
+            [setScaleConnectors, transformFlags]
+        );
 
-    const handleScLwChange = useCallback(
-        () => setScaleLinewidths((prev) => (transformFlags.scaleLinewidths = !prev)),
-        [setScaleLinewidths, transformFlags]
-    );
+        const handleScAhChange = useCallback(
+            () => setScaleArrowheads((prev) => (transformFlags.scaleArrowheads = !prev)),
+            [setScaleArrowheads, transformFlags]
+        );
 
-    const handleScDashChange = useCallback(
-        () => setScaleDash((prev) => (transformFlags.scaleDash = !prev)),
-        [setScaleDash, transformFlags]
-    );
+        const handleScLwChange = useCallback(
+            () => setScaleLinewidths((prev) => (transformFlags.scaleLinewidths = !prev)),
+            [setScaleLinewidths, transformFlags]
+        );
 
-    const handleFlipAhChange = useCallback(
-        () => setFlipArrowheads((prev) => (transformFlags.flipArrowheads = !prev)),
-        [setFlipArrowheads, transformFlags]
-    );
+        const handleScDashChange = useCallback(
+            () => setScaleDash((prev) => (transformFlags.scaleDash = !prev)),
+            [setScaleDash, transformFlags]
+        );
 
-    return (
-        <div className='flex flex-col h-full'>
-            <InputField
-                label='Rotate'
-                tooltip={rotateTooltip}
-                tooltipPlacement='left'
-                value={rotation}
-                min={-MAX_ROTATION_INPUT}
-                max={MAX_ROTATION_INPUT}
-                step={0}
-                width={'long'}
-                onChange={handleRotation}
-            />
-            <InputField
-                label='log Increment'
-                value={logIncrements.rotate}
-                min={MIN_ROTATION_LOG_INCREMENT}
-                max={MAX_ROTATION_LOG_INCREMENT}
-                step={1}
-                width={'short'}
-                lowTopMargin={true}
-                onChange={handleChangeRotationIncrement}
-            />
-            <InputField
-                label='Scale %'
-                tooltip={scaleTooltip}
-                tooltipPlacement='left'
-                value={scaling}
-                min={0}
-                max={MAX_SCALING}
-                step={0}
-                width={'long'}
-                onChange={handleScaling}
-            />
-            <InputField
-                label='log Increment'
-                value={logIncrements.scale}
-                min={MIN_SCALING_LOG_INCREMENT}
-                max={MAX_SCALING_LOG_INCREMENT}
-                step={1}
-                width={'short'}
-                lowTopMargin={true}
-                onChange={handleChangeScalingIncrement}
-            />
-            <div className='grid grid-cols-2 mx-1.5 my-4'>
-                <BasicColoredButton
-                    id='hflip-button'
-                    label='Horiz. flip'
-                    style='px-2 mr-1.5 rounded-lg text-sm'
-                    tooltip={hFlipTooltip}
+        const handleFlipAhChange = useCallback(
+            () => setFlipArrowheads((prev) => (transformFlags.flipArrowheads = !prev)),
+            [setFlipArrowheads, transformFlags]
+        );
+
+        return (
+            <div className='flex flex-col h-full'>
+                <InputField
+                    label='Rotate'
+                    tooltip={rotateTooltip}
                     tooltipPlacement='left'
-                    disabled={!hFlipPossible}
-                    onClick={hFlip}
+                    value={rotation}
+                    min={-MAX_ROTATION_INPUT}
+                    max={MAX_ROTATION_INPUT}
+                    step={0}
+                    width={'long'}
+                    onChange={handleRotation}
                 />
-                <BasicColoredButton
-                    id='vflip-button'
-                    label='Vert. flip'
-                    style='px-2 rounded-lg text-sm'
-                    tooltip={vFlipTooltip}
-                    tooltipPlacement='right'
-                    disabled={!vFlipPossible}
-                    onClick={vFlip}
+                <InputField
+                    label='log Increment'
+                    value={logIncrements.rotate}
+                    min={MIN_ROTATION_LOG_INCREMENT}
+                    max={MAX_ROTATION_LOG_INCREMENT}
+                    step={1}
+                    width={'short'}
+                    lowTopMargin={true}
+                    onChange={handleChangeRotationIncrement}
                 />
+                <InputField
+                    label='Scale %'
+                    tooltip={scaleTooltip}
+                    tooltipPlacement='left'
+                    value={scaling}
+                    min={0}
+                    max={MAX_SCALING}
+                    step={0}
+                    width={'long'}
+                    onChange={handleScaling}
+                />
+                <InputField
+                    label='log Increment'
+                    value={logIncrements.scale}
+                    min={MIN_SCALING_LOG_INCREMENT}
+                    max={MAX_SCALING_LOG_INCREMENT}
+                    step={1}
+                    width={'short'}
+                    lowTopMargin={true}
+                    onChange={handleChangeScalingIncrement}
+                />
+                <div className='grid grid-cols-2 mx-1.5 my-4'>
+                    <BasicColoredButton
+                        id='hflip-button'
+                        label='Horiz. flip'
+                        style='px-2 mr-1.5 rounded-lg text-sm'
+                        tooltip={hFlipTooltip}
+                        tooltipPlacement='left'
+                        disabled={!hFlipPossible}
+                        onClick={hFlip}
+                    />
+                    <BasicColoredButton
+                        id='vflip-button'
+                        label='Vert. flip'
+                        style='px-2 rounded-lg text-sm'
+                        tooltip={vFlipTooltip}
+                        tooltipPlacement='right'
+                        disabled={!vFlipPossible}
+                        onClick={vFlip}
+                    />
+                </div>
+                <CheckBoxField
+                    label='Scale entity nodes'
+                    value={scaleENodes}
+                    onChange={handleScENodeChange}
+                />
+                <CheckBoxField
+                    label='Scale connectors'
+                    value={scaleConnectors}
+                    onChange={handleScConChange}
+                />
+                <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={handleScAhChange} />
+                <CheckBoxField
+                    label='Scale linewidths'
+                    value={scaleLinewidths}
+                    tooltip={slwTooltip}
+                    tooltipPlacement='left'
+                    onChange={handleScLwChange}
+                />
+                <CheckBoxField
+                    label='Scale stroke patterns'
+                    value={scaleDash}
+                    tooltip={sspTooltip}
+                    tooltipPlacement='left'
+                    onChange={handleScDashChange}
+                />
+                <CheckBoxField label='Flip arrowheads' value={flipArrowheads} onChange={handleFlipAhChange} />
             </div>
-            <CheckBoxField label='Scale entity nodes' value={scaleENodes} onChange={handleScENodeChange} />
-            <CheckBoxField label='Scale connectors' value={scaleConnectors} onChange={handleScConChange} />
-            <CheckBoxField label='Scale arrowheads' value={scaleArrowheads} onChange={handleScAhChange} />
-            <CheckBoxField
-                label='Scale linewidths'
-                value={scaleLinewidths}
-                tooltip={slwTooltip}
-                tooltipPlacement='left'
-                onChange={handleScLwChange}
-            />
-            <CheckBoxField
-                label='Scale stroke patterns'
-                value={scaleDash}
-                tooltip={sspTooltip}
-                tooltipPlacement='left'
-                onChange={handleScDashChange}
-            />
-            <CheckBoxField label='Flip arrowheads' value={flipArrowheads} onChange={handleFlipAhChange} />
-        </div>
-    );
-};
+        );
+    }
+);
+TransformTab.displayName = 'TransformTab';
 
 export default TransformTab;

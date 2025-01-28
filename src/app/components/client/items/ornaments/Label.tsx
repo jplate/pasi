@@ -10,7 +10,7 @@ import { H, MARK_LINEWIDTH } from '@/app/Constants';
 import { Entry } from '../../ItemEditor';
 import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
-import { getCyclicValue, round } from '@/app/util/MathTools';
+import { getCyclicValue, round } from '@/app/util/mathTools';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
 import { encode, decode } from '@/app/codec/General';

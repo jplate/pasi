@@ -715,7 +715,7 @@ export const load = (
     invMap.forEach((invIds, sn) => {
         const involutes: Node[] = invIds.map((id) => {
             let node;
-            if (id.index) {
+            if (id.index !== undefined) {
                 const cng = cngMap.get(id.name);
                 if (!cng) {
                     throw new ParseError(

@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useMemo } from 'react';
+import React, { CSSProperties, useCallback, useMemo } from 'react';
 import Item, { HSL, Range } from './Item';
 import Node, {
     DEFAULT_DISTANCE,
@@ -29,7 +29,7 @@ import {
     tAtLength,
     bezierAngle,
     angle,
-} from '../../../util/MathTools';
+} from '../../../util/mathTools';
 import { MAX_ROTATION_INPUT, getRankMover } from '../ItemEditor';
 
 const CNODE_MARK_RADIUS = 7; // Not the 'real' radius (which is 1), but only used for drawing the 'mark border'.
@@ -541,120 +541,125 @@ export interface CNodeCompProps {
     onMouseDown: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onMouseEnter: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onMouseLeave: (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
+    // rerender the component.
 }
 
-export const CNodeComp = ({
-    id,
-    cnode,
-    yOffset,
-    unitScale,
-    displayFontFactor,
-    primaryColor,
-    markColor,
-    focusItem,
-    selected,
-    preselected,
-    selection,
-    preselection,
-    arrow,
-    onMouseDown,
-    onMouseEnter,
-    onMouseLeave,
-}: CNodeCompProps) => {
-    const x = cnode.x;
-    const y = cnode.y;
-    const radius = CNODE_MARK_RADIUS;
-    const focus = focusItem === cnode;
+export const CNodeComp = React.memo(
+    ({
+        id,
+        cnode,
+        yOffset,
+        unitScale,
+        displayFontFactor,
+        primaryColor,
+        markColor,
+        focusItem,
+        selected,
+        preselected,
+        selection,
+        preselection,
+        arrow,
+        onMouseDown,
+        onMouseEnter,
+        onMouseLeave,
+    }: CNodeCompProps) => {
+        const x = cnode.x;
+        const y = cnode.y;
+        const radius = CNODE_MARK_RADIUS;
+        const focus = focusItem === cnode;
 
-    // coordinates (and dimensions) of the inner rectangle, relative to the div:
-    const top = MARK_LINEWIDTH / 2;
-    const left = MARK_LINEWIDTH / 2;
-    const mW = 2 * radius; // width and...
-    const mH = 2 * radius; // ...height relevant for drawing the 'mark border'
-    const l = Math.min(Math.max(5, mW / 5), 25);
-    const m = 0.9 * l;
+        // coordinates (and dimensions) of the inner rectangle, relative to the div:
+        const top = MARK_LINEWIDTH / 2;
+        const left = MARK_LINEWIDTH / 2;
+        const mW = 2 * radius; // width and...
+        const mH = 2 * radius; // ...height relevant for drawing the 'mark border'
+        const l = Math.min(Math.max(5, mW / 5), 25);
+        const m = 0.9 * l;
 
-    const style = useMemo(
-        () =>
-            ({
-                position: 'absolute',
-                left: `${x - radius - MARK_LINEWIDTH / 2}px`,
-                top: `${H + yOffset - y - radius - MARK_LINEWIDTH / 2}px`,
-                cursor: 'pointer',
-            }) as CSSProperties,
-        [x, y, radius, yOffset]
-    );
+        const style = useMemo(
+            () =>
+                ({
+                    position: 'absolute',
+                    left: `${x - radius - MARK_LINEWIDTH / 2}px`,
+                    top: `${H + yOffset - y - radius - MARK_LINEWIDTH / 2}px`,
+                    cursor: 'pointer',
+                }) as CSSProperties,
+            [x, y, radius, yOffset]
+        );
 
-    const handleMouseDown = useCallback(
-        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown(cnode, e),
-        [cnode, onMouseDown]
-    );
-    const handleMouseEnter = useCallback(
-        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseEnter(cnode, e),
-        [cnode, onMouseEnter]
-    );
-    const handleMouseLeave = useCallback(
-        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseLeave(cnode, e),
-        [cnode, onMouseLeave]
-    );
+        const handleMouseDown = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown(cnode, e),
+            [cnode, onMouseDown]
+        );
+        const handleMouseEnter = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseEnter(cnode, e),
+            [cnode, onMouseEnter]
+        );
+        const handleMouseLeave = useCallback(
+            (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseLeave(cnode, e),
+            [cnode, onMouseLeave]
+        );
 
-    const markBorder = useMemo(
-        () => Node.markBorder(left, top, l, m, mW, mH, markColor),
-        [left, top, l, m, mW, mH, markColor]
-    );
+        const markBorder = useMemo(
+            () => Node.markBorder(left, top, l, m, mW, mH, markColor),
+            [left, top, l, m, mW, mH, markColor]
+        );
 
-    const arrowDiv =
-        arrow && cnode.group ? (
-            <ArrowDiv
-                cnode={cnode}
-                nodes={(cnode.group as CNodeGroup).members}
-                yOffset={yOffset}
-                focus={focus}
-                selected={selected}
-                x={x}
-                y={y}
-                markColor={markColor}
-            />
-        ) : null;
+        const arrowDiv =
+            arrow && cnode.group ? (
+                <ArrowDiv
+                    cnode={cnode}
+                    nodes={(cnode.group as CNodeGroup).members}
+                    yOffset={yOffset}
+                    focus={focus}
+                    selected={selected}
+                    x={x}
+                    y={y}
+                    markColor={markColor}
+                />
+            ) : null;
 
-    //console.log(`Rendering ${id}... x=${x}  y=${y}`);
+        //console.log(`Rendering ${id}... x=${x}  y=${y}`);
 
-    return (
-        <>
-            <div
-                className={
-                    focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
-                }
-                id={id}
-                onMouseDown={handleMouseDown}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                style={style}
-            >
-                <svg
-                    width={mW + MARK_LINEWIDTH}
-                    height={mH + MARK_LINEWIDTH}
-                    xmlns='http://www.w3.org/2000/svg'
+        return (
+            <>
+                <div
+                    className={
+                        focus ? 'focused' : selected ? 'selected' : preselected ? 'preselected' : 'unselected'
+                    }
+                    id={id}
+                    onMouseDown={handleMouseDown}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    style={style}
                 >
-                    {markBorder}
-                </svg>
-            </div>
-            {cnode.ornaments.map((o, i) =>
-                o.getComponent(i, {
-                    yOffset,
-                    unitScale,
-                    displayFontFactor,
-                    primaryColor,
-                    markColor,
-                    focus: focusItem === o,
-                    selected: selection.includes(o),
-                    preselected: preselection.includes(o),
-                    onMouseDown,
-                    onMouseEnter,
-                    onMouseLeave,
-                })
-            )}
-            {arrowDiv}
-        </>
-    );
-};
+                    <svg
+                        width={mW + MARK_LINEWIDTH}
+                        height={mH + MARK_LINEWIDTH}
+                        xmlns='http://www.w3.org/2000/svg'
+                    >
+                        {markBorder}
+                    </svg>
+                </div>
+                {cnode.ornaments.map((o, i) =>
+                    o.getComponent(i, {
+                        yOffset,
+                        unitScale,
+                        displayFontFactor,
+                        primaryColor,
+                        markColor,
+                        focus: focusItem === o,
+                        selected: selection.includes(o),
+                        preselected: preselection.includes(o),
+                        onMouseDown,
+                        onMouseEnter,
+                        onMouseLeave,
+                    })
+                )}
+                {arrowDiv}
+            </>
+        );
+    }
+);
+CNodeComp.displayName = 'CNodeComp';

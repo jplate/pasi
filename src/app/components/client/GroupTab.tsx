@@ -66,88 +66,91 @@ export interface GroupTabProps {
     changeDissolveAdding: () => void;
 }
 
-const GroupTab = ({
-    item,
-    adding,
-    dissolveAdding,
-    create,
-    leave,
-    rejoin,
-    restore,
-    changeAdding,
-    changeDissolveAdding,
-}: GroupTabProps) => {
-    const groups = getGroups(item);
-    const highestActive = groups[1] > -1 ? groups[0][groups[1]] : item;
-    const canLeave = item.group !== null && item.isActiveMember;
-    const canRejoin = highestActive.group !== null && !highestActive.isActiveMember;
-    const canRestore =
-        !(highestActive instanceof Item) && highestActive.members.some((m) => !m.isActiveMember);
-    const canAdd = !(highestActive instanceof Item);
+const GroupTab = React.memo(
+    ({
+        item,
+        adding,
+        dissolveAdding,
+        create,
+        leave,
+        rejoin,
+        restore,
+        changeAdding,
+        changeDissolveAdding,
+    }: GroupTabProps) => {
+        const groups = getGroups(item);
+        const highestActive = groups[1] > -1 ? groups[0][groups[1]] : item;
+        const canLeave = item.group !== null && item.isActiveMember;
+        const canRejoin = highestActive.group !== null && !highestActive.isActiveMember;
+        const canRestore =
+            !(highestActive instanceof Item) && highestActive.members.some((m) => !m.isActiveMember);
+        const canAdd = !(highestActive instanceof Item);
 
-    return (
-        <div className='flex flex-col h-full'>
-            <BasicColoredButton
-                id='create-button'
-                label='Create group'
-                style='px-2 mx-2 mt-1 rounded-lg text-sm'
-                disabled={false}
-                onClick={create}
-                tooltip={createTooltip}
-                tooltipPlacement='left'
-            />
-            <div className='text-center mt-3 text-sm'>
-                Group level:&nbsp;&nbsp;{groups[1] + 1} / {groups[0].length}
+        return (
+            <div className='flex flex-col h-full'>
+                <BasicColoredButton
+                    id='create-button'
+                    label='Create group'
+                    style='px-2 mx-2 mt-1 rounded-lg text-sm'
+                    disabled={false}
+                    onClick={create}
+                    tooltip={createTooltip}
+                    tooltipPlacement='left'
+                />
+                <div className='text-center mt-3 text-sm'>
+                    Group level:&nbsp;&nbsp;{groups[1] + 1} / {groups[0].length}
+                </div>
+                <BasicColoredButton
+                    id='leave-button'
+                    label='Leave group'
+                    style='px-2 mx-2 mt-3 rounded-lg text-sm'
+                    disabled={!canLeave}
+                    onClick={leave}
+                    tooltip={leaveTooltip}
+                    tooltipPlacement='left'
+                />
+                <BasicColoredButton
+                    id='rejoin-button'
+                    label='Rejoin'
+                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    disabled={!canRejoin}
+                    onClick={rejoin}
+                    tooltip={rejoinTooltip}
+                    tooltipPlacement='left'
+                />
+                <BasicColoredButton
+                    id='restore-button'
+                    label='Restore'
+                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    disabled={!canRestore}
+                    onClick={restore}
+                    tooltip={restoreTooltip}
+                    tooltipPlacement='left'
+                />
+                <BasicColoredButton
+                    id='add-button'
+                    label='Add...'
+                    style='px-2 mx-2 mt-3.5 rounded-lg text-sm'
+                    pressed={adding}
+                    disabled={!canAdd}
+                    onClick={changeAdding}
+                    tooltip={addTooltip}
+                    tooltipPlacement='left'
+                />
+                <BasicColoredButton
+                    id='dissolve-add-button'
+                    label='Dissolve-add...'
+                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    pressed={dissolveAdding}
+                    disabled={!canAdd}
+                    onClick={changeDissolveAdding}
+                    tooltip={dissolveAddTooltip}
+                    tooltipPlacement='left'
+                />
             </div>
-            <BasicColoredButton
-                id='leave-button'
-                label='Leave group'
-                style='px-2 mx-2 mt-3 rounded-lg text-sm'
-                disabled={!canLeave}
-                onClick={leave}
-                tooltip={leaveTooltip}
-                tooltipPlacement='left'
-            />
-            <BasicColoredButton
-                id='rejoin-button'
-                label='Rejoin'
-                style='px-2 mx-2 mt-2 rounded-lg text-sm'
-                disabled={!canRejoin}
-                onClick={rejoin}
-                tooltip={rejoinTooltip}
-                tooltipPlacement='left'
-            />
-            <BasicColoredButton
-                id='restore-button'
-                label='Restore'
-                style='px-2 mx-2 mt-2 rounded-lg text-sm'
-                disabled={!canRestore}
-                onClick={restore}
-                tooltip={restoreTooltip}
-                tooltipPlacement='left'
-            />
-            <BasicColoredButton
-                id='add-button'
-                label='Add...'
-                style='px-2 mx-2 mt-3.5 rounded-lg text-sm'
-                pressed={adding}
-                disabled={!canAdd}
-                onClick={changeAdding}
-                tooltip={addTooltip}
-                tooltipPlacement='left'
-            />
-            <BasicColoredButton
-                id='dissolve-add-button'
-                label='Dissolve-add...'
-                style='px-2 mx-2 mt-2 rounded-lg text-sm'
-                pressed={dissolveAdding}
-                disabled={!canAdd}
-                onClick={changeDissolveAdding}
-                tooltip={dissolveAddTooltip}
-                tooltipPlacement='left'
-            />
-        </div>
-    );
-};
+        );
+    }
+);
+GroupTab.displayName = 'GroupTab';
 
 export default GroupTab;

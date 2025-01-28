@@ -1,4 +1,4 @@
-import ENode, { ENodeCompProps, DEFAULT_RADIUS as ENODE_DEFAULT_RADIUS } from './ENode';
+import ENode, { DEFAULT_RADIUS as ENODE_DEFAULT_RADIUS } from './ENode';
 import { Entry } from '../ItemEditor';
 
 export const DEFAULT_RADIUS = ENODE_DEFAULT_RADIUS;
@@ -44,45 +44,5 @@ export default class GNode extends ENode {
                 style: 'max-w-64 pl-8 text-xs hyphens-auto',
             },
         ];
-    }
-
-    /**
-     * We're overriding ENode.getComponent() purely in order to get the GNodes displayed with a gradient.
-     */
-    override getComponent({
-        id,
-        yOffset,
-        unitScale,
-        displayFontFactor,
-        bg,
-        primaryColor,
-        markColor0,
-        markColor1,
-        titleColor,
-        focusItem,
-        selection,
-        preselection,
-        onMouseDown,
-        onMouseEnter,
-        onMouseLeave,
-    }: ENodeCompProps) {
-        return super.getComponent({
-            id,
-            yOffset,
-            unitScale,
-            displayFontFactor,
-            bg,
-            primaryColor,
-            markColor0,
-            markColor1,
-            titleColor,
-            gradient: true,
-            focusItem,
-            selection,
-            preselection,
-            onMouseDown,
-            onMouseEnter,
-            onMouseLeave,
-        });
     }
 }

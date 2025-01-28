@@ -15,7 +15,7 @@ import Node, {
     validateDash,
     validateRadius,
 } from './Node';
-import ENode, { Info, Handler, ENodeCompProps } from './ENode';
+import ENode, { Info, Handler } from './ENode';
 import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS, MIN_ROTATION } from '../../../Constants';
 import CNodeGroup from '../CNodeGroup';
 import CNode from './CNode';
@@ -32,7 +32,7 @@ import {
     cubicBezier,
     findClosest,
     getCyclicValue,
-} from '../../../util/MathTools';
+} from '../../../util/mathTools';
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
@@ -1207,108 +1207,75 @@ export default abstract class SNode extends ENode {
     getArrowheadShapes(): Shape[] {
         return [];
     }
-
-    getConnectorComponent(id: string, yOffset: number, primaryColor: HSL): React.ReactNode {
-        if (this.involutes.length !== 2) return null;
-
-        const conShapes = this.getConnectorShapes();
-        const ahShapes = this.getArrowheadShapes();
-
-        const { minX, maxX, minY, maxY } = getBounds([...conShapes, ...ahShapes]);
-        const width = maxX - minX;
-        const height = maxY - minY;
-        if (isNaN(width) || isNaN(height)) {
-            console.warn(
-                `Illegal values in connector shapes: minX: ${minX}, maxX: ${maxX}, minY: ${minY}, maxY: ${maxY}.`
-            );
-            return null;
-        }
-        const conLw = this.conLinewidth;
-        const ahLw = this.ahLinewidth;
-        const maxLw = Math.max(conLw, ahLw);
-        const lwc = maxLw / 2; // linewidth correction
-        const left = minX - lwc;
-        const top = H + yOffset - maxY - lwc;
-
-        const xTransform = (x: number) => x - minX + lwc;
-        const yTransform = (y: number) => height - y + minY + lwc;
-        const conPath = getPath(conShapes, xTransform, yTransform);
-        const ahPath = getPath(ahShapes, xTransform, yTransform);
-
-        return (
-            <div
-                id={id}
-                style={{
-                    position: 'absolute',
-                    left: `${left}px`,
-                    top: `${top}px`,
-                    pointerEvents: 'none',
-                }}
-            >
-                <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns='http://www.w3.org/2000/svg'>
-                    <path
-                        d={conPath}
-                        fill='none'
-                        stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
-                        strokeWidth={conLw}
-                        strokeDasharray={this.conDash.join(' ')}
-                        strokeLinecap={LINECAP_STYLE}
-                        strokeLinejoin={LINEJOIN_STYLE}
-                    />
-                    <path
-                        d={ahPath}
-                        fill='none'
-                        stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
-                        strokeWidth={ahLw}
-                        strokeDasharray={this.ahDash.join(' ')}
-                        strokeLinecap={LINECAP_STYLE}
-                        strokeLinejoin={LINEJOIN_STYLE}
-                    />
-                </svg>
-            </div>
-        );
-    }
-
-    override getComponent({
-        id,
-        yOffset,
-        unitScale,
-        displayFontFactor,
-        bg,
-        primaryColor,
-        markColor0,
-        markColor1,
-        titleColor,
-        gradient,
-        focusItem,
-        selection,
-        preselection,
-        onMouseDown,
-        onMouseEnter,
-        onMouseLeave,
-    }: ENodeCompProps) {
-        return (
-            <React.Fragment key={id}>
-                {this.getConnectorComponent(`${id}con`, yOffset, primaryColor)}
-                {super.getComponent({
-                    id,
-                    yOffset,
-                    unitScale,
-                    displayFontFactor,
-                    bg,
-                    primaryColor,
-                    markColor0,
-                    markColor1,
-                    titleColor,
-                    gradient,
-                    focusItem,
-                    selection,
-                    preselection,
-                    onMouseDown,
-                    onMouseEnter,
-                    onMouseLeave,
-                })}
-            </React.Fragment>
-        );
-    }
 }
+
+interface ConnectorCompProps {
+    id: string;
+    node: SNode;
+    yOffset: number;
+    primaryColor: HSL;
+    rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
+    // rerender the component.
+}
+
+export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: ConnectorCompProps) => {
+    if (node.involutes.length !== 2) return null;
+
+    const conShapes = node.getConnectorShapes();
+    const ahShapes = node.getArrowheadShapes();
+
+    const { minX, maxX, minY, maxY } = getBounds([...conShapes, ...ahShapes]);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    if (isNaN(width) || isNaN(height)) {
+        console.warn(
+            `Illegal values in connector shapes: minX: ${minX}, maxX: ${maxX}, minY: ${minY}, maxY: ${maxY}.`
+        );
+        return null;
+    }
+    const conLw = node.conLinewidth;
+    const ahLw = node.ahLinewidth;
+    const maxLw = Math.max(conLw, ahLw);
+    const lwc = maxLw / 2; // linewidth correction
+    const left = minX - lwc;
+    const top = H + yOffset - maxY - lwc;
+
+    const xTransform = (x: number) => x - minX + lwc;
+    const yTransform = (y: number) => height - y + minY + lwc;
+    const conPath = getPath(conShapes, xTransform, yTransform);
+    const ahPath = getPath(ahShapes, xTransform, yTransform);
+
+    return (
+        <div
+            id={id}
+            style={{
+                position: 'absolute',
+                left: `${left}px`,
+                top: `${top}px`,
+                pointerEvents: 'none',
+            }}
+        >
+            <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns='http://www.w3.org/2000/svg'>
+                <path
+                    d={conPath}
+                    fill='none'
+                    stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
+                    strokeWidth={conLw}
+                    strokeDasharray={node.conDash.join(' ')}
+                    strokeLinecap={LINECAP_STYLE}
+                    strokeLinejoin={LINEJOIN_STYLE}
+                />
+                <path
+                    d={ahPath}
+                    fill='none'
+                    stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
+                    strokeWidth={ahLw}
+                    strokeDasharray={node.ahDash.join(' ')}
+                    strokeLinecap={LINECAP_STYLE}
+                    strokeLinejoin={LINEJOIN_STYLE}
+                />
+            </svg>
+        </div>
+    );
+});
+ConnectorComp.displayName = 'ConnectorComp';
