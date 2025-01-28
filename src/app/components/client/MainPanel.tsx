@@ -2701,7 +2701,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         });
         update({ list: newList });
         if (focusItem) adjustSelection(focusItem);
-    }, [deduplicatedSelection, update, cngCounter, sgCounter, focusItem, adjustSelection, showModal]);
+    }, [list, deduplicatedSelection, update, cngCounter, sgCounter, focusItem, adjustSelection, showModal]);
 
     const leaveGroup = useCallback(() => {
         const affected = deduplicatedSelection
@@ -3445,9 +3445,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                         onMouseEnter={itemMouseEnter}
                                         onMouseLeave={mouseLeft}
                                         rerender={
-                                            !it.locationDefined || selectedNodes.includes(it)
-                                                ? []
-                                                : null
+                                            !it.locationDefined || selectedNodes.includes(it) ? [] : null
                                         }
                                     />
                                 </React.Fragment>

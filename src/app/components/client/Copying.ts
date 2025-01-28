@@ -497,7 +497,7 @@ export const copyItems = (
  * in the selection).
  */
 export const getTopToBeCopied = (selection: Item[], noDependents: boolean = false): (Item | Group<any>)[] => {
-    const toBeCopied: Set<Item> = noDependents? new Set<Item>(selection): addDependents(selection);
+    const toBeCopied: Set<Item> = noDependents ? new Set<Item>(selection) : addDependents(selection);
     const result: (Item | Group<any>)[] = [];
     const ntbcContaining = new Set<Group<any>>(); // already-visited groups containing not-to-be copied items
     const nonNtbcContaining = new Set<Group<any>>(); // already-visited groups that do NOT contain any not-to-be-copied items
