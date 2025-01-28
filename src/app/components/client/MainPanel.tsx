@@ -61,7 +61,7 @@ import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
 import { useHistory } from '../../util/History';
 import { HotkeyComp, hotkeyMap } from './Hotkeys';
-import { undoIcon, redoIcon, deleteIcon } from './Icons';
+import { undoIcon, redoIcon, deleteIcon } from '../../Icons';
 import SNode, { ConnectorComp } from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
 import Order from './items/snodes/Order';
