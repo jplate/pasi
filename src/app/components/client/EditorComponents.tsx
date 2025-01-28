@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useCallback, useMemo } from 're
 import clsx from 'clsx/lite';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
-import { getCyclicValue, round } from '../../util/mathTools';
+import { getCyclicValue, round } from '../../util/MathTools';
 import { TOOLTIP_DELAY, TOOLTIP_OPACITY } from '@/app/Constants';
 
 import { DarkModeContext } from './MainPanel';

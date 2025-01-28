@@ -31,7 +31,7 @@ import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
 import { addAlpha } from '@/app/util/Misc';
-import { round } from '@/app/util/mathTools';
+import { round } from '@/app/util/MathTools';
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = (2 * Math.PI) / 100; // absolute minimal angle between two contact points on the periphery of an ENode

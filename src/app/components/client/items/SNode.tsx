@@ -32,7 +32,7 @@ import {
     cubicBezier,
     findClosest,
     getCyclicValue,
-} from '../../../util/mathTools';
+} from '../../../util/MathTools';
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';

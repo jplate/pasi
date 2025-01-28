@@ -54,7 +54,7 @@ import Point, { PointComp } from './Point';
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
 import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
-import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/mathTools';
+import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
 import { copyItems, getTopToBeCopied } from './Copying';
 import { getCode, load } from '../../codec/Codec1';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';

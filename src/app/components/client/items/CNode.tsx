@@ -29,7 +29,7 @@ import {
     tAtLength,
     bezierAngle,
     angle,
-} from '../../../util/mathTools';
+} from '../../../util/MathTools';
 import { MAX_ROTATION_INPUT, getRankMover } from '../ItemEditor';
 
 const CNODE_MARK_RADIUS = 7; // Not the 'real' radius (which is 1), but only used for drawing the 'mark border'.

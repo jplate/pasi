@@ -25,7 +25,7 @@ import {
 } from '../../Constants.ts';
 import { DashValidator } from './EditorComponents.tsx';
 import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx';
-import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/mathTools.ts';
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools.ts';
 import * as Texdraw from '../../codec/Texdraw.tsx';
 import { ParseError, makeParseError } from '../../codec/Texdraw';
 import { encode, decode } from '../../codec/General';

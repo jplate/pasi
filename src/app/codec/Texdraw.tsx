@@ -1,5 +1,5 @@
-import { round } from '../util/mathTools';
-import { Shape as MathShape } from '../util/mathTools';
+import { round } from '../util/MathTools';
+import { Shape as MathShape } from '../util/MathTools';
 import { equalArrays } from '../util/Misc';
 import BidirectionalMap from '../util/BidirectionalMap';
 
