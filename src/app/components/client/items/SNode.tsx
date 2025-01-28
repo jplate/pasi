@@ -226,9 +226,19 @@ export default abstract class SNode extends ENode {
     }
 
     init(involutes: Node[]) {
-        this.involutes = involutes;
+        this.involutes = [...involutes];
         for (const node of involutes) {
-            node.dependentNodes = [...node.dependentNodes, this];
+            if (!node.dependentNodes.includes(this)) {
+                node.dependentNodes = [...node.dependentNodes, this];
+            }
+        }
+        if (involutes.length === 2) {
+            const [inv0, inv1] = involutes;
+            if (inv0 instanceof CNode && inv1 instanceof CNode && inv0.group === inv1.group) {
+                // If the user connects a CNode to another CNode of the same group, having this.closest set to true would result in the connector collapsing
+                // into a loop from the first CNode of the group to itself. Presumably that would not be intended.
+                this.closest = false;
+            }
         }
     }
 

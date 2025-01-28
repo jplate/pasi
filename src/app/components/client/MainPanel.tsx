@@ -602,6 +602,26 @@ const move = (nodes: Node[], dx: number, dy: number) => {
     });
 };
 
+/**
+ * @return a selection from the supplied array. If the array contains a run of CNodes that together form a whole CNodeGroup, then only the
+ * last member of this run is included in the returned array.
+ */
+const select = (nodes: Node[]): Node[] => {
+    if (nodes.length < 2) {
+        return nodes;
+    }
+    let n0 = nodes[0];
+    let slice = nodes.slice(1);
+    if (n0 instanceof CNode) {
+        const ng0 = n0.group!.members;
+        if (sameElements(ng0, nodes.slice(0, ng0.length))) {
+            n0 = nodes[ng0.length - 1];
+            slice = nodes.slice(ng0.length);
+        }
+    }
+    return [n0, ...select(slice)];
+};
+
 const flipAffectedArrowheads = (nodes: Item[]) => {
     const affectedSNodes = Array.from(addDependents(nodes, false).values()).filter(
         (it) => it instanceof SNode && Array.from(it.getAncestors()).every((node) => nodes.includes(node))
@@ -1949,27 +1969,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 const key = depItemKeys[index];
                 const minNodes = depItemInfos[index].min;
                 if (selectedNodes.length >= minNodes) {
-                    let relata = selectedNodes;
-                    if (minNodes > 1) {
-                        // If the selected nodes contain all members of a CNodeGroup, the user has likely intended to create only one connector.
-                        let n0 = selectedNodes[0];
-                        let slice = selectedNodes.slice(1);
-                        if (n0 instanceof CNode) {
-                            const ng0 = n0.group!.members;
-                            if (sameElements(ng0, selectedNodes.slice(0, ng0.length))) {
-                                n0 = selectedNodes[ng0.length - 1];
-                                slice = selectedNodes.slice(ng0.length);
-                            }
-                        }
-                        const n1 = slice[0];
-                        if (
-                            slice.length === 1 ||
-                            (n1 instanceof CNode && sameElements(slice, n1.group!.members))
-                        ) {
-                            relata = [n0, n1];
-                        }
-                    }
-
+                    const relata = minNodes == 2 ? select(selectedNodes) : selectedNodes;
                     switch (key) {
                         case 'lbl':
                             newSelection = selectedNodes.map((node) => {

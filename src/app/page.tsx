@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import React, { useRef, useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx/lite';
 import { pasi } from './components/client/Hotkeys';
 import { IntroSection, HotkeySection, AltSection, BasicFeaturesSection } from './Sections.tsx';
@@ -12,10 +12,12 @@ import Loading from './loading';
 import relationshipSrcLight from '@/images/relationshipLight.png';
 import relationshipSrcDark from '@/images/relationshipDark.png';
 
-const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), { ssr: false, loading: () => <Loading /> });
+const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {
+    ssr: false,
+    loading: () => <Loading />,
+});
 const SectionComp = dynamic(() => import('./Section.tsx'), { ssr: true });
 const Footer = dynamic(() => import('./components/client/Footer.tsx'), { ssr: true });
-
 
 const getInitialColorScheme = () => {
     const storedMode = localStorage.getItem('color-scheme');
@@ -132,6 +134,7 @@ export default function Home() {
         header?: string;
         children: React.ReactNode;
     }
+
     const Section = useCallback(
         ({ id, header, children }: SectProps) => (
             <SectionComp id={id || ''} header={header} dark={isDarkMode}>
@@ -178,15 +181,15 @@ export default function Home() {
                             setIsDarkMode(!isDarkMode);
                         }}
                     >
-                        {isDarkMode ? moonIcon: sunIcon}
+                        {isDarkMode ? moonIcon : sunIcon}
                     </button>
                 </span>
             </div>
             <main className='flex flex-col lg:items-center'>
                 {' '}
                 {/* 'flex flex-col' helps to make the sticky top to be actually sticky and to cause the background image to be spread 
-                        out over the page instead of being repeated. 'items-center' centers the content but prevents the table rows from laterally compressing; so we activate it only
-                        for larger screens. */}
+                        out over the page instead of being repeated. 'items-center' centers the content but prevents the table rows from laterally 
+                        compressing; so we activate it only for larger screens. */}
                 {isMobile ? (
                     <div className='text-center text-lg text-white bg-slate-600 px-2 py-2 leading-relaxed'>
                         <p>
@@ -197,8 +200,7 @@ export default function Home() {
                 ) : (
                     <>
                         <div id='content' className='flex-1 flex flex-col items-center mb-9'>
-
-                            <IntroSection dark={isDarkMode} keyCmd={key}/>
+                            <IntroSection dark={isDarkMode} keyCmd={key} />
 
                             <div className='hidden lg:block' ref={mainPanelRef}>
                                 <MainPanel
@@ -208,7 +210,7 @@ export default function Home() {
                                 />
                             </div>
 
-                            <HotkeySection dark={isDarkMode} isMac={isMac} keyCmd={key}/>
+                            <HotkeySection dark={isDarkMode} isMac={isMac} keyCmd={key} />
 
                             <AltSection dark={isDarkMode} keyCmd={key} />
 
