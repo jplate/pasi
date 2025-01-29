@@ -30,7 +30,7 @@ export const IntroSection = ({ dark, keyCmd }: PasiSectionProps) => {
                 you’re done, click the {pasi('Generate')} button to have the LaTeX code displayed in the text
                 area below the canvas. To use that code in your document, you’ll need Peter Kabal’s{' '}
                 <a href='https://ctan.org/pkg/texdraw' target='_blank' rel='noopener noreferrer'>
-                    <i>texdraw</i>
+                    <i>TeXdraw</i>
                 </a>
                 &nbsp; package. (See <a href='#sample-file'>below</a> for a sample file and instructions for{' '}
                 <i>Overleaf</i> users.) You can also load diagrams from previously generated code, using the{' '}
@@ -45,7 +45,7 @@ export const HotkeySection = ({ dark, isMac, keyCmd }: PasiSectionProps) => {
         <Section id='keyboard-commands' header='Keyboard commands' dark={dark}>
             <p>
                 The following keyboard commands are available for editing the diagram displayed on the canvas.
-                For editing the <i>texdraw</i> code in the text area, the usual commands (including{' '}
+                For editing the <i>TeXdraw</i> code in the text area, the usual commands (including{' '}
                 {keyCmd('Ctrl+Z')} and {isMac ? keyCmd('Shift+⌘+Z') : keyCmd('Ctrl+Y')} for &lsquo;undo&rsquo;
                 and &lsquo;redo&rsquo;) are also available. To select a single node out of a group, hold{' '}
                 {keyCmd('Ctrl')} pressed while clicking on it.
@@ -69,9 +69,7 @@ export const HotkeySection = ({ dark, isMac, keyCmd }: PasiSectionProps) => {
                                 i === arr.length - 1 ? 'border-b-4 border-btnborder/50' : ''
                             )}
                         >
-                            {/* In light mode, we use the elaborate <kbd> styling provided by tailwind typography, with its box shadows and borders (which require a greater line height). 
-    In dark mode, these shadows don't really look good and are hardly visible, so we default to monospace font. */}
-                            <td className={clsx('px-4 py-2', dark ? '' : 'leading-7')}>
+                            <td className='px-4 py-2 leading-7'>
                                 {it.rep.map((keyName, j, arr) => (
                                     <React.Fragment key={j}>
                                         {keyCmd(keyName)}
@@ -189,7 +187,7 @@ export const SampleFileSection = ({ dark }: PasiSectionProps) => {
     return (
         <Section id='sample-file' header='Sample file' dark={dark}>
             <p>
-                Here is a sample file that illustrates how <i>texdraw</i> code can be used in a LaTeX
+                Here is a sample file that illustrates how <i>TeXdraw</i> code can be used in a LaTeX
                 document:
             </p>
             <LatexCode dark={dark} code={sampleFile} />
@@ -200,7 +198,11 @@ export const SampleFileSection = ({ dark }: PasiSectionProps) => {
                 </a>
                 , you will need to select the &lsquo;LaTeX&rsquo; compiler in the settings menu&mdash;in the
                 top-left corner of the <i>Overleaf</i> editor screen&mdash;so as to allow for the processing
-                of <i>Postscript</i>. (Thanks to Stephan Leuenberger for bringing this to my attention!)
+                of <i>PostScript</i>. Something similar holds for users of other systems, such as{' '}
+                <a href='https://www.texstudio.org/' target='_blank' rel='noopener noreferrer'>
+                    <i>TeXstudio</i>
+                </a>
+                . (Thanks to Stephan Leuenberger for bringing this to my attention!)
             </p>
         </Section>
     );

@@ -277,7 +277,7 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['Shift+Enter'],
         descr: (
             <>
-                Generate the <i>texdraw</i>&thinsp; code for the current diagram and display it in the text
+                Generate the <i>TeXdraw</i>&thinsp; code for the current diagram and display it in the text
                 area below the canvas.
             </>
         ),
@@ -288,7 +288,7 @@ export const hotkeys: HotkeyInfo[] = [
         rep: ['Ctrl+Enter'],
         descr: (
             <>
-                (Re)load diagram from the <i>texdraw</i> code shown in the text area below the canvas.
+                (Re)load diagram from the <i>TeXdraw</i> code shown in the text area below the canvas.
             </>
         ),
     },

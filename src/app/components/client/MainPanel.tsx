@@ -1987,7 +1987,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             }
                     }
                     if (con) {
-                        const nodes = select(selectedNodes);
+                        const nodes = select(selectedNodes); // If selectedNodes includes, e.g., an ENode followed by a run of CNodes that form a full CNodeGroup,
+                        // the user presumably wants the ENode to be connected to just one of those CNodes.
                         const relata = nodes.length > 1 ? nodes : selectedNodes;
                         snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++));
                         for (let i = 0; i < snodes.length; i++) {
