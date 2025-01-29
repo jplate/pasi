@@ -225,8 +225,8 @@ export default abstract class SNode extends ENode {
         return `${this.id}(S)`;
     }
 
-    init(involutes: Node[]) {
-        this.involutes = [...involutes];
+    init(inv0: Node, inv1: Node) {
+        const involutes = (this.involutes = [inv0, inv1]);
         for (const node of involutes) {
             if (!node.dependentNodes.includes(this)) {
                 node.dependentNodes = [...node.dependentNodes, this];

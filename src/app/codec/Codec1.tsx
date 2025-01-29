@@ -752,7 +752,7 @@ export const load = (
             }
             return node;
         });
-        sn.init(involutes);
+        sn.init(involutes[0], involutes[1]);
     });
 
     // last line

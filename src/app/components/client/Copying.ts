@@ -399,7 +399,7 @@ const copy = (
                     return invCopy;
                 }
             });
-            nodeCopy.init(involutes);
+            nodeCopy.init(involutes[0], involutes[1]);
         }
     });
     return [enCounter, cngCounter, sgCounter];

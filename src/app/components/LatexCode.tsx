@@ -1,10 +1,8 @@
 import { useRef } from 'react';
 import clsx from 'clsx';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import {
-    duotoneEarth as darkTheme,
-    duotoneSea as lightTheme,
-} from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { duotoneSea as lightTheme } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { duotoneEarth as darkTheme } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 // good dark themes: cb, darcula, duotoneEarth
 // good light themes: oneDark, duotoneDark, duotoneSea, nord

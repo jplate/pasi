@@ -1969,7 +1969,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 const key = depItemKeys[index];
                 const minNodes = depItemInfos[index].min;
                 if (selectedNodes.length >= minNodes) {
-                    const relata = minNodes == 2 ? select(selectedNodes) : selectedNodes;
                     switch (key) {
                         case 'lbl':
                             newSelection = selectedNodes.map((node) => {
@@ -1988,9 +1987,11 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             }
                     }
                     if (con) {
+                        const nodes = select(selectedNodes);
+                        const relata = nodes.length > 1 ? nodes : selectedNodes;
                         snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++));
                         for (let i = 0; i < snodes.length; i++) {
-                            snodes[i].init([relata[i], relata[i + 1]]);
+                            snodes[i].init(relata[i], relata[i + 1]);
                         }
                         newSelection = snodes;
                     }

@@ -253,7 +253,7 @@ export default function Home() {
                                         alt={`Iago disapproving of Desdemona's loving Othello`}
                                         width={380}
                                         style={{
-                                            borderRadius: '1rem',
+                                            borderRadius: '0.5rem',
                                             border: '0.25rem solid rgb(var(--canvasbg))',
                                         }}
                                         placeholder='blur'
