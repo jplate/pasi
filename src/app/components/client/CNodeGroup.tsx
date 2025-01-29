@@ -1,5 +1,5 @@
 import React from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 //import assert from 'assert'
 import Item, { HSL } from './items/Item';
 import Node, {

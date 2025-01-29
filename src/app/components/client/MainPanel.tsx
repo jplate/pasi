@@ -3,7 +3,7 @@ import Modal from 'react-modal';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels, Menu, MenuButton, MenuItem } from '@headlessui/react';
 import NextImage, { StaticImageData } from 'next/image';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 
 import {
     H,
@@ -61,7 +61,7 @@ import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
 import { useHistory } from '../../util/History';
 import { HotkeyComp, hotkeyMap } from './Hotkeys';
-import { undoIcon, redoIcon, deleteIcon } from '../../Icons';
+import { undoIcon, redoIcon, deleteIcon } from '../Icons';
 import SNode, { ConnectorComp } from './items/SNode';
 import Adjunction from './items/snodes/Adjunction';
 import Order from './items/snodes/Order';

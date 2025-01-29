@@ -3,10 +3,16 @@
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 import { pasi } from './components/client/Hotkeys';
-import { IntroSection, HotkeySection, AltSection, BasicFeaturesSection } from './Sections.tsx';
-import { moonIcon, sunIcon } from './Icons.tsx';
+import {
+    IntroSection,
+    HotkeySection,
+    AltSection,
+    BasicFeaturesSection,
+    SampleFileSection,
+} from './components/Sections.tsx';
+import { moonIcon, sunIcon } from './components/Icons.tsx';
 import Loading from './loading';
 
 import relationshipSrcLight from '@/images/relationshipLight.png';
@@ -16,7 +22,7 @@ const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {
     ssr: false,
     loading: () => <Loading />,
 });
-const SectionComp = dynamic(() => import('./Section.tsx'), { ssr: true });
+const SectionComp = dynamic(() => import('./components/Section.tsx'), { ssr: true });
 const Footer = dynamic(() => import('./components/client/Footer.tsx'), { ssr: true });
 
 const getInitialColorScheme = () => {
@@ -264,6 +270,8 @@ export default function Home() {
                                     latter is here invisible thanks to having had its linewidth set to zero.
                                 </p>
                             </Section>
+
+                            <SampleFileSection dark={isDarkMode} isMac={isMac} keyCmd={key} />
 
                             <Section id='contour-examples' header='Contour examples'>
                                 <ul>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo, CSSProperties } from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 import { Lora } from 'next/font/google';
 import Item, { Range } from '../Item';
 import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament';

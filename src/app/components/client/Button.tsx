@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, forwardRef, CSSProperties } from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 import { WithTooltip, Placement } from './EditorComponents';
 import { useThrottle } from '../../util/Misc';
 

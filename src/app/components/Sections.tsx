@@ -1,7 +1,8 @@
 import React from 'react';
-import clsx from 'clsx/lite';
-import { hotkeys, pasi } from './components/client/Hotkeys';
+import clsx from 'clsx';
+import { hotkeys, pasi } from './client/Hotkeys';
 import Section from './Section';
+import LatexCode from './LatexCode';
 
 interface PasiSectionProps {
     dark: boolean;
@@ -31,7 +32,8 @@ export const IntroSection = ({ dark, keyCmd }: PasiSectionProps) => {
                 <a href='https://ctan.org/pkg/texdraw' target='_blank' rel='noopener noreferrer'>
                     <i>texdraw</i>
                 </a>
-                &nbsp; package. You can also load diagrams from previously generated code, using the{' '}
+                &nbsp; package. (See <a href='#sample-file'>below</a> for a sample file and instructions for{' '}
+                <i>Overleaf</i> users.) You can also load diagrams from previously generated code, using the{' '}
                 {pasi('Load')} button.
             </p>
         </Section>
@@ -176,6 +178,30 @@ export const BasicFeaturesSection = ({ dark, keyCmd }: PasiSectionProps) => {
                     described <a href='#contour-examples'>below</a>.
                 </li>
             </ol>
+        </Section>
+    );
+};
+
+const sampleFile =
+    '\\documentclass[twoside,12pt,a4paper]{article}\n\n\\usepackage[utf8]{inputenc}\n\\usepackage{texdraw, lipsum}\n\\usepackage[style=authoryear, backend=biber]{biblatex}\n\n\\begin{document}\n\n\\title{Sample}\n\n\\author{NN}\n\n\\maketitle\n\n\\section{Introduction}\n\n\\lipsum[1] See Figure~\\ref{f1}. \n\n\\lipsum[11]\n\n\\begin{figure}\n\\begin{center}\n\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(400 380)\\lcir r:12 %E0\n\\textref h:C v:B \\htext(400 394.5){\\vphantom{p}Desdemona}%L0{2 U 0}\n\\linewd 1 \\move(600 380)\\lcir r:12 %E1\n\\textref h:C v:B \\htext(600 394.5){\\vphantom{p}Othello}%L1{2 U 0}\n\\linewd 1 \\move(412 380)\\clvec(420 380)(579.6 380)(587.6 380)\\move(587.6 380)\\lvec(578.3612 383.8268)\\move(587.6 380)\\lvec(578.3612 376.1732)\\linewd 1 \\move(499.976 380)\\lcir r:5 %A2(0 1){.u7 0 .n 1}\n\\textref h:C v:B \\htext(499.976 387.5){\\vphantom{p}loves}%L2{2 U 0}\n\\linewd 1 \\move(500 280)\\lcir r:12 %E3\n\\textref h:C v:T \\htext(500 265.5){Iago}%L3{2 U- 0}\n\\linewd 1 \\move(499.9971 292)\\clvec(499.9952 300)(499.9806 360.6)(499.978 371.6)\\move(499.978 371.6)\\lvec(496.4295 373.4461)\\move(499.978 371.6)\\lvec(503.5256 373.4478)%A4(3 2){5 0 .u 0 3.n 1}\n\\textref h:L v:C \\htext(506.9878 330.675){\\small disapproves}%L4{2 0 0}\n\\end{texdraw}\n\\end{center}\n\\caption{\\label{f1}A dramatic diagram.\n}\n\\end{figure}\n\n\\section{Conclusion}\n\n\\lipsum[21-22]\n\n\\end{document}';
+
+export const SampleFileSection = ({ dark }: PasiSectionProps) => {
+    return (
+        <Section id='sample-file' header='Sample file' dark={dark}>
+            <p>
+                Here is a sample file that illustrates how <i>texdraw</i> code can be used in a LaTeX
+                document:
+            </p>
+            <LatexCode dark={dark} code={sampleFile} />
+            <p>
+                If you are using{' '}
+                <a href='https://www.overleaf.com/' target='_blank' rel='noopener noreferrer'>
+                    <i>Overleaf</i>
+                </a>
+                , you will need to select the &lsquo;LaTeX&rsquo; compiler in the settings menu&mdash;in the
+                top-left corner of the <i>Overleaf</i> editor screen&mdash;so as to allow for the processing
+                of <i>Postscript</i>. (Thanks to Stephan Leuenberger for bringing this to my attention!)
+            </p>
         </Section>
     );
 };

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { getCyclicValue, round } from '../../util/MathTools';

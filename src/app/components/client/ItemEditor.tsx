@@ -1,5 +1,5 @@
 import React from 'react';
-import clsx from 'clsx/lite';
+import clsx from 'clsx';
 import { Placement } from './EditorComponents';
 import { BasicColoredButton } from './Button';
 import {
