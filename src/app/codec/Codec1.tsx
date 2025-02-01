@@ -555,7 +555,7 @@ export const load = (
         throw new ParseError(
             (
                 <span>
-                    Need at least three lines of <i>texdraw</i> code, got{' '}
+                    Need at least three lines of <i>TeXdraw</i> code, got{' '}
                     {n === 0 ? 'zero' : n === 1 ? 'one' : 'two'}.
                 </span>
             )
