@@ -512,13 +512,7 @@ export const getTopToBeCopied = (selection: Item[], noDependents: boolean = fals
                 break;
             }
             const lm = getLeafMembers(groups[i]) as Set<Item>;
-            let containsNtbc = false;
-            for (const m of lm) {
-                if (!toBeCopied.has(m)) {
-                    containsNtbc = true;
-                    break;
-                }
-            }
+            const containsNtbc = [...lm].some((m) => !toBeCopied.has(m));
             if (containsNtbc) {
                 j = i;
                 ntbcContaining.add(groups[i]);

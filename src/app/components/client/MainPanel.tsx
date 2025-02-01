@@ -3447,7 +3447,11 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                         onMouseEnter={itemMouseEnter}
                                         onMouseLeave={mouseLeft}
                                         rerender={
-                                            !it.locationDefined || selectedNodes.includes(it) ? [] : null
+                                            !it.locationDefined ||
+                                            (focusItem instanceof Ornament && focusItem.node === it) ||
+                                            deduplicatedSelection.includes(it)
+                                                ? []
+                                                : null
                                         }
                                     />
                                 </React.Fragment>
@@ -3472,6 +3476,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                     groupMouseEnter={groupMouseEnter}
                                     mouseLeft={mouseLeft}
                                     rerender={
+                                        (focusItem instanceof Ornament && focusItem.node.group === it) ||
                                         selectedIndependentNodes.some(
                                             (node) => node instanceof CNode && node.group === it
                                         )
@@ -3505,7 +3510,12 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                         onMouseDown={itemMouseDown}
                                         onMouseEnter={itemMouseEnter}
                                         onMouseLeave={mouseLeft}
-                                        rerender={selectedIndependentNodes.includes(it) ? [] : null}
+                                        rerender={
+                                            (focusItem instanceof Ornament && focusItem.node === it) ||
+                                            selectedIndependentNodes.includes(it)
+                                                ? []
+                                                : null
+                                        }
                                         gradient
                                     />
                                 ) : null
