@@ -173,7 +173,7 @@ const copyButtonTooltip = (
 
 export const generateButtonTooltip = (
     <>
-        Generate and display <i>texdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
+        Generate and display <i>TeXdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
         {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may
         be lost as a result.) <HotkeyComp mapKey='generate code' />
     </>
@@ -181,7 +181,7 @@ export const generateButtonTooltip = (
 
 const loadButtonTooltip = (
     <>
-        Load diagram from <i>texdraw</i> code.
+        Load diagram from <i>TeXdraw</i> code.
         <HotkeyComp mapKey='load diagram' />
     </>
 );
@@ -732,7 +732,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const [adding, setAdding] = useState(false);
     const [dissolveAdding, setDissolveAdding] = useState(false);
 
-    const [code, setCode] = useState<string>(''); // the texdraw code to be displayed in the code area.
+    const [code, setCode] = useState<string>(''); // the TeXdraw code to be displayed in the code area.
 
     const [modalShown, setModalShown] = useState(false);
     const [dialog, setDialog] = useState<DialogConfig>({});
