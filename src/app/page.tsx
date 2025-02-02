@@ -25,7 +25,7 @@ const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {
 
 const SectionComp = dynamic(() => import('./components/Section.tsx'), { ssr: true });
 
-const MyFooter = dynamic(() => import('./components/client/Footer.tsx'), { ssr: true });
+const MyFooter = dynamic(() => import('./components/Footer.tsx'), { ssr: true });
 
 const getInitialColorScheme = () => {
     const storedMode = localStorage.getItem('color-scheme');
