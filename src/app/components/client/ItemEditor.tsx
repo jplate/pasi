@@ -177,7 +177,6 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                         return (
                             <InputField
                                 key={i}
-                                type='string'
                                 label={entry.text ?? ''}
                                 width={entry.width}
                                 value={entry.value}
@@ -212,7 +211,6 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                         return (
                             <InputField
                                 key={i}
-                                type='number'
                                 label={'log Increment'}
                                 width={'short'}
                                 value={logIncrement}

@@ -64,10 +64,11 @@ export const CheckBoxField = React.memo(
 );
 CheckBoxField.displayName = 'CheckBoxField';
 
-interface InputFieldProps {
+type InputType = string | number;
+
+interface InputFieldProps<T extends InputType> {
     label: React.ReactNode;
-    value: any;
-    type?: string;
+    value: T;
     step?: number;
     min?: number;
     max?: number;
@@ -82,10 +83,9 @@ interface InputFieldProps {
     readOnly?: boolean;
 }
 
-export const InputField = ({
+export const InputField = <T extends InputType>({
     label,
     value,
-    type = 'number',
     min = Number.MIN_SAFE_INTEGER,
     max = Number.MAX_SAFE_INTEGER,
     step = 1,
@@ -98,7 +98,7 @@ export const InputField = ({
     disabled = false,
     onChange,
     readOnly = false,
-}: InputFieldProps) => {
+}: InputFieldProps<T>) => {
     const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
     const labelComp = <span className='pointer-events-auto'>{label}</span>;
 
@@ -107,12 +107,12 @@ export const InputField = ({
             <input
                 className={clsx(
                     w,
-                    type === 'number' ? 'text-right' : 'pr-2', // string inputs need extra padding on the right;
+                    typeof value === 'number' ? 'text-right' : 'pr-2', // string inputs need extra padding on the right;
                     // whereas number inputs have space reserved on the right for the arrow buttons, which is already a sort of padding.
                     'ml-2 pl-2 border border-btnborder rounded-md pointer-events-auto focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor'
                 )}
                 value={value}
-                type={type}
+                type={typeof value}
                 step={step === 0 ? 'any' : step}
                 min={min}
                 max={max}
@@ -123,7 +123,7 @@ export const InputField = ({
                 readOnly={readOnly}
             />
         ),
-        [type, value, step, min, max, w, disabled, readOnly, onChange]
+        [value, step, min, max, w, disabled, readOnly, onChange]
     );
 
     return (
