@@ -22,13 +22,14 @@ const MainPanel = dynamic(() => import('./components/client/MainPanel.tsx'), {
     ssr: false,
     loading: () => <Loading />,
 });
+
 const SectionComp = dynamic(() => import('./components/Section.tsx'), { ssr: true });
-const Footer = dynamic(() => import('./components/client/Footer.tsx'), { ssr: true });
+
+const MyFooter = dynamic(() => import('./components/client/Footer.tsx'), { ssr: true });
 
 const getInitialColorScheme = () => {
     const storedMode = localStorage.getItem('color-scheme');
     const systemMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-
     return storedMode ?? systemMode;
 };
 
@@ -365,53 +366,7 @@ export default function Home() {
                                 </div>
                             </Section>
                         </div>
-                        <Footer
-                            copyRightHolder='Jan Plate'
-                            homepage='https://jplate.github.io/home/Home'
-                            licenseInfo='The source code for this webpage is licensed under the MIT License.'
-                            sections={[
-                                {
-                                    header: 'Links',
-                                    contents: [
-                                        <a
-                                            key='1'
-                                            href='https://github.com/jplate/pasi'
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                        >
-                                            GitHub repository
-                                        </a>,
-                                        <a
-                                            key='2'
-                                            href='https://opensource.org/license/MIT'
-                                            target='_blank'
-                                            rel='noopener noreferrer'
-                                        >
-                                            License
-                                        </a>,
-                                    ],
-                                },
-                                {
-                                    header: 'Contact',
-                                    contents: [
-                                        <>
-                                            <span>Email: </span>
-                                            <a href='mailto:janplate@gmail.com'>jan.plate@gmail.com</a>
-                                        </>,
-                                        <>
-                                            <span>&#120143;: </span> {/* Twitter */}
-                                            <a
-                                                href='https://x.com/jan_plate'
-                                                target='_blank'
-                                                rel='noopener noreferrer'
-                                            >
-                                                @jan_plate
-                                            </a>
-                                        </>,
-                                    ],
-                                },
-                            ]}
-                        />
+                        <MyFooter />
                     </>
                 )}
             </main>

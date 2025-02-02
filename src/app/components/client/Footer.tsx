@@ -49,4 +49,50 @@ const Footer = ({ copyRightHolder, homepage, licenseInfo, sections }: FooterProp
     );
 };
 
-export default Footer;
+const MyFooter = () => (
+    <Footer
+        copyRightHolder='Jan Plate'
+        homepage='https://jplate.github.io/home/Home'
+        licenseInfo='The source code for this webpage is licensed under the MIT License.'
+        sections={[
+            {
+                header: 'Links',
+                contents: [
+                    <a
+                        key='1'
+                        href='https://github.com/jplate/pasi'
+                        target='_blank'
+                        rel='noopener noreferrer'
+                    >
+                        GitHub repository
+                    </a>,
+                    <a
+                        key='2'
+                        href='https://opensource.org/license/MIT'
+                        target='_blank'
+                        rel='noopener noreferrer'
+                    >
+                        License
+                    </a>,
+                ],
+            },
+            {
+                header: 'Contact',
+                contents: [
+                    <>
+                        <span>Email: </span>
+                        <a href='mailto:janplate@gmail.com'>jan.plate@gmail.com</a>
+                    </>,
+                    <>
+                        <span>&#120143;: </span> {/* Twitter */}
+                        <a href='https://x.com/jan_plate' target='_blank' rel='noopener noreferrer'>
+                            @jan_plate
+                        </a>
+                    </>,
+                ],
+            },
+        ]}
+    />
+);
+
+export default MyFooter;

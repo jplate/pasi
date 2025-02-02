@@ -604,7 +604,7 @@ const move = (nodes: Node[], dx: number, dy: number) => {
 
 /**
  * @return a selection from the supplied array. If the array contains a run of CNodes that together form a whole CNodeGroup, then only the
- * last member of this run is included in the returned array.
+ * first member of this run is included in the returned array.
  */
 const select = (nodes: Node[]): Node[] => {
     if (nodes.length < 2) {
@@ -615,7 +615,7 @@ const select = (nodes: Node[]): Node[] => {
     if (n0 instanceof CNode) {
         const ng0 = n0.group!.members;
         if (sameElements(ng0, nodes.slice(0, ng0.length))) {
-            n0 = nodes[ng0.length - 1];
+            n0 = nodes[0];
             slice = nodes.slice(ng0.length);
         }
     }
