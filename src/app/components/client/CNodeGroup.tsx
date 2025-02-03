@@ -11,6 +11,7 @@ import Node, {
     MAX_LINEWIDTH,
     MAX_DASH_LENGTH,
     MAX_DASH_VALUE,
+    getDependents,
 } from './items/Node';
 import Group from './Group.tsx';
 import {
@@ -76,6 +77,35 @@ export const isFree = (node: CNode, nodes: CNode[]): boolean => {
         }
     }
     return true;
+};
+
+/**
+ * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.
+ */
+export const move = (nodes: Node[], dx: number, dy: number) => {
+    const dependents = new Set<Node>();
+    for (const node of nodes) {
+        getDependents(node, false, dependents);
+    }
+    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
+    const toMove = nodes.filter((n) => !dependents.has(n));
+    const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+    toMove.forEach((node) => {
+        // console.log(`moving: ${item.id}`);
+        if (node.group instanceof CNodeGroup) {
+            if (!nodeGroups.includes(node.group)) {
+                nodeGroups.push(node.group);
+                const members = node.group.members;
+                (node.group as CNodeGroup).groupMove(
+                    members.filter((m) => toMove.includes(m)),
+                    dx,
+                    dy
+                );
+            }
+        } else if (node instanceof Node) {
+            node.move(dx, dy);
+        }
+    });
 };
 
 export default class CNodeGroup implements Group<CNode> {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import clsx from 'clsx';
 import { Placement } from './EditorComponents';
 import { BasicColoredButton } from './Button';
@@ -122,7 +122,31 @@ interface ItemEditorProps {
     ) => void;
 }
 
+type Handler =
+    | null
+    | (() => void)
+    | ((e: React.ChangeEvent<HTMLInputElement>) => void)
+    | ((e: React.ChangeEvent<HTMLTextAreaElement>) => void)
+    | ((e: number) => void);
+
+interface HandlerMemo {
+    key: string;
+    handler: Handler;
+}
+
 const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange }: ItemEditorProps) => {
+    // We memoize the onChange function, so as to notice when a new item has been selected, in which case the memoized handlers have to be replaced:
+    const onChangeMemo = useRef<
+        | ((
+              e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null,
+              key: string
+          ) => void)
+        | null
+    >(null);
+
+    // We memoize the handlers in order to allow the InputFields etc. to be memoized by React itself:
+    const handlerMemos = useRef<HandlerMemo[]>([]);
+
     const handleChange = (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null,
         key: string
@@ -130,6 +154,55 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
         // console.log(`change event: ${e?.nativeEvent}`);
         onChange(e, key);
     };
+
+    const itemChanged = onChange !== onChangeMemo.current;
+
+    onChangeMemo.current = onChange;
+
+    handlerMemos.current = info.map((entry, i) => {
+        const key = entry.key ?? '';
+        if (itemChanged || handlerMemos.current.length <= i || handlerMemos.current[i].key !== key) {
+            // Create a new handler memo:
+            let handler = null;
+            switch (entry.type) {
+                case 'checkbox':
+                    handler = () => handleChange(null, key);
+                    break;
+                case 'number input':
+                    handler = (e: React.ChangeEvent<HTMLInputElement>) => handleChange(e, key);
+                    break;
+                case 'string input':
+                    handler = (e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange(e, key);
+                    break;
+                case 'button':
+                    handler = () => handleChange(null, key);
+                    break;
+                case 'logIncrement':
+                    handler = (e: React.ChangeEvent<HTMLInputElement>) => {
+                        if (e) {
+                            const val = validInt(
+                                e.target.value,
+                                MIN_TRANSLATION_LOG_INCREMENT,
+                                MAX_TRANSLATION_LOG_INCREMENT
+                            );
+                            onIncrementChange(val);
+                        }
+                    };
+                    break;
+                case 'textarea':
+                    handler = (e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange(e, key);
+                    break;
+                case 'menu':
+                    handler = (e: number) => handleChange(e, key);
+                    break;
+                default:
+            }
+            return { key, handler };
+        } else {
+            // Use the old memo:
+            return handlerMemos.current[i];
+        }
+    });
 
     return (
         <div className='flex flex-col h-full'>
@@ -150,7 +223,7 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
                                 disabled={entry.disabled}
-                                onChange={() => handleChange(null, entry.key ?? '')}
+                                onChange={handlerMemos.current[i].handler as () => void}
                             />
                         );
                     case 'number input':
@@ -169,7 +242,11 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
                                 disabled={entry.disabled}
-                                onChange={(e) => handleChange(e, entry.key ?? '')}
+                                onChange={
+                                    handlerMemos.current[i].handler as (
+                                        e: React.ChangeEvent<HTMLInputElement>
+                                    ) => void
+                                }
                                 readOnly={entry.readOnly}
                             />
                         );
@@ -186,7 +263,11 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
                                 disabled={entry.disabled}
-                                onChange={(e) => handleChange(e, entry.key ?? '')}
+                                onChange={
+                                    handlerMemos.current[i].handler as (
+                                        e: React.ChangeEvent<HTMLInputElement>
+                                    ) => void
+                                }
                                 readOnly={entry.readOnly}
                             />
                         );
@@ -204,7 +285,7 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 disabled={!!entry.disabled}
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
-                                onClick={() => handleChange(null, entry.key ?? '')}
+                                onClick={handlerMemos.current[i].handler as () => void}
                             />
                         );
                     case 'logIncrement':
@@ -220,16 +301,11 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 extraBottomMargin={entry.extraBottomMargin}
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
-                                onChange={(e) => {
-                                    if (e) {
-                                        const val = validInt(
-                                            e.target.value,
-                                            MIN_TRANSLATION_LOG_INCREMENT,
-                                            MAX_TRANSLATION_LOG_INCREMENT
-                                        );
-                                        onIncrementChange(val);
-                                    }
-                                }}
+                                onChange={
+                                    handlerMemos.current[i].handler as (
+                                        e: React.ChangeEvent<HTMLInputElement>
+                                    ) => void
+                                }
                             />
                         );
                     case 'textarea':
@@ -238,7 +314,11 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 key={i}
                                 fullHeight={entry.fullHeight}
                                 value={entry.value}
-                                onChange={(e) => handleChange(e, entry.key ?? '')}
+                                onChange={
+                                    handlerMemos.current[i].handler as (
+                                        e: React.ChangeEvent<HTMLTextAreaElement>
+                                    ) => void
+                                }
                             />
                         );
                     case 'menu':
@@ -252,7 +332,7 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
                                 extraBottomMargin={entry.extraBottomMargin}
                                 tooltip={entry.tooltip}
                                 tooltipPlacement={entry.tooltipPlacement}
-                                onChange={(e: number) => handleChange(e, entry.key ?? '')}
+                                onChange={handlerMemos.current[i].handler as (e: number) => void}
                             />
                         );
                     default:

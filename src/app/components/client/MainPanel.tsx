@@ -32,7 +32,6 @@ import Node, {
     DEFAULT_HSL_LIGHT_MODE,
     DEFAULT_HSL_DARK_MODE,
     MAX_RADIUS,
-    getDependents,
     addDependents,
 } from './items/Node';
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button';
@@ -53,7 +52,7 @@ import GNode from './items/GNode';
 import Point, { PointComp } from './Point';
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
 import CNode from './items/CNode';
-import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree } from './CNodeGroup';
+import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree, move } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
 import { copyItems, getTopToBeCopied } from './Copying';
 import { getCode, load } from '../../codec/Codec1';
@@ -571,35 +570,6 @@ const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFact
             n0.dependentNodes = n0.dependentNodes.filter((n) => n !== node);
         }
     }
-};
-
-/**
- * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.
- */
-const move = (nodes: Node[], dx: number, dy: number) => {
-    const dependents = new Set<Node>();
-    for (const node of nodes) {
-        getDependents(node, false, dependents);
-    }
-    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
-    const toMove = nodes.filter((n) => !dependents.has(n));
-    const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
-    toMove.forEach((node) => {
-        // console.log(`moving: ${item.id}`);
-        if (node.group instanceof CNodeGroup) {
-            if (!nodeGroups.includes(node.group)) {
-                nodeGroups.push(node.group);
-                const members = node.group.members;
-                (node.group as CNodeGroup).groupMove(
-                    members.filter((m) => toMove.includes(m)),
-                    dx,
-                    dy
-                );
-            }
-        } else if (node instanceof Node) {
-            node.move(dx, dy);
-        }
-    });
 };
 
 /**
@@ -2142,8 +2112,10 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         : deduplicatedSelection.reduce((acc: (ENode | CNodeGroup)[], item: Item) => {
                               //console.log(`Editing item ${item.key}`);
                               if (item instanceof CNode && nodeGroups) {
-                                  if (nodeGroups.has(item.group as CNodeGroup)) return acc;
-                                  else {
+                                  if (nodeGroups.has(item.group as CNodeGroup)) {
+                                      // In this case range is 'ENodesAndCNodeGroups' and we've already seen this item's CNodeGroup, so we don't edit it again.
+                                      return acc;
+                                  } else {
                                       nodeGroups.add(item.group as CNodeGroup);
                                   }
                               }

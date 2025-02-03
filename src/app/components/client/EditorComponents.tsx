@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
@@ -83,27 +83,27 @@ interface InputFieldProps<T extends InputType> {
     readOnly?: boolean;
 }
 
-export const InputField = <T extends InputType>({
-    label,
-    value,
-    min = Number.MIN_SAFE_INTEGER,
-    max = Number.MAX_SAFE_INTEGER,
-    step = 1,
-    width = 'medium',
-    lowTopMargin = false,
-    negativeTopMargin = false,
-    extraBottomMargin = false,
-    tooltip,
-    tooltipPlacement,
-    disabled = false,
-    onChange,
-    readOnly = false,
-}: InputFieldProps<T>) => {
-    const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
-    const labelComp = <span className='pointer-events-auto'>{label}</span>;
+export const InputField = React.memo(
+    <T extends InputType>({
+        label,
+        value,
+        min = Number.MIN_SAFE_INTEGER,
+        max = Number.MAX_SAFE_INTEGER,
+        step = 1,
+        width = 'medium',
+        lowTopMargin = false,
+        negativeTopMargin = false,
+        extraBottomMargin = false,
+        tooltip,
+        tooltipPlacement,
+        disabled = false,
+        onChange,
+        readOnly = false,
+    }: InputFieldProps<T>) => {
+        const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
+        const labelComp = <span className='pointer-events-auto'>{label}</span>;
 
-    const inputComp = useMemo(
-        () => (
+        const inputComp = (
             <input
                 className={clsx(
                     w,
@@ -122,29 +122,29 @@ export const InputField = <T extends InputType>({
                 onChange={onChange}
                 readOnly={readOnly}
             />
-        ),
-        [value, step, min, max, w, disabled, readOnly, onChange]
-    );
+        );
 
-    return (
-        <label
-            className={clsx(
-                'flex items-center justify-end px-2 py-1 text-sm pointer-events-none', // We disable pointer events for the overall component because of
-                // the possibility of overlap with other components in the case of negativeTopMargin being set to true.
-                negativeTopMargin ? 'mt-[-1rem]' : lowTopMargin ? 'mt-[-0.25rem]' : '',
-                extraBottomMargin ? 'mb-4' : '',
-                disabled ? 'opacity-50' : ''
-            )}
-        >
-            {tooltip ? (
-                <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />
-            ) : (
-                labelComp
-            )}
-            {inputComp}
-        </label>
-    );
-};
+        return (
+            <label
+                className={clsx(
+                    'flex items-center justify-end px-2 py-1 text-sm pointer-events-none', // We disable pointer events for the overall component because of
+                    // the possibility of overlap with other components in the case of negativeTopMargin being set to true.
+                    negativeTopMargin ? 'mt-[-1rem]' : lowTopMargin ? 'mt-[-0.25rem]' : '',
+                    extraBottomMargin ? 'mb-4' : '',
+                    disabled ? 'opacity-50' : ''
+                )}
+            >
+                {tooltip ? (
+                    <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />
+                ) : (
+                    labelComp
+                )}
+                {inputComp}
+            </label>
+        );
+    }
+);
+InputField.displayName = 'InputField';
 
 interface SliderProps {
     value: number;
@@ -289,7 +289,7 @@ interface LabelFieldProps {
     style?: string;
 }
 
-export const LabelField = ({ label, style = '' }: LabelFieldProps) => {
+export const LabelField = React.memo(({ label, style = '' }: LabelFieldProps) => {
     return (
         <div
             className={clsx(
@@ -300,20 +300,22 @@ export const LabelField = ({ label, style = '' }: LabelFieldProps) => {
             {label}
         </div>
     );
-};
+});
+LabelField.displayName = 'LabelField';
 
 interface GlossFieldProps {
     label: React.ReactNode;
     style?: string;
 }
 
-export const GlossField = ({ label, style = '' }: GlossFieldProps) => {
+export const GlossField = React.memo(({ label, style = '' }: GlossFieldProps) => {
     return (
         <div className={clsx('block px-2 py-1', style)}>
             <p className='text-pretty'>{label}</p>
         </div>
     );
-};
+});
+GlossField.displayName = 'GlossField';
 
 export const validInt = (s: string, min: number, max: number, dflt: number = min) => {
     const val = parseInt(s);
