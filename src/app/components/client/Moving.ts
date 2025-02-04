@@ -87,7 +87,7 @@ export const getCoordinateHandler = (node: Node): Handler => ({
                     }
                     return array;
                 },
-                'wholeSelection',
+                'onlyThis',
             ];
         }
     },
