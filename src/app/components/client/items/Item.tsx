@@ -15,6 +15,18 @@ export type Range = 'onlyThis' | 'wholeSelection' | 'ENodesAndCNodeGroups'; // T
 
 export const DEFAULT_DIRECTION: Direction = 'counter-clockwise';
 
+export interface Info {
+    e: React.ChangeEvent<HTMLInputElement> | null;
+    logIncrement: number;
+    selection: Item[];
+}
+
+export type Handler = {
+    [key: string]: (
+        i: Info
+    ) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range];
+};
+
 /**
  * An Item represents a component located on the canvas that is either selectable or contributes texdraw code. This includes Nodes, Ornaments, and Connectors,
  * but neither CNodeGroups (which represent multiple components) nor Points (which are neither selectable nor contribute texdraw code).

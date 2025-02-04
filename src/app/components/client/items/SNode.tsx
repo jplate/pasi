@@ -1,5 +1,5 @@
 import React from 'react';
-import Item, { HSL, Range } from './Item';
+import Item, { HSL, Range, Info, Handler } from './Item';
 import Node, {
     DEFAULT_DISTANCE,
     MIN_DISTANCE,
@@ -15,7 +15,7 @@ import Node, {
     validateDash,
     validateRadius,
 } from './Node';
-import ENode, { Info, Handler } from './ENode';
+import ENode from './ENode';
 import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS, MIN_ROTATION } from '../../../Constants';
 import CNodeGroup from '../CNodeGroup';
 import CNode from './CNode';
@@ -222,7 +222,7 @@ export default abstract class SNode extends ENode {
     }
 
     override getString(): string {
-        return `${this.id}(S)`;
+        return `${this.id}(S${this.locationDefined ? '' : '#'})`;
     }
 
     init(inv0: Node, inv1: Node) {

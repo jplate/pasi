@@ -91,6 +91,39 @@ export default class CNode extends Node {
         return true;
     }
 
+    /**
+     * @return true if either the supplied array is empty or, among the neighbors to each side of this CNode, up to the first node that is a member of
+     * the array, there is a node that either does not have the fixedAngles property or is not a member of the array.
+     */
+    isFree(nodes: CNode[]) {
+        const group = this.group;
+        if (group instanceof CNodeGroup) {
+            const index = group.members.indexOf(this);
+            const members = group.members;
+            const n = members.length;
+            for (const inc of [-1, 1]) {
+                for (let i = 1; i < group.members.length; i++) {
+                    const j = index + i * inc;
+                    const neighbor =
+                        members[
+                            j >= n
+                                ? j - n // continuing with 0
+                                : j < 0
+                                  ? n + j // continuing with n - 1
+                                  : j
+                        ];
+                    if (!neighbor.fixedAngles) {
+                        break;
+                    }
+                    if (nodes.includes(neighbor)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     override setLinewidth(lw: number) {
         const group = this.group as CNodeGroup;
         group.linewidth = group.linewidth100 = lw;

@@ -1,6 +1,6 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { HSL, Range } from './Item';
+import Item, { HSL, Range, Info, Handler } from './Item';
 import Node, {
     MAX_DASH_VALUE,
     MAX_DASH_LENGTH,
@@ -48,18 +48,6 @@ export const TITLE_BOTTOM_MARGIN = 1.5; // The margin at the bottom of a Node's 
 
 const GHOST_CENTER_OPACITY = 0.45;
 const GHOST_PERIPHERAL_OPACITY = 0.05;
-
-export interface Info {
-    e: React.ChangeEvent<HTMLInputElement> | null;
-    logIncrement: number;
-    selection: Item[];
-}
-
-export type Handler = {
-    [key: string]: (
-        i: Info
-    ) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range];
-};
 
 /**
  * ENodes are 'entity nodes': they represent entities in the form of circles on the canvas.

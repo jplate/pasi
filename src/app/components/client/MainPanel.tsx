@@ -33,6 +33,7 @@ import Node, {
     DEFAULT_HSL_DARK_MODE,
     MAX_RADIUS,
     addDependents,
+    getDependents,
 } from './items/Node';
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button';
 import {
@@ -52,7 +53,7 @@ import GNode from './items/GNode';
 import Point, { PointComp } from './Point';
 import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
 import CNode from './items/CNode';
-import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp, isFree, move } from './CNodeGroup';
+import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
 import { copyItems, getTopToBeCopied } from './Copying';
 import { getCode, load } from '../../codec/Codec1';
@@ -284,7 +285,7 @@ const getSnapPoint = (
                     if (
                         (dn < d || (snappingToGrid && dn < NODE_SNAP_RADIUS)) &&
                         !addDependents(selectedNodes, false).has(node) && // No point in trying to snap to a node that'll move away as a result.
-                        (!(node instanceof CNode) || isFree(node, overlap)) // Don't try to snap to nodes that might move away due to groupMove.
+                        (!(node instanceof CNode) || node.isFree(overlap)) // Don't try to snap to nodes that might move away due to groupMove.
                     ) {
                         snappingToGrid = false;
                         snapNode = node;
@@ -592,6 +593,35 @@ const select = (nodes: Node[]): Node[] => {
     return [n0, ...select(slice)];
 };
 
+/**
+ * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.
+ */
+export const move = (nodes: Node[], dx: number, dy: number) => {
+    const dependents = new Set<Node>();
+    for (const node of nodes) {
+        getDependents(node, false, dependents);
+    }
+    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
+    const toMove = nodes.filter((n) => !dependents.has(n));
+    const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
+    toMove.forEach((node) => {
+        // console.log(`moving: ${item.id}`);
+        if (node.group instanceof CNodeGroup) {
+            if (!nodeGroups.includes(node.group)) {
+                nodeGroups.push(node.group);
+                const members = node.group.members;
+                (node.group as CNodeGroup).groupMove(
+                    members.filter((m) => toMove.includes(m)),
+                    dx,
+                    dy
+                );
+            }
+        } else if (node instanceof Node) {
+            node.move(dx, dy);
+        }
+    });
+};
+
 const flipAffectedArrowheads = (nodes: Item[]) => {
     const affectedSNodes = Array.from(addDependents(nodes, false).values()).filter(
         (it) => it instanceof SNode && Array.from(it.getAncestors()).every((node) => nodes.includes(node))
@@ -896,9 +926,20 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     );
 
     /**
-     * A Set of all those nodes that depend (directly or indirectly, in the sense in which an SNode depends on its involutes) on one or more selected nodes.
+     * A Set of all those nodes that depend (directly or indirectly, in the sense in which an SNode depends on its involutes) on one or more selected nodes or,
+     * if one of the selected nodes is a CNode, on any of the CNodes in its group. This latter case is included because any of those CNodes might have moved
+     * as a result of CNodeGroup.groupMove().
      */
-    const dependents = useMemo(() => addDependents(deduplicatedSelection, false), [deduplicatedSelection]);
+    const dependents = useMemo(
+        () =>
+            addDependents(
+                deduplicatedSelection.flatMap((it) =>
+                    it instanceof CNode ? (it.group as CNodeGroup).members : [it]
+                ),
+                false
+            ),
+        [deduplicatedSelection]
+    );
 
     const leftMostSelected = useMemo(
         () =>
@@ -3419,7 +3460,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                         onMouseEnter={itemMouseEnter}
                                         onMouseLeave={mouseLeft}
                                         rerender={
-                                            !it.locationDefined ||
+                                            (it instanceof SNode &&
+                                                (!it.locationDefined || dependents.has(it))) ||
                                             (focusItem instanceof Ornament && focusItem.node === it) ||
                                             deduplicatedSelection.includes(it)
                                                 ? []

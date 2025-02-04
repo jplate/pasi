@@ -11,7 +11,6 @@ import Node, {
     MAX_LINEWIDTH,
     MAX_DASH_LENGTH,
     MAX_DASH_VALUE,
-    getDependents,
 } from './items/Node';
 import Group from './Group.tsx';
 import {
@@ -45,68 +44,6 @@ const CONTOUR_CENTER_DIV_MARGIN = 4;
 export const DEFAULT_DISTANCE = 10;
 const BUMP_DISTANCE = 5; // the minimal distance that the CNodes of a NodeGroup can be brought together through dragging while fixedAngles is true
 export const MAX_CNODEGROUP_SIZE = 500;
-
-/**
- * @return true if either the supplied array is empty or, among the neighbors to each side of the supplied CNode, up to the first node that is a member of
- * the array, there is a node that either does not have the fixedAngles property or is not a member of the array.
- */
-export const isFree = (node: CNode, nodes: CNode[]): boolean => {
-    const group = node.group;
-    if (group instanceof CNodeGroup) {
-        const index = group.members.indexOf(node);
-        const members = group.members;
-        const n = members.length;
-        for (const inc of [-1, 1]) {
-            for (let i = 1; i < group.members.length; i++) {
-                const j = index + i * inc;
-                const neighbor =
-                    members[
-                        j >= n
-                            ? j - n // continuing with 0
-                            : j < 0
-                              ? n + j // continuing with n - 1
-                              : j
-                    ];
-                if (!neighbor.fixedAngles) {
-                    break;
-                }
-                if (nodes.includes(neighbor)) {
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
-};
-
-/**
- * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.
- */
-export const move = (nodes: Node[], dx: number, dy: number) => {
-    const dependents = new Set<Node>();
-    for (const node of nodes) {
-        getDependents(node, false, dependents);
-    }
-    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
-    const toMove = nodes.filter((n) => !dependents.has(n));
-    const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
-    toMove.forEach((node) => {
-        // console.log(`moving: ${item.id}`);
-        if (node.group instanceof CNodeGroup) {
-            if (!nodeGroups.includes(node.group)) {
-                nodeGroups.push(node.group);
-                const members = node.group.members;
-                (node.group as CNodeGroup).groupMove(
-                    members.filter((m) => toMove.includes(m)),
-                    dx,
-                    dy
-                );
-            }
-        } else if (node instanceof Node) {
-            node.move(dx, dy);
-        }
-    });
-};
 
 export default class CNodeGroup implements Group<CNode> {
     members: CNode[];
