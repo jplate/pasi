@@ -1,4 +1,4 @@
-import { Info, Handler } from '../ENode';
+import { Info } from '../Item';
 import SNode, { complain } from '../SNode';
 import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor';
 import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/MathTools';
@@ -6,6 +6,7 @@ import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
+import { TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE } from '@/app/Constants';
 
 export const DEFAULT_W0 = 8;
 export const DEFAULT_W1 = 8;
@@ -19,8 +20,6 @@ export const ROUNDING_DIGITS = 1; // precision used for parameters specific to O
 // because those parameters will be inferred from the coordinates of points encoded in the texdraw code, and those coordinates are
 // rounded to the nearest 10,000th of a pixel -- which creates inaccuracy.
 
-const EPSILON = 1e-4;
-
 const hookAngleTooltip = (
     <>The angle (in degrees) by which the arrowhead&rsquo;s hook deviates from the center line.</>
 );
@@ -32,50 +31,55 @@ export default class Order extends SNode {
     hookLength = DEFAULT_HOOK_LENGTH; // the length of that hook
     hookLength100 = DEFAULT_HOOK_LENGTH; // the length of that hook
 
-    arrowheadEditHandler: Handler = {
-        ...this.commonArrowheadEditHandler,
-        hookAngle: ({ e }: Info) => {
-            if (e) {
-                const delta = parseCyclicInputValue(e.target.value, this.hookAngle, 0)[1];
-                return [
-                    (item, array) => {
-                        if (!isNaN(delta) && delta !== 0 && item instanceof Order) {
-                            item.hookAngle = getCyclicValue(
-                                item.hookAngle + delta,
-                                MIN_ROTATION,
-                                360,
-                                10 ** ROUNDING_DIGITS
-                            );
-                        }
-                        return array;
-                    },
-                    'ENodesAndCNodeGroups',
-                ];
-            }
-        },
-        hookLength: ({ e }: Info) => {
-            if (e) {
-                const d =
-                    parseInputValue(
-                        e.target.value,
-                        MINIMUM_HOOK_LENGTH,
-                        MAXIMUM_HOOK_LENGTH,
-                        this.hookLength,
-                        0,
-                        ROUNDING_DIGITS
-                    ) - this.hookLength;
-                return [
-                    (item, array) => {
-                        if (!isNaN(d) && d !== 0 && item instanceof Order) {
-                            item.hookLength += d;
-                        }
-                        return array;
-                    },
-                    'ENodesAndCNodeGroups',
-                ];
-            }
-        },
-    };
+    constructor(i: number) {
+        super(i);
+        this.editHandler = {
+            ...this.nodeEditHandler,
+            ...this.connectorEditHandler,
+            ...this.commonArrowheadEditHandler,
+            hookAngle: ({ e }: Info) => {
+                if (e) {
+                    const delta = parseCyclicInputValue(e.target.value, this.hookAngle, 0)[1];
+                    return [
+                        (item, array) => {
+                            if (!isNaN(delta) && delta !== 0 && item instanceof Order) {
+                                item.hookAngle = getCyclicValue(
+                                    item.hookAngle + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** ROUNDING_DIGITS
+                                );
+                            }
+                            return array;
+                        },
+                        'ENodesAndCNodeGroups',
+                    ];
+                }
+            },
+            hookLength: ({ e }: Info) => {
+                if (e) {
+                    const d =
+                        parseInputValue(
+                            e.target.value,
+                            MINIMUM_HOOK_LENGTH,
+                            MAXIMUM_HOOK_LENGTH,
+                            this.hookLength,
+                            0,
+                            ROUNDING_DIGITS
+                        ) - this.hookLength;
+                    return [
+                        (item, array) => {
+                            if (!isNaN(d) && d !== 0 && item instanceof Order) {
+                                item.hookLength += d;
+                            }
+                            return array;
+                        },
+                        'ENodesAndCNodeGroups',
+                    ];
+                }
+            },
+        };
+    }
 
     getDefaultW0() {
         return DEFAULT_W0;
@@ -137,16 +141,12 @@ export default class Order extends SNode {
         ];
     }
 
-    override getArrowheadEditHandler(): Handler {
-        return this.arrowheadEditHandler;
-    }
-
     override getArrowheadShapes(): Shape[] {
         const adjustedLine = this.getAdjustedLine();
         const len = this.hookLength;
         const a = (this.hookAngle / 180) * Math.PI;
         const { x3: p1x, y3: p1y } = adjustedLine;
-        const [p2x, p2y] = travel([1], this.w1, adjustedLine, -EPSILON, 1 / EPSILON);
+        const [p2x, p2y] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
         const gamma = angle(p1x, p1y, p2x, p2y, true);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);

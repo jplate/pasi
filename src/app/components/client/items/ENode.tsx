@@ -1,6 +1,6 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { HSL, Range, Info, Handler } from './Item';
+import Item, { HSL, Info, Handler } from './Item';
 import Node, {
     MAX_DASH_VALUE,
     MAX_DASH_LENGTH,
@@ -9,24 +9,21 @@ import Node, {
     LINECAP_STYLE,
     LINEJOIN_STYLE,
     MAX_RADIUS,
-    validateCoordinates,
-    validateLinewidth,
-    validateDash,
-    validateShading,
-    validateRadius,
 } from './Node';
 import { Entry, getRankMover } from '../ItemEditor';
 import {
     H,
     MAX_X,
     MAX_Y,
+    MIN_X,
     MIN_Y,
     MARK_LINEWIDTH,
     MIN_TRANSLATION_LOG_INCREMENT,
     ROUNDING_DIGITS,
 } from '../../../Constants';
-import { validFloat, parseInputValue, DashValidator } from '../EditorComponents';
+import { validFloat, DashValidator } from '../EditorComponents';
 import CNodeGroup from '../CNodeGroup';
+import { getCoordinateHandler } from '../Moving';
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
@@ -49,6 +46,153 @@ export const TITLE_BOTTOM_MARGIN = 1.5; // The margin at the bottom of a Node's 
 const GHOST_CENTER_OPACITY = 0.45;
 const GHOST_PERIPHERAL_OPACITY = 0.05;
 
+export const validateLinewidth = (lw: number, name: string): number => {
+    if (lw < 0) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: line width should not be
+                    negative.
+                </span>
+            )
+        );
+    } else if (lw > MAX_LINEWIDTH) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds
+                    maximum value.
+                </span>
+            )
+        );
+    }
+    return lw;
+};
+
+export const validateShading = (shading: number, name: string): number => {
+    if (shading < 0) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: shading value should not be
+                    negative.
+                </span>
+            )
+        );
+    } else if (shading > 1) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: shading value {shading}{' '}
+                    exceeds 1.
+                </span>
+            )
+        );
+    }
+    return shading;
+};
+
+export const validateDash = (dash: number[], name: string): number[] => {
+    if (dash.length > MAX_DASH_LENGTH) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: dash array length{' '}
+                    {dash.length} exceeds maximum value.
+                </span>
+            )
+        );
+    }
+    let val;
+    if (dash.some((v) => (val = v) < 0)) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: dash value should not be
+                    negative.
+                </span>
+            )
+        );
+    }
+    if (dash.some((v) => v > MAX_DASH_VALUE)) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds
+                    maximum value.
+                </span>
+            )
+        );
+    }
+    return dash;
+};
+
+export const validateRadius = (radius: number, name: string): number => {
+    if (radius < 0) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: radius should not be
+                    negative.
+                </span>
+            )
+        );
+    } else if (radius > MAX_RADIUS) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds
+                    maximum value.
+                </span>
+            )
+        );
+    }
+    return radius;
+};
+
+export const validateCoordinates = (x: number, y: number, name: string): number[] => {
+    if (x < MIN_X) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below
+                    minimum value.
+                </span>
+            )
+        );
+    } else if (x > MAX_X) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds
+                    maximum value.
+                </span>
+            )
+        );
+    }
+
+    if (y < MIN_Y) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below
+                    minimum value.
+                </span>
+            )
+        );
+    } else if (y > MAX_Y) {
+        throw new ParseError(
+            (
+                <span>
+                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds
+                    maximum value.
+                </span>
+            )
+        );
+    }
+    return [x, y];
+};
+
 /**
  * ENodes are 'entity nodes': they represent entities in the form of circles on the canvas.
  */
@@ -58,6 +202,7 @@ export default class ENode extends Node {
     constructor(i: number, x: number, y: number) {
         super(`E${i}`, x, y);
         this.radius = this.radius100 = DEFAULT_RADIUS;
+        this.editHandler = { ...getCoordinateHandler(this), ...this.nodeEditHandler };
     }
 
     /**
@@ -216,7 +361,7 @@ export default class ENode extends Node {
         return this.getNodeInfo(list);
     }
 
-    commonEditHandler: Handler = {
+    protected nodeEditHandler: Handler = {
         radius: ({ e }: Info) => {
             if (e)
                 return [
@@ -274,73 +419,6 @@ export default class ENode extends Node {
             'wholeSelection',
         ],
     };
-
-    editHandler: Handler = {
-        x: ({ e, logIncrement, selection }: Info) => {
-            if (e) {
-                const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce(
-                    (min, item) => (min < item.x ? min : item.x),
-                    this.x
-                );
-                const delta =
-                    parseInputValue(
-                        e.target.value,
-                        0,
-                        MAX_X,
-                        this.x,
-                        logIncrement,
-                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                    ) - this.x;
-                const dx = delta > dmin ? delta : 0; // this is to avoid items from being moved beyond the left border of the canvas
-                return [
-                    (item, array) => {
-                        if (item instanceof Node && dx !== 0) {
-                            item.move(dx, 0);
-                        }
-                        return array;
-                    },
-                    'wholeSelection',
-                ];
-            }
-        },
-        y: ({ e, logIncrement }: Info) => {
-            if (e) {
-                const dy =
-                    parseInputValue(
-                        e.target.value,
-                        MIN_Y,
-                        MAX_Y,
-                        this.y,
-                        logIncrement,
-                        Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                    ) - this.y;
-                return [
-                    (item, array) => {
-                        if (item instanceof Node && !isNaN(dy) && dy !== 0) {
-                            item.move(0, dy);
-                        }
-                        return array;
-                    },
-                    'wholeSelection',
-                ];
-            }
-        },
-        ...this.commonEditHandler,
-    };
-
-    /**
-     * Overridden by SNode.
-     */
-    override handleEditing(
-        e: React.ChangeEvent<HTMLInputElement> | null,
-        logIncrement: number,
-        selection: Item[],
-        _unitScale: number,
-        _displayFontFactor: number,
-        key: string
-    ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
-        return this.editHandler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
-    }
 
     /**
      * Overridden by SNode.

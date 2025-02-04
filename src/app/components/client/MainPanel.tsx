@@ -33,7 +33,6 @@ import Node, {
     DEFAULT_HSL_DARK_MODE,
     MAX_RADIUS,
     addDependents,
-    getDependents,
 } from './items/Node';
 import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button';
 import {
@@ -56,6 +55,7 @@ import CNode from './items/CNode';
 import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup';
 import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
 import { copyItems, getTopToBeCopied } from './Copying';
+import { move } from './Moving';
 import { getCode, load } from '../../codec/Codec1';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
@@ -591,35 +591,6 @@ const select = (nodes: Node[]): Node[] => {
         }
     }
     return [n0, ...select(slice)];
-};
-
-/**
- * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.
- */
-export const move = (nodes: Node[], dx: number, dy: number) => {
-    const dependents = new Set<Node>();
-    for (const node of nodes) {
-        getDependents(node, false, dependents);
-    }
-    // Filter out the nodes that are dependent on any others that have to be moved, to avoid unnecessary computation:
-    const toMove = nodes.filter((n) => !dependents.has(n));
-    const nodeGroups: CNodeGroup[] = []; // To keep track of the node groups whose members we've already moved.
-    toMove.forEach((node) => {
-        // console.log(`moving: ${item.id}`);
-        if (node.group instanceof CNodeGroup) {
-            if (!nodeGroups.includes(node.group)) {
-                nodeGroups.push(node.group);
-                const members = node.group.members;
-                (node.group as CNodeGroup).groupMove(
-                    members.filter((m) => toMove.includes(m)),
-                    dx,
-                    dy
-                );
-            }
-        } else if (node instanceof Node) {
-            node.move(dx, dy);
-        }
-    });
 };
 
 const flipAffectedArrowheads = (nodes: Item[]) => {

@@ -1,5 +1,5 @@
 import React, { CSSProperties, useCallback, useMemo } from 'react';
-import Item, { HSL, Range } from './Item';
+import Item, { HSL, Info } from './Item';
 import Node, {
     DEFAULT_DISTANCE,
     MIN_DISTANCE,
@@ -11,16 +11,9 @@ import Node, {
 } from './Node';
 import ENode from './ENode';
 import CNodeGroup, { getLine } from '../CNodeGroup';
+import { getCoordinateHandler } from '../Moving';
 import { Entry } from '../ItemEditor';
-import {
-    H,
-    MAX_X,
-    MAX_Y,
-    MIN_Y,
-    MARK_LINEWIDTH,
-    MIN_TRANSLATION_LOG_INCREMENT,
-    MIN_ROTATION,
-} from '@/app/Constants';
+import { H, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MIN_ROTATION } from '@/app/Constants';
 import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents';
 import {
     getCyclicValue,
@@ -85,6 +78,180 @@ export default class CNode extends Node {
         this.angle1 = a1;
         this.group = group;
         this.isActiveMember = true;
+        this.editHandler = {
+            ...getCoordinateHandler(this),
+            fixed: () => {
+                const fa = !this.fixedAngles;
+                return [
+                    (item, array) => {
+                        if (item instanceof CNode) {
+                            item.fixedAngles = fa;
+                        }
+                        return array;
+                    },
+                    'wholeSelection',
+                ];
+            },
+            line: () => {
+                const omit = !this.omitLine;
+                return [
+                    (item, array) => {
+                        if (item instanceof CNode) {
+                            item.omitLine = omit;
+                        }
+                        return array;
+                    },
+                    'wholeSelection',
+                ];
+            },
+            a0: ({ e, logIncrement }: Info) => {
+                if (e) {
+                    const delta = parseCyclicInputValue(e.target.value, this.angle0, logIncrement)[1];
+                    return [
+                        (item, array) => {
+                            if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
+                                item.angle0 = getCyclicValue(
+                                    item.angle0 + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                                );
+                            }
+                            return array;
+                        },
+                        'wholeSelection',
+                    ];
+                }
+            },
+            d0: ({ e, logIncrement }: Info) => {
+                if (e) {
+                    const d =
+                        parseInputValue(
+                            e.target.value,
+                            MIN_DISTANCE,
+                            MAX_DISTANCE,
+                            this.dist0,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.dist0;
+                    return [
+                        (item, array) => {
+                            if (!isNaN(d) && d !== 0 && item instanceof CNode) {
+                                item.dist0 = item.dist0_100 = item.dist0 + d;
+                            }
+                            return array;
+                        },
+                        'wholeSelection',
+                    ];
+                }
+            },
+            a1: ({ e, logIncrement }: Info) => {
+                if (e) {
+                    const delta = parseCyclicInputValue(e.target.value, this.angle1, logIncrement)[1];
+                    return [
+                        (item, array) => {
+                            if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
+                                item.angle1 = getCyclicValue(
+                                    item.angle1 + delta,
+                                    MIN_ROTATION,
+                                    360,
+                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                                );
+                            }
+                            return array;
+                        },
+                        'wholeSelection',
+                    ];
+                }
+            },
+            d1: ({ e, logIncrement }: Info) => {
+                if (e) {
+                    const d =
+                        parseInputValue(
+                            e.target.value,
+                            MIN_DISTANCE,
+                            MAX_DISTANCE,
+                            this.dist1,
+                            logIncrement,
+                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
+                        ) - this.dist1;
+                    return [
+                        (item, array) => {
+                            if (!isNaN(d) && d !== 0 && item instanceof CNode) {
+                                item.dist1 = item.dist1_100 = item.dist1 + d;
+                            }
+                            return array;
+                        },
+                        'wholeSelection',
+                    ];
+                }
+            },
+            lw: ({ e }: Info) => {
+                if (e) {
+                    return [
+                        (item, array) => {
+                            if (item instanceof Node)
+                                item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
+                            return array;
+                        },
+                        'ENodesAndCNodeGroups',
+                    ];
+                }
+            },
+            dash: ({ e }: Info) => {
+                if (e) {
+                    const dash = (this.group as CNodeGroup).dashValidator.read(e.target);
+                    return [
+                        (item, array) => {
+                            if (item instanceof Node) item.setDash(dash);
+                            return array;
+                        },
+                        'ENodesAndCNodeGroups',
+                    ];
+                }
+            },
+            shading: ({ e }: Info) => {
+                if (e) {
+                    return [
+                        (item, array) => {
+                            if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1));
+                            return array;
+                        },
+                        'ENodesAndCNodeGroups',
+                    ];
+                }
+            },
+            rank: ({ e, selection }: Info) => {
+                if (e) {
+                    return [getRankMover(e.target.value, selection), 'onlyThis'];
+                }
+            },
+            defaults: () => [
+                (item, array) => {
+                    item.reset();
+                    return array;
+                },
+                'wholeSelection',
+            ],
+            angles: () => [
+                (item, array) => {
+                    if (item.group instanceof CNodeGroup) {
+                        item.group.equalizeCentralAngles(item as CNode);
+                    }
+                    return array;
+                },
+                'ENodesAndCNodeGroups',
+            ],
+            distances: () => [
+                (item, array) => {
+                    if (item.group instanceof CNodeGroup) {
+                        item.group.equalizeDistancesFromCenter(item as CNode);
+                    }
+                    return array;
+                },
+                'ENodesAndCNodeGroups',
+            ],
+        };
     }
 
     override isIndependent() {
@@ -260,229 +427,6 @@ export default class CNode extends Node {
             },
             { type: 'label', text: '', style: 'flex-1' }, // a filler to ensure that there's some margin at the bottom
         ];
-    }
-
-    override handleEditing(
-        e: React.ChangeEvent<HTMLInputElement> | null,
-        logIncrement: number,
-        selection: Item[],
-        _unitScale: number,
-        _displayFontFactor: number,
-        key: string
-    ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
-        switch (key) {
-            case 'fixed': {
-                const fa = !this.fixedAngles;
-                return [
-                    (item, array) => {
-                        if (item instanceof CNode) {
-                            item.fixedAngles = fa;
-                        }
-                        return array;
-                    },
-                    'wholeSelection',
-                ];
-            }
-            case 'line': {
-                const omit = !this.omitLine;
-                return [
-                    (item, array) => {
-                        if (item instanceof CNode) {
-                            item.omitLine = omit;
-                        }
-                        return array;
-                    },
-                    'wholeSelection',
-                ];
-            }
-            case 'a0':
-                if (e) {
-                    const delta = parseCyclicInputValue(e.target.value, this.angle0, logIncrement)[1];
-                    return [
-                        (item, array) => {
-                            if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
-                                item.angle0 = getCyclicValue(
-                                    item.angle0 + delta,
-                                    MIN_ROTATION,
-                                    360,
-                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                                );
-                            }
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'd0':
-                if (e) {
-                    const d =
-                        parseInputValue(
-                            e.target.value,
-                            MIN_DISTANCE,
-                            MAX_DISTANCE,
-                            this.dist0,
-                            logIncrement,
-                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                        ) - this.dist0;
-                    return [
-                        (item, array) => {
-                            if (!isNaN(d) && d !== 0 && item instanceof CNode) {
-                                item.dist0 = item.dist0_100 = item.dist0 + d;
-                            }
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'a1':
-                if (e) {
-                    const delta = parseCyclicInputValue(e.target.value, this.angle1, logIncrement)[1];
-                    return [
-                        (item, array) => {
-                            if (!isNaN(delta) && delta !== 0 && item instanceof CNode) {
-                                item.angle1 = getCyclicValue(
-                                    item.angle1 + delta,
-                                    MIN_ROTATION,
-                                    360,
-                                    10 ** Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                                );
-                            }
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'd1':
-                if (e) {
-                    const d =
-                        parseInputValue(
-                            e.target.value,
-                            MIN_DISTANCE,
-                            MAX_DISTANCE,
-                            this.dist1,
-                            logIncrement,
-                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                        ) - this.dist1;
-                    return [
-                        (item, array) => {
-                            if (!isNaN(d) && d !== 0 && item instanceof CNode) {
-                                item.dist1 = item.dist1_100 = item.dist1 + d;
-                            }
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'x':
-                if (e) {
-                    const dmin = -(selection.filter((item) => item instanceof Node) as Node[]).reduce(
-                        (min, item) => (min < item.x ? min : item.x),
-                        this.x
-                    );
-                    const delta =
-                        parseInputValue(
-                            e.target.value,
-                            0,
-                            MAX_X,
-                            this.x,
-                            logIncrement,
-                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                        ) - this.x;
-                    const dx = delta > dmin ? delta : 0; // this is to avoid items from being moved beyond the left border of the canvas
-                    return [
-                        (item, array) => {
-                            if (item instanceof Node && dx !== 0) item.move(dx, 0);
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'y':
-                if (e) {
-                    const dy =
-                        parseInputValue(
-                            e.target.value,
-                            MIN_Y,
-                            MAX_Y,
-                            this.y,
-                            logIncrement,
-                            Math.max(0, -MIN_TRANSLATION_LOG_INCREMENT)
-                        ) - this.y;
-                    return [
-                        (item, array) => {
-                            if (item instanceof Node && !isNaN(dy) && dy !== 0) {
-                                item.move(0, dy);
-                            }
-                            return array;
-                        },
-                        'wholeSelection',
-                    ];
-                }
-            case 'lw':
-                if (e)
-                    return [
-                        (item, array) => {
-                            if (item instanceof Node)
-                                item.setLinewidth(validFloat(e.target.value, 0, MAX_LINEWIDTH, 0));
-                            return array;
-                        },
-                        'ENodesAndCNodeGroups',
-                    ];
-            case 'dash':
-                if (e) {
-                    const dash = (this.group as CNodeGroup).dashValidator.read(e.target);
-                    return [
-                        (item, array) => {
-                            if (item instanceof Node) item.setDash(dash);
-                            return array;
-                        },
-                        'ENodesAndCNodeGroups',
-                    ];
-                }
-            case 'shading':
-                if (e)
-                    return [
-                        (item, array) => {
-                            if (item instanceof Node) item.setShading(validFloat(e.target.value, 0, 1));
-                            return array;
-                        },
-                        'ENodesAndCNodeGroups',
-                    ];
-            case 'rank':
-                if (e) {
-                    return [getRankMover(e.target.value, selection), 'onlyThis'];
-                }
-            case 'defaults':
-                return [
-                    (item, array) => {
-                        item.reset();
-                        return array;
-                    },
-                    'wholeSelection',
-                ];
-            case 'angles':
-                return [
-                    (item, array) => {
-                        if (item.group instanceof CNodeGroup) {
-                            item.group.equalizeCentralAngles(item as CNode);
-                        }
-                        return array;
-                    },
-                    'ENodesAndCNodeGroups',
-                ];
-            case 'distances':
-                return [
-                    (item, array) => {
-                        if (item.group instanceof CNodeGroup) {
-                            item.group.equalizeDistancesFromCenter(item as CNode);
-                        }
-                        return array;
-                    },
-                    'ENodesAndCNodeGroups',
-                ];
-            default:
-                return [(item, array) => array, 'onlyThis'];
-        }
     }
 
     override parse() {} // Since there are no texdraw commands corresponding to individual CNodes, there is nothing to parse.

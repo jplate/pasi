@@ -357,9 +357,9 @@ export const findClosest = (
 
 /**
  * @param u initially contains the starting position (as a t-value), will contain the end position
- * @param distance the desired distance (i.e., path-length) from the start position
+ * @param distance the desired distance (i.e., path-length) from the start position, has to be positive
  * @param c the curve to be travelled
- * @param dt the step size
+ * @param dt the step size (negative for 'traveling' to lower t values)
  * @param closeEnough the difference between the distance traveled and the desired distance that is considered 'close enough'
  * @return the point at the end position
  */
@@ -400,7 +400,7 @@ export const travelFor = (
         // Otherwise we overshot. So we revert back to the previous values, provided that the reason for overshooting lies in
         // our having taken too many steps at once. While reverting, we also increase the safetyFactor.
         else if (steps > 1) {
-            t -= dt;
+            t -= steps * dt;
             totalDistance -= d;
             [x1, y1] = [x0, x0];
             safetyFactor += 0.1;
@@ -412,9 +412,9 @@ export const travelFor = (
 
 /**
  * @param u initially contains the starting position, will contain the end position
- * @param distance desired path-length from start to end position
+ * @param distance desired path-length from start to end position, has to be positive
  * @param c the curve to be travelled
- * @param dt the step size
+ * @param dt the step size (negative for 'traveling' to lower t values)
  * @param closeEnough the tolerance for distance matching
  * @return the point at the end position
  */

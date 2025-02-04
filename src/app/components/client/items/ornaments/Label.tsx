@@ -290,7 +290,7 @@ export default class Label extends Ornament {
     }
 
     override handleEditing(
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | null,
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | number | null,
         _logIncrement: number,
         _selection: Item[],
         unitScale: number,
@@ -299,7 +299,7 @@ export default class Label extends Ornament {
     ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
         switch (key) {
             case 'angle':
-                if (e) {
+                if (e && typeof e === 'object') {
                     const delta = parseCyclicInputValue(e.target.value, this.angle, 1)[1];
                     return [
                         (item, array) => {
@@ -317,7 +317,7 @@ export default class Label extends Ornament {
                     ];
                 }
             case 'gap':
-                if (e) {
+                if (e && typeof e === 'object') {
                     const d =
                         parseInputValue(e.target.value, MIN_GAP, MAX_GAP, this.gap, 0, ROUNDING_DIGITS) -
                         this.gap;
@@ -344,7 +344,7 @@ export default class Label extends Ornament {
                 ];
             }
             case 'text':
-                if (e) {
+                if (e && typeof e === 'object') {
                     const text = e.target.value;
                     return [
                         (item, array) => {
@@ -373,7 +373,7 @@ export default class Label extends Ornament {
                     ];
                 }
             case 'vphant':
-                if (e) {
+                if (e && typeof e === 'object') {
                     return [
                         (item, array) => {
                             if (item instanceof Label) {
@@ -399,7 +399,7 @@ export default class Label extends Ornament {
                 ];
             }
             case 'tilt':
-                if (e) {
+                if (e && typeof e === 'object') {
                     const delta = parseCyclicInputValue(e.target.value, this.tilt, 1)[1];
                     return [
                         (item, array) => {
@@ -430,7 +430,7 @@ export default class Label extends Ornament {
                 ];
             }
             case 'parbox width':
-                if (e) {
+                if (e && typeof e === 'object') {
                     const val = validInt(e.target.value, MIN_PARBOX_WIDTH, MAX_PARBOX_WIDTH);
                     const d = val - this.parboxWidth;
                     return [
@@ -457,7 +457,7 @@ export default class Label extends Ornament {
                 ];
             }
             default:
-                return [(item, array) => array, 'onlyThis'];
+                return [(_item, array) => array, 'onlyThis'];
         }
     }
 

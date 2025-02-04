@@ -1,5 +1,5 @@
 import React from 'react';
-import Item, { HSL, Range, Info, Handler } from './Item';
+import { HSL, Info, Handler } from './Item';
 import Node, {
     DEFAULT_DISTANCE,
     MIN_DISTANCE,
@@ -11,11 +11,8 @@ import Node, {
     MAX_LINEWIDTH,
     LINECAP_STYLE,
     LINEJOIN_STYLE,
-    validateLinewidth,
-    validateDash,
-    validateRadius,
 } from './Node';
-import ENode from './ENode';
+import ENode, { validateLinewidth, validateDash, validateRadius } from './ENode';
 import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS, MIN_ROTATION } from '../../../Constants';
 import CNodeGroup from '../CNodeGroup';
 import CNode from './CNode';
@@ -641,7 +638,7 @@ export default abstract class SNode extends ENode {
         ];
     }
 
-    connectorEditHandler: Handler = {
+    protected connectorEditHandler: Handler = {
         conLw: ({ e }: Info) => {
             if (e)
                 return [
@@ -808,7 +805,7 @@ export default abstract class SNode extends ENode {
         ],
     };
 
-    commonArrowheadEditHandler: Handler = {
+    protected commonArrowheadEditHandler: Handler = {
         ahLw: ({ e }: Info) => {
             if (e)
                 return [
@@ -833,38 +830,6 @@ export default abstract class SNode extends ENode {
             }
         },
     };
-
-    /**
-     * This is expected to be overridden by subclasses that require a more complex connector.
-     */
-    getConnectorEditHandler(): Handler {
-        return this.connectorEditHandler;
-    }
-
-    /**
-     * This is expected to be overridden by subclasses that use arrowheads.
-     */
-    getArrowheadEditHandler(): Handler {
-        return {}; // We return the empty object because at least one subclass doesn't use arrow heads.
-    }
-
-    override handleEditing(
-        e: React.ChangeEvent<HTMLInputElement> | null,
-        logIncrement: number,
-        selection: Item[],
-        _unitScale: number,
-        _displayFontFactor: number,
-        key: string
-    ): [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range] {
-        const conHandler = this.getConnectorEditHandler();
-        const ahHandler = this.getArrowheadEditHandler();
-        const handler = {
-            ...this.commonEditHandler,
-            ...conHandler,
-            ...ahHandler,
-        };
-        return handler[key]({ e, logIncrement, selection }) ?? [(_item, array) => array, 'onlyThis'];
-    }
 
     nodeIsDisplayed() {
         return !this.isHidden(false) && (this.linewidth > 0 || this.shading > 0); // For the purposes of generating the texdraw code, we're assuming that this
@@ -1245,8 +1210,7 @@ export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: Co
     }
     const conLw = node.conLinewidth;
     const ahLw = node.ahLinewidth;
-    const maxLw = Math.max(conLw, ahLw);
-    const lwc = maxLw / 2; // linewidth correction
+    const lwc = MAX_LINEWIDTH; // to account for linewidths; adjusting this dynamically (in accordance with conLw and ahLw) causes odd behavior.
     const left = minX - lwc;
     const top = H + yOffset - maxY - lwc;
 
@@ -1265,7 +1229,11 @@ export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: Co
                 pointerEvents: 'none',
             }}
         >
-            <svg width={width + 2 * maxLw} height={height + 2 * maxLw} xmlns='http://www.w3.org/2000/svg'>
+            <svg
+                width={`${width + 2 * lwc}px`}
+                height={`${height + 2 * lwc}px`}
+                xmlns='http://www.w3.org/2000/svg'
+            >
                 <path
                     d={conPath}
                     fill='none'
