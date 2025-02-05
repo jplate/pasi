@@ -237,53 +237,55 @@ interface MenuFieldProps {
     onChange: (index: number) => void;
 }
 
-export const MenuField = React.memo(({
-    label,
-    value,
-    values,
-    lowTopMargin = false,
-    extraBottomMargin = false,
-    tooltip,
-    tooltipPlacement,
-    onChange,
-}: MenuFieldProps) => {
-    const labelComp = <span className='pl-1 mr-2 whitespace-nowrap'>{label}</span>;
-    const menuComp = (
-        <Menu>
-            <MenuButton className={clsx('w-full px-3', menuButtonClassName)}>
-                <div className='flex-1 text-left'>{values[value]}</div>
-                <div className='flex-none'>
-                    <ChevronSVG />
-                </div>
-            </MenuButton>
-            <MenuItemList>
-                {values.map((val, i) => (
-                    <MenuItem key={i}>
-                        <button className={menuItemButtonClassName} onClick={() => onChange(i)}>
-                            {values[i]}
-                        </button>
-                    </MenuItem>
-                ))}
-            </MenuItemList>
-        </Menu>
-    );
-    return (
-        <div
-            className={clsx(
-                'flex items-center justify-center px-2 py-1 mr-0.5 text-sm',
-                lowTopMargin ? 'mt-[-4px]' : '',
-                extraBottomMargin ? 'mb-4' : ''
-            )}
-        >
-            {tooltip ? (
-                <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />
-            ) : (
-                labelComp
-            )}
-            {menuComp}
-        </div>
-    );
-});
+export const MenuField = React.memo(
+    ({
+        label,
+        value,
+        values,
+        lowTopMargin = false,
+        extraBottomMargin = false,
+        tooltip,
+        tooltipPlacement,
+        onChange,
+    }: MenuFieldProps) => {
+        const labelComp = <span className='pl-1 mr-2 whitespace-nowrap'>{label}</span>;
+        const menuComp = (
+            <Menu>
+                <MenuButton className={clsx('w-full px-3', menuButtonClassName)}>
+                    <div className='flex-1 text-left'>{values[value]}</div>
+                    <div className='flex-none'>
+                        <ChevronSVG />
+                    </div>
+                </MenuButton>
+                <MenuItemList>
+                    {values.map((val, i) => (
+                        <MenuItem key={i}>
+                            <button className={menuItemButtonClassName} onClick={() => onChange(i)}>
+                                {values[i]}
+                            </button>
+                        </MenuItem>
+                    ))}
+                </MenuItemList>
+            </Menu>
+        );
+        return (
+            <div
+                className={clsx(
+                    'flex items-center justify-center px-2 py-1 mr-0.5 text-sm',
+                    lowTopMargin ? 'mt-[-4px]' : '',
+                    extraBottomMargin ? 'mb-4' : ''
+                )}
+            >
+                {tooltip ? (
+                    <WithTooltip comp={labelComp} tooltip={tooltip} placement={tooltipPlacement} />
+                ) : (
+                    labelComp
+                )}
+                {menuComp}
+            </div>
+        );
+    }
+);
 MenuField.displayName = 'MenuField';
 
 interface LabelFieldProps {
