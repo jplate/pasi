@@ -1,6 +1,7 @@
 import React, { CSSProperties, useCallback, useMemo } from 'react';
-import Item, { HSL, Info } from './Item';
+import Item, { HSL } from './Item';
 import Node, {
+    Info,
     DEFAULT_DISTANCE,
     MIN_DISTANCE,
     MAX_DISTANCE,

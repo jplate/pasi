@@ -29,9 +29,9 @@ export default class Identity extends SNode {
 
     parseArrowhead(
         stShapes: StrokedShape[],
-        cpx: number,
-        cpy: number,
-        dimRatio: number,
+        _cpx: number,
+        _cpy: number,
+        _dimRatio: number,
         nodeName: string
     ): StrokedShape[] {
         if (stShapes.length > 0) {

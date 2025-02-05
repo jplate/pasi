@@ -1,7 +1,9 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { HSL, Info, Handler } from './Item';
+import Item, { HSL } from './Item';
 import Node, {
+    Info,
+    Handler,
     MAX_DASH_VALUE,
     MAX_DASH_LENGTH,
     DEFAULT_LINEWIDTH,

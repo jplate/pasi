@@ -1,4 +1,4 @@
-import Item, { Range, Handler } from './Item';
+import Item, { Range } from './Item';
 import ENode from './ENode';
 import CNodeGroup from '../CNodeGroup';
 import Ornament from './Ornament';
@@ -24,6 +24,18 @@ export const LINEJOIN_STYLE = 'round';
 export const DEFAULT_HSL_LIGHT_MODE = { hue: 0, sat: 0, lgt: 19 };
 export const DEFAULT_HSL_DARK_MODE = { hue: 30, sat: 100, lgt: 2 };
 export const MARK_BORDER_LINEWIDTH = 1;
+
+export interface Info {
+    e: React.ChangeEvent<HTMLInputElement> | null;
+    logIncrement: number;
+    selection: Item[];
+}
+
+export type Handler = {
+    [key: string]: (
+        i: Info
+    ) => void | [(item: Item, list: (ENode | CNodeGroup)[]) => (ENode | CNodeGroup)[], applyTo: Range];
+};
 
 /**
  * @return a Set that contains the supplied Items together with their directly or indirectly 'dependent' Items, namely Ornaments and SNodes.

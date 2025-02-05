@@ -1,4 +1,4 @@
-import { Info } from '../Item';
+import { Info } from '../Node';
 import SNode, { complain } from '../SNode';
 import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor';
 import { Shape, angle, round, travel, getCyclicValue, angleDiff } from '@/app/util/MathTools';

@@ -1,6 +1,8 @@
 import React from 'react';
-import { HSL, Info, Handler } from './Item';
+import { HSL } from './Item';
 import Node, {
+    Info,
+    Handler,
     DEFAULT_DISTANCE,
     MIN_DISTANCE,
     MAX_DISTANCE,
