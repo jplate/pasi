@@ -1,5 +1,4 @@
-import type { Info, Handler } from './items/Item';
-import Node, { getDependents } from './items/Node';
+import Node, { Info, Handler, getDependents } from './items/Node';
 import CNodeGroup from './CNodeGroup';
 import { MAX_X, MIN_Y, MAX_Y, MIN_TRANSLATION_LOG_INCREMENT } from '@/app/Constants';
 import { parseInputValue } from './EditorComponents';
