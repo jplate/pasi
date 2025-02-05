@@ -163,7 +163,7 @@ interface TextareaProps {
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
-export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps) => {
+export const Textarea = React.memo(({ value, fullHeight = false, onChange }: TextareaProps) => {
     return (
         <textarea
             className={clsx(
@@ -176,7 +176,8 @@ export const Textarea = ({ value, fullHeight = false, onChange }: TextareaProps)
             onChange={onChange}
         />
     );
-};
+});
+Textarea.displayName = 'Textarea';
 
 export const menuButtonClassName = clsx(
     'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner',
@@ -236,7 +237,7 @@ interface MenuFieldProps {
     onChange: (index: number) => void;
 }
 
-export const MenuField = ({
+export const MenuField = React.memo(({
     label,
     value,
     values,
@@ -282,7 +283,8 @@ export const MenuField = ({
             {menuComp}
         </div>
     );
-};
+});
+MenuField.displayName = 'MenuField';
 
 interface LabelFieldProps {
     label: React.ReactNode;
