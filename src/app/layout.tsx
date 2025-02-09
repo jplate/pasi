@@ -4,9 +4,6 @@ import './globals.css';
 export const metadata: Metadata = {
     title: 'Pasi Diagram Editor',
     description: "An editor for 'ontological' diagrams",
-    icons: {
-        icon: '/icon.svg',
-    },
 };
 
 /**
