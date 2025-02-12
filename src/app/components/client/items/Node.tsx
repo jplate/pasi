@@ -16,7 +16,7 @@ export const MAX_RADIUS = 9999;
 export const DEFAULT_DISTANCE = 10; // default distance (to a control point of a cubic curve)
 
 export const DEFAULT_LINEWIDTH = 1;
-export const DEFAULT_DASH = [];
+export const DEFAULT_DASH: number[] = [];
 export const DEFAULT_SHADING = 0; // 0=white (transparent), 1=black
 export const LINECAP_STYLE = 'round';
 export const LINEJOIN_STYLE = 'round';
@@ -133,8 +133,8 @@ export default abstract class Node extends Item {
     linewidth: number = DEFAULT_LINEWIDTH;
     linewidth100: number = DEFAULT_LINEWIDTH;
     shading: number = DEFAULT_SHADING;
-    dash: number[] = DEFAULT_DASH;
-    dash100: number[] = DEFAULT_DASH;
+    dash = DEFAULT_DASH;
+    dash100 = DEFAULT_DASH;
 
     ornaments: Ornament[] = [];
     dependentNodes: Node[] = []; // We keep a tally of the Nodes (typically, SNodes) that have this Node as involute, for purposes of efficiency.

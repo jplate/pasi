@@ -174,11 +174,11 @@ const gap1Tooltip = <>The gap between the connector&rsquo;s end point and its ta
  */
 export default abstract class SNode extends ENode {
     involutes: Node[] = [];
-    conLinewidth: number = DEFAULT_LINEWIDTH;
-    conLinewidth100: number = DEFAULT_LINEWIDTH;
+    conLinewidth = DEFAULT_LINEWIDTH;
+    conLinewidth100 = DEFAULT_LINEWIDTH;
     conDash: number[] = DEFAULT_DASH;
     conDash100: number[] = DEFAULT_DASH;
-    ahLinewidth: number = DEFAULT_LINEWIDTH;
+    ahLinewidth = DEFAULT_LINEWIDTH;
     ahLinewidth100: number = DEFAULT_LINEWIDTH;
     ahDash: number[] = DEFAULT_DASH;
     ahDash100: number[] = DEFAULT_DASH;
@@ -204,8 +204,8 @@ export default abstract class SNode extends ENode {
 
     t: number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
 
-    protected conDashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
-    protected ahDashValidator: DashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
+    protected conDashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
+    protected ahDashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
     constructor(i: number) {
         super(i, 0, 0); // We invoke the super constructor with coordinates (0,0). The actual location of this Node is given by getLocation().
