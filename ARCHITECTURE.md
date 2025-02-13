@@ -1,6 +1,6 @@
-# ARCHITECTURE.md
+# Architecture
 
-A central part of the architecture is a hierarchy of classes whose members represent various components on a canvas. The base class is `Item`:
+A central part of *pasi*'s architecture is a hierarchy of classes whose members represent various components on a canvas. The base class is `Item`:
 
 ### 1. Item
 
@@ -36,7 +36,7 @@ A central part of the architecture is a hierarchy of classes whose members repre
 
 - **Location**: `src/app/components/client/items/snodes/*.tsx`
 - **Description**: 
-  - These classes implement particular kinds of `SNode`. They provide the concrete shape of an arrow, as well as functionality for parsing the corresponding TeXdraw code and displaying related information in the `ItemEditor`.
+  - These classes implement particular kinds of `SNode`. They provide the concrete shape of an arrow, as well as functionality for parsing the corresponding *TeXdraw* code and displaying related information in the `ItemEditor`.
 
 ### 6. GNode
 
