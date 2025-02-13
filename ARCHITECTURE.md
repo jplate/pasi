@@ -36,7 +36,8 @@ A central part of *pasi*'s architecture is a hierarchy of classes whose members 
 
 - **Location**: `src/app/components/client/items/snodes/*.tsx`
 - **Description**: 
-  - These classes implement particular kinds of `SNode`. They provide the concrete shape of an arrow, as well as functionality for parsing the corresponding *TeXdraw* code and displaying related information in the `ItemEditor`.
+  - These classes implement specific kinds of `SNode`. 
+  - They provide the concrete shape of an arrow, as well as functionality for parsing the corresponding *TeXdraw* code and displaying related information in the `ItemEditor`.
 
 ### 6. GNode
 
@@ -58,12 +59,13 @@ A central part of *pasi*'s architecture is a hierarchy of classes whose members 
   - The `Ornament` class extends `Item` and represents an object that is attached to a `Node`, such as a label. `Ornament`s do not have their own Z-indices.
   - It provides properties and methods for managing the visual representation of ornaments on the canvas.
 
-### 9. Label
+### 9. Label (and future classes)
 
-- **Location**: `src/app/components/client/items/ornaments/Label.tsx`
+- **Location**: `src/app/components/client/items/ornaments/*.tsx`
 - **Description**: 
-  - The `Label` class extends `Ornament` and represents a specific type of ornament that can display text on the canvas.
-  - It includes properties for text formatting, positioning, and rendering.
+  - These classes implement specific kinds of `Ornament`.  
+  - They provide the concrete shape of an `Ornament`, as well as functionality for parsing the corresponding *TeXdraw* code and displaying related information in the `ItemEditor`.
+
 
 ## Summary of class relationships
 
