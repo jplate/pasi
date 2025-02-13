@@ -51,7 +51,7 @@ A central part of *pasi*'s architecture is a hierarchy of classes whose members 
 - **Description**: 
   - The `CNode` class extends `Node`.
   - An array of `CNodes`, managed by a `CNodeGroup` object, defines a `Contour` (i.e., splinegon component).
-|
+
 ### 8. Ornament
 
 - **Location**: `src/app/components/client/items/Ornament.tsx`
