@@ -65,7 +65,7 @@ A central part of *pasi*'s architecture is a hierarchy of classes whose members 
   - The `Label` class extends `Ornament` and represents a specific type of ornament that can display text on the canvas.
   - It includes properties for text formatting, positioning, and rendering.
 
-## Summary of Class Relationships
+## Summary of class relationships
 
 ```
 Item (abstract)
