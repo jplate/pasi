@@ -227,7 +227,7 @@ export default class Label extends Ornament {
                 text: parboxLabel,
                 value: this.parbox,
                 tooltip: parboxTooltip,
-                tooltipPlacement: 'right',
+                tooltipPlacement: 'left',
             },
             {
                 type: 'number input',
@@ -253,7 +253,7 @@ export default class Label extends Ornament {
                 value: this.mathMode,
                 disabled: this.parbox,
                 tooltip: mathModeTooltip,
-                tooltipPlacement: 'right',
+                tooltipPlacement: 'left',
             },
             {
                 type: 'number input',
