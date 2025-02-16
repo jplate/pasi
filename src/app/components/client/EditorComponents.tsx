@@ -40,10 +40,10 @@ export const CheckBoxField = React.memo(
         const comp = (
             <label
                 className={clsx(
-                    'flex ml-4 py-1 text-sm whitespace-nowrap items-center disabled:pointer-events-none', // Sometimes a checkbox label 
-                            // may overlap the controls of an input field. In that case we need the disabled checkbox label to be transparent to pointer events.
+                    'flex ml-4 py-1 text-sm whitespace-nowrap items-center disabled:pointer-events-none', // Sometimes a checkbox label
+                    // may overlap the controls of an input field. In that case we need the disabled checkbox label to be transparent to pointer events.
                     style,
-                    extraBottomMargin ? 'mb-4' : '' 
+                    extraBottomMargin ? 'mb-4' : ''
                 )}
             >
                 <input
@@ -55,7 +55,8 @@ export const CheckBoxField = React.memo(
                         onChange();
                     }}
                 />
-                <span className={disabled? 'opacity-50': ''}>{label}</span> {/* We apply the opacity styling at the level of the child components of the 
+                <span className={disabled ? 'opacity-50' : ''}>{label}</span>{' '}
+                {/* We apply the opacity styling at the level of the child components of the 
                     // label element (rather than to apply it to the label element itself) in order to keep the opacity of the tooltip at 100%. */}
             </label>
         );
@@ -102,9 +103,11 @@ export const InputField = React.memo(
         readOnly = false,
     }: InputFieldProps<T>) => {
         const w = width == 'short' ? 'min-w-10 w-10' : width == 'medium' ? 'min-w-16 w-16' : 'min-w-24 w-24';
-        const labelComp = <span className={clsx('pointer-events-auto', disabled? 'opacity-50': '')}>{label}</span>; // We apply the opacity 
-            // styling at the level of the child components of the label element, rather than to apply it to the label element itself, in order 
-            // to keep the opacity of the tooltip at 100%. (Otherwise the tooltip's opacity would be affected by the disabled state.)
+        const labelComp = (
+            <span className={clsx('pointer-events-auto', disabled ? 'opacity-50' : '')}>{label}</span>
+        ); // We apply the opacity
+        // styling at the level of the child components of the label element, rather than to apply it to the label element itself, in order
+        // to keep the opacity of the tooltip at 100%. (Otherwise the tooltip's opacity would be affected by the disabled state.)
 
         const inputComp = (
             <input
@@ -113,7 +116,7 @@ export const InputField = React.memo(
                     typeof value === 'number' ? 'text-right' : 'pr-2', // string inputs need extra padding on the right;
                     // whereas number inputs have space reserved on the right for the arrow buttons, which is already a sort of padding.
                     'ml-2 pl-2 border border-btnborder rounded-md pointer-events-auto focus:outline-none enabled:bg-textfieldbg enabled:text-textfieldcolor',
-                    disabled? 'opacity-50': ''
+                    disabled ? 'opacity-50' : ''
                 )}
                 value={value}
                 type={typeof value}
@@ -134,7 +137,7 @@ export const InputField = React.memo(
                     'flex items-center justify-end px-2 py-1 text-sm pointer-events-none', // We disable pointer events for the overall component because of
                     // the possibility of overlap with other components in the case of negativeTopMargin being set to true.
                     negativeTopMargin ? 'mt-[-1rem]' : lowTopMargin ? 'mt-[-0.25rem]' : '',
-                    extraBottomMargin ? 'mb-4' : ''                
+                    extraBottomMargin ? 'mb-4' : ''
                 )}
             >
                 {tooltip ? (
