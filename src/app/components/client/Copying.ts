@@ -101,8 +101,8 @@ export const copySNode = (
     topTbc: (Item | Group<any>)[],
     copies: Map<string, Item | CNodeGroup | StandardGroup<Item | Group<any>>>
 ): SNode => {
-    const con = node.constructor as new (i: number) => SNode;
-    const copy = new con(enCounter);
+    const con = node.constructor as new (i: number, closest: boolean) => SNode;
+    const copy = new con(enCounter, false);
     copyNodeValues(node, copy, topTbc, copies);
     node.copyValuesTo(copy);
     return copy;

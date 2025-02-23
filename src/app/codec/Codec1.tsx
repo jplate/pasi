@@ -27,7 +27,7 @@ const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hi
 
 const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([['L', Label]]);
 
-const sNodePrefixMap = new BidirectionalMap<string, new (i: number) => SNode>([
+const sNodePrefixMap = new BidirectionalMap<string, new (i: number, closest: boolean) => SNode>([
     ['A', Adjunction],
     ['I', Identity],
     ['O', Order],
@@ -377,7 +377,7 @@ const parseSNode = (
     tex: string,
     hint: string,
     dimRatio: number,
-    snClass: new (id: number) => SNode,
+    snClass: new (id: number, closest: boolean) => SNode,
     eMap: Map<string, ENode>,
     invMap: Map<SNode, NodeIdentifier[]>,
     gMap: Map<string, Group<any>>,
@@ -410,7 +410,7 @@ const parseSNode = (
             )
         );
     }
-    const sn = new snClass(counter);
+    const sn = new snClass(counter, false);
 
     if (groupName) {
         validateName(groupName);
