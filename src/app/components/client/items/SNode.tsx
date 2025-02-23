@@ -207,13 +207,14 @@ export default abstract class SNode extends ENode {
     protected conDashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
     protected ahDashValidator = new DashValidator(MAX_DASH_VALUE, MAX_DASH_LENGTH);
 
-    constructor(i: number) {
+    constructor(i: number, closest: boolean) {
         super(i, 0, 0); // We invoke the super constructor with coordinates (0,0). The actual location of this Node is given by getLocation().
         this.radius = this.radius100 = DEFAULT_RADIUS;
         this.w0 = this.getDefaultW0();
         this.w1 = this.getDefaultW1();
         this.wc = this.getDefaultWC();
         this.locationDefined = false;
+        this.closest = closest;
     }
 
     override isIndependent(): boolean {

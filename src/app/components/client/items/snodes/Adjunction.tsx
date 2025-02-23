@@ -31,8 +31,8 @@ export default class Adjunction extends SNode {
     hookLength = DEFAULT_HOOK_LENGTH; // the length of that hook
     hookLength100 = DEFAULT_HOOK_LENGTH; // the length of that hook
 
-    constructor(i: number) {
-        super(i);
+    constructor(i: number, closest: boolean) {
+        super(i, closest);
         this.editHandler = {
             ...this.nodeEditHandler,
             ...this.connectorEditHandler,

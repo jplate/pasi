@@ -409,7 +409,7 @@ const depItemInfos = [
 const depItemKeys = depItemInfos.map((dl) => dl.key);
 
 // We're mapping string keys to the corresponding classes:
-const sNodeClassMap: Partial<Record<DepItemKey, new (i: number) => SNode>> = {
+const sNodeClassMap: Partial<Record<DepItemKey, new (i: number, closest: boolean) => SNode>> = {
     adj: Adjunction,
     orp: Order,
     idt: Identity,
@@ -574,23 +574,28 @@ const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFact
 };
 
 /**
- * @return a selection from the supplied array. If the array contains a run of CNodes that together form a whole CNodeGroup, then only the
- * first member of this run is included in the returned array.
+ * @return a pair of arrays (of the same length), where the first array contains selected nodes from the supplied array.
+ * If the supplied array contains a run of two or more CNodes that together form a whole CNodeGroup, then only the first member of this run is 
+ * included in the first element of the returned pair of arrays, and the corresponding element of the second array will be *true*. Otherwise the 
+ * corresponding element will be *false*.
  */
-const select = (nodes: Node[]): Node[] => {
+const select = (nodes: Node[]): [Node[], boolean[]] => {
     if (nodes.length < 2) {
-        return nodes;
+        return [nodes, nodes.map(() => false)];
     }
     let n0 = nodes[0];
     let slice = nodes.slice(1);
+    let group = false;
     if (n0 instanceof CNode) {
         const ng0 = n0.group!.members;
         if (sameElements(ng0, nodes.slice(0, ng0.length))) {
             n0 = nodes[0];
+            group = true;
             slice = nodes.slice(ng0.length);
         }
     }
-    return [n0, ...select(slice)];
+    const [selectedNodes, flagged] = select(slice);
+    return [[n0, ...selectedNodes], [group, ...flagged]];
 };
 
 const flipAffectedArrowheads = (nodes: Item[]) => {
@@ -1947,7 +1952,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 let newSelection: Item[] = [];
                 let counter = eNodeCounter;
                 let snodes: SNode[] = [];
-                let con: (new (i: number) => SNode) | undefined = undefined;
+                let con: (new (i: number, closest: boolean) => SNode) | undefined = undefined;
                 const key = depItemKeys[index];
                 const minNodes = depItemInfos[index].min;
                 if (selectedNodes.length >= minNodes) {
@@ -1969,10 +1974,17 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             }
                     }
                     if (con) {
-                        const nodes = select(selectedNodes); // If selectedNodes includes, e.g., an ENode followed by a run of CNodes that form a full CNodeGroup,
+                        const [nodes, flagged] = select(selectedNodes); // If selectedNodes includes, e.g., an ENode followed by a run of CNodes that form a full CNodeGroup,
                         // the user presumably wants the ENode to be connected to just one of those CNodes.
-                        const relata = nodes.length > 1 ? nodes : selectedNodes;
-                        snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++));
+                        let relata;
+                        if (nodes.length < 2) { // In this case we've selected only at most one node, which is not enough; so we revert to the original array.
+                            relata = selectedNodes;
+                            snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++, false));
+                        }
+                        else {
+                            relata = nodes;
+                            snodes = new Array(relata.length - 1).fill(null).map((_, i: number) => new con!(counter++, flagged[i] || flagged[i+1]));  
+                        }   
                         for (let i = 0; i < snodes.length; i++) {
                             snodes[i].init(relata[i], relata[i + 1]);
                         }

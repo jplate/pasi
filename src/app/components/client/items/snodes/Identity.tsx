@@ -11,6 +11,16 @@ export const DEFAULT_WC = 8;
  * they appear as simple lines.
  */
 export default class Identity extends SNode {
+
+    constructor(i: number, closest: boolean) {
+        super(i, closest);
+        this.editHandler = {
+            ...this.nodeEditHandler,
+            ...this.connectorEditHandler,
+            ...this.commonArrowheadEditHandler,
+        };
+    }
+
     getDefaultW0() {
         return DEFAULT_W0;
     }
