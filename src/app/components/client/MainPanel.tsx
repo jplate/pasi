@@ -575,8 +575,8 @@ const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFact
 
 /**
  * @return a pair of arrays (of the same length), where the first array contains selected nodes from the supplied array.
- * If the supplied array contains a run of two or more CNodes that together form a whole CNodeGroup, then only the first member of this run is 
- * included in the first element of the returned pair of arrays, and the corresponding element of the second array will be *true*. Otherwise the 
+ * If the supplied array contains a run of two or more CNodes that together form a whole CNodeGroup, then only the first member of this run is
+ * included in the first element of the returned pair of arrays, and the corresponding element of the second array will be *true*. Otherwise the
  * corresponding element will be *false*.
  */
 const select = (nodes: Node[]): [Node[], boolean[]] => {
@@ -595,7 +595,10 @@ const select = (nodes: Node[]): [Node[], boolean[]] => {
         }
     }
     const [selectedNodes, flagged] = select(slice);
-    return [[n0, ...selectedNodes], [group, ...flagged]];
+    return [
+        [n0, ...selectedNodes],
+        [group, ...flagged],
+    ];
 };
 
 const flipAffectedArrowheads = (nodes: Item[]) => {
@@ -1977,14 +1980,18 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         const [nodes, flagged] = select(selectedNodes); // If selectedNodes includes, e.g., an ENode followed by a run of CNodes that form a full CNodeGroup,
                         // the user presumably wants the ENode to be connected to just one of those CNodes.
                         let relata;
-                        if (nodes.length < 2) { // In this case we've selected only at most one node, which is not enough; so we revert to the original array.
+                        if (nodes.length < 2) {
+                            // In this case we've selected only at most one node, which is not enough; so we revert to the original array.
                             relata = selectedNodes;
-                            snodes = new Array(relata.length - 1).fill(null).map(() => new con!(counter++, false));
-                        }
-                        else {
+                            snodes = new Array(relata.length - 1)
+                                .fill(null)
+                                .map(() => new con!(counter++, false));
+                        } else {
                             relata = nodes;
-                            snodes = new Array(relata.length - 1).fill(null).map((_, i: number) => new con!(counter++, flagged[i] || flagged[i+1]));  
-                        }   
+                            snodes = new Array(relata.length - 1)
+                                .fill(null)
+                                .map((_, i: number) => new con!(counter++, flagged[i] || flagged[i + 1]));
+                        }
                         for (let i = 0; i < snodes.length; i++) {
                             snodes[i].init(relata[i], relata[i + 1]);
                         }
