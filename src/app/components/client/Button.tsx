@@ -61,7 +61,7 @@ export const BasicButton = React.memo(
                     <button
                         id={id}
                         className={clsx(
-                            'block px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none',
+                            'block flex-1 px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none',
                             'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
                             'focus:outline-none focus:ring-1',
                             style,
