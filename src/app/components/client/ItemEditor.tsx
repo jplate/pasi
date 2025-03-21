@@ -205,7 +205,7 @@ const ItemEditor = React.memo(({ info, logIncrement, onIncrementChange, onChange
     });
 
     return (
-        <div className='flex flex-col h-full'>
+        <div className='flex flex-col h-full justify-items-stretch'>
             {info.map((entry, i) => {
                 switch (entry.type) {
                     case 'label':
