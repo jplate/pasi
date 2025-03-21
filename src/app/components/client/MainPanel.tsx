@@ -3743,7 +3743,10 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         </div>
                     </div>
 
-                    <div id='button-panel-2' className='flex flex-col justify-items-stretch mt-[25px] ml-[25px]'>
+                    <div
+                        id='button-panel-2'
+                        className='flex flex-col justify-items-stretch mt-[25px] ml-[25px]'
+                    >
                         <BasicColoredButton
                             id='generate-button'
                             label='Generate'
