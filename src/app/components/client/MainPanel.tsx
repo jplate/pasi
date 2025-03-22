@@ -3594,24 +3594,28 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 <div id='button-panels' className='flex-grow min-w-[315px] max-w-[380px] select-none'>
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
-                            <BasicColoredButton
-                                id='node-button'
-                                label='Node'
-                                style='rounded-xl mr-1.5 w-auto'
-                                tooltip={addNodeButtonTooltip}
-                                tooltipPlacement='top'
-                                disabled={!canAddENodes}
-                                onClick={addEntityNodes}
-                            />
-                            <BasicColoredButton
-                                id='contour-button'
-                                label='Contour'
-                                style='rounded-xl w-auto'
-                                tooltip={addContourButtonTooltip}
-                                tooltipPlacement='top'
-                                disabled={!canAddContours}
-                                onClick={addContours}
-                            />
+                            <div className='pr-1.5'>
+                                <BasicColoredButton
+                                    id='node-button'
+                                    label='Node'
+                                    style='rounded-xl'
+                                    tooltip={addNodeButtonTooltip}
+                                    tooltipPlacement='top'
+                                    disabled={!canAddENodes}
+                                    onClick={addEntityNodes}
+                                />
+                            </div>
+                            <div>
+                                <BasicColoredButton
+                                    id='contour-button'
+                                    label='Contour'
+                                    style='rounded-xl'
+                                    tooltip={addContourButtonTooltip}
+                                    tooltipPlacement='top'
+                                    disabled={!canAddContours}
+                                    onClick={addContours}
+                                />
+                            </div>
                         </div>
                         <div
                             id='di-panel'
