@@ -3598,7 +3598,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 <BasicColoredButton
                                     id='node-button'
                                     label='Node'
-                                    style='rounded-xl'
+                                    style='rounded-xl w-full'
                                     tooltip={addNodeButtonTooltip}
                                     tooltipPlacement='top'
                                     disabled={!canAddENodes}
@@ -3609,7 +3609,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 <BasicColoredButton
                                     id='contour-button'
                                     label='Contour'
-                                    style='rounded-xl'
+                                    style='rounded-xl w-full'
                                     tooltip={addContourButtonTooltip}
                                     tooltipPlacement='top'
                                     disabled={!canAddContours}
