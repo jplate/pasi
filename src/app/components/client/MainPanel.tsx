@@ -3597,7 +3597,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             <BasicColoredButton
                                 id='node-button'
                                 label='Node'
-                                style='rounded-xl mr-1.5 grow'
+                                style='rounded-xl mr-1.5 w-7/8'
                                 tooltip={addNodeButtonTooltip}
                                 tooltipPlacement='top'
                                 disabled={!canAddENodes}
@@ -3606,7 +3606,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             <BasicColoredButton
                                 id='contour-button'
                                 label='Contour'
-                                style='rounded-xl'
+                                style='rounded-xl w-7/8'
                                 tooltip={addContourButtonTooltip}
                                 tooltipPlacement='top'
                                 disabled={!canAddContours}
@@ -3716,7 +3716,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             <BasicColoredButton
                                 id='undo-button'
                                 label='Undo'
-                                style='rounded-xl mr-1.5'
+                                style='rounded-xl mr-1.5 w-7/8'
                                 tooltip='Undo'
                                 disabled={!canUndo}
                                 onClick={throttledUndo}
