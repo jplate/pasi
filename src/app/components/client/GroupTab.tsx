@@ -88,15 +88,17 @@ const GroupTab = React.memo(
 
         return (
             <div className='flex flex-col h-full'>
-                <BasicColoredButton
-                    id='create-button'
-                    label='Create group'
-                    style='px-2 mx-2 mt-1 rounded-lg text-sm'
-                    disabled={false}
-                    onClick={create}
-                    tooltip={createTooltip}
-                    tooltipPlacement='left'
-                />
+                <div className='mx-2'>
+                    <BasicColoredButton
+                        id='create-button'
+                        label='Create group'
+                        style='px-2 mt-1 rounded-lg text-sm w-full'
+                        disabled={false}
+                        onClick={create}
+                        tooltip={createTooltip}
+                        tooltipPlacement='left'
+                    />
+                </div>
                 <div className='text-center mt-3 text-sm'>
                     Group level:&nbsp;&nbsp;{groups[1] + 1} / {groups[0].length}
                 </div>
