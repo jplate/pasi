@@ -3721,7 +3721,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 </TabPanel>
                             </TabPanels>
                         </TabGroup>
-                        <div id='undo-panel' className='grid grid-cols-3'>
+                        <div id='undo-panel' className='grid grid-cols-3 justify-items-stretch'>
                             <BasicColoredButton
                                 id='undo-button'
                                 label='Undo'
