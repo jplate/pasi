@@ -87,25 +87,23 @@ const GroupTab = React.memo(
         const canAdd = !(highestActive instanceof Item);
 
         return (
-            <div className='flex flex-col h-full'>
-                <div className='mx-2'>
-                    <BasicColoredButton
-                        id='create-button'
-                        label='Create group'
-                        style='px-2 mt-1 rounded-lg text-sm w-full'
-                        disabled={false}
-                        onClick={create}
-                        tooltip={createTooltip}
-                        tooltipPlacement='left'
-                    />
-                </div>
+            <div className='flex flex-col h-full px-2'>
+                <BasicColoredButton
+                    id='create-button'
+                    label='Create group'
+                    style='w-full px-2 mt-1 rounded-lg text-sm'
+                    disabled={false}
+                    onClick={create}
+                    tooltip={createTooltip}
+                    tooltipPlacement='left'
+                />
                 <div className='text-center mt-3 text-sm'>
                     Group level:&nbsp;&nbsp;{groups[1] + 1} / {groups[0].length}
                 </div>
                 <BasicColoredButton
                     id='leave-button'
                     label='Leave group'
-                    style='px-2 mx-2 mt-3 rounded-lg text-sm'
+                    style='w-full px-2 mt-3 rounded-lg text-sm'
                     disabled={!canLeave}
                     onClick={leave}
                     tooltip={leaveTooltip}
@@ -114,7 +112,7 @@ const GroupTab = React.memo(
                 <BasicColoredButton
                     id='rejoin-button'
                     label='Rejoin'
-                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    style='w-full px-2 mt-2 rounded-lg text-sm'
                     disabled={!canRejoin}
                     onClick={rejoin}
                     tooltip={rejoinTooltip}
@@ -123,7 +121,7 @@ const GroupTab = React.memo(
                 <BasicColoredButton
                     id='restore-button'
                     label='Restore'
-                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    style='w-full px-2 mt-2 rounded-lg text-sm'
                     disabled={!canRestore}
                     onClick={restore}
                     tooltip={restoreTooltip}
@@ -132,7 +130,7 @@ const GroupTab = React.memo(
                 <BasicColoredButton
                     id='add-button'
                     label='Add...'
-                    style='px-2 mx-2 mt-3.5 rounded-lg text-sm'
+                    style='w-full px-2 mt-3.5 rounded-lg text-sm'
                     pressed={adding}
                     disabled={!canAdd}
                     onClick={changeAdding}
@@ -142,7 +140,7 @@ const GroupTab = React.memo(
                 <BasicColoredButton
                     id='dissolve-add-button'
                     label='Dissolve-add...'
-                    style='px-2 mx-2 mt-2 rounded-lg text-sm'
+                    style='w-full px-2 mt-2 rounded-lg text-sm'
                     pressed={dissolveAdding}
                     disabled={!canAdd}
                     onClick={changeDissolveAdding}
