@@ -3364,7 +3364,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const deleteButtonStyle = useMemo(
         () =>
             clsx(
-                'rounded-xl',
+                'w-full rounded-xl',
                 dark
                     ? clsx(
                           'bg-[#4a3228]/85 text-red-700 border-btnborder/50 enabled:hover:text-btnhovercolor',
@@ -3723,34 +3723,40 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 </TabPanel>
                             </TabPanels>
                         </TabGroup>
-                        <div id='undo-panel' className='grid grid-cols-3 justify-items-stretch'>
-                            <BasicColoredButton
-                                id='undo-button'
-                                label='Undo'
-                                style='rounded-xl mr-1.5 min-w-150'
-                                tooltip='Undo'
-                                disabled={!canUndo}
-                                onClick={throttledUndo}
-                                icon={undoIcon}
-                            />
-                            <BasicColoredButton
-                                id='redo-button'
-                                label='Redo'
-                                style='rounded-xl mr-1.5'
-                                tooltip='Redo'
-                                disabled={!canRedo}
-                                onClick={throttledRedo}
-                                icon={redoIcon}
-                            />
-                            <BasicButton
-                                id='del-button'
-                                label='Delete'
-                                style={deleteButtonStyle}
-                                tooltip='Delete'
-                                disabled={!canDelete}
-                                onClick={handleDelete}
-                                icon={deleteIcon}
-                            />
+                        <div id='undo-panel' className='grid grid-cols-3'>
+                            <div className='pr-1.5'>
+                                <BasicColoredButton
+                                    id='undo-button'
+                                    label='Undo'
+                                    style='rounded-xl w-full'
+                                    tooltip='Undo'
+                                    disabled={!canUndo}
+                                    onClick={throttledUndo}
+                                    icon={undoIcon}
+                                />
+                            </div>
+                            <div className='pr-1.5'>
+                                <BasicColoredButton
+                                    id='redo-button'
+                                    label='Redo'
+                                    style='rounded-xl  w-full'
+                                    tooltip='Redo'
+                                    disabled={!canRedo}
+                                    onClick={throttledRedo}
+                                    icon={redoIcon}
+                                />
+                            </div>
+                            <div>
+                                <BasicButton
+                                    id='del-button'
+                                    label='Delete'
+                                    style={deleteButtonStyle}
+                                    tooltip='Delete'
+                                    disabled={!canDelete}
+                                    onClick={handleDelete}
+                                    icon={deleteIcon}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -3761,7 +3767,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         <BasicColoredButton
                             id='generate-button'
                             label='Generate'
-                            style='rounded-xl mb-2 py-2'
+                            style='rounded-xl mb-2 py-2 w-full'
                             disabled={false}
                             tooltip={generateButtonTooltip}
                             tooltipPlacement='top'
@@ -3782,7 +3788,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         <BasicColoredButton
                             id='load-btton'
                             label='Load'
-                            style='rounded-xl mb-2 py-2'
+                            style='rounded-xl mb-2 py-2 w-full'
                             disabled={false}
                             tooltip={loadButtonTooltip}
                             tooltipPlacement='left'
