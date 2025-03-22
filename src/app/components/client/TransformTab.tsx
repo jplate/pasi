@@ -241,25 +241,29 @@ const TransformTab = React.memo(
                     lowTopMargin={true}
                     onChange={handleChangeScalingIncrement}
                 />
-                <div className='grid grid-cols-2 mx-1.5 my-4'>
-                    <BasicColoredButton
-                        id='hflip-button'
-                        label='Horiz. flip'
-                        style='px-2 mr-1.5 rounded-lg text-sm'
-                        tooltip={hFlipTooltip}
-                        tooltipPlacement='left'
-                        disabled={!hFlipPossible}
-                        onClick={hFlip}
-                    />
-                    <BasicColoredButton
-                        id='vflip-button'
-                        label='Vert. flip'
-                        style='px-2 rounded-lg text-sm'
-                        tooltip={vFlipTooltip}
-                        tooltipPlacement='right'
-                        disabled={!vFlipPossible}
-                        onClick={vFlip}
-                    />
+                <div className='grid grid-cols-2 my-4'>
+                    <div className='px-1.5'>
+                        <BasicColoredButton
+                            id='hflip-button'
+                            label='Horiz. flip'
+                            style='px-2 rounded-lg text-sm w-full'
+                            tooltip={hFlipTooltip}
+                            tooltipPlacement='left'
+                            disabled={!hFlipPossible}
+                            onClick={hFlip}
+                        />
+                    </div>
+                    <div className='pr-1.5'>
+                        <BasicColoredButton
+                            id='vflip-button'
+                            label='Vert. flip'
+                            style='px-2 rounded-lg text-sm w-full'
+                            tooltip={vFlipTooltip}
+                            tooltipPlacement='right'
+                            disabled={!vFlipPossible}
+                            onClick={vFlip}
+                        />
+                    </div>
                 </div>
                 <CheckBoxField
                     label='Scale entity nodes'
