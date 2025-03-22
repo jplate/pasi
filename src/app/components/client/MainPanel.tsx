@@ -3594,7 +3594,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 <div id='button-panels' className='flex-grow min-w-[315px] max-w-[380px] select-none'>
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
-                            <div className='pr-1.5'>
+                            <div className='pr-1.5'> {/* We wrap the buttons in padded divs to be able to use 'w-full' on the buttons themselves. This is needed
+                                because, in Safari, the buttons will otherwise shrink-wrap their contents. */}
                                 <BasicColoredButton
                                     id='node-button'
                                     label='Node'
@@ -3631,24 +3632,28 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             />
                         </div>
                         <div className='grid grid-cols-2 mb-3.5'>
+                            <div className='pr-1.5'> 
                             <BasicColoredButton
                                 id='abstract-button'
                                 label='Abstract'
-                                style='rounded-xl mr-1.5'
+                                style='rounded-xl w-full'
                                 tooltip={abstractButtonTooltip}
                                 tooltipPlacement='left'
                                 disabled={selectedNodes.length === 0}
                                 onClick={abstractSelection}
                             />
+                            </div>
+                            <div>
                             <BasicColoredButton
                                 id='copy-button'
                                 label='Copy'
-                                style='rounded-xl'
+                                style='rounded-xl w-full'
                                 tooltip={copyButtonTooltip}
                                 tooltipPlacement='right'
                                 disabled={!canCopy}
                                 onClick={copySelection}
                             />
+                            </div>
                         </div>
                         <TabGroup
                             className='flex-1 w-full h-[402px] bg-btnbg/5 shadow-sm border border-btnborder/50 rounded-xl mb-3.5'
