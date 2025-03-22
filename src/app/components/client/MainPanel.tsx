@@ -3597,7 +3597,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             <BasicColoredButton
                                 id='node-button'
                                 label='Node'
-                                style='rounded-xl mr-1.5'
+                                style='rounded-xl mr-1.5 w-full'
                                 tooltip={addNodeButtonTooltip}
                                 tooltipPlacement='top'
                                 disabled={!canAddENodes}
