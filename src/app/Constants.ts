@@ -29,5 +29,5 @@ export const ROUNDING_DIGITS = 3; // used for rounding values resulting from rot
 export const TOOLTIP_DELAY = 750;
 export const TOOLTIP_OPACITY = 0.6;
 
-export const TRAVEL_STEP_SIZE = 1e-5; // used by subclasses of SNode, such as Adjunction
-export const TRAVEL_TOLERANCE = 1e-3;
+export const TRAVEL_STEP_SIZE = 1e-4; // used by subclasses of SNode, such as Adjunction
+export const TRAVEL_TOLERANCE = 2;
