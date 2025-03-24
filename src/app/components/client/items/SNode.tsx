@@ -15,7 +15,15 @@ import Node, {
     LINEJOIN_STYLE,
 } from './Node';
 import ENode, { validateLinewidth, validateDash, validateRadius } from './ENode';
-import { H, MIN_TRANSLATION_LOG_INCREMENT, ROUNDING_DIGITS, MIN_ROTATION } from '../../../Constants';
+import {
+    H,
+    MIN_TRANSLATION_LOG_INCREMENT,
+    ROUNDING_DIGITS,
+    MIN_ROTATION,
+    TRAVEL_STEP_SIZE,
+    TRAVEL_TOLERANCE,
+    MAX_DEVIANCE,
+} from '../../../Constants';
 import CNodeGroup from '../CNodeGroup';
 import CNode from './CNode';
 import { Entry, MAX_ROTATION_INPUT } from '../ItemEditor';
@@ -31,6 +39,7 @@ import {
     cubicBezier,
     findClosest,
     getCyclicValue,
+    travel,
 } from '../../../util/MathTools';
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
@@ -428,6 +437,18 @@ export default abstract class SNode extends ENode {
             this.locationDefined = true;
             return loc;
         }
+    }
+
+    /**
+     * @return the angle in which the arrowhead is supposed to be oriented.
+     */
+    getArrowheadAngle(adjustedLine: CubicCurve): number {
+        let { x2, y2 } = adjustedLine;
+        const { x3, y3 } = adjustedLine;
+        if (Math.abs(this.phi0) + Math.abs(this.phi1) > MAX_DEVIANCE) {
+            [x2, y2] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
+        }
+        return angle(x3, y3, x2, y2, true);
     }
 
     override move(dx: number, dy: number): void {
