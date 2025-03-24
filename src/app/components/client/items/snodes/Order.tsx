@@ -6,7 +6,7 @@ import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
-import { TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE } from '@/app/Constants';
+import { TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE, MAX_DEVIANCE } from '@/app/Constants';
 
 export const DEFAULT_W0 = 8;
 export const DEFAULT_W1 = 8;
@@ -146,7 +146,10 @@ export default class Order extends SNode {
         const len = this.hookLength;
         const a = (this.hookAngle / 180) * Math.PI;
         const { x3: p1x, y3: p1y } = adjustedLine;
-        const [p2x, p2y] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
+        let { x2: p2x, y2: p2y } = adjustedLine;
+        if (Math.abs(this.phi0 + this.phi1) > MAX_DEVIANCE) {
+            [p2x, p2y] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
+        }
         const gamma = angle(p1x, p1y, p2x, p2y, true);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
