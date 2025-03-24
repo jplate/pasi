@@ -1043,7 +1043,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 });
             }
         },
-        [points, focusItem, selection, list, origin] // origin has no setter, so is not included.
+        [points, focusItem, selection, list, origin]
     );
 
     /**
@@ -3595,7 +3595,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     <div id='button-panel-1' className='flex flex-col ml-[25px] h-[650px]'>
                         <div id='add-panel' className='grid grid-cols-2 mb-3'>
                             <div className='pr-1.5'>
-                                {' '}
                                 {/* We wrap the buttons in padded divs to be able to use 'w-full' on the buttons themselves. This is needed
                                 because, in Safari, the buttons will otherwise shrink-wrap their contents. */}
                                 <BasicColoredButton

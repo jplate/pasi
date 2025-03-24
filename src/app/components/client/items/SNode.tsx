@@ -440,7 +440,7 @@ export default abstract class SNode extends ENode {
     }
 
     /**
-     * @return the angle in which the arrowhead is supposed to be oriented.
+     * @return the angle (in radians) in which the arrowhead is supposed to be oriented.
      */
     getArrowheadAngle(adjustedLine: CubicCurve): number {
         let { x2, y2 } = adjustedLine;

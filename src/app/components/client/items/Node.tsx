@@ -99,7 +99,6 @@ export default abstract class Node extends Item {
         markColor: string
     ): JSX.Element => (
         <>
-            {' '}
             {/* The stroke width is taken care of by a style applied to polyline elements that is specified in MainPanel's return statement. */}
             <polyline
                 stroke={markColor}
