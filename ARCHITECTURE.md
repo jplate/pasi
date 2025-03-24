@@ -43,7 +43,7 @@ A central part of *pasi*'s architecture is a hierarchy of classes whose members 
 
 - **Location**: `src/app/components/client/items/GNode.tsx`
 - **Description**: 
-  - The `GNode` class extends `ENode` and represents 'ghost nodes' that transfer their group membership, ornaments, and connector endpoints to other nodes when dragged onto them.
+  - The `GNode` class extends `ENode` and represents &lsquo;ghost nodes&rsquo; that transfer their group membership, ornaments, and connector endpoints to other nodes when dragged onto them.
 
 ### 7. CNode
 
@@ -77,10 +77,12 @@ Item (abstract)
 |  |  |  |_ Adjunction
 |  |  |  |_ Identity
 |  |  |  |_ Order
+|  |  |  |_ ...
 |  |  |_ GNode
 |  |_ CNode
 |_ Ornament (abstract)
    |_ Label
+   |_ ...
 
 ```
 
