@@ -544,10 +544,14 @@ const prune = (selection: Item[], newList: (ENode | CNodeGroup)[]): Item[] =>
  */
 const transferFeatures = (n0: Node, n1: Node, unitScale: number, displayFontFactor: number): void => {
     if (n0 instanceof CNode === n1 instanceof CNode) {
+        const oldGroup = n1.group;
         n1.group = n0.group;
         n1.isActiveMember = n0.isActiveMember;
         if (n1.group) {
             n1.group.members.push(n1);
+            if (oldGroup) {
+                oldGroup.members = oldGroup.members.filter((m) => m !== n1);
+            }
         }
     }
 
@@ -1212,7 +1216,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             currentSelection: Item[] = selection,
             newSelection?: Item[],
             currentFocus: Item | null = focusItem,
-            newFocus: Item | null = null
+            newFocus: Item | null = null,
+            newPoints: Point[] = []
         ) => {
             const toBeDeleted = getToBeDeleted(items);
             const newList: (ENode | CNodeGroup)[] = [];
@@ -1278,23 +1283,14 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 list: newList,
                 selection: newSelection ?? prune(currentSelection, newList),
                 focusItem: currentFocus && items.includes(currentFocus) ? newFocus : currentFocus,
+                points: newPoints,
             });
             setPreselection1((prev) => prune(prev, newList));
             setPreselection2((prev) => prune(prev, newList));
             adjustLimit(getItems(newList));
-            setOrigin(true, points, null, []);
+            setOrigin(true, newPoints, null, []);
         },
-        [
-            focusItem,
-            points,
-            list,
-            update,
-            selection,
-            adjustLimit,
-            setOrigin,
-            setPreselection1,
-            setPreselection2,
-        ]
+        [focusItem, list, update, selection, adjustLimit, setOrigin, setPreselection1, setPreselection2]
     );
 
     /**
