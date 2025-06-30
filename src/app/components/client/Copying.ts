@@ -134,7 +134,9 @@ export const copyCNode = (
         copy.omitLine = node.omitLine;
         copy.fixedAngles = node.fixedAngles;
         copy.dist0 = node.dist0;
+        copy.dist0_100 = node.dist0_100;
         copy.dist1 = node.dist1;
+        copy.dist1_100 = node.dist1_100;
         return copy;
     } else return null as never;
 };
