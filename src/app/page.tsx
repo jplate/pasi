@@ -290,7 +290,8 @@ export default function Home() {
                                     <li>
                                         <p>
                                             <span className='font-bold'>Star of David.</span> For a more
-                                            complex example (on more than one level), suppose you wish to
+                                            complex example (on more than one level), suppose you wish,{' '}
+                                            for some macabre reason, to{' '}
                                             create two overlapping regular triangles to form a{' '}
                                             <em>Star of David</em>. The simplest way to do this begins with
                                             creating a regular{' '}
