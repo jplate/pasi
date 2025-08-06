@@ -290,11 +290,10 @@ export default function Home() {
                                     <li>
                                         <p>
                                             <span className='font-bold'>Star of David.</span> For a more
-                                            complex example (on more than one level), suppose you wish,{' '}
-                                            for some macabre reason, to{' '}
-                                            create two overlapping regular triangles to form a{' '}
-                                            <em>Star of David</em>. The simplest way to do this begins with
-                                            creating a regular{' '}
+                                            complex example (on more than one level), suppose you wish, for
+                                            some macabre reason, to create two overlapping regular triangles
+                                            to form a <em>Star of David</em>. The simplest way to do this
+                                            begins with creating a regular{' '}
                                             <CodeButton text='hexagon' code={hexagonCode} />. Take a standard
                                             eight-node contour, delete two of its nodes, and select the
                                             remaining six. Then press {key('P')} to convert these into a
