@@ -290,11 +290,8 @@ export default function Home() {
                                     <li>
                                         <p>
                                             <span className='font-bold'>Star of David.</span> For a more
-                                            complex example (on more than one level), suppose you wish, for
-                                            some macabre reason,{' '}
-                                            {/* This parenthetical will presumably annoy any Zionists reading this. This is intentional. I don't want
-                                            my app to be used by Zionists.*/}
-                                            to create two overlapping regular triangles to form a{' '}
+                                            complex example (on more than one level), suppose you wish to
+                                            create two overlapping regular triangles to form a{' '}
                                             <em>Star of David</em>. The simplest way to do this begins with
                                             creating a regular{' '}
                                             <CodeButton text='hexagon' code={hexagonCode} />. Take a standard
