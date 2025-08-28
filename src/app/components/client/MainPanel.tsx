@@ -2677,16 +2677,18 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
 
         const oldGroups = toBeGrouped.map((m) => m.group).filter((g, i, arr) => g && i === arr.indexOf(g));
         let newList = list,
+            newCNGCounter = cngCounter,
+            newSGCounter = sgCounter,
             group: Group<any>;
         if (createCNG) {
             group = new CNodeGroup(cngCounter);
             group.members = toBeGrouped;
             (group as CNodeGroup).copyNonMemberValuesFrom(...(oldGroups as CNodeGroup[]));
             newList = [...newList, group as CNodeGroup];
-            setCNGCounter((prev) => prev + 1);
+            newCNGCounter++;
         } else {
             group = new StandardGroup<Item | Group<any>>(sgCounter, toBeGrouped);
-            setSGCounter((prev) => prev + 1);
+            newSGCounter++;
         }
         oldGroups.forEach((g) => {
             if (g) {
@@ -2700,7 +2702,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             member.group = group;
             member.isActiveMember = true;
         });
-        update({ list: newList });
+        update({ list: newList, cngCounter: newCNGCounter, sgCounter: newSGCounter });
         if (focusItem) adjustSelection(focusItem);
     }, [list, deduplicatedSelection, update, cngCounter, sgCounter, focusItem, adjustSelection, showModal]);
 
@@ -3379,6 +3381,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         clsx(
             `Rendering... ${selectedNodes.map((node) => node.getString())} listLength=${list.length}`,
             `focusItem=${focusItem && focusItem.getString()}`,
+            focusItem instanceof CNode && `CNGid=${(focusItem.group as CNodeGroup).id}`,
             focusItem instanceof Node &&
                 `ornaments=[${focusItem.ornaments.map((o) => o.getString()).join()}]`,
             `(${focusItem instanceof Node && focusItem.x}, ${focusItem instanceof Node && focusItem.y})`,
