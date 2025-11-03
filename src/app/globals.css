@@ -40,7 +40,7 @@
     --textfieldcolor: 30, 41, 59; /* slate-800 */
     --tooltipbg: 248, 250, 252; /* slate-50 */
     ::selection {
-        background-color: oklch(82.8% 0.111 230.318 / 0.4); /* sky-300 with opacity */
+        background-color: oklch(0.77 0.08 255 / 0.4); /* sky-300 with opacity */
     }
 }
 
@@ -69,7 +69,7 @@
     --textfieldcolor: 217, 119, 6; /* amber-600 */
     --tooltipbg: 12, 10, 9; /* stone-950 */
     ::selection {
-        background-color: oklch(55.3% 0.195 38.402 / 0.3); /* orange-700 with opacity */
+        background-color: oklch(0.55 0.195 38 / 0.3); /* orange-700 with opacity */
     }
 }
 
