@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type JSX } from 'react';
 
 import { DEFAULT_TRANSLATION_LOG_INCREMENT, MAX_GROUP_LEVEL } from '@/app/Constants';
 import { MAX_LINEWIDTH } from '@/app/components/client/items/Node';

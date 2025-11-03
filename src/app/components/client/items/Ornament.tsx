@@ -1,4 +1,4 @@
-import react from 'react';
+import react, { type JSX } from 'react';
 import Item from './Item';
 import Node from './Node';
 import { HSL } from './Item';

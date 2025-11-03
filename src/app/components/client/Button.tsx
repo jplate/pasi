@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, forwardRef, CSSProperties } from 'react';
+import React, { useState, useEffect, useMemo, useRef, forwardRef, CSSProperties, type JSX } from 'react';
 import clsx from 'clsx';
 import { WithTooltip, Placement } from './EditorComponents';
 import { useThrottle } from '../../util/Misc';
@@ -157,7 +157,7 @@ BasicColoredButton.displayName = 'BasicColoredButton';
 interface CopyToClipboardButtonProps {
     id: string;
     iconSize: number;
-    textareaRef: React.RefObject<HTMLTextAreaElement>;
+    textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 export const CopyToClipboardButton = React.memo(

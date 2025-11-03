@@ -6,6 +6,8 @@ import { ROUNDING_DIGITS } from '../../../Constants';
 import { round } from '../../../util/MathTools';
 import * as Texdraw from '../../../codec/Texdraw';
 
+import type { JSX } from 'react';
+
 export const MAX_LINEWIDTH = 32;
 export const MAX_DASH_LENGTH = 9999; // maximal length of dash array
 export const MAX_DASH_VALUE = 9999; // maximum for a single value in a dash array
