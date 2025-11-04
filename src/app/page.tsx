@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import clsx from 'clsx';
 import { pasi } from './components/client/Hotkeys';
 import {
@@ -64,6 +65,12 @@ const LogoSpan: React.FC = () => {
     );
 };
 
+// Whitelist map for src URLs:
+const URLS: Record<string, string> = {
+    TORS0: 'https://raw.githubusercontent.com/jplate/data/main/TORS-diagram_v0.tex',
+    TORS1: 'https://raw.githubusercontent.com/jplate/data/main/TORS-diagram_v1.tex',
+  };
+
 const relationshipCode =
     '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(400 380)\\lcir r:12 %E0\n\\textref h:C v:B \\htext(400 394.5){\\vphantom{p}Desdemona}%L0{2 U 0}\n\\linewd 1 \\move(600 380)\\lcir r:12 %E1\n\\textref h:C v:B \\htext(600 394.5){\\vphantom{p}Othello}%L1{2 U 0}\n\\linewd 1 \\move(412 380)\\clvec(420 380)(579.6 380)(587.6 380)\\move(587.6 380)\\lvec(578.3612 383.8268)\\move(587.6 380)\\lvec(578.3612 376.1732)\\linewd 1 \\move(500 380)\\lcir r:5 %A2(0 1){.u7 0 .n 1}\n\\textref h:C v:B \\htext(500 387.5){\\vphantom{p}loves}%L2{2 U 0}\n\\linewd 1 \\move(500 280)\\lcir r:12 %E3\n\\textref h:C v:T \\htext(500 265.5){Iago}%L3{2 U- 0}\n\\linewd 1 \\move(500 292)\\clvec(500 300)(500 360.6)(500 371.6)\\move(500 371.6)\\lvec(496.452 373.447)\\move(500 371.6)\\lvec(503.5481 373.447)%A4(3 2){5 0 .u 0 3.n 1}\n\\textref h:L v:C \\htext(507 330.675){\\small disapproves}%L4{2 0 0}\n\\end{texdraw}';
 
@@ -77,6 +84,7 @@ const dodecagonCode =
     '\\begin{texdraw}%pasiCodecV1\n\\drawdim pt \\setunitscale 0.75 \n\\linewd 1 \\move(403 253)\\clvec(416.8018 244.8668)(445.1982 228.1332)(459 220)\\clvec(475.02 220)(507.98 220)(524 220)\\clvec(537.8018 228.1332)(566.1982 244.8668)(580 253)\\clvec(588.1332 266.8018)(604.8668 295.1982)(613 309)\\clvec(613 325.02)(613 357.98)(613 374)\\clvec(604.8668 387.8018)(588.1332 416.1982)(580 430)\\clvec(566.1982 438.1332)(537.8018 454.8668)(524 463)\\clvec(507.98 463)(475.02 463)(459 463)\\clvec(445.1982 454.8668)(416.8018 438.1332)(403 430)\\clvec(394.8668 416.1982)(378.1332 387.8018)(370 374)\\clvec(370 357.98)(370 325.02)(370 309)\\clvec(378.1332 295.1982)(394.8668 266.8018)(403 253)%S0{0; 3; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2; 0,0,/.2,/.2}\n\\end{texdraw}';
 
 export default function Home() {
+    const searchParams = useSearchParams()
     const [isMobile, setIsMobile] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [diagramCode, setDiagramCode] = useState<string | null>(null);
@@ -115,6 +123,40 @@ export default function Home() {
             root.style.setProperty('color-scheme', isDarkMode ? 'dark' : 'light');
         }
     }, [isDarkMode]);
+
+    // Set diagram code based on query string
+    useEffect(() => {
+        const src = searchParams.get('src');
+        if (!src) return;
+        const url = URLS[src];
+        if (!url) {
+            console.error('Unknown source');
+            return;
+        }      
+        console.log(url);          
+      
+        let cancelled = false;
+      
+        (async () => {
+          try {
+            const res = await fetch(url, { cache: 'force-cache' });
+            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+            const text = await res.text();
+            if (!cancelled) {
+                // console.log(`Text received: ${text}`);
+                setDiagramCode(text);
+            }
+          } catch (err: any) {
+            if (!cancelled) {
+                console.error(err.message ?? String(err));
+            }
+          }
+        })();
+      
+        return () => {
+          cancelled = true;
+        };
+    }, [searchParams]);
 
     const key = useCallback(
         (name: string) => {
