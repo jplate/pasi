@@ -1306,12 +1306,13 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             // portion.
             e.stopPropagation();
             const canvas = canvasRef.current;
+            const ctrlOrMeta = e.ctrlKey || e.metaKey;
             if (canvas) {
                 const element = document.activeElement as HTMLElement;
                 element.blur();
                 canvas.focus();
             }
-            if (e.ctrlKey && !e.shiftKey && deduplicatedSelection.includes(item)) {
+            if (ctrlOrMeta && !e.shiftKey && deduplicatedSelection.includes(item)) {
                 deselect(item);
             } else {
                 let newPoints = points,
@@ -1320,7 +1321,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
 
                 if (focusItem && (adding || dissolveAdding)) {
                     newPoints = [];
-                    const itemToAdd = e.ctrlKey ? item : highestActive(item);
+                    const itemToAdd = ctrlOrMeta ? item : highestActive(item);
                     const group = highestActive(focusItem);
                     if (
                         !(group instanceof Item) &&
@@ -1468,7 +1469,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     // preselection at the end of this function).
                     if (e.shiftKey) {
                         // increase selection
-                        if (e.ctrlKey || pres.length === 0) {
+                        if (ctrlOrMeta || pres.length === 0) {
                             if (item instanceof ENode || !deduplicatedSelection.includes(item)) {
                                 // If item is a CNode, we don't add it twice.
                                 newSelection = [...selection, item];
@@ -1487,11 +1488,11 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         }
                     } else {
                         // replace selection
-                        if (e.ctrlKey || pres.length === 0) {
+                        if (ctrlOrMeta || pres.length === 0) {
                             newSelection = [item];
-                            // If ctrl was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not
+                            // If ctrl or meta was not pressed, then, for the case that the user clicks on this item again, we prepare the selection not
                             // just of item itself but of all members of its highest active group:
-                            if (!e.ctrlKey) {
+                            if (!ctrlOrMeta) {
                                 updateSecondaryPreselection([item]);
                                 clearPreselection = false;
                             }
@@ -1689,8 +1690,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         (item: Item, e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             if (!dragging) {
                 setPreselection1([item]);
-                if (e.ctrlKey) {
-                    setPreselection2([item]); // if Ctrl is pressed, only add item by itself
+                if (e.ctrlKey || e.metaKey) {
+                    setPreselection2([item]); // if Ctrl or ⌘ is pressed, only add item by itself
                 } else {
                     updateSecondaryPreselection([item]); // otherwise add all the leaf members of its highest active group
                 }
@@ -1709,8 +1710,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         ) => {
             if (!dragging) {
                 setPreselection1(group.members);
-                if (e.ctrlKey) {
-                    setPreselection2(group.members); // if Ctrl is pressed, only add group members by themselves
+                if (e.ctrlKey || e.metaKey) {
+                    setPreselection2(group.members); // if Ctrl or ⌘ is pressed, only add group members by themselves
                 } else {
                     updateSecondaryPreselection(group.members); // otherwise add all the leaf members of their highest active group
                 }
@@ -1758,7 +1759,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             setDragging(true);
             const x = e.clientX - left + scrollLeft;
             const y = e.clientY - top + scrollTop;
-            const deselect = e.ctrlKey && !e.shiftKey && selection.length > 0;
+            const deselect = (e.ctrlKey || e.metaKey) && !e.shiftKey && selection.length > 0;
             let newPoints = e.shiftKey ? points : [];
 
             const handleMouseMove = (mme: MouseEvent) => {
