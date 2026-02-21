@@ -7,6 +7,7 @@ import {
     SampleFileSection,
 } from './components/StaticSections.tsx';
 import AppShellLoader from './components/client/AppShellLoader';
+import MyFooter from './components/Footer';
 
 const staticKeyCmd = (name: string): JSX.Element[] => {
     const split = name.split('+');
@@ -32,6 +33,7 @@ export default function Home() {
                         <BasicFeaturesSection dark={false} keyCmd={staticKeyCmd} />
                         <SampleFileSection dark={false} isMac={false} keyCmd={staticKeyCmd} />
                     </div>
+                    <MyFooter />
                 </div>
                 <div id='static-sections-fallback-dark' className='flex flex-col lg:items-center'>
                     <div className='flex-1 flex flex-col items-center mb-9'>
@@ -41,6 +43,7 @@ export default function Home() {
                         <BasicFeaturesSection dark={true} keyCmd={staticKeyCmd} />
                         <SampleFileSection dark={true} isMac={false} keyCmd={staticKeyCmd} />
                     </div>
+                    <MyFooter />
                 </div>
             </div>
 
