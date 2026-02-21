@@ -1,7 +1,8 @@
 import React, { type JSX } from 'react';
 
 import { DEFAULT_TRANSLATION_LOG_INCREMENT, MAX_GROUP_LEVEL } from '@/app/Constants';
-import { MAX_LINEWIDTH } from '@/app/components/client/items/Node';
+
+const MAX_LINEWIDTH = 32;
 
 export const pasi = (s: string) => {
     return <span className='pasi text-base'>{s}</span>;

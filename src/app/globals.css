@@ -15,7 +15,7 @@
 * COLORS
 *****************************************************/
 
-.light {
+:root {
     --foreground-rgb: 30, 41, 59; /* slate-800 */
     --background-start-rgb: 205, 210, 220;
     --background-end-rgb: 235, 240, 250;
@@ -39,6 +39,11 @@
     --textfieldbg: 248, 250, 252; /* slate-50 */
     --textfieldcolor: 30, 41, 59; /* slate-800 */
     --tooltipbg: 248, 250, 252; /* slate-50 */
+    color-scheme: light;
+}
+
+.light {
+    color-scheme: light;
     ::selection {
         background-color: oklch(0.77 0.08 255 / 0.4); /* sky-300 with opacity */
     }
@@ -68,6 +73,7 @@
     --textfieldbg: 18, 10, 9; /* slightly redder than stone-950 */
     --textfieldcolor: 217, 119, 6; /* amber-600 */
     --tooltipbg: 12, 10, 9; /* stone-950 */
+    color-scheme: dark;
     ::selection {
         background-color: oklch(0.55 0.195 38 / 0.3); /* orange-700 with opacity */
     }
@@ -190,6 +196,33 @@ i {
 
 .checkbox.dark {
     filter: brightness(0.85);
+}
+
+#app-shell-root {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease-in-out;
+}
+
+html.app-shell-mounted #app-shell-root {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+html.app-shell-mounted #static-sections-fallback {
+    display: none;
+}
+
+#static-sections-fallback-dark {
+    display: none;
+}
+
+body.dark #static-sections-fallback-light {
+    display: none;
+}
+
+body.dark #static-sections-fallback-dark {
+    display: flex;
 }
 
 /*****************************************************

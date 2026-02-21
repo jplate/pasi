@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jplate.github.io/pasi/sitemap.xml

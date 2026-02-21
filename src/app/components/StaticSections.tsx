@@ -1,8 +1,6 @@
-'use client';
-
 import type { JSX } from 'react';
-import Section from './Section';
-import LatexCode from './LatexCode';
+import StaticSection from './StaticSection';
+import StaticLatexCode from './StaticLatexCode';
 import {
     sampleFile,
     IntroSectionContent,
@@ -19,31 +17,31 @@ export interface PasiSectionProps {
 }
 
 export const IntroSection = ({ dark, keyCmd }: PasiSectionProps) => (
-    <Section id='intro-section' dark={dark}>
+    <StaticSection id='intro-section' dark={dark}>
         <IntroSectionContent keyCmd={keyCmd} />
-    </Section>
+    </StaticSection>
 );
 
 export const HotkeySection = ({ dark, isMac, keyCmd }: PasiSectionProps) => (
-    <Section id='keyboard-commands' header='Keyboard commands' dark={dark}>
+    <StaticSection id='keyboard-commands' header='Keyboard commands' dark={dark}>
         <HotkeySectionContent keyCmd={keyCmd} dark={dark} isMac={isMac} />
-    </Section>
+    </StaticSection>
 );
 
 export const AltSection = ({ dark }: PasiSectionProps) => (
-    <Section id='alternatives-section' header='Alternative apps' dark={dark}>
+    <StaticSection id='alternatives-section' header='Alternative apps' dark={dark}>
         <AltSectionContent />
-    </Section>
+    </StaticSection>
 );
 
 export const BasicFeaturesSection = ({ dark, keyCmd }: PasiSectionProps) => (
-    <Section id='design-principles' header='Basic design features' dark={dark}>
+    <StaticSection id='design-principles' header='Basic design features' dark={dark}>
         <BasicFeaturesSectionContent keyCmd={keyCmd} />
-    </Section>
+    </StaticSection>
 );
 
 export const SampleFileSection = ({ dark }: PasiSectionProps) => (
-    <Section id='sample-file' header='Sample file' dark={dark}>
-        <SampleFileSectionContent codeBlock={<LatexCode dark={dark} code={sampleFile} />} />
-    </Section>
+    <StaticSection id='sample-file' header='Sample file' dark={dark}>
+        <SampleFileSectionContent codeBlock={<StaticLatexCode code={sampleFile} />} />
+    </StaticSection>
 );

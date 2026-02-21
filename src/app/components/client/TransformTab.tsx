@@ -8,7 +8,7 @@ import {
 } from './EditorComponents.tsx';
 import { BasicColoredButton } from './Button.tsx';
 import { MAX_SCALING, MIN_ROTATION } from './MainPanel';
-import { HotkeyComp } from './Hotkeys';
+import { HotkeyComp } from '@/app/Hotkeys';
 import {
     MIN_ROTATION_LOG_INCREMENT,
     MAX_ROTATION_LOG_INCREMENT,

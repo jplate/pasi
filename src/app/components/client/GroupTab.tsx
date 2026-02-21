@@ -3,7 +3,7 @@ import React from 'react';
 import Item from './items/Item';
 import { getGroups } from './Group';
 import { BasicColoredButton } from './Button';
-import { HotkeyComp } from './Hotkeys';
+import { HotkeyComp } from '@/app/Hotkeys';
 
 const createTooltip = (
     <>
