@@ -482,6 +482,18 @@ export const WithTooltip = React.memo(
             placement,
             middleware: [offset(8), shift()],
         });
+        const setReferenceRef = useCallback(
+            (node: HTMLElement | null) => {
+                refs.setReference(node);
+            },
+            [refs]
+        );
+        const setFloatingRef = useCallback(
+            (node: HTMLElement | null) => {
+                refs.setFloating(node);
+            },
+            [refs]
+        );
 
         const handleMouseEnter = useCallback(() => setShowTooltip(true), [setShowTooltip]);
 
@@ -491,7 +503,7 @@ export const WithTooltip = React.memo(
             <div>
                 <div
                     className={noStretch ? 'max-w-fit' : 'justify-items-stretch'}
-                    ref={refs.setReference}
+                    ref={setReferenceRef}
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
                 >
@@ -500,7 +512,7 @@ export const WithTooltip = React.memo(
                 {showTooltip && (
                     <Tooltip
                         content={tooltip}
-                        ref={refs.setFloating}
+                        floatingRef={setFloatingRef}
                         styles={floatingStyles}
                         strategy={strategy}
                     />
@@ -513,12 +525,12 @@ WithTooltip.displayName = 'WithTooltip';
 
 interface TooltipProps {
     content: React.ReactNode;
-    ref: (node: HTMLElement | null) => void;
+    floatingRef: (node: HTMLElement | null) => void;
     styles: React.CSSProperties;
     strategy: Strategy;
 }
 
-export const Tooltip = ({ content, ref, styles, strategy }: TooltipProps) => {
+export const Tooltip = ({ content, floatingRef, styles, strategy }: TooltipProps) => {
     const [opaque, setOpaque] = useState(false);
 
     // To keep proper positioning, the tooltip has to be mounted and unmounted every time it appears. To make it ease into view, we let it start
@@ -539,7 +551,7 @@ export const Tooltip = ({ content, ref, styles, strategy }: TooltipProps) => {
                 'tooltip px-4 py-2 border-l border-btnborder shadow-lg text-sm hyphens-auto',
                 !opaque ? 'opacity-0' : 'opacity-100'
             )}
-            ref={ref}
+            ref={floatingRef}
             style={{
                 ...styles,
                 position: strategy,

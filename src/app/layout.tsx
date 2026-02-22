@@ -35,6 +35,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   try {
     const storedMode = localStorage.getItem('color-scheme');
     const dark = storedMode ? storedMode === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+    document.documentElement.classList.toggle('light', !dark);
     document.body.classList.toggle('dark', dark);
     document.body.classList.toggle('light', !dark);
     document.documentElement.style.setProperty('color-scheme', dark ? 'dark' : 'light');

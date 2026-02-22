@@ -129,15 +129,15 @@ const TransformTab = React.memo(
         );
 
         const handleChangeRotationIncrement = useCallback(
-            (e: React.ChangeEvent<HTMLInputElement>) =>
-                setRotationIncrement(
-                    (logIncrements.rotate = validInt(
-                        e.target.value,
-                        MIN_ROTATION_LOG_INCREMENT,
-                        MAX_ROTATION_LOG_INCREMENT
-                    ))
-                ),
-            [logIncrements, setRotationIncrement]
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                const nextIncrement = validInt(
+                    e.target.value,
+                    MIN_ROTATION_LOG_INCREMENT,
+                    MAX_ROTATION_LOG_INCREMENT
+                );
+                setRotationIncrement(nextIncrement);
+            },
+            [setRotationIncrement]
         );
 
         const handleScaling = useCallback(
@@ -156,15 +156,15 @@ const TransformTab = React.memo(
         );
 
         const handleChangeScalingIncrement = useCallback(
-            (e: React.ChangeEvent<HTMLInputElement>) =>
-                setScalingIncrement(
-                    (logIncrements.scale = validInt(
-                        e.target.value,
-                        MIN_SCALING_LOG_INCREMENT,
-                        MAX_SCALING_LOG_INCREMENT
-                    ))
-                ),
-            [logIncrements, setScalingIncrement]
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                const nextIncrement = validInt(
+                    e.target.value,
+                    MIN_SCALING_LOG_INCREMENT,
+                    MAX_SCALING_LOG_INCREMENT
+                );
+                setScalingIncrement(nextIncrement);
+            },
+            [setScalingIncrement]
         );
 
         const handleScENodeChange = useCallback(

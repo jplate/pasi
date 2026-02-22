@@ -130,6 +130,8 @@ export default function AppShell() {
 
     // Change color scheme
     useLayoutEffect(() => {
+        document.documentElement.classList.remove(isDarkMode ? 'light' : 'dark');
+        document.documentElement.classList.add(isDarkMode ? 'dark' : 'light');
         document.body.classList.remove(isDarkMode ? 'light' : 'dark');
         document.body.classList.add(isDarkMode ? 'dark' : 'light');
         window.localStorage.setItem('color-scheme', isDarkMode ? 'dark' : 'light');

@@ -51,21 +51,17 @@ const GHOST_PERIPHERAL_OPACITY = 0.05;
 export const validateLinewidth = (lw: number, name: string): number => {
     if (lw < 0) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: line width should not be
-                    negative.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: line width should not be
+                negative.
+            </span>
         );
     } else if (lw > MAX_LINEWIDTH) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds
-                    maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: line width {lw} exceeds maximum
+                value.
+            </span>
         );
     }
     return lw;
@@ -74,21 +70,17 @@ export const validateLinewidth = (lw: number, name: string): number => {
 export const validateShading = (shading: number, name: string): number => {
     if (shading < 0) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: shading value should not be
-                    negative.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: shading value should not be
+                negative.
+            </span>
         );
     } else if (shading > 1) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: shading value {shading}{' '}
-                    exceeds 1.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: shading value {shading} exceeds
+                1.
+            </span>
         );
     }
     return shading;
@@ -97,33 +89,27 @@ export const validateShading = (shading: number, name: string): number => {
 export const validateDash = (dash: number[], name: string): number[] => {
     if (dash.length > MAX_DASH_LENGTH) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash array length{' '}
-                    {dash.length} exceeds maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: dash array length {dash.length}{' '}
+                exceeds maximum value.
+            </span>
         );
     }
     let val;
     if (dash.some((v) => (val = v) < 0)) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash value should not be
-                    negative.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: dash value should not be
+                negative.
+            </span>
         );
     }
     if (dash.some((v) => v > MAX_DASH_VALUE)) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds
-                    maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: dash value {val} exceeds
+                maximum value.
+            </span>
         );
     }
     return dash;
@@ -132,21 +118,16 @@ export const validateDash = (dash: number[], name: string): number[] => {
 export const validateRadius = (radius: number, name: string): number => {
     if (radius < 0) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: radius should not be
-                    negative.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: radius should not be negative.
+            </span>
         );
     } else if (radius > MAX_RADIUS) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds
-                    maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: radius {radius} exceeds maximum
+                value.
+            </span>
         );
     }
     return radius;
@@ -155,41 +136,33 @@ export const validateRadius = (radius: number, name: string): number => {
 export const validateCoordinates = (x: number, y: number, name: string): number[] => {
     if (x < MIN_X) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below
-                    minimum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} below minimum
+                value.
+            </span>
         );
     } else if (x > MAX_X) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds
-                    maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: X-coordinate {x} exceeds
+                maximum value.
+            </span>
         );
     }
 
     if (y < MIN_Y) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below
-                    minimum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} below minimum
+                value.
+            </span>
         );
     } else if (y > MAX_Y) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds
-                    maximum value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of entity node <code>{name}</code>: Y-coordinate {y} exceeds
+                maximum value.
+            </span>
         );
     }
     return [x, y];
@@ -451,11 +424,9 @@ export default class ENode extends Node {
     parseNodeInfoString(tex: string, info: string | null, dimRatio: number, name: string): void {
         if (info === null) {
             throw new ParseError(
-                (
-                    <span>
-                        Incomplete definition of entity node <code>{name}</code>: info string required.
-                    </span>
-                )
+                <span>
+                    Incomplete definition of entity node <code>{name}</code>: info string required.
+                </span>
             );
         }
         this.linewidth = this.linewidth100 = 0;

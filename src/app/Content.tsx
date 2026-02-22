@@ -9,8 +9,8 @@ export function IntroSectionContent({ keyCmd }: { keyCmd: (s: string) => JSX.Ele
     return (
         <>
             <p>
-                Suppose you're writing a paper in LaTeX and want to make a quick diagram to include in your
-                text.
+                Suppose you&rsquo;re writing a paper in LaTeX and want to make a quick diagram to include in
+                your text.
             </p>
             <p>Here you can do that.</p>
             <p>
@@ -22,8 +22,9 @@ export function IntroSectionContent({ keyCmd }: { keyCmd: (s: string) => JSX.Ele
                 </span>
                 , and then click either the {pasi('Node')} or the {pasi('Contour')} button. To manipulate your
                 diagram, you can drag nodes around, add labels to nodes, connect nodes with arrows, etc. When
-                you're done, click the {pasi('Generate')} button to have the LaTeX code displayed in the text
-                area below the canvas. To use that code in your document, you'll need Peter Kabal's{' '}
+                you&rsquo;re done, click the {pasi('Generate')} button to have the LaTeX code displayed in the
+                text area below the canvas. To use that code in your document, you&rsquo;ll need Peter
+                Kabal&rsquo;s{' '}
                 <a href='https://ctan.org/pkg/texdraw' target='_blank' rel='noopener noreferrer'>
                     <i>TeXdraw</i>
                 </a>
@@ -148,32 +149,31 @@ export function BasicFeaturesSectionContent({ keyCmd }: { keyCmd: (s: string) =>
     return (
         <ol>
             <li>
-                <span className='font-bold'>Simplicity.</span> A diagram in <i>pasi</i> consists of at
-                most three basic kinds of building block: <em>entity</em> nodes, <em>contour</em> nodes,
-                and <em>ornaments</em> (such as labels). Their placement and other properties completely
-                determine the appearance of a diagram.
+                <span className='font-bold'>Simplicity.</span> A diagram in <i>pasi</i> consists of at most
+                three basic kinds of building block: <em>entity</em> nodes, <em>contour</em> nodes, and{' '}
+                <em>ornaments</em> (such as labels). Their placement and other properties completely determine
+                the appearance of a diagram.
             </li>
             <li>
                 <span className='font-bold'>Precision.</span> With the cursor keys (or {keyCmd('W')},{' '}
-                {keyCmd('A')}, {keyCmd('S')}, {keyCmd('D')}), it is possible to position items to a
-                precision of one-tenth of a pixel. The exact coordinates of an item can be inspected and
-                adjusted in the {pasi('Editor')} tab. In addition, while dragging items across the canvas,
-                the user can take advantage of three kinds of &lsquo;snapping&rsquo; behavior: to the
-                centers of contours, to the centers of nodes, and to a variable grid.
+                {keyCmd('A')}, {keyCmd('S')}, {keyCmd('D')}), it is possible to position items to a precision
+                of one-tenth of a pixel. The exact coordinates of an item can be inspected and adjusted in the{' '}
+                {pasi('Editor')} tab. In addition, while dragging items across the canvas, the user can take
+                advantage of three kinds of &lsquo;snapping&rsquo; behavior: to the centers of contours, to
+                the centers of nodes, and to a variable grid.
             </li>
             <li>
-                <span className='font-bold'>LaTeX export.</span> When using LaTeX for typesetting a
-                document, a major advantage of including the document&rsquo;s diagrams in LaTeX-readable
-                form is that this allows for commands defined elsewhere in the text to be used in the
-                diagrams&rsquo; labels. In addition, the font of the labels will automatically match the
-                rest of the document.
+                <span className='font-bold'>LaTeX export.</span> When using LaTeX for typesetting a document,
+                a major advantage of including the document&rsquo;s diagrams in LaTeX-readable form is that
+                this allows for commands defined elsewhere in the text to be used in the diagrams&rsquo;
+                labels. In addition, the font of the labels will automatically match the rest of the document.
             </li>
             <li>
                 <span className='font-bold'>Custom shapes.</span> While each <em>contour</em> initially
                 consists of exactly eight nodes carrying information about the control points of their
                 connecting curves, it is easy to add or delete nodes and to adjust their respective
-                properties. A few examples of how different shapes can be created in this way are
-                described <a href='#contour-examples'>below</a>.
+                properties. A few examples of how different shapes can be created in this way are described{' '}
+                <a href='#contour-examples'>below</a>.
             </li>
         </ol>
     );

@@ -159,11 +159,9 @@ const getGroupMap = (str: string, sgCounter: number) => {
         }
         if (g.members.length > 0) {
             throw new ParseError(
-                (
-                    <span>
-                        Corrupt data: group <code>{sp[0]}</code> is assigned members more than once.
-                    </span>
-                )
+                <span>
+                    Corrupt data: group <code>{sp[0]}</code> is assigned members more than once.
+                </span>
             );
         }
         const groups = getGroups(g)[0]; // the current list of g's groups. This will be used to prevent us from building a cyclic hierarchy due to corrupt data.
@@ -175,12 +173,9 @@ const getGroupMap = (str: string, sgCounter: number) => {
                 if (m) {
                     if (m.group) {
                         throw new ParseError(
-                            (
-                                <span>
-                                    Corrupt data: group <code>{ms}</code> is listed as a member more than
-                                    once.
-                                </span>
-                            )
+                            <span>
+                                Corrupt data: group <code>{ms}</code> is listed as a member more than once.
+                            </span>
                         );
                     }
                     if (
@@ -188,12 +183,10 @@ const getGroupMap = (str: string, sgCounter: number) => {
                         groups.some((gr) => m === gr || (m instanceof StandardGroup && m.contains(gr)))
                     ) {
                         throw new ParseError(
-                            (
-                                <span>
-                                    Corrupt data: group <code>{ms}</code> cannot be a direct or indirect
-                                    member of itself.
-                                </span>
-                            )
+                            <span>
+                                Corrupt data: group <code>{ms}</code> cannot be a direct or indirect member of
+                                itself.
+                            </span>
                         );
                     }
                 }
@@ -241,11 +234,9 @@ const analyzeHint = (
         info = extractString(hint, '\\{(.*?)\\}', i);
         if (!info) {
             throw new ParseError(
-                (
-                    <span>
-                        Ill-formed directive (expected closing bracket): <code>{truncate(hint)}</code>.
-                    </span>
-                )
+                <span>
+                    Ill-formed directive (expected closing bracket): <code>{truncate(hint)}</code>.
+                </span>
             );
         }
     }
@@ -263,11 +254,9 @@ const analyzeHint = (
     if (j + 1 === hint.length) {
         // In this case the hint ends with a '.' or ':', which makes no sense.
         throw new ParseError(
-            (
-                <span>
-                    Directive should not end with a period or colon: <code>{truncate(hint)}</code>.
-                </span>
-            )
+            <span>
+                Directive should not end with a period or colon: <code>{truncate(hint)}</code>.
+            </span>
         );
     }
 
@@ -283,22 +272,18 @@ const validateName = (
     }
     if ((!allowCNodeName && name.length > MAX_NAME_LENGTH) || name.length > 2 * MAX_NAME_LENGTH + 1) {
         throw new ParseError(
-            (
-                <span>
-                    Identifier too long: <code>{truncate(name)}</code>.
-                </span>
-            )
+            <span>
+                Identifier too long: <code>{truncate(name)}</code>.
+            </span>
         );
     }
     const split = name.split(CNODE_NAME_INFIX);
     const index = split.length > 1 ? decodeInt(split[1]) : undefined;
     if (!isFinite(decodeInt(split[0])) || (index && (!allowCNodeName || !isFinite(index)))) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal identifier: <code>{truncate(name)}</code>.
-                </span>
-            )
+            <span>
+                Illegal identifier: <code>{truncate(name)}</code>.
+            </span>
         );
     }
     return { name: split[0], index };
@@ -353,11 +338,9 @@ const parseENode = (
 
     if (eMap.get(name)) {
         throw new ParseError(
-            (
-                <span>
-                    Duplicate definition of entity node <code>{name}</code>.
-                </span>
-            )
+            <span>
+                Duplicate definition of entity node <code>{name}</code>.
+            </span>
         );
     }
     const node = isGNode ? new GNode(counter, 0, 0) : new ENode(counter, 0, 0);
@@ -390,11 +373,9 @@ const parseSNode = (
     const match = nameString.match(sNodeNameMatch);
     if (!match) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal expression: <code>{truncate(nameString)}</code>.
-                </span>
-            )
+            <span>
+                Illegal expression: <code>{truncate(nameString)}</code>.
+            </span>
         );
     }
     const name: string = validateName(match[1]).name;
@@ -403,11 +384,9 @@ const parseSNode = (
 
     if (eMap.get(name)) {
         throw new ParseError(
-            (
-                <span>
-                    Duplicate definition of entity node <code>{name}</code>.
-                </span>
-            )
+            <span>
+                Duplicate definition of entity node <code>{name}</code>.
+            </span>
         );
     }
     const sn = new snClass(counter, false);
@@ -440,11 +419,9 @@ const parseCNodeGroup = (
 
     if (cngMap.get(name)) {
         throw new ParseError(
-            (
-                <span>
-                    Duplicate definition of contour node group <code>{name}</code>.
-                </span>
-            )
+            <span>
+                Duplicate definition of contour node group <code>{name}</code>.
+            </span>
         );
     }
     const cng = new CNodeGroup(counter);
@@ -482,22 +459,18 @@ const parseOrnament = (
         const eNodeIndex = decode(name);
         if (!isFinite(eNodeIndex)) {
             throw new ParseError(
-                (
-                    <span>
-                        Invalid entity node identifier: <code>{name}</code>.
-                    </span>
-                )
+                <span>
+                    Invalid entity node identifier: <code>{name}</code>.
+                </span>
             );
         }
         const node = eMap.get(name);
         if (!node) {
             throw new ParseError(
-                (
-                    <span>
-                        Entity node <code>{name}</code> should be defined before the definition of any
-                        ornaments attached to it.
-                    </span>
-                )
+                <span>
+                    Entity node <code>{name}</code> should be defined before the definition of any ornaments
+                    attached to it.
+                </span>
             );
         }
         nodeIdentifier = `entity node ${eNodeIndex}`;
@@ -508,12 +481,10 @@ const parseOrnament = (
         const cng = cngMap.get(name);
         if (!cng) {
             throw new ParseError(
-                (
-                    <span>
-                        Contour node group <code>{name}</code> should be defined before the definition of any
-                        ornaments attached to it.
-                    </span>
-                )
+                <span>
+                    Contour node group <code>{name}</code> should be defined before the definition of any
+                    ornaments attached to it.
+                </span>
             );
         }
         if (index > cng.members.length - 1) {
@@ -553,12 +524,10 @@ export const load = (
 
     if (n < 3) {
         throw new ParseError(
-            (
-                <span>
-                    Need at least three lines of <i>TeXdraw</i> code, got{' '}
-                    {n === 0 ? 'zero' : n === 1 ? 'one' : 'two'}.
-                </span>
-            )
+            <span>
+                Need at least three lines of <i>TeXdraw</i> code, got{' '}
+                {n === 0 ? 'zero' : n === 1 ? 'one' : 'two'}.
+            </span>
         );
     }
 
@@ -566,11 +535,9 @@ export const load = (
     const expectedStart = `${Texdraw.start}%${versionString}`;
     if (!lines[0].startsWith(expectedStart)) {
         throw new ParseError(
-            (
-                <span>
-                    Code should start with <code>{expectedStart}</code>.
-                </span>
-            )
+            <span>
+                Code should start with <code>{expectedStart}</code>.
+            </span>
         );
     }
 
@@ -578,30 +545,24 @@ export const load = (
     const split1 = lines[1].split('%');
     if (!split1[0].startsWith(Texdraw.dimCmd)) {
         throw new ParseError(
-            (
-                <span>
-                    Second line should start with <code>{Texdraw.dimCmd}</code>.
-                </span>
-            )
+            <span>
+                Second line should start with <code>{Texdraw.dimCmd}</code>.
+            </span>
         );
     }
     const loadedunitScale = Number.parseFloat(split1[0].slice(Texdraw.dimCmd.length));
     if (isNaN(loadedunitScale)) {
         throw new ParseError(
-            (
-                <span>
-                    Number format error in argument to <code>\setunitScale</code>.
-                </span>
-            )
+            <span>
+                Number format error in argument to <code>\setunitScale</code>.
+            </span>
         );
     }
     if (loadedunitScale < 0) {
         throw new ParseError(
-            (
-                <span>
-                    Argument to <code>\setunitScale</code> should not be negative.
-                </span>
-            )
+            <span>
+                Argument to <code>\setunitScale</code> should not be negative.
+            </span>
         );
     }
     const gMap = split1.length > 1 ? getGroupMap(split1[1], sgCounter) : new Map<string, Group<any>>();
@@ -698,11 +659,9 @@ export const load = (
                         } else {
                             // In this case the prefix has not been recognized.
                             throw new ParseError(
-                                (
-                                    <span>
-                                        Unexpected directive: <code>{truncate(hint)}</code>.
-                                    </span>
-                                )
+                                <span>
+                                    Unexpected directive: <code>{truncate(hint)}</code>.
+                                </span>
                             );
                         }
                     }
@@ -719,22 +678,17 @@ export const load = (
                 const cng = cngMap.get(id.name);
                 if (!cng) {
                     throw new ParseError(
-                        (
-                            <span>
-                                Incomplete code: missing definition of contour node group{' '}
-                                <code>{id.name}</code>.
-                            </span>
-                        )
+                        <span>
+                            Incomplete code: missing definition of contour node group <code>{id.name}</code>.
+                        </span>
                     );
                 }
                 if (cng.members.length <= id.index) {
                     throw new ParseError(
-                        (
-                            <>
-                                Failed reference to a member with index {id.index} of contour node group{' '}
-                                <code>{id.name}</code>, which has only {cng.members.length} members.
-                            </>
-                        )
+                        <>
+                            Failed reference to a member with index {id.index} of contour node group{' '}
+                            <code>{id.name}</code>, which has only {cng.members.length} members.
+                        </>
                     );
                 }
                 node = cng.members[id.index];
@@ -742,11 +696,9 @@ export const load = (
                 node = eMap.get(id.name);
                 if (!node) {
                     throw new ParseError(
-                        (
-                            <span>
-                                Incomplete code: missing definition of entity node <code>{id.name}</code>.
-                            </span>
-                        )
+                        <span>
+                            Incomplete code: missing definition of entity node <code>{id.name}</code>.
+                        </span>
                     );
                 }
             }
@@ -758,11 +710,9 @@ export const load = (
     // last line
     if (lines[lines.length - 1] !== Texdraw.end) {
         throw new ParseError(
-            (
-                <span>
-                    The last line should read <code>{Texdraw.end}</code>. Incomplete code?
-                </span>
-            )
+            <span>
+                The last line should read <code>{Texdraw.end}</code>. Incomplete code?
+            </span>
         );
     }
 

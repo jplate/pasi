@@ -543,11 +543,9 @@ export default class Label extends Ornament {
             const val = parseFloat(parboxMatch[1]);
             if (isNaN(val) || val < 0) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Invalid <code>\parbox</code> width: <code>{parboxMatch[1]}</code>
-                        </span>
-                    )
+                    <span>
+                        Invalid <code>\parbox</code> width: <code>{parboxMatch[1]}</code>
+                    </span>
                 );
             }
             this.parboxWidth = round((dimRatio * val) / unitScale, ROUNDING_DIGITS);
@@ -599,12 +597,9 @@ export default class Label extends Ornament {
             const split = info.split(/\s+/).filter((s) => s.length > 0);
             if (split.length !== 3) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Label configuration string should contain exactly three elements, not{' '}
-                            {split.length}.
-                        </span>
-                    )
+                    <span>
+                        Label configuration string should contain exactly three elements, not {split.length}.
+                    </span>
                 );
             }
             const [gap, angle, specialBit] = split.map((s) => {
@@ -619,21 +614,15 @@ export default class Label extends Ornament {
 
             if (scaledGap < MIN_GAP) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal data in definition of label for {name}: gap {scaledGap} below minimum
-                            value.
-                        </span>
-                    )
+                    <span>
+                        Illegal data in definition of label for {name}: gap {scaledGap} below minimum value.
+                    </span>
                 );
             } else if (scaledGap > MAX_GAP) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal data in definition of label for {name}: gap {scaledGap} exceeds maximum
-                            value.
-                        </span>
-                    )
+                    <span>
+                        Illegal data in definition of label for {name}: gap {scaledGap} exceeds maximum value.
+                    </span>
                 );
             }
 
@@ -769,6 +758,7 @@ export default class Label extends Ornament {
         //console.log(`n: ${lines.length} height: ${this.height}`);
     }
 
+    /* eslint-disable react-hooks/rules-of-hooks */
     protected Component = ({
         yOffset,
         unitScale,
@@ -915,4 +905,5 @@ export default class Label extends Ornament {
             </div>
         );
     };
+    /* eslint-enable react-hooks/rules-of-hooks */
 }

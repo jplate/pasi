@@ -495,11 +495,9 @@ export const decodeFloat = (s: string): number => {
             //console.trace();
             const max = 20;
             throw new ParseError(
-                (
-                    <span>
-                        Number expected, read <code>{s.length > max ? s.slice(0, max - 3) + '...' : s}</code>.
-                    </span>
-                )
+                <span>
+                    Number expected, read <code>{s.length > max ? s.slice(0, max - 3) + '...' : s}</code>.
+                </span>
             );
         }
         return round(result, ROUNDING_DIGITS);

@@ -554,12 +554,10 @@ export default class CNodeGroup implements Group<CNode> {
                   }
                   if (result.length < n) {
                       throw new ParseError(
-                          (
-                              <span>
-                                  Corrupt data in definition of contour node group: array length does not
-                                  match number of nodes ({n}).
-                              </span>
-                          )
+                          <span>
+                              Corrupt data in definition of contour node group: array length does not match
+                              number of nodes ({n}).
+                          </span>
                       );
                   }
                   return result;
@@ -570,20 +568,15 @@ export default class CNodeGroup implements Group<CNode> {
             stShapes.length > 0 ? (stShapes[0].shape as Texdraw.CubicCurve | Texdraw.Path).fillLevel : 0;
         if (fillLevel < 0) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: shading value should not be
-                        negative.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: shading value should not be negative.
+                </span>
             );
         } else if (fillLevel > 1) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: shading value {fillLevel} exceeds 1.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: shading value {fillLevel} exceeds 1.
+                </span>
             );
         }
         this.shading = fillLevel;
@@ -607,50 +600,39 @@ export default class CNodeGroup implements Group<CNode> {
         }
         if (this.linewidth < 0) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: line width should not be negative.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: line width should not be negative.
+                </span>
             );
         } else if (this.linewidth > MAX_LINEWIDTH) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: line width {this.linewidth} exceeds
-                        maximum value.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: line width {this.linewidth} exceeds
+                    maximum value.
+                </span>
             );
         }
         if (this.dash.length > MAX_DASH_LENGTH) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: dash array length {this.dash.length}{' '}
-                        exceeds maximum value.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: dash array length {this.dash.length}{' '}
+                    exceeds maximum value.
+                </span>
             );
         }
         if (this.dash.some((v) => v < 0)) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: dash value should not be negative.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: dash value should not be negative.
+                </span>
             );
         }
         let val;
         if (this.dash.some((v) => (val = v) > MAX_DASH_VALUE)) {
             throw new ParseError(
-                (
-                    <span>
-                        Illegal data in definition of contour node group: dash value {val} exceeds maximum
-                        value.
-                    </span>
-                )
+                <span>
+                    Illegal data in definition of contour node group: dash value {val} exceeds maximum value.
+                </span>
             );
         }
 
@@ -714,38 +696,28 @@ export default class CNodeGroup implements Group<CNode> {
 
             if (x < MIN_X) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal configuration data for contour node: X-coordinate {x} below minimum value.
-                        </span>
-                    )
+                    <span>
+                        Illegal configuration data for contour node: X-coordinate {x} below minimum value.
+                    </span>
                 );
             } else if (x > MAX_X) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal configuration data for contour node: X-coordinate {x} exceeds maximum
-                            value.
-                        </span>
-                    )
+                    <span>
+                        Illegal configuration data for contour node: X-coordinate {x} exceeds maximum value.
+                    </span>
                 );
             }
             if (y < MIN_Y) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal configuration data for contour node: Y-coordinate {y} below minimum value.
-                        </span>
-                    )
+                    <span>
+                        Illegal configuration data for contour node: Y-coordinate {y} below minimum value.
+                    </span>
                 );
             } else if (y > MAX_Y) {
                 throw new ParseError(
-                    (
-                        <span>
-                            Illegal configuration data for contour node: Y-coordinate {y} exceeds maximum
-                            value.
-                        </span>
-                    )
+                    <span>
+                        Illegal configuration data for contour node: Y-coordinate {y} exceeds maximum value.
+                    </span>
                 );
             }
 
@@ -1016,17 +988,11 @@ export const CNodeGroupComp = React.memo(
         // Space permitting, we arrange for one or more of the CNodeComps to be decorated by an arrow that will give the user an idea of what is meant by
         // 'next node' and 'previous node' in the tooltips and elsewhere in the UI. But, to avoid clutter, only one CNodeComp per run of selected or preselected
         // nodes should be decorated in this way.
-        let allSelected = true,
-            someSelected = false,
-            allPreselected = true;
-        const selectedNodes = nodeGroup.members.map((m) => {
-            if (selection.includes(m)) return (someSelected = true);
-            else return (allSelected = false);
-        });
-        const preselectedNodes = nodeGroup.members.map((m) => {
-            if (preselection.includes(m)) return true;
-            else return (allPreselected = false);
-        });
+        const selectedNodes = nodeGroup.members.map((m) => selection.includes(m));
+        const preselectedNodes = nodeGroup.members.map((m) => preselection.includes(m));
+        const allSelected = selectedNodes.every(Boolean);
+        const someSelected = selectedNodes.some(Boolean);
+        const allPreselected = preselectedNodes.every(Boolean);
         const last = nodeGroup.members.length - 1;
         const arrowNodes: boolean[] = new Array(last + 1).fill(false);
         let defer = false;

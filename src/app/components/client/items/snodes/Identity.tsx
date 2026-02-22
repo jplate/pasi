@@ -45,11 +45,9 @@ export default class Identity extends SNode {
     ): StrokedShape[] {
         if (stShapes.length > 0) {
             throw new ParseError(
-                (
-                    <span>
-                        Failed parsing information for entity node <code>{nodeName}</code>: unexpected shapes.
-                    </span>
-                )
+                <span>
+                    Failed parsing information for entity node <code>{nodeName}</code>: unexpected shapes.
+                </span>
             );
         }
         return stShapes;

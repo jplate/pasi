@@ -24,9 +24,11 @@ const Footer = ({ copyRightHolder, homepage, licenseInfo, sections }: FooterProp
             <style>{footerStyle(sections.length)}</style>
             <div className='footer-div mx-auto max-w-fit grid gap-8'>
                 {sections.map((info, i) => (
-                    <div key={i} className='mx-6 sm:mx-2 2xl:ml-0 2xl:flex 2xl:items-baseline'>
-                        <h3 className='text-base font-semibold my-1 2xl:mr-6'>{info.header}</h3>
-                        <ul className='text-sm 2xl:inline 2xl:flex 2xl:space-x-6'>
+                    <div key={i} className='mx-6 sm:mx-2 2xl:ml-0 2xl:flex 2xl:items-baseline 2xl:gap-6'>
+                        <h3 className='text-base font-semibold tracking-wide 2xl:tracking-normal my-1 py-0 2xl:my-0'>
+                            {info.header}
+                        </h3>
+                        <ul className='text-sm 2xl:flex 2xl:items-baseline 2xl:space-x-6'>
                             {info.contents.map((item, j) => (
                                 <li key={j} className='my-1'>
                                     {item}

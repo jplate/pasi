@@ -162,23 +162,19 @@ export default class Adjunction extends SNode {
         super.parseArrowhead(stShapes, cpx, cpy, dimRatio, nodeName);
         if (stShapes.length < 2) {
             throw new ParseError(
-                (
-                    <span>
-                        {complain(nodeName)}: expected two shapes for the arrowhead, but got only{' '}
-                        {stShapes.length}.
-                    </span>
-                )
+                <span>
+                    {complain(nodeName)}: expected two shapes for the arrowhead, but got only{' '}
+                    {stShapes.length}.
+                </span>
             );
         }
         for (let i = 0; i < 2; i++) {
             const ss = stShapes[i];
             if (!(ss.shape instanceof Texdraw.Line)) {
                 throw new ParseError(
-                    (
-                        <span>
-                            {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
-                        </span>
-                    )
+                    <span>
+                        {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
+                    </span>
                 );
             }
         }

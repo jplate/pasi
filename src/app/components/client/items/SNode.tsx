@@ -57,21 +57,15 @@ export const MIN_EFFECTIVE_RADIUS = 8; // used for calculating the distances of 
 export const validateGap = (gap: number, name: string): number => {
     if (gap < MIN_GAP) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: gap {gap} below minimum
-                    value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: gap {gap} below minimum value.
+            </span>
         );
     } else if (gap > MAX_GAP) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: gap {gap} exceeds maximum
-                    value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: gap {gap} exceeds maximum value.
+            </span>
         );
     }
     return gap;
@@ -80,21 +74,17 @@ export const validateGap = (gap: number, name: string): number => {
 export const validateT = (t: number, name: string): number => {
     if (t < 0) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: {t} below minimum{' '}
-                    <span className='whitespace-nowrap'>t-value</span>.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: {t} below minimum{' '}
+                <span className='whitespace-nowrap'>t-value</span>.
+            </span>
         );
     } else if (t > 1) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: {t} exceeds maximum{' '}
-                    <span className='whitespace-nowrap'>t-value</span>.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: {t} exceeds maximum{' '}
+                <span className='whitespace-nowrap'>t-value</span>.
+            </span>
         );
     }
     return t;
@@ -103,21 +93,17 @@ export const validateT = (t: number, name: string): number => {
 export const validateDistance = (d: number, name: string): number => {
     if (d < MIN_DISTANCE) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: distance {d} below minimum
-                    value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: distance {d} below minimum
+                value.
+            </span>
         );
     } else if (d > MAX_DISTANCE) {
         throw new ParseError(
-            (
-                <span>
-                    Illegal data in definition of state node <code>{name}</code>: distance {d} exceeds maximum
-                    value.
-                </span>
-            )
+            <span>
+                Illegal data in definition of state node <code>{name}</code>: distance {d} exceeds maximum
+                value.
+            </span>
         );
     }
     return d;
@@ -955,11 +941,9 @@ export default abstract class SNode extends ENode {
     ): [Texdraw.StrokedShape[], number, number] {
         if (stShapes.length === 0 || !(stShapes[0].shape instanceof Texdraw.CubicCurve)) {
             throw new ParseError(
-                (
-                    <span>
-                        Failed parsing information for entity node <code>{nodeName}</code>: connector missing.
-                    </span>
-                )
+                <span>
+                    Failed parsing information for entity node <code>{nodeName}</code>: connector missing.
+                </span>
             );
         }
         const stroke = stShapes[0].stroke;
@@ -986,11 +970,9 @@ export default abstract class SNode extends ENode {
     ): Texdraw.StrokedShape[] {
         if (stShapes.length === 0) {
             throw new ParseError(
-                (
-                    <span>
-                        Failed parsing information for entity node <code>{nodeName}</code>: arrowhead missing.
-                    </span>
-                )
+                <span>
+                    Failed parsing information for entity node <code>{nodeName}</code>: arrowhead missing.
+                </span>
             );
         }
         const stroke = stShapes[0].stroke;

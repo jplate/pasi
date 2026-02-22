@@ -1,4 +1,4 @@
-import { useCallback, useRef, MutableRefObject } from 'react';
+import { useCallback, useRef, useState, MutableRefObject } from 'react';
 
 type History<T> = {
     push: (newState: T) => void;
@@ -17,6 +17,8 @@ type History<T> = {
 export function useHistory<T>(initialState: T, max: number): History<T> {
     const history = useRef<T[]>([initialState]);
     const now = useRef(0);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
 
     const push = useCallback(
         (newState: T): void => {
@@ -29,31 +31,37 @@ export function useHistory<T>(initialState: T, max: number): History<T> {
 
             history.current = updatedHistory;
             now.current = updatedHistory.length - 1;
+            setCanUndo(now.current > 0);
+            setCanRedo(false);
             //console.log(`NOW: ${updatedHistory.length - 1}`);
         },
-        [history, now, max]
+        [history, now, max, setCanUndo, setCanRedo]
     );
 
     const before = useCallback((): T => {
         let newNow = now.current;
         if (newNow > 0) newNow--;
         now.current = newNow;
+        setCanUndo(newNow > 0);
+        setCanRedo(newNow < history.current.length - 1);
         return history.current[newNow];
-    }, [history, now]);
+    }, [history, now, setCanUndo, setCanRedo]);
 
     const after = useCallback((): T => {
         let newNow = now.current;
         if (newNow < history.current.length - 1) newNow++;
         now.current = newNow;
+        setCanUndo(newNow > 0);
+        setCanRedo(newNow < history.current.length - 1);
         return history.current[newNow];
-    }, [history, now]);
+    }, [history, now, setCanUndo, setCanRedo]);
 
     return {
         push,
         before,
         after,
-        canUndo: now.current > 0,
-        canRedo: now.current < history.current.length - 1,
+        canUndo,
+        canRedo,
         history,
         now,
     };

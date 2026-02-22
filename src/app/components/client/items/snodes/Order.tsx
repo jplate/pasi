@@ -165,11 +165,9 @@ export default class Order extends SNode {
         const ss = stShapes[0];
         if (!(ss.shape instanceof Texdraw.Line)) {
             throw new ParseError(
-                (
-                    <span>
-                        {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
-                    </span>
-                )
+                <span>
+                    {complain(nodeName)}: expected a line, but got {ss.shape.genericDescription}.
+                </span>
             );
         }
         const line = stShapes[0].shape as Texdraw.Line;

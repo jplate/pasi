@@ -1,9 +1,105 @@
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&display=swap');
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme inline {
+    /* Custom colors referencing CSS variables (defined in :root / .dark) */
+    --color-modalbg: rgb(var(--background-start-rgb));
+    --color-btnbg: rgb(var(--btnbg));
+    --color-btncolor: rgb(var(--btncolor));
+    --color-btnborder: rgb(var(--btnborder));
+    --color-btnhoverbg: rgb(var(--btnhoverbg));
+    --color-btnhovercolor: rgb(var(--btnhovercolor));
+    --color-btnactivebg: rgb(var(--btnactivebg));
+    --color-btnactivecolor: rgb(var(--btnactivecolor));
+    --color-btnfocusring: rgb(var(--btnfocusring));
+    --color-canvasbg: rgb(var(--canvasbg));
+    --color-canvasborder: rgb(var(--canvasborder));
+    --color-codepanelbg: rgb(var(--codepanelbg));
+    --color-codepanelcolor: rgb(var(--codepanelcolor));
+    --color-menuborder: rgb(var(--menuborder));
+    --color-textcolor: rgb(var(--foreground-rgb));
+    --color-tabselected: rgb(var(--tabselected));
+    --color-textfieldbg: rgb(var(--textfieldbg));
+    --color-textfieldcolor: rgb(var(--textfieldcolor));
+    --color-linkcolor: rgb(var(--link-rgb));
+    --color-linkhovercolor: rgb(var(--link-hover-rgb));
+    --color-tooltipbg: rgb(var(--tooltipbg));
+}
+
+/* Prose variants (replacing typography theme from old tailwind.config) */
+.prose-light {
+    --tw-prose-body: #1e293b;
+    --tw-prose-headings: #0f172a;
+    --tw-prose-lead: #334155;
+    --tw-prose-links: #0f172a;
+    --tw-prose-bold: #0f172a;
+    --tw-prose-counters: #475569;
+    --tw-prose-bullets: #94a3b8;
+    --tw-prose-hr: #cbd5e1;
+    --tw-prose-quotes: #0f172a;
+    --tw-prose-quote-borders: #cbd5e1;
+    --tw-prose-captions: #334155;
+    --tw-prose-code: #0f172a;
+    --tw-prose-kbd: #1e293b;
+    --tw-prose-pre-code: rgb(var(--codepanelcolor));
+    --tw-prose-pre-bg: rgb(var(--codepanelbg));
+    --tw-prose-th-borders: #cbd5e1;
+    --tw-prose-td-borders: #e2e8f0;
+    --tw-prose-invert-body: #e2e8f0;
+    --tw-prose-invert-headings: #fff;
+    --tw-prose-invert-lead: #cbd5e1;
+    --tw-prose-invert-links: #fff;
+    --tw-prose-invert-bold: #fff;
+    --tw-prose-invert-counters: #94a3b8;
+    --tw-prose-invert-bullets: #475569;
+    --tw-prose-invert-hr: #334155;
+    --tw-prose-invert-quotes: #f1f5f9;
+    --tw-prose-invert-quote-borders: #334155;
+    --tw-prose-invert-captions: #94a3b8;
+    --tw-prose-invert-code: #fff;
+    --tw-prose-invert-pre-code: #cbd5e1;
+    --tw-prose-invert-pre-bg: rgb(0 0 0 / 50%);
+    --tw-prose-invert-th-borders: #475569;
+    --tw-prose-invert-td-borders: #334155;
+}
+
+.prose-dark {
+    --tw-prose-body: rgb(190, 169, 158);
+    --tw-prose-headings: rgb(190, 169, 158);
+    --tw-prose-lead: rgb(190, 169, 158);
+    --tw-prose-links: rgb(190, 169, 158);
+    --tw-prose-bold: rgb(190, 169, 158);
+    --tw-prose-counters: rgb(190, 169, 158);
+    --tw-prose-bullets: rgb(190, 169, 158);
+    --tw-prose-hr: rgb(190, 169, 158);
+    --tw-prose-quotes: rgb(190, 169, 158);
+    --tw-prose-quote-borders: rgb(190, 169, 158);
+    --tw-prose-captions: rgb(190, 169, 158);
+    --tw-prose-code: rgb(190, 169, 158);
+    --tw-prose-kbd: rgb(190, 169, 158);
+    --tw-prose-pre-code: rgb(var(--codepanelcolor));
+    --tw-prose-pre-bg: rgb(var(--codepanelbg));
+    --tw-prose-th-borders: rgb(23, 20, 16);
+    --tw-prose-td-borders: rgb(23, 20, 16);
+    --tw-prose-invert-body: #e7e5e4;
+    --tw-prose-invert-headings: #000;
+    --tw-prose-invert-lead: #d6d3d1;
+    --tw-prose-invert-links: #000;
+    --tw-prose-invert-bold: #000;
+    --tw-prose-invert-counters: #a8a29e;
+    --tw-prose-invert-bullets: #57534e;
+    --tw-prose-invert-hr: #44403c;
+    --tw-prose-invert-quotes: #f5f5f4;
+    --tw-prose-invert-quote-borders: #44403c;
+    --tw-prose-invert-captions: #a8a29e;
+    --tw-prose-invert-code: #000;
+    --tw-prose-invert-pre-code: #d6d3d1;
+    --tw-prose-invert-pre-bg: rgba(23, 20, 16, 0.5);
+    --tw-prose-invert-th-borders: #57534e;
+    --tw-prose-invert-td-borders: #44403c;
+}
 
 @layer utilities {
     .text-balance {
