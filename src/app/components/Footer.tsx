@@ -28,9 +28,9 @@ const Footer = ({ copyRightHolder, homepage, licenseInfo, sections }: FooterProp
                         <h3 className='text-base font-semibold tracking-wide 2xl:tracking-normal my-1 py-0 2xl:my-0'>
                             {info.header}
                         </h3>
-                        <ul className='text-sm 2xl:flex 2xl:items-baseline 2xl:space-x-6'>
+                        <ul className='text-sm 2xl:!flex 2xl:items-baseline 2xl:gap-6'>
                             {info.contents.map((item, j) => (
-                                <li key={j} className='my-1'>
+                                <li key={j} className='my-1 2xl:my-0'>
                                     {item}
                                 </li>
                             ))}

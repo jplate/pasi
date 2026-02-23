@@ -4,7 +4,9 @@ import {
     HotkeySection,
     AltSection,
     BasicFeaturesSection,
+    ConnectorsSection,
     SampleFileSection,
+    ContourExamplesSection,
 } from './components/StaticSections.tsx';
 import AppShellLoader from './components/client/AppShellLoader';
 import MyFooter from './components/Footer';
@@ -31,7 +33,9 @@ export default function Home() {
                         <HotkeySection dark={false} isMac={false} keyCmd={staticKeyCmd} />
                         <AltSection dark={false} keyCmd={staticKeyCmd} />
                         <BasicFeaturesSection dark={false} keyCmd={staticKeyCmd} />
+                        <ConnectorsSection dark={false} keyCmd={staticKeyCmd} />
                         <SampleFileSection dark={false} isMac={false} keyCmd={staticKeyCmd} />
+                        <ContourExamplesSection dark={false} keyCmd={staticKeyCmd} />
                     </div>
                     <MyFooter />
                 </div>
@@ -41,7 +45,9 @@ export default function Home() {
                         <HotkeySection dark={true} isMac={false} keyCmd={staticKeyCmd} />
                         <AltSection dark={true} keyCmd={staticKeyCmd} />
                         <BasicFeaturesSection dark={true} keyCmd={staticKeyCmd} />
+                        <ConnectorsSection dark={true} keyCmd={staticKeyCmd} />
                         <SampleFileSection dark={true} isMac={false} keyCmd={staticKeyCmd} />
+                        <ContourExamplesSection dark={true} keyCmd={staticKeyCmd} />
                     </div>
                     <MyFooter />
                 </div>
