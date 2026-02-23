@@ -93,7 +93,7 @@ export const copyENode = (
 };
 
 /**
- * Returns a copy of the supplied ENode.
+ * Returns a copy of the supplied SNode.
  */
 export const copySNode = (
     node: SNode,

@@ -59,6 +59,6 @@ export const ConnectorsSection = ({ dark, keyCmd }: PasiSectionProps) => (
 
 export const ContourExamplesSection = ({ dark, keyCmd }: PasiSectionProps) => (
     <StaticSection id='contour-examples' header='Contour examples' dark={dark}>
-        <ContourExamplesSectionContent keyCmd={keyCmd} dark={dark} renderCodeButton={staticCodeButton} />
+        <ContourExamplesSectionContent dark={dark} keyCmd={keyCmd} renderCodeButton={staticCodeButton} />
     </StaticSection>
 );
