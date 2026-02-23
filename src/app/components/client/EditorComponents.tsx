@@ -186,7 +186,7 @@ export const Textarea = React.memo(({ value, fullHeight = false, onChange }: Tex
 Textarea.displayName = 'Textarea';
 
 export const menuButtonClassName = clsx(
-    'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner',
+    'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner border border-btnborder/50',
     'focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor',
     'data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'
 );
