@@ -189,8 +189,16 @@ body {
     font-family: 'Lora', serif;
     font-feature-settings: 'dlig'; /* Normally we'd also include 'liga', but then the 'ff' in 'Grid offset' will look ugly, given the wider tracking in the CanvasEditor. */
     color: rgb(var(--foreground-rgb));
+    background: rgb(
+        var(--background-end-rgb)
+    ); /* the gradient will be applied in the app-shell-mounted state, because the brownish color (in dark mode) can then
+    be interpreted as resulting from the 'glow' of the orange canvas. */
+}
+
+:root.app-shell-mounted body {
     background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb)))
         rgb(var(--background-start-rgb));
+    transition: background 0.5s ease-in-out;
 }
 
 section {
@@ -267,8 +275,8 @@ i {
 }
 
 .codepanel {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-        monospace;
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-feature-settings: 'none'; /* Ligatures in the code panel (in monospace font!) would look silly, so we turn them off. */
     background-color: rgb(var(--codepanelbg));
     color: rgb(var(--codepanelcolor));
