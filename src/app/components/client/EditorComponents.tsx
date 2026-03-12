@@ -48,16 +48,19 @@ export const CheckBoxField = React.memo(
             >
                 <input
                     type='checkbox'
-                    className={clsx('checkbox mr-2 disabled:opacity-50', dark ? ACCENT_DARK : ACCENT_LIGHT)}
+                    className={clsx(
+                        'checkbox mr-2 cursor-pointer disabled:cursor-default disabled:opacity-50',
+                        dark ? ACCENT_DARK : ACCENT_LIGHT
+                    )}
                     checked={value}
                     disabled={disabled}
                     onChange={() => {
                         onChange();
                     }}
                 />
-                <span className={disabled ? 'opacity-50' : ''}>{label}</span>{' '}
+                <span className={disabled ? 'opacity-50' : 'cursor-pointer'}>{label}</span>{' '}
                 {/* We apply the opacity styling at the level of the child components of the 
-                    // label element (rather than to apply it to the label element itself) in order to keep the opacity of the tooltip at 100%. */}
+                    label element (rather than to apply it to the label element itself) in order to keep the opacity of the tooltip at 100%. */}
             </label>
         );
 
@@ -186,13 +189,13 @@ export const Textarea = React.memo(({ value, fullHeight = false, onChange }: Tex
 Textarea.displayName = 'Textarea';
 
 export const menuButtonClassName = clsx(
-    'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner border border-btnborder/50',
+    'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner border border-btnborder/50 cursor-pointer',
     'focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor',
     'data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'
 );
 
 export const menuItemButtonClassName =
-    'flex w-full items-center gap-2 rounded-sm px-2 py-1 data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor';
+    'flex w-full items-center gap-2 rounded-sm px-2 py-1 cursor-pointer data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor';
 
 export const ChevronSVG = React.memo(() => (
     <svg

@@ -62,6 +62,7 @@ export const BasicButton = React.memo(
                         id={id}
                         className={clsx(
                             'block flex-1 px-2 py-1 text-base font-medium border shadow-md disabled:shadow-none',
+                            'enabled:cursor-pointer disabled:cursor-default',
                             'disabled:opacity-50 enabled:hover:font-semibold enabled:hover:border-transparent transition',
                             'focus:outline-none focus:ring-1',
                             style,
@@ -224,7 +225,7 @@ export const CopyToClipboardButton = React.memo(
             <button
                 id={id}
                 ref={buttonRef}
-                className='copy-button rounded-md'
+                className='copy-button rounded-md enabled:cursor-pointer disabled:cursor-default'
                 style={buttonStyle} // For much of the styling, we're relying on global.css.
                 disabled={copied}
                 onClick={async () => {

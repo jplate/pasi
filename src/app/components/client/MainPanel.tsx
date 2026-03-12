@@ -195,7 +195,7 @@ const menuButtonClass = clsx('py-1.5', menuButtonClassName);
 
 const tabClass = clsx(
     'py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
-    'data-[selected]:border-b-0 disabled:opacity-50 tracking-wider focus:outline-none data-[selected]:bg-transparent',
+    'cursor-pointer data-[selected]:border-b-0 disabled:opacity-50 disabled:cursor-default data-[disabled]:cursor-default tracking-wider focus:outline-none data-[selected]:bg-transparent',
     'data-[selected]:font-semibold data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[hover]:font-semibold',
     'data-[selected]:data-[hover]:text-btncolor'
 );

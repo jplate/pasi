@@ -209,6 +209,14 @@ textarea {
     font-feature-settings: 'none'; /* Ligatures in an editable text area seem out of place. */
 }
 
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: default;
+}
+
 .prose h2 {
     font-family: 'Raleway', sans-serif;
     font-size: 1.5em;
@@ -241,6 +249,14 @@ th {
 
 .prose li {
     margin-bottom: 8px;
+}
+
+a:not(:disabled) {
+    cursor: pointer;
+}
+
+a:disabled {
+    cursor: default;
 }
 
 a:not(.pasi a):not(.ReactModal__Body--open a) {
