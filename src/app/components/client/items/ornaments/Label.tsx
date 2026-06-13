@@ -24,19 +24,19 @@ export const MIN_PARBOX_WIDTH = 0;
 export const MAX_PARBOX_WIDTH = 9999;
 export const DEFAULT_PARBOX_WIDTH = 200;
 
-const NORMAL_FONT = 'Lora';
 const normalFont = Lora({
     weight: ['400'],
     subsets: ['latin'],
     style: ['normal'],
 });
+const NORMAL_FONT = normalFont.style.fontFamily;
 
-const MATH_FONT = 'Lora';
 const mathFont = Lora({
     weight: ['400'],
     subsets: ['latin'],
     style: ['italic'],
 });
+const MATH_FONT = mathFont.style.fontFamily;
 
 type Line = {
     text: string;
@@ -714,7 +714,7 @@ export default class Label extends Ornament {
             // Here we determine the (approximate) height of the text:
             const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
             const measureFontSize = (this.fontSize * displayFontFactor) / unitScale;
-            const fontString = `400 ${this.mathMode ? 'italic' : 'normal'} ${measureFontSize}px ${this.mathMode ? MATH_FONT : NORMAL_FONT} serif`;
+            const fontString = `400 ${this.mathMode ? 'italic' : 'normal'} ${measureFontSize}px ${this.mathMode ? MATH_FONT : NORMAL_FONT}, serif`;
             ctx.font = fontString;
 
             const lineStrings = this.parbox ? Label.#split(this.text, this.parboxWidth, ctx) : [this.text];
