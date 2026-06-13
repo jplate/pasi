@@ -60,6 +60,7 @@ To add a new arrow type, subclass `SNode` under `items/snodes/` and implement `g
 `MainPanel` holds the canvas in a single state variable `list: (ENode | CNodeGroup)[]` — the top-level Z-ordered elements. A `CNodeGroup` (`CNodeGroup.tsx`) manages an array of `CNode`s defining a contour (splinegon). `MainPanel` owns dozens of `useState` hooks (selection, focusItem, grid, transform flags, unitScale, etc.); editing operations mutate copies of `list` and call `setList`.
 
 Cross-cutting editor logic is factored out of `MainPanel` into helper modules in `components/client/`:
+
 - `Moving.ts` (`move`), `Copying.ts` (`copyItems`, `getTopToBeCopied`)
 - `Group.ts` — `StandardGroup`, grouping/membership helpers (`getGroups`, `getLeafMembers`, `depth`)
 - `ItemEditor.tsx`, `CanvasEditor.tsx`, `TransformTab.tsx`, `GroupTab.tsx`, `EditorComponents.tsx` — the editor tabs/panes
@@ -68,6 +69,7 @@ Cross-cutting editor logic is factored out of `MainPanel` into helper modules in
 ### Codec (texdraw ↔ diagram)
 
 `src/app/codec/` round-trips the diagram to/from LaTeX `texdraw` code.
+
 - `Codec1.tsx` — `getCode(list, unitScale)` serializes; `load(...)` parses. The format is versioned by the marker comment `%pasiCodecV1` (`versionString`). Each `Item` subclass contributes its own parse/encode (see the per-class encoding in the `snodes`/`ornaments` files).
 - `General.ts` — compact base-N number encoding (`encode`/`decode`, `ENCODE_BASE`, `ENCODE_PRECISION`) used inside the trailing `%`-comments that store editor metadata not expressible in plain texdraw.
 - `Texdraw.tsx` — texdraw primitives/parsing.
