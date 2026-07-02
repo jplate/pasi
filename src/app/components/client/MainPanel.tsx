@@ -39,6 +39,7 @@ import {
     CheckBoxField,
     MenuItemList,
     ChevronSVG,
+    WithTooltip,
     menuButtonClassName,
     menuItemButtonClassName,
     validFloat,
@@ -57,6 +58,7 @@ import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathT
 import { copyItems, getTopToBeCopied } from './Copying';
 import { move } from './Moving';
 import { getCode, load } from '../../codec/Codec1';
+import { getSvgCode } from '../../codec/Svg';
 import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
 import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
 import { useHistory } from '../../util/History';
@@ -171,17 +173,48 @@ const copyButtonTooltip = (
     </>
 );
 
-export const generateButtonTooltip = (
+export const generateLaTeXButtonTooltip = (
     <>
-        Generate and display <i>TeXdraw</i> code. (To save space, all coordinates are rounded to the nearest{' '}
+        Generate and display LaTeX code. (To save space, all coordinates are rounded to the nearest{' '}
         {NUMBER_FORMAT.format(Math.floor(ENCODE_BASE ** ENCODE_PRECISION))}th of a pixel. Some information may
         be lost as a result.) <HotkeyComp mapKey='generate code' />
     </>
 );
 
+const generateSvgButtonTooltip = (
+    <>
+        Generate and display SVG code. (This code cannot be read back in.){' '}
+        <HotkeyComp mapKey='generate code' />
+    </>
+);
+
+export type OutputFormat = 'latex' | 'svg';
+
+const DEFAULT_OUTPUT_FORMAT: OutputFormat = 'latex';
+
+/** Maps each output format to the label under which it appears in the output-format menu. */
+const outputFormatLabels: Record<OutputFormat, string> = {
+    latex: 'LaTeX',
+    svg: 'SVG',
+};
+
+const outputFormats = Object.keys(outputFormatLabels) as OutputFormat[];
+
+const generateButtonTooltips: Record<OutputFormat, React.ReactNode> = {
+    latex: generateLaTeXButtonTooltip,
+    svg: generateSvgButtonTooltip,
+};
+
+const outputFormatTooltip = (
+    <>
+        Select the kind of code for the &lsquo;Generate&rsquo; button to generate. (LaTeX code can be read
+        back in; SVG code cannot.)
+    </>
+);
+
 const loadButtonTooltip = (
     <>
-        Load diagram from <i>TeXdraw</i> code.
+        Load diagram from LaTeX code.
         <HotkeyComp mapKey='load diagram' />
     </>
 );
@@ -716,6 +749,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const [dissolveAdding, setDissolveAdding] = useState(false);
 
     const [code, setCode] = useState<string>(''); // the TeXdraw code to be displayed in the code area.
+    const [outputFormat, setOutputFormat] = useState<OutputFormat>(DEFAULT_OUTPUT_FORMAT); // the kind of code produced by the 'Generate' button.
 
     const [modalShown, setModalShown] = useState(false);
     const [dialog, setDialog] = useState<DialogConfig>({});
@@ -2744,9 +2778,21 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
 
     const displayCode = useCallback(
         (pixel: number) => {
-            setCode(getCode(list, pixel));
+            if (outputFormat === 'latex') {
+                setCode(getCode(list, pixel));
+            } else {
+                setCode(
+                    getSvgCode(
+                        list,
+                        trueBlack ? BLACK : dark ? DEFAULT_HSL_DARK_MODE : DEFAULT_HSL_LIGHT_MODE,
+                        dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE,
+                        pixel,
+                        displayFontFactor
+                    )
+                );
+            }
         },
-        [list]
+        [list, outputFormat, trueBlack, dark, displayFontFactor]
     );
 
     const loadDiagram = useCallback(
@@ -3237,6 +3283,38 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             </Menu>
         ),
         [dark, depItemIndex, setDepItemIndex]
+    );
+
+    const outputFormatMenu = useMemo(
+        () => (
+            <Menu>
+                <MenuButton className={clsx('w-24 px-2 py-1', menuButtonClassName)}>
+                    <div className='flex-1 text-left'>{outputFormatLabels[outputFormat]}</div>
+                    <div className='flex-none'>
+                        {/* We attach the tooltip just to the chevron, so that it doesn't pop up every time the menu is used. */}
+                        <WithTooltip
+                            comp={<ChevronSVG />}
+                            tooltip={outputFormatTooltip}
+                            placement='top'
+                            noStretch
+                        />
+                    </div>
+                </MenuButton>
+                <MenuItemList width={24}>
+                    {outputFormats.map((format) => (
+                        <MenuItem key={format}>
+                            <button
+                                className={menuItemButtonClassName}
+                                onClick={() => setOutputFormat(format)}
+                            >
+                                {outputFormatLabels[format]}
+                            </button>
+                        </MenuItem>
+                    ))}
+                </MenuItemList>
+            </Menu>
+        ),
+        [outputFormat]
     );
 
     const transformTabDisabled = selectedNodesDeduplicated.length === 0;
@@ -3768,21 +3846,24 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             label='Generate'
                             style='rounded-xl mb-2 py-2 w-full'
                             disabled={false}
-                            tooltip={generateButtonTooltip}
+                            tooltip={generateButtonTooltips[outputFormat]}
                             tooltipPlacement='top'
                             onClick={handleGenerate}
                         />
-                        <div className='flex items-center justify-end mb-4 px-4 py-1 text-sm'>
-                            1 px =
-                            <input
-                                className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
-                                type='number'
-                                min={MIN_UNITSCALE}
-                                step={0.01}
-                                value={unitScale}
-                                onChange={changeUnitscale}
-                            />
-                            pt
+                        <div className='flex items-center justify-between mb-4 pr-4 py-1 text-sm'>
+                            {outputFormatMenu}
+                            <div className='flex items-center'>
+                                1 px =
+                                <input
+                                    className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                                    type='number'
+                                    min={MIN_UNITSCALE}
+                                    step={0.01}
+                                    value={unitScale}
+                                    onChange={changeUnitscale}
+                                />
+                                pt
+                            </div>
                         </div>
                         <BasicColoredButton
                             id='load-btton'

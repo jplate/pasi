@@ -29,6 +29,7 @@ import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '
 import * as Texdraw from '../../codec/Texdraw.tsx';
 import { ParseError, makeParseError } from '../../codec/Texdraw';
 import { encode, decode } from '../../codec/General';
+import { Bounds, fSvg, svgHsl, svgShadingFill, isValidBounds } from '../../util/SvgTools';
 
 const STANDARD_CONTOUR_HEIGHT = 80;
 const STANDARD_CONTOUR_WIDTH = 120;
@@ -131,6 +132,54 @@ export default class CNodeGroup implements Group<CNode> {
         }
         return { minX, maxX, minY, maxY };
     };
+
+    /**
+     * @return the bounds (in canvas coordinates) of the area covered by this NodeGroup's contour, or null if nothing is drawn.
+     */
+    getSvgBounds(): Bounds | null {
+        if ((this.linewidth <= 0 && this.shading <= 0) || this.members.length === 0) return null;
+        const { minX, maxX, minY, maxY } = this.getBounds();
+        const lwc = this.linewidth / 2;
+        const b = { minX: minX - lwc, maxX: maxX + lwc, minY: minY - lwc, maxY: maxY + lwc };
+        return isValidBounds(b) ? b : null;
+    }
+
+    /**
+     * @return the SVG code representing this NodeGroup's contour (mirroring how it is displayed by the Contour component), with all
+     * coordinates transformed by the supplied functions.
+     */
+    getSvg(transX: (x: number) => number, transY: (y: number) => number, primaryColor: HSL, bg: HSL): string {
+        const lines = this.getLines();
+        if (lines.length === 0 || (this.linewidth <= 0 && this.shading <= 0)) return '';
+        const tX = (x: number) => fSvg(transX(x));
+        const tY = (y: number) => fSvg(transY(y));
+        const curveTo = (line: CubicCurve) =>
+            `C ${tX(line.x1)} ${tY(line.y1)}, ${tX(line.x2)} ${tY(line.y2)}, ${tX(line.x3)} ${tY(line.y3)}`;
+        const start = `M ${tX(lines[0].x0)} ${tY(lines[0].y0)} `;
+        const parts: string[] = [];
+        if (this.shading > 0) {
+            const fillPath = start + lines.map(curveTo).join(' ');
+            parts.push(
+                `<path d="${fillPath}" fill="${svgShadingFill(bg, primaryColor, this.shading)}" stroke="none"/>`
+            );
+        }
+        if (this.linewidth > 0) {
+            const linePath =
+                start +
+                lines
+                    .map((line, i) =>
+                        this.members[i].omitLine ? `M ${tX(line.x3)} ${tY(line.y3)}` : curveTo(line)
+                    )
+                    .join(' ');
+            parts.push(
+                `<path d="${linePath}" fill="none" stroke="${svgHsl(primaryColor)}" ` +
+                    `stroke-width="${fSvg(this.linewidth)}"` +
+                    (this.dash.length > 0 ? ` stroke-dasharray="${this.dash.join(' ')}"` : '') +
+                    ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`
+            );
+        }
+        return parts.join('\n');
+    }
 
     /** Returns the bounds of this NodeGroup, taking into account only the coordinates of its members.
      */

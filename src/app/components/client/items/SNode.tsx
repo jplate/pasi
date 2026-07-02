@@ -44,6 +44,7 @@ import {
 import * as Texdraw from '../../../codec/Texdraw';
 import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
+import { Bounds, fSvg, svgHsl, mergeBounds, isValidBounds, roundSvg } from '@/app/util/SvgTools';
 
 export const DEFAULT_RADIUS = 5;
 export const DEFAULT_GAP0 = 0;
@@ -1187,6 +1188,57 @@ export default abstract class SNode extends ENode {
      */
     getArrowheadShapes(): Shape[] {
         return [];
+    }
+
+    override getSvgBounds(): Bounds | null {
+        if (this.involutes.length !== 2) return null;
+        const shapes = [...this.getConnectorShapes(), ...this.getArrowheadShapes()];
+        let result: Bounds | null = null;
+        if (shapes.length > 0) {
+            const { minX, maxX, minY, maxY } = getBounds(shapes);
+            const lwc = Math.max(this.conLinewidth, this.ahLinewidth) / 2;
+            const b = { minX: minX - lwc, maxX: maxX + lwc, minY: minY - lwc, maxY: maxY + lwc };
+            if (isValidBounds(b)) {
+                result = b;
+            }
+        }
+        if (!this.isHidden(false)) {
+            result = mergeBounds(result, super.getSvgBounds());
+        }
+        return result;
+    }
+
+    override getSvg(
+        transX: (x: number) => number,
+        transY: (y: number) => number,
+        primaryColor: HSL,
+        bg: HSL
+    ): string {
+        if (this.involutes.length !== 2) return '';
+        const parts: string[] = [];
+        const stroke = svgHsl(primaryColor);
+        const roundX = (x: number) => roundSvg(transX(x));
+        const roundY = (y: number) => roundSvg(transY(y));
+        const pathSvg = (shapes: Shape[], lw: number, dash: number[]) =>
+            `<path d="${getPath(shapes, roundX, roundY)}" ` +
+            `fill="none" stroke="${stroke}" stroke-width="${fSvg(lw)}"` +
+            (dash.length > 0 ? ` stroke-dasharray="${dash.join(' ')}"` : '') +
+            ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`;
+        const conShapes = this.getConnectorShapes();
+        const ahShapes = this.getArrowheadShapes();
+        if (this.conLinewidth > 0 && conShapes.length > 0) {
+            parts.push(pathSvg(conShapes, this.conLinewidth, this.conDash));
+        }
+        if (this.ahLinewidth > 0 && ahShapes.length > 0) {
+            parts.push(pathSvg(ahShapes, this.ahLinewidth, this.ahDash));
+        }
+        if (!this.isHidden(false)) {
+            const circle = this.getCircleSvg(transX, transY, primaryColor, bg);
+            if (circle) {
+                parts.push(circle);
+            }
+        }
+        return parts.join('\n');
     }
 }
 

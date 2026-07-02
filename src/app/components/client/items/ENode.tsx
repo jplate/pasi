@@ -31,6 +31,7 @@ import { ParseError, makeParseError } from '../../../codec/Texdraw';
 import { encode, decode } from '../../../codec/General';
 import { addAlpha } from '@/app/util/Misc';
 import { round } from '@/app/util/MathTools';
+import { Bounds, fSvg, svgHsl, svgShadingFill } from '@/app/util/SvgTools';
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = (2 * Math.PI) / 100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -402,6 +403,50 @@ export default class ENode extends Node {
         const lineDrawn = this.linewidth > 0; // This deviates from getTexdrawCode() below. But in SNode this will be overridden anyhow, since there
         // we won't have to include the information about the coordinates.
         return lineDrawn || this.shading > 0 ? '' : [this.radius, this.x, this.y].map(encode).join(' ');
+    }
+
+    /**
+     * @return the bounds (in canvas coordinates) of the area covered by this node's visible representation, or null if nothing is drawn.
+     * Overridden by SNode.
+     */
+    getSvgBounds(): Bounds | null {
+        if (this.linewidth <= 0 && this.shading <= 0) return null;
+        const [x, y] = this.getLocation();
+        const r = this.radius + this.linewidth / 2;
+        return { minX: x - r, maxX: x + r, minY: y - r, maxY: y + r };
+    }
+
+    /**
+     * @return the SVG code representing this node, with all coordinates transformed by the supplied functions.
+     * Overridden by SNode.
+     */
+    getSvg(transX: (x: number) => number, transY: (y: number) => number, primaryColor: HSL, bg: HSL): string {
+        return this.getCircleSvg(transX, transY, primaryColor, bg);
+    }
+
+    /**
+     * @return the SVG code representing this node's circle (mirroring how it is displayed by ENodeComp), or an empty string if the
+     * circle is invisible.
+     */
+    protected getCircleSvg(
+        transX: (x: number) => number,
+        transY: (y: number) => number,
+        primaryColor: HSL,
+        bg: HSL
+    ): string {
+        if (this.linewidth <= 0 && this.shading <= 0) return '';
+        const [x, y] = this.getLocation();
+        const fill = this.shading > 0 ? svgShadingFill(bg, primaryColor, this.shading) : 'none';
+        const stroke =
+            this.linewidth > 0
+                ? ` stroke="${svgHsl(primaryColor)}" stroke-width="${fSvg(this.linewidth)}"` +
+                  (this.dash.length > 0 ? ` stroke-dasharray="${this.dash.join(' ')}"` : '') +
+                  ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"`
+                : '';
+        return (
+            `<circle cx="${fSvg(transX(x))}" cy="${fSvg(transY(y))}" r="${fSvg(this.radius)}" ` +
+            `fill="${fill}"${stroke}/>`
+        );
     }
 
     /**

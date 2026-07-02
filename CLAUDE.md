@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-_pasi_ is a browser-based diagram editor (Next.js 16 / React 19). Users draw diagrams on a canvas with a GUI and the app emits LaTeX/`texdraw` code that can be pasted into a paper — and re-imported. It is deployed as a **static export** to GitHub Pages at https://jplate.github.io/pasi.
+_pasi_ is a browser-based diagram editor (Next.js 16 / React 19). Users draw diagrams on a canvas with a GUI and the app emits LaTeX/`texdraw` code that can be pasted into a paper — and re-imported. It can alternatively emit SVG code (export only, no re-import). It is deployed as a **static export** to GitHub Pages at https://jplate.github.io/pasi.
 
 ## Commands
 
@@ -75,6 +75,15 @@ Cross-cutting editor logic is factored out of `MainPanel` into helper modules in
 - `Texdraw.tsx` — texdraw primitives/parsing.
 
 Sample texdraw strings (the "Othello" relationship diagram, contour examples) are inlined in `Content.tsx`.
+
+### SVG export
+
+A LaTeX/SVG menu button next to the 'Generate' button (state `outputFormat` in `MainPanel`) selects what that button emits into the code panel.
+
+- `src/app/codec/Svg.tsx` — `getSvgCode(list, primaryColor, bg, unitScale, displayFontFactor)` composes the standalone `<svg>`: it collects the visible items in canvas Z-order, merges their bounds, and translates all canvas coordinates (y pointing up) into the SVG's own coordinate system via `svgX = x − minX + margin`, `svgY = maxY − y + margin`.
+- Mirroring the texdraw pattern, each drawable class emits its own SVG: `getSvg(transX, transY, …)` and `getSvgBounds()` on `ENode`, `SNode`, `CNodeGroup`, and `Ornament`/`Label`. These must mirror what the corresponding React components (`ENodeComp`, `ConnectorComp`, `Contour`, `Label.Component`) draw — when changing how something is rendered on the canvas, update its `getSvg` too.
+- `src/app/util/SvgTools.ts` — shared helpers: number formatting (`fSvg`), color strings, the canvas shading blend, bounds merging, text escaping.
+- Deliberate exclusions: GNodes (but not their Labels) and all editor chrome (mark borders, selection titles, ghost gradients, hidden connector-node circles). Colors follow the current display mode.
 
 ### Utilities & constants
 

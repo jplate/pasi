@@ -211,28 +211,31 @@ export const ChevronSVG = React.memo(() => (
 ));
 ChevronSVG.displayName = 'ChevronSVG';
 
-export const MenuItemList = React.memo(({ children }: Readonly<{ children: React.ReactNode }>) => {
-    return (
-        <Transition
-            enter='transition ease-out duration-75'
-            enterFrom='opacity-0 scale-95'
-            enterTo='opacity-100 scale-100'
-            leave='transition ease-in duration-100'
-            leaveFrom='opacity-100 scale-100'
-            leaveTo='opacity-0 scale-95'
-        >
-            <MenuItems
-                anchor='bottom end'
-                className={clsx(
-                    'menu w-72 transition origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
-                    '[--anchor-gap:var(--spacing-1)] focus:outline-none'
-                )}
+export const MenuItemList = React.memo(
+    ({ children, width = 72 }: Readonly<{ children: React.ReactNode; width?: number }>) => {
+        return (
+            <Transition
+                enter='transition ease-out duration-75'
+                enterFrom='opacity-0 scale-95'
+                enterTo='opacity-100 scale-100'
+                leave='transition ease-in duration-100'
+                leaveFrom='opacity-100 scale-100'
+                leaveTo='opacity-0 scale-95'
             >
-                {children}
-            </MenuItems>
-        </Transition>
-    );
-});
+                <MenuItems
+                    anchor='bottom end'
+                    className={clsx(
+                        'menu transition origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
+                        '[--anchor-gap:var(--spacing-1)] focus:outline-none',
+                        `w-${width}`
+                    )}
+                >
+                    {children}
+                </MenuItems>
+            </Transition>
+        );
+    }
+);
 MenuItemList.displayName = 'MenuItemList';
 
 interface MenuFieldProps {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { Lora } from 'next/font/google';
-import Item, { Range } from '../Item';
+import Item, { HSL, Range } from '../Item';
 import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament';
 import Node from '../Node';
 import ENode from '../ENode';
@@ -10,7 +10,8 @@ import { H, MARK_LINEWIDTH } from '@/app/Constants';
 import { Entry } from '../../ItemEditor';
 import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
-import { getCyclicValue, round } from '@/app/util/MathTools';
+import { getCyclicValue, round, rotatePoint } from '@/app/util/MathTools';
+import { Bounds, fSvg, svgHsl, escapeSvgText } from '@/app/util/SvgTools';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
 import { encode, decode } from '@/app/codec/General';
@@ -636,6 +637,90 @@ export default class Label extends Ornament {
                     this.centerText = true;
                 }
             }
+        }
+    }
+
+    override getSvgBounds(): Bounds | null {
+        if (this.lines.length === 0 || this.text.trim() === '') return null;
+        const w = this.width;
+        const h = this.height;
+        const { left, top } = this.#getTopLeftCorner(w, h);
+        if (this.tilt === 0) {
+            return { minX: left, maxX: left + w, minY: top - h, maxY: top };
+        }
+        // Rotate the label's four corners around the same origin that the Label component uses for its CSS rotation:
+        const [ox, oy] = this.#getRotationOrigin(left, top, w, h);
+        const corners = [
+            [left, top],
+            [left + w, top],
+            [left + w, top - h],
+            [left, top - h],
+        ].map(([x, y]) => rotatePoint(x, y, ox, oy, this.tilt, ROUNDING_DIGITS));
+        return {
+            minX: Math.min(...corners.map((c) => c.x)),
+            maxX: Math.max(...corners.map((c) => c.x)),
+            minY: Math.min(...corners.map((c) => c.y)),
+            maxY: Math.max(...corners.map((c) => c.y)),
+        };
+    }
+
+    /**
+     * @return the point (in canvas coordinates) around which this Label is rotated if its tilt is non-zero. This mirrors the
+     * 'transformOrigin' used by the Label component.
+     */
+    #getRotationOrigin(left: number, top: number, w: number, h: number): [x: number, y: number] {
+        const [hPos, vPos] = this.#getPositioning();
+        const centered = this.centered;
+        return [
+            left + (centered || hPos === 0 ? w / 2 : hPos === -1 ? w : 0),
+            top - (centered || vPos === 0 ? h / 2 : vPos === -1 ? 0 : h),
+        ];
+    }
+
+    override getSvg(
+        transX: (x: number) => number,
+        transY: (y: number) => number,
+        primaryColor: HSL,
+        unitScale: number,
+        displayFontFactor: number
+    ): string {
+        const lines = this.lines;
+        if (lines.length === 0 || this.text.trim() === '') return '';
+        const w = this.width;
+        const h = this.height;
+        const { left, top } = this.#getTopLeftCorner(w, h);
+        const fontSize = (DISPLAY_FONTSIZE_RATIO * this.fontSize * displayFontFactor) / unitScale;
+        const firstAsc = Math.max(MIN_HEIGHT - lines[0].desc, lines[0].asc);
+        const fontAttributes =
+            `font-family="Lora, serif" font-size="${fSvg(fontSize)}"` +
+            (!this.parbox && this.mathMode ? ' font-style="italic"' : '') +
+            ` fill="${svgHsl(primaryColor)}"`;
+        let transform = '';
+        if (this.tilt !== 0) {
+            const [ox, oy] = this.#getRotationOrigin(left, top, w, h);
+            transform = ` transform="rotate(${fSvg(-this.tilt)} ${fSvg(transX(ox))} ${fSvg(transY(oy))})"`;
+        }
+        if (this.parbox) {
+            let next = firstAsc;
+            return lines
+                .map((line) => {
+                    const baseLine = next;
+                    next += fontSize * DISPLAY_LINE_SPACING;
+                    const x = left + (this.centerText ? (w - line.width) / 2 : 0);
+                    const wordSpacing = this.centerText
+                        ? ''
+                        : ` word-spacing="${fSvg((w - line.width) / line.text.split(/\s+/).length)}px"`;
+                    return (
+                        `<text x="${fSvg(transX(x))}" y="${fSvg(transY(top - baseLine))}" ` +
+                        `${fontAttributes}${wordSpacing}${transform}>${escapeSvgText(line.text)}</text>`
+                    );
+                })
+                .join('\n');
+        } else {
+            return (
+                `<text x="${fSvg(transX(left))}" y="${fSvg(transY(top - firstAsc))}" ` +
+                `${fontAttributes}${transform}>${escapeSvgText(this.text)}</text>`
+            );
         }
     }
 

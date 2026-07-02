@@ -4,6 +4,7 @@ import Node from './Node';
 import { HSL } from './Item';
 import { getCyclicValue } from '../../../util/MathTools';
 import { MIN_ROTATION } from '@/app/Constants';
+import { Bounds } from '@/app/util/SvgTools';
 
 export const DEFAULT_ANGLE = 10;
 export const INCREMENT = 30; // the angle (in degrees) by which the angle of a new Ornament is increased when added to the same node.
@@ -88,6 +89,25 @@ export default abstract class Ornament extends Item {
         target.gap = this.gap;
         target.gap100 = this.gap100;
     }
+
+    /**
+     * @return the bounds (in canvas coordinates) of the area covered by this Ornament's visible representation, or null if nothing
+     * is drawn.
+     * @abstract
+     */
+    abstract getSvgBounds(): Bounds | null;
+
+    /**
+     * @return the SVG code representing this Ornament, with all coordinates transformed by the supplied functions.
+     * @abstract
+     */
+    abstract getSvg(
+        transX: (x: number) => number,
+        transY: (y: number) => number,
+        primaryColor: HSL,
+        unitScale: number,
+        displayFontFactor: number
+    ): string;
 
     /**
      * Returns a component that represents this Ornament on the canvas.
