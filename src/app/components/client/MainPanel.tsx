@@ -183,7 +183,7 @@ export const generateLaTeXButtonTooltip = (
 
 const generateSvgButtonTooltip = (
     <>
-        Generate and display SVG code (which cannot be read back in). <HotkeyComp mapKey='generate code' />
+        Generate and display SVG code. <HotkeyComp mapKey='generate code' />
     </>
 );
 
