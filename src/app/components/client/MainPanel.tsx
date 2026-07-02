@@ -3283,7 +3283,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         () => (
             <Menu>
                 <MenuButton className={clsx('w-24 px-2 py-1 rounded-xl', menuButtonClassName)}>
-                    <div className='flex-1 text-left'>{outputFormatLabels[outputFormat]}</div>
+                    <div className='flex-1 text-center'>{outputFormatLabels[outputFormat]}</div>
                     <div className='flex-none'>
                         {/* We attach the tooltip just to the chevron, so that it doesn't pop up every time the menu is used. */}
                         <WithTooltip
