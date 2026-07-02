@@ -314,8 +314,11 @@ i {
     transition: opacity 0.5s ease-in-out;
 }
 
-.checkbox.dark {
-    filter: brightness(0.85);
+.checkbox.dark:not(:disabled) {
+    /* A 'filter: brightness(0.85)' would dim the checkbox similarly, but recent Safari versions rasterize
+       filtered native controls into a layer clipped to the element's border box, cutting off the part of
+       the glyph that is painted outside of it. Opacity achieves the same dimming without that clipping. */
+    opacity: 0.85;
 }
 
 #app-shell-root {

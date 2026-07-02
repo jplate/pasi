@@ -49,7 +49,7 @@ export const CheckBoxField = React.memo(
                 <input
                     type='checkbox'
                     className={clsx(
-                        'checkbox mr-2 cursor-pointer disabled:cursor-default disabled:opacity-50',
+                        'checkbox shrink-0 mr-2 cursor-pointer disabled:cursor-default disabled:opacity-50',
                         dark ? ACCENT_DARK : ACCENT_LIGHT
                     )}
                     checked={value}
@@ -58,7 +58,7 @@ export const CheckBoxField = React.memo(
                         onChange();
                     }}
                 />
-                <span className={disabled ? 'opacity-50' : 'cursor-pointer'}>{label}</span>{' '}
+                <span className={clsx('ml-1.5', disabled ? 'opacity-50' : 'cursor-pointer')}>{label}</span>{' '}
                 {/* We apply the opacity styling at the level of the child components of the 
                     label element (rather than to apply it to the label element itself) in order to keep the opacity of the tooltip at 100%. */}
             </label>
