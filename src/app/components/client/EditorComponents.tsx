@@ -189,13 +189,13 @@ export const Textarea = React.memo(({ value, fullHeight = false, onChange }: Tex
 Textarea.displayName = 'Textarea';
 
 export const menuButtonClassName = clsx(
-    'inline-flex items-center gap-2 rounded-md bg-btnbg/85 text-sm text-btncolor shadow-inner border border-btnborder/50 cursor-pointer',
+    'inline-flex items-center gap-2 bg-btnbg/85 text-sm text-btncolor shadow-inner border border-btnborder/50 cursor-pointer',
     'focus:outline-none data-[hover]:bg-btnhoverbg data-[hover]:text-btnhovercolor data-[open]:bg-btnhoverbg data-[open]:text-btnhovercolor',
     'data-[focus]:outline-1 data-[focus]:outline-btnhoverbg'
 );
 
 export const menuItemButtonClassName =
-    'flex w-full items-center gap-2 rounded-sm px-2 py-1 cursor-pointer data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor';
+    'flex w-full items-center gap-2 px-2 py-1 rounded-md cursor-pointer data-[focus]:bg-btnhoverbg data-[focus]:text-btnhovercolor';
 
 export const ChevronSVG = React.memo(() => (
     <svg
@@ -223,9 +223,13 @@ export const MenuItemList = React.memo(
                 leaveTo='opacity-0 scale-95'
             >
                 <MenuItems
+                    // `modal={false}` prevents Headless UI from scroll-locking the page while the menu is open. The
+                    // scroll lock hides the vertical scrollbar, which caused a layout shift (the centered content
+                    // re-centered into the reclaimed width). A dropdown menu doesn't need to lock scrolling.
+                    modal={false}
                     anchor='bottom end'
                     className={clsx(
-                        'menu transition origin-top-right rounded-md border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
+                        'menu transition origin-top-right rounded-lg border border-menuborder bg-btnbg/20 p-1 text-sm text-btncolor',
                         '[--anchor-gap:var(--spacing-1)] focus:outline-none',
                         `w-${width}`
                     )}
@@ -263,7 +267,7 @@ export const MenuField = React.memo(
         const labelComp = <span className='pl-1 mr-2 whitespace-nowrap'>{label}</span>;
         const menuComp = (
             <Menu>
-                <MenuButton className={clsx('w-full px-3', menuButtonClassName)}>
+                <MenuButton className={clsx('w-full px-3 rounded-md', menuButtonClassName)}>
                     <div className='flex-1 text-left'>{values[value]}</div>
                     <div className='flex-none'>
                         <ChevronSVG />
@@ -554,7 +558,7 @@ export const Tooltip = ({ content, floatingRef, styles, strategy }: TooltipProps
     return (
         <div
             className={clsx(
-                'tooltip px-4 py-2 border-l border-btnborder shadow-lg text-sm hyphens-auto',
+                'tooltip px-4 py-2 border-l border-btnborder shadow-lg text-sm text-left hyphens-auto',
                 !opaque ? 'opacity-0' : 'opacity-100'
             )}
             ref={floatingRef}

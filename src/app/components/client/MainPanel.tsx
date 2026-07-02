@@ -183,8 +183,7 @@ export const generateLaTeXButtonTooltip = (
 
 const generateSvgButtonTooltip = (
     <>
-        Generate and display SVG code. (This code cannot be read back in.){' '}
-        <HotkeyComp mapKey='generate code' />
+        Generate and display SVG code (which cannot be read back in). <HotkeyComp mapKey='generate code' />
     </>
 );
 
@@ -206,10 +205,7 @@ const generateButtonTooltips: Record<OutputFormat, React.ReactNode> = {
 };
 
 const outputFormatTooltip = (
-    <>
-        Select the kind of code for the &lsquo;Generate&rsquo; button to generate. (LaTeX code can be read
-        back in; SVG code cannot.)
-    </>
+    <>Select the type of code to be generated. (LaTeX code can be read back in; SVG code cannot.)</>
 );
 
 const loadButtonTooltip = (
@@ -223,8 +219,6 @@ const loadButtonTooltip = (
 const keyChecker = (key: string) => (event: React.KeyboardEvent<HTMLElement>) => matchKeys(event, key);
 const undoChecker = keyChecker(hotkeyMap['undo']);
 const redoChecker = keyChecker(hotkeyMap['redo']);
-
-const menuButtonClass = clsx('py-1.5', menuButtonClassName);
 
 const tabClass = clsx(
     'py-1 px-2 text-sm/6 bg-btnbg/85 text-btncolor border border-t-0 border-btnborder/50',
@@ -3260,7 +3254,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const depItemMenu = useMemo(
         () => (
             <Menu>
-                <MenuButton className={menuButtonClass}>
+                <MenuButton className={clsx('rounded-md py-1.5', menuButtonClassName)}>
                     <div className='flex-none mx-2'>{depItemInfos[depItemIndex].getImageComp(dark)}</div>
                     <div className='flex-1'>{depItemInfos[depItemIndex].label}</div>
                     <div className='flex-none w-[28px] mx-2'>
@@ -3288,7 +3282,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const outputFormatMenu = useMemo(
         () => (
             <Menu>
-                <MenuButton className={clsx('w-24 px-2 py-1', menuButtonClassName)}>
+                <MenuButton className={clsx('w-24 px-2 py-1 rounded-xl', menuButtonClassName)}>
                     <div className='flex-1 text-left'>{outputFormatLabels[outputFormat]}</div>
                     <div className='flex-none'>
                         {/* We attach the tooltip just to the chevron, so that it doesn't pop up every time the menu is used. */}
@@ -3850,7 +3844,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             tooltipPlacement='top'
                             onClick={handleGenerate}
                         />
-                        <div className='flex items-center justify-between mb-4 pr-4 py-1 text-sm'>
+                        <div className='flex items-baseline justify-between mb-4 pr-4 py-1 text-sm'>
                             {outputFormatMenu}
                             <div className='flex items-center'>
                                 1 px =
