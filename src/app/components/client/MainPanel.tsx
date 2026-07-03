@@ -183,7 +183,7 @@ export const generateLaTeXButtonTooltip = (
 
 const generateSvgButtonTooltip = (
     <>
-        Generate and display SVG code. <HotkeyComp mapKey='generate code' />
+        Generate and display HTML code. <HotkeyComp mapKey='generate code' />
     </>
 );
 
@@ -194,7 +194,7 @@ const DEFAULT_OUTPUT_FORMAT: OutputFormat = 'latex';
 /** Maps each output format to the label under which it appears in the output-format menu. */
 const outputFormatLabels: Record<OutputFormat, string> = {
     latex: 'LaTeX',
-    svg: 'SVG',
+    svg: 'HTML',
 };
 
 const outputFormats = Object.keys(outputFormatLabels) as OutputFormat[];
@@ -205,7 +205,7 @@ const generateButtonTooltips: Record<OutputFormat, React.ReactNode> = {
 };
 
 const outputFormatTooltip = (
-    <>Select the type of code to be generated. (LaTeX code can be read back in; SVG code cannot.)</>
+    <>Select the type of code to be generated. (LaTeX code can be read back in; HTML code cannot.)</>
 );
 
 const loadButtonTooltip = (
@@ -676,6 +676,7 @@ interface HistoryEntry {
     transformFlags: TransformFlags;
     yOffset: number;
     code: string;
+    outputFormat: OutputFormat;
 }
 
 interface MainPanelProps {
@@ -775,7 +776,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
     const { push, before, after, canRedo, canUndo } = useHistory<HistoryEntry>(
         {
             list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
-            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
+            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code, outputFormat
         },
         MAX_HISTORY
     );
@@ -804,11 +805,12 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             setTransformFlags(entry.transformFlags);
             setYOffset(entry.yOffset);
             setCode(entry.code);
+            setOutputFormat(entry.outputFormat);
         },
         [
             setList, setSelection, setFocusItem, setENodeCounter, setCNGCounter, setSGCounter, setGrid, setDisplayFontFactor,
             setUnitScale, setReplace, setHDisplacement, setVDisplacement, setAdding, setDissolveAdding, setLogIncrement,
-            setLogIncrements, setTransformFlags, setYOffset, setCode
+            setLogIncrements, setTransformFlags, setYOffset, setCode, setOutputFormat
         ]
     );
 
@@ -817,11 +819,11 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
         () => ({
             // to facilitate reference in the update function
             list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
-            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
+            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code, outputFormat
         }),
         [
             list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
-            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
+            hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code, outputFormat
         ]
     );
 
@@ -851,6 +853,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 transformFlags = stored.transformFlags,
                 yOffset = stored.yOffset,
                 code = stored.code,
+                outputFormat = stored.outputFormat,
             }: Partial<HistoryEntry>,
             changeState: boolean = true
         ): void => {
@@ -859,7 +862,8 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             if (changeState) {
                 updateState({
                     list, selection, focusItem, points, eNodeCounter, cngCounter, sgCounter, grid, displayFontFactor, unitScale, replace,
-                    hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code
+                    hDisplacement, vDisplacement, adding, dissolveAdding, logIncrement, logIncrements, transformFlags, yOffset, code,
+                    outputFormat
                 });
             } 
 
@@ -902,6 +906,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                 transformFlags: { ...transformFlags },
                 yOffset: yOffset,
                 code,
+                outputFormat,
             });
         },
         [stored, push, updateState]
@@ -3810,7 +3815,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 <BasicColoredButton
                                     id='redo-button'
                                     label='Redo'
-                                    style='rounded-xl  w-full'
+                                    style='rounded-xl w-full'
                                     tooltip='Redo'
                                     disabled={!canRedo}
                                     onClick={throttledRedo}
@@ -3846,14 +3851,21 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                         />
                         <div className='flex items-baseline justify-between mb-4 pr-4 py-1 text-sm'>
                             {outputFormatMenu}
-                            <div className='flex items-center'>
+                            {/* The unit scale is only relevant for the LaTeX output format: */}
+                            <div
+                                className={clsx(
+                                    'flex items-center',
+                                    outputFormat !== 'latex' && 'opacity-50'
+                                )}
+                            >
                                 1 px =
                                 <input
-                                    className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor'
+                                    className='w-16 ml-1 pl-2 py-0.5 mr-1 text-right border border-btnborder rounded-md focus:outline-none bg-textfieldbg text-textfieldcolor disabled:cursor-default'
                                     type='number'
                                     min={MIN_UNITSCALE}
                                     step={0.01}
                                     value={unitScale}
+                                    disabled={outputFormat !== 'latex'}
                                     onChange={changeUnitscale}
                                 />
                                 pt
