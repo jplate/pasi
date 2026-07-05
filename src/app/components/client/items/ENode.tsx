@@ -31,7 +31,7 @@ import { ParseError, makeParseError } from '@/app/codec/Texdraw';
 import { encode, decode } from '@/app/codec/General';
 import { addAlpha } from '@/app/util/Misc';
 import { round } from '@/app/util/MathTools';
-import { Bounds, fSvg, svgHsl, svgShadingFill } from '@/app/util/SvgTools';
+import { Bounds, fSvg, svgShadingBlend } from '@/app/util/SvgTools';
 
 export const DEFAULT_RADIUS = 12;
 export const D0 = (2 * Math.PI) / 100; // absolute minimal angle between two contact points on the periphery of an ENode
@@ -420,33 +420,27 @@ export default class ENode extends Node {
      * @return the SVG code representing this node, with all coordinates transformed by the supplied functions.
      * Overridden by SNode.
      */
-    getSvg(transX: (x: number) => number, transY: (y: number) => number, primaryColor: HSL, bg: HSL): string {
-        return this.getCircleSvg(transX, transY, primaryColor, bg);
+    getSvg(transX: (x: number) => number, transY: (y: number) => number): string {
+        return this.getCircleSvg(transX, transY);
     }
 
     /**
      * @return the SVG code representing this node's circle (mirroring how it is displayed by ENodeComp), or an empty string if the
-     * circle is invisible.
+     * circle is invisible. The stroke is expressed as `currentColor`, and the fill (if the node is shaded) as an opaque blend of
+     * `currentColor` into the embedding document's background color, so that the coloring can be controlled from outside the
+     * generated SVG.
      */
-    protected getCircleSvg(
-        transX: (x: number) => number,
-        transY: (y: number) => number,
-        primaryColor: HSL,
-        bg: HSL
-    ): string {
+    protected getCircleSvg(transX: (x: number) => number, transY: (y: number) => number): string {
         if (this.linewidth <= 0 && this.shading <= 0) return '';
         const [x, y] = this.getLocation();
-        const fill = this.shading > 0 ? svgShadingFill(bg, primaryColor, this.shading) : 'none';
+        const fill = this.shading > 0 ? `fill="${svgShadingBlend(this.shading)}"` : 'fill="none"';
         const stroke =
             this.linewidth > 0
-                ? ` stroke="${svgHsl(primaryColor)}" stroke-width="${fSvg(this.linewidth)}"` +
+                ? ` stroke="currentColor" stroke-width="${fSvg(this.linewidth)}"` +
                   (this.dash.length > 0 ? ` stroke-dasharray="${this.dash.join(' ')}"` : '') +
                   ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"`
                 : '';
-        return (
-            `<circle cx="${fSvg(transX(x))}" cy="${fSvg(transY(y))}" r="${fSvg(this.radius)}" ` +
-            `fill="${fill}"${stroke}/>`
-        );
+        return `<circle cx="${fSvg(transX(x))}" cy="${fSvg(transY(y))}" r="${fSvg(this.radius)}" ${fill}${stroke}/>`;
     }
 
     /**

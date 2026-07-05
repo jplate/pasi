@@ -104,7 +104,6 @@ export default abstract class Ornament extends Item {
     abstract getSvg(
         transX: (x: number) => number,
         transY: (y: number) => number,
-        primaryColor: HSL,
         unitScale: number,
         displayFontFactor: number
     ): string;

@@ -2783,18 +2783,10 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             if (outputFormat === 'latex') {
                 setCode(getCode(list, pixel));
             } else {
-                setCode(
-                    getSvgCode(
-                        list,
-                        trueBlack ? BLACK : dark ? DEFAULT_HSL_DARK_MODE : DEFAULT_HSL_LIGHT_MODE,
-                        dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE,
-                        pixel,
-                        displayFontFactor
-                    )
-                );
+                setCode(getSvgCode(list, pixel, displayFontFactor));
             }
         },
-        [list, outputFormat, trueBlack, dark, displayFontFactor]
+        [list, outputFormat, displayFontFactor]
     );
 
     const loadDiagram = useCallback(

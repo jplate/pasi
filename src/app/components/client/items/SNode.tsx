@@ -53,8 +53,8 @@ import { encode, decode } from '@/app/codec/General';
 import {
     Bounds,
     fSvg,
-    svgHsl,
     svgShadingFill,
+    svgShadingBlend,
     mergeBounds,
     isValidBounds,
     roundSvg,
@@ -1285,20 +1285,14 @@ export default abstract class SNode extends ENode {
         return result;
     }
 
-    override getSvg(
-        transX: (x: number) => number,
-        transY: (y: number) => number,
-        primaryColor: HSL,
-        bg: HSL
-    ): string {
+    override getSvg(transX: (x: number) => number, transY: (y: number) => number): string {
         if (this.involutes.length !== 2) return '';
         const parts: string[] = [];
-        const stroke = svgHsl(primaryColor);
         const roundX = (x: number) => roundSvg(transX(x));
         const roundY = (y: number) => roundSvg(transY(y));
         const pathSvg = (shapes: Shape[], lw: number, dash: number[]) =>
             `<path d="${getPath(shapes, roundX, roundY)}" ` +
-            `fill="none" stroke="${stroke}" stroke-width="${fSvg(lw)}"` +
+            `fill="none" stroke="currentColor" stroke-width="${fSvg(lw)}"` +
             (dash.length > 0 ? ` stroke-dasharray="${dash.join(' ')}"` : '') +
             ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`;
         const conShapes = this.getConnectorShapes();
@@ -1310,9 +1304,9 @@ export default abstract class SNode extends ENode {
         if (ahShading > 0 && ahShapes.length > 0) {
             parts.push(
                 `<path d="${getConnectedPath(ahShapes, roundX, roundY)}" ` +
-                    `fill="${svgShadingFill(bg, primaryColor, ahShading)}" ` +
+                    `fill="${svgShadingBlend(ahShading)}" ` +
                     (this.ahLinewidth > 0
-                        ? `stroke="${stroke}" stroke-width="${fSvg(this.ahLinewidth)}"` +
+                        ? `stroke="currentColor" stroke-width="${fSvg(this.ahLinewidth)}"` +
                           (this.ahDash.length > 0 ? ` stroke-dasharray="${this.ahDash.join(' ')}"` : '') +
                           ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`
                         : 'stroke="none"/>')
@@ -1321,7 +1315,7 @@ export default abstract class SNode extends ENode {
             parts.push(pathSvg(ahShapes, this.ahLinewidth, this.ahDash));
         }
         if (!this.isHidden(false)) {
-            const circle = this.getCircleSvg(transX, transY, primaryColor, bg);
+            const circle = this.getCircleSvg(transX, transY);
             if (circle) {
                 parts.push(circle);
             }

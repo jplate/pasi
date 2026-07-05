@@ -2,7 +2,6 @@ import ENode from '@/app/components/client/items/ENode';
 import GNode from '@/app/components/client/items/GNode';
 import CNodeGroup from '@/app/components/client/CNodeGroup';
 import Ornament from '@/app/components/client/items/Ornament';
-import { HSL } from '@/app/components/client/items/Item';
 import { Bounds, fSvg, mergeBounds } from '@/app/util/SvgTools';
 
 export const SVG_MARGIN = 5; // the margin (in pixels) around the diagram's contents
@@ -11,12 +10,13 @@ export const SVG_MARGIN = 5; // the margin (in pixels) around the diagram's cont
  * @return the SVG code representing the supplied list of ENodes and CNodeGroups, mirroring how they are displayed on the canvas.
  * GNodes ('ghost nodes') are excluded, but their Ornaments are not. The coordinates of the generated SVG elements are obtained by
  * translating the canvas coordinates of the individual items into the coordinate system of the generated SVG element, whose bounds
- * are computed so as to cover (with a small margin) exactly the visible items.
+ * are computed so as to cover (with a small margin) exactly the visible items. Strokes are expressed as `currentColor`, and the
+ * fills of shaded elements as opaque `color-mix` blends of `currentColor` into `var(--pasi-background, Canvas)`, so that the
+ * diagram's coloring can be controlled from outside the SVG (e.g., via the surrounding document's CSS) by setting the `color`
+ * property and, if needed, the `--pasi-background` custom property.
  */
 export const getSvgCode = (
     list: (ENode | CNodeGroup)[],
-    primaryColor: HSL,
-    bg: HSL,
     unitScale: number,
     displayFontFactor: number
 ): string => {
@@ -52,8 +52,8 @@ export const getSvgCode = (
     const elements = drawn
         .map((it) =>
             it instanceof Ornament
-                ? it.getSvg(transX, transY, primaryColor, unitScale, displayFontFactor)
-                : it.getSvg(transX, transY, primaryColor, bg)
+                ? it.getSvg(transX, transY, unitScale, displayFontFactor)
+                : it.getSvg(transX, transY)
         )
         .filter((s) => s.length > 0)
         .join('\n')

@@ -32,7 +32,7 @@ import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '
 import * as Texdraw from '@/app/codec/Texdraw.tsx';
 import { ParseError, makeParseError } from '@/app/codec/Texdraw';
 import { encode, decode } from '@/app/codec/General';
-import { Bounds, fSvg, svgHsl, svgShadingFill, isValidBounds } from '@/app/util/SvgTools';
+import { Bounds, fSvg, svgShadingBlend, isValidBounds } from '@/app/util/SvgTools';
 
 const STANDARD_CONTOUR_HEIGHT = 80;
 const STANDARD_CONTOUR_WIDTH = 120;
@@ -151,7 +151,7 @@ export default class CNodeGroup implements Group<CNode> {
      * @return the SVG code representing this NodeGroup's contour (mirroring how it is displayed by the Contour component), with all
      * coordinates transformed by the supplied functions.
      */
-    getSvg(transX: (x: number) => number, transY: (y: number) => number, primaryColor: HSL, bg: HSL): string {
+    getSvg(transX: (x: number) => number, transY: (y: number) => number): string {
         const lines = this.getLines();
         if (lines.length === 0 || (this.linewidth <= 0 && this.shading <= 0)) return '';
         const tX = (x: number) => fSvg(transX(x));
@@ -162,9 +162,7 @@ export default class CNodeGroup implements Group<CNode> {
         const parts: string[] = [];
         if (this.shading > 0) {
             const fillPath = start + lines.map(curveTo).join(' ');
-            parts.push(
-                `<path d="${fillPath}" fill="${svgShadingFill(bg, primaryColor, this.shading)}" stroke="none"/>`
-            );
+            parts.push(`<path d="${fillPath}" fill="${svgShadingBlend(this.shading)}" stroke="none"/>`);
         }
         if (this.linewidth > 0) {
             const linePath =
@@ -175,7 +173,7 @@ export default class CNodeGroup implements Group<CNode> {
                     )
                     .join(' ');
             parts.push(
-                `<path d="${linePath}" fill="none" stroke="${svgHsl(primaryColor)}" ` +
+                `<path d="${linePath}" fill="none" stroke="currentColor" ` +
                     `stroke-width="${fSvg(this.linewidth)}"` +
                     (this.dash.length > 0 ? ` stroke-dasharray="${this.dash.join(' ')}"` : '') +
                     ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`

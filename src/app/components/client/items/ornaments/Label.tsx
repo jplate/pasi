@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { Lora } from 'next/font/google';
-import Item, { HSL, Range } from '@/app/components/client/items/Item';
+import Item, { Range } from '@/app/components/client/items/Item';
 import Ornament, {
     OrnamentCompProps,
     ROUNDING_DIGITS,
@@ -16,7 +16,7 @@ import { Entry } from '@/app/components/client/ItemEditor';
 import { parseInputValue, parseCyclicInputValue, validInt } from '@/app/components/client/EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import { getCyclicValue, round, rotatePoint } from '@/app/util/MathTools';
-import { Bounds, fSvg, svgHsl, escapeSvgText } from '@/app/util/SvgTools';
+import { Bounds, fSvg, escapeSvgText } from '@/app/util/SvgTools';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
 import { encode, decode } from '@/app/codec/General';
@@ -685,7 +685,6 @@ export default class Label extends Ornament {
     override getSvg(
         transX: (x: number) => number,
         transY: (y: number) => number,
-        primaryColor: HSL,
         unitScale: number,
         displayFontFactor: number
     ): string {
@@ -699,7 +698,7 @@ export default class Label extends Ornament {
         const fontAttributes =
             `font-family="Lora, serif" font-size="${fSvg(fontSize)}"` +
             (!this.parbox && this.mathMode ? ' font-style="italic"' : '') +
-            ` fill="${svgHsl(primaryColor)}"`;
+            ` fill="currentColor"`;
         let transform = '';
         if (this.tilt !== 0) {
             const [ox, oy] = this.#getRotationOrigin(left, top, w, h);
