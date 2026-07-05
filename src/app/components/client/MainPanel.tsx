@@ -2437,7 +2437,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                     transformFlags.scaleLinewidths ||
                     transformFlags.scaleDash ||
                     transformFlags.scaleConnectors ||
-                    transformFlags.flipArrowheads ||
+                    transformFlags.scaleArrowheads ||
                     transformFlags.scaleENodes
                 ) {
                     const affectedSNodes = Array.from(
