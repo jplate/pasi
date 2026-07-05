@@ -604,6 +604,11 @@ export const getCommandSequenceForDrawnShapes = (
     prevDash?: number[],
     nextDash?: number[]
 ): string => {
+    if (shapes.length === 0) {
+        // In this case there's nothing to draw, and we shouldn't emit any linewidth or dash-pattern commands either,
+        // since these would affect whatever shapes come next in the code.
+        return '';
+    }
     const result: string[] = [];
 
     if (dash.length > 0 && !(prevDash && equalArrays(dash, prevDash))) {
@@ -613,26 +618,25 @@ export const getCommandSequenceForDrawnShapes = (
         result.push(linewd(lw));
     }
 
-    if (shapes.length > 0) {
-        const start = shapes[0].getStartingPoint();
-        result.push(move(start.x, start.y));
-        result.push(getShapeCommand(shapes[0]));
+    const start = shapes[0].getStartingPoint();
+    result.push(move(start.x, start.y));
+    result.push(getShapeCommand(shapes[0]));
 
-        let prevPoint = shapes[0].getEndPoint();
-        for (let i = 1; i < shapes.length; i++) {
-            const newPoint = shapes[i].getStartingPoint();
-            if (prevPoint.x === newPoint.x && prevPoint.y === newPoint.y) {
-                result.push(getShapeCommand(shapes[i]));
-            } else {
-                // In this case there's a jump, so we'll have to insert a texdraw move command.
-                result.push(move(newPoint.x, newPoint.y));
-                result.push(getShapeCommand(shapes[i]));
-            }
-            prevPoint = shapes[i].getEndPoint();
+    let prevPoint = shapes[0].getEndPoint();
+    for (let i = 1; i < shapes.length; i++) {
+        const newPoint = shapes[i].getStartingPoint();
+        if (prevPoint.x === newPoint.x && prevPoint.y === newPoint.y) {
+            result.push(getShapeCommand(shapes[i]));
+        } else {
+            // In this case there's a jump, so we'll have to insert a texdraw move command.
+            result.push(move(newPoint.x, newPoint.y));
+            result.push(getShapeCommand(shapes[i]));
         }
-        if (dash.length > 0 && !nextDash) {
-            result.push(lpatt([])); // If there is no specified next dash pattern, we let the pattern revert to normal.
-        }
+        prevPoint = shapes[i].getEndPoint();
+    }
+    if (dash.length > 0 && (!nextDash || nextDash.length === 0)) {
+        result.push(lpatt([])); // If the next drawn shapes won't set a (non-empty) dash pattern of their own, we have to
+        // reset the pattern here, since they would otherwise inherit ours.
     }
 
     return result.join('');

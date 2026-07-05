@@ -1,6 +1,6 @@
 import SNode from '@/app/components/client/items/SNode';
 import { Entry } from '@/app/components/client/ItemEditor';
-import { ParseError, StrokedShape } from '@/app/codec/Texdraw';
+import { Circle, ParseError, StrokedShape } from '@/app/codec/Texdraw';
 
 export const DEFAULT_W0 = 8;
 export const DEFAULT_W1 = 8;
@@ -43,7 +43,9 @@ export default class Identity extends SNode {
         _dimRatio: number,
         nodeName: string
     ): StrokedShape[] {
-        if (stShapes.length > 0) {
+        // Since an Identity has no arrowhead, the only shapes that may legitimately remain after the connector are
+        // the Circles that represent the SNode itself (in case it is drawn).
+        if (stShapes.length > 0 && !(stShapes[0].shape instanceof Circle)) {
             throw new ParseError(
                 <span>
                     Failed parsing information for entity node <code>{nodeName}</code>: unexpected shapes.

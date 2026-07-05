@@ -932,7 +932,7 @@ export default abstract class SNode extends ENode {
             this.ahDash,
             this.conLinewidth,
             this.conDash,
-            this.dash
+            this.nodeIsDisplayed() ? this.dash : undefined
         );
     }
 
