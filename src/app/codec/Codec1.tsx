@@ -9,6 +9,7 @@ import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
+import Existence from '@/app/components/client/items/ornaments/Existence';
 import Adjunction from '@/app/components/client/items/snodes/Adjunction';
 import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Identity from '@/app/components/client/items/snodes/Identity';
@@ -27,7 +28,10 @@ const CNODEGROUP_PREFIX = 'S'; // The 'S' stands for 'set', because that's what 
 const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hints' for the decoding of Ornament information. This infix
 // must *not* overlap with CODE.
 
-const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([['L', Label]]);
+const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([
+    ['L', Label],
+    ['X', Existence],
+]);
 
 const sNodePrefixMap = new BidirectionalMap<string, new (i: number, closest: boolean) => SNode>([
     ['A', Adjunction],

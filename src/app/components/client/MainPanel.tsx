@@ -78,6 +78,7 @@ import Transition from '@/app/components/client/items/snodes/Transition';
 import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
+import Existence from '@/app/components/client/items/ornaments/Existence';
 
 import lblSrc from '@/icons/lbl.png';
 import adjSrc from '@/icons/adj.png';
@@ -85,9 +86,9 @@ import idtSrc from '@/icons/idt.png';
 import orpSrc from '@/icons/orp.png';
 import trnSrc from '@/icons/trn.png';
 import entSrc from '@/icons/ent.png';
+import exsSrc from '@/icons/exs.png';
 /*
 import cntSrc from '@/icons/cnt.png';
-import exsSrc from '@/icons/exs.png';
 import incSrc from '@/icons/inc.png';
 import insSrc from '@/icons/ins.png';
 import negSrc from '@/icons/neg.png';
@@ -402,7 +403,6 @@ const depItemInfos = [
     /*
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
     new DepItemInfo('Chevron', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
-    new DepItemInfo('Rectangle', 'exs', exsSrc, 'A rectangular ornament attached to a node', 1),
     new DepItemInfo(
         'Double hook, circular',
         'ins',
@@ -414,6 +414,7 @@ const depItemInfos = [
     */
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
     // new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
+    new DepItemInfo('Rectangle', 'exs', exsSrc, 'A rectangular ornament attached to a node', 1),
     new DepItemInfo('Simple line', 'idt', idtSrc, 'A simple line', 2),
     /*
     new DepItemInfo(
@@ -2002,6 +2003,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                 label.updateLines(unitScale, displayFontFactor);
                                 return label;
                             });
+                            break;
+                        case 'exs':
+                            newSelection = selectedNodes.map((node) => new Existence(node));
                             break;
                         default:
                             if (key in sNodeClassMap) {
