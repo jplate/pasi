@@ -75,6 +75,7 @@ import Adjunction from '@/app/components/client/items/snodes/Adjunction';
 import Order from '@/app/components/client/items/snodes/Order';
 import Identity from '@/app/components/client/items/snodes/Identity';
 import Transition from '@/app/components/client/items/snodes/Transition';
+import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
 
@@ -83,9 +84,9 @@ import adjSrc from '@/icons/adj.png';
 import idtSrc from '@/icons/idt.png';
 import orpSrc from '@/icons/orp.png';
 import trnSrc from '@/icons/trn.png';
+import entSrc from '@/icons/ent.png';
 /*
 import cntSrc from '@/icons/cnt.png';
-import entSrc from '@/icons/ent.png';
 import exsSrc from '@/icons/exs.png';
 import incSrc from '@/icons/inc.png';
 import insSrc from '@/icons/ins.png';
@@ -396,11 +397,12 @@ type DepItemKey =
 
 const depItemInfos = [
     new DepItemInfo('Broad tip', 'trn', trnSrc, 'An arrow ending in a laterally symmetric blade', 2),
+    new DepItemInfo('Double hook, curved', 'ent', entSrc, 'An arrow with two curved hooks (cubic)', 2),
     // Commenting out what hasn't been implemented yet:
     /*
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
     new DepItemInfo('Chevron', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
-    new DepItemInfo('Dot', 'exs', exsSrc, 'A square-shaped ornament attached to a node', 1),
+    new DepItemInfo('Rectangle', 'exs', exsSrc, 'A rectangular ornament attached to a node', 1),
     new DepItemInfo(
         'Double hook, circular',
         'ins',
@@ -408,7 +410,6 @@ const depItemInfos = [
         'An arrow with two curved hooks, each being a segment of a circle',
         2
     ),
-    new DepItemInfo('Double hook, curved', 'ent', entSrc, 'An arrow with two curved hooks (cubic)', 2),
     new DepItemInfo('Harpoon', 'inc', incSrc, 'An arrow with an asymmetric, harpoonlike tip', 2),
     */
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
@@ -443,6 +444,7 @@ const sNodeClassMap: Partial<Record<DepItemKey, new (i: number, closest: boolean
     orp: Order,
     idt: Identity,
     trn: Transition,
+    ent: Entailment,
 };
 
 const highestActive = (item: Item): Item | Group<any> => {

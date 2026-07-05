@@ -10,6 +10,7 @@ import { ParseError } from '@/app/codec/Texdraw';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
 import Adjunction from '@/app/components/client/items/snodes/Adjunction';
+import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Identity from '@/app/components/client/items/snodes/Identity';
 import Order from '@/app/components/client/items/snodes/Order';
 import Transition from '@/app/components/client/items/snodes/Transition';
@@ -30,6 +31,7 @@ const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornam
 
 const sNodePrefixMap = new BidirectionalMap<string, new (i: number, closest: boolean) => SNode>([
     ['A', Adjunction],
+    ['€', Entailment],
     ['I', Identity],
     ['O', Order],
     ['T', Transition],
