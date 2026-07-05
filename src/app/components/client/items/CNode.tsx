@@ -1,5 +1,5 @@
 import React, { CSSProperties, useCallback, useMemo } from 'react';
-import Item, { HSL } from './Item';
+import Item, { HSL } from '@/app/components/client/items/Item';
 import Node, {
     Info,
     DEFAULT_DISTANCE,
@@ -9,13 +9,13 @@ import Node, {
     DEFAULT_DASH,
     DEFAULT_SHADING,
     MAX_LINEWIDTH,
-} from './Node';
-import ENode from './ENode';
-import CNodeGroup, { getLine } from '../CNodeGroup';
-import { getCoordinateHandler } from '../Moving';
-import { Entry } from '../ItemEditor';
+} from '@/app/components/client/items/Node';
+import ENode from '@/app/components/client/items/ENode';
+import CNodeGroup, { getLine } from '@/app/components/client/CNodeGroup';
+import { getCoordinateHandler } from '@/app/components/client/Moving';
+import { Entry } from '@/app/components/client/ItemEditor';
 import { H, MARK_LINEWIDTH, MIN_TRANSLATION_LOG_INCREMENT, MIN_ROTATION } from '@/app/Constants';
-import { validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents';
+import { validFloat, parseInputValue, parseCyclicInputValue } from '@/app/components/client/EditorComponents';
 import {
     getCyclicValue,
     cubicBezier,
@@ -23,8 +23,8 @@ import {
     tAtLength,
     bezierAngle,
     angle,
-} from '../../../util/MathTools';
-import { MAX_ROTATION_INPUT, getRankMover } from '../ItemEditor';
+} from '@/app/util/MathTools';
+import { MAX_ROTATION_INPUT, getRankMover } from '@/app/components/client/ItemEditor';
 
 const CNODE_MARK_RADIUS = 7; // Not the 'real' radius (which is 1), but only used for drawing the 'mark border'.
 const CNODE_ARROW_DIV_RADIUS = 10;

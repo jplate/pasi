@@ -1,8 +1,8 @@
 import react, { type JSX } from 'react';
-import Item from './Item';
-import Node from './Node';
-import { HSL } from './Item';
-import { getCyclicValue } from '../../../util/MathTools';
+import Item from '@/app/components/client/items/Item';
+import Node from '@/app/components/client/items/Node';
+import { HSL } from '@/app/components/client/items/Item';
+import { getCyclicValue } from '@/app/util/MathTools';
 import { MIN_ROTATION } from '@/app/Constants';
 import { Bounds } from '@/app/util/SvgTools';
 

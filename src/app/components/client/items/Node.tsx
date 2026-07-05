@@ -1,10 +1,10 @@
-import Item, { Range } from './Item';
-import ENode from './ENode';
-import CNodeGroup from '../CNodeGroup';
-import Ornament from './Ornament';
-import { ROUNDING_DIGITS } from '../../../Constants';
-import { round } from '../../../util/MathTools';
-import * as Texdraw from '../../../codec/Texdraw';
+import Item, { Range } from '@/app/components/client/items/Item';
+import ENode from '@/app/components/client/items/ENode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import Ornament from '@/app/components/client/items/Ornament';
+import { ROUNDING_DIGITS } from '@/app/Constants';
+import { round } from '@/app/util/MathTools';
+import * as Texdraw from '@/app/codec/Texdraw';
 
 import type { JSX } from 'react';
 

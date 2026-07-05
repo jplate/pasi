@@ -1,20 +1,21 @@
-import Item from '../components/client/items/Item';
-import Node from '../components/client/items/Node';
-import ENode from '../components/client/items/ENode';
-import SNode from '../components/client/items/SNode';
-import GNode from '../components/client/items/GNode';
-import CNodeGroup from '../components/client/CNodeGroup';
-import Group, { StandardGroup, getGroups } from '../components/client/Group';
-import * as Texdraw from './Texdraw';
-import { ParseError } from './Texdraw';
-import Ornament from '../components/client/items/Ornament';
-import Label from '../components/client/items/ornaments/Label';
-import Adjunction from '../components/client/items/snodes/Adjunction';
-import Identity from '../components/client/items/snodes/Identity';
-import Order from '../components/client/items/snodes/Order';
-import BidirectionalMap from '../util/BidirectionalMap';
-import { getItems } from '../components/client/MainPanel';
-import { encodeInt, decodeInt, encode, decode } from './General';
+import Item from '@/app/components/client/items/Item';
+import Node from '@/app/components/client/items/Node';
+import ENode from '@/app/components/client/items/ENode';
+import SNode from '@/app/components/client/items/SNode';
+import GNode from '@/app/components/client/items/GNode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import Group, { StandardGroup, getGroups } from '@/app/components/client/Group';
+import * as Texdraw from '@/app/codec/Texdraw';
+import { ParseError } from '@/app/codec/Texdraw';
+import Ornament from '@/app/components/client/items/Ornament';
+import Label from '@/app/components/client/items/ornaments/Label';
+import Adjunction from '@/app/components/client/items/snodes/Adjunction';
+import Identity from '@/app/components/client/items/snodes/Identity';
+import Order from '@/app/components/client/items/snodes/Order';
+import Transition from '@/app/components/client/items/snodes/Transition';
+import BidirectionalMap from '@/app/util/BidirectionalMap';
+import { getItems } from '@/app/components/client/MainPanel';
+import { encodeInt, decodeInt, encode, decode } from '@/app/codec/General';
 
 export const versionString = 'pasiCodecV1';
 
@@ -31,6 +32,7 @@ const sNodePrefixMap = new BidirectionalMap<string, new (i: number, closest: boo
     ['A', Adjunction],
     ['I', Identity],
     ['O', Order],
+    ['T', Transition],
 ]);
 
 type NodeIdentifier = {

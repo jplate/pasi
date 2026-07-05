@@ -7,9 +7,9 @@ import {
     ConnectorsSection,
     SampleFileSection,
     ContourExamplesSection,
-} from './components/StaticSections.tsx';
-import AppShellLoader from './components/client/AppShellLoader';
-import MyFooter from './components/Footer';
+} from '@/app/components/StaticSections.tsx';
+import AppShellLoader from '@/app/components/client/AppShellLoader';
+import MyFooter from '@/app/components/Footer';
 
 const staticKeyCmd = (name: string): JSX.Element[] => {
     const split = name.split('+');

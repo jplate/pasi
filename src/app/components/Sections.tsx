@@ -1,8 +1,8 @@
 'use client';
 
 import type { JSX } from 'react';
-import Section from './Section';
-import LatexCode from './LatexCode';
+import Section from '@/app/components/Section';
+import LatexCode from '@/app/components/LatexCode';
 import {
     sampleFile,
     type CodeButtonSpec,
@@ -13,7 +13,7 @@ import {
     SampleFileSectionContent,
     ConnectorsSectionContent,
     ContourExamplesSectionContent,
-} from '../Content';
+} from '@/app/Content';
 
 export interface PasiSectionProps {
     dark: boolean;

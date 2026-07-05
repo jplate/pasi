@@ -1,7 +1,7 @@
-import Group, { GroupMember } from '../Group';
-import ENode from './ENode';
-import CNodeGroup from '../CNodeGroup';
-import { Entry } from '../ItemEditor';
+import Group, { GroupMember } from '@/app/components/client/Group';
+import ENode from '@/app/components/client/items/ENode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import { Entry } from '@/app/components/client/ItemEditor';
 
 export interface HSL {
     hue: number;

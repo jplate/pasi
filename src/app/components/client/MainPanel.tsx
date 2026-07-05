@@ -22,8 +22,8 @@ import {
     CANVAS_WIDTH_THRESHOLD,
     MAX_HISTORY,
     MAX_GROUP_LEVEL,
-} from '../../Constants';
-import Item from './items/Item';
+} from '@/app/Constants';
+import Item from '@/app/components/client/items/Item';
 import Node, {
     DEFAULT_DISTANCE,
     MAX_LINEWIDTH,
@@ -33,8 +33,8 @@ import Node, {
     DEFAULT_HSL_DARK_MODE,
     MAX_RADIUS,
     addDependents,
-} from './items/Node';
-import { BasicButton, BasicColoredButton, CopyToClipboardButton } from './Button';
+} from '@/app/components/client/items/Node';
+import { BasicButton, BasicColoredButton, CopyToClipboardButton } from '@/app/components/client/Button';
 import {
     CheckBoxField,
     MenuItemList,
@@ -43,50 +43,58 @@ import {
     menuButtonClassName,
     menuItemButtonClassName,
     validFloat,
-} from './EditorComponents';
-import CanvasEditor from './CanvasEditor';
-import ItemEditor from './ItemEditor';
-import TransformTab from './TransformTab';
-import GroupTab from './GroupTab';
-import ENode, { ENodeComp } from './items/ENode';
-import GNode from './items/GNode';
-import Point, { PointComp } from './Point';
-import Group, { GroupMember, StandardGroup, getGroups, getLeafMembers, depth } from './Group';
-import CNode from './items/CNode';
-import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from './CNodeGroup';
-import { round, rotatePoint, scalePoint, getCyclicValue } from '../../util/MathTools';
-import { copyItems, getTopToBeCopied } from './Copying';
-import { move } from './Moving';
-import { getCode, load } from '../../codec/Codec1';
-import { getSvgCode } from '../../codec/Svg';
-import { ENCODE_BASE, ENCODE_PRECISION } from '../../codec/General';
-import { sameElements, useThrottle, matchKeys, equalArrays } from '../../util/Misc';
-import { useHistory } from '../../util/History';
+} from '@/app/components/client/EditorComponents';
+import CanvasEditor from '@/app/components/client/CanvasEditor';
+import ItemEditor from '@/app/components/client/ItemEditor';
+import TransformTab from '@/app/components/client/TransformTab';
+import GroupTab from '@/app/components/client/GroupTab';
+import ENode, { ENodeComp } from '@/app/components/client/items/ENode';
+import GNode from '@/app/components/client/items/GNode';
+import Point, { PointComp } from '@/app/components/client/Point';
+import Group, {
+    GroupMember,
+    StandardGroup,
+    getGroups,
+    getLeafMembers,
+    depth,
+} from '@/app/components/client/Group';
+import CNode from '@/app/components/client/items/CNode';
+import CNodeGroup, { MAX_CNODEGROUP_SIZE, CNodeGroupComp } from '@/app/components/client/CNodeGroup';
+import { round, rotatePoint, scalePoint, getCyclicValue } from '@/app/util/MathTools';
+import { copyItems, getTopToBeCopied } from '@/app/components/client/Copying';
+import { move } from '@/app/components/client/Moving';
+import { getCode, load } from '@/app/codec/Codec1';
+import { getSvgCode } from '@/app/codec/Svg';
+import { ENCODE_BASE, ENCODE_PRECISION } from '@/app/codec/General';
+import { sameElements, useThrottle, matchKeys, equalArrays } from '@/app/util/Misc';
+import { useHistory } from '@/app/util/History';
 import { HotkeyComp, hotkeyMap } from '@/app/Hotkeys';
-import { undoIcon, redoIcon, deleteIcon } from '../Icons';
-import SNode, { ConnectorComp } from './items/SNode';
-import Adjunction from './items/snodes/Adjunction';
-import Order from './items/snodes/Order';
-import Identity from './items/snodes/Identity';
-import Ornament from './items/Ornament';
-import Label from './items/ornaments/Label';
+import { undoIcon, redoIcon, deleteIcon } from '@/app/components/Icons';
+import SNode, { ConnectorComp } from '@/app/components/client/items/SNode';
+import Adjunction from '@/app/components/client/items/snodes/Adjunction';
+import Order from '@/app/components/client/items/snodes/Order';
+import Identity from '@/app/components/client/items/snodes/Identity';
+import Transition from '@/app/components/client/items/snodes/Transition';
+import Ornament from '@/app/components/client/items/Ornament';
+import Label from '@/app/components/client/items/ornaments/Label';
 
-import lblSrc from '../../../icons/lbl.png';
-import adjSrc from '../../../icons/adj.png';
-import idtSrc from '../../../icons/idt.png';
-import orpSrc from '../../../icons/orp.png';
+import lblSrc from '@/icons/lbl.png';
+import adjSrc from '@/icons/adj.png';
+import idtSrc from '@/icons/idt.png';
+import orpSrc from '@/icons/orp.png';
+import trnSrc from '@/icons/trn.png';
 /*
-import cntSrc from '../../../icons/cnt.png';
-import entSrc from '../../../icons/ent.png';
-import exsSrc from '../../../icons/exs.png';
-import incSrc from '../../../icons/inc.png';
-import insSrc from '../../../icons/ins.png';
-import negSrc from '../../../icons/neg.png';
-import prdSrc from '../../../icons/prd.png';
-import ptrSrc from '../../../icons/ptr.png';
-import rstSrc from '../../../icons/rst.png';
-import trnSrc from '../../../icons/trn.png';
-import unvSrc from '../../../icons/unv.png';
+import cntSrc from '@/icons/cnt.png';
+import entSrc from '@/icons/ent.png';
+import exsSrc from '@/icons/exs.png';
+import incSrc from '@/icons/inc.png';
+import insSrc from '@/icons/ins.png';
+import negSrc from '@/icons/neg.png';
+import prdSrc from '@/icons/prd.png';
+import ptrSrc from '@/icons/ptr.png';
+import rstSrc from '@/icons/rst.png';
+import trnSrc from '@/icons/trn.png';
+import unvSrc from '@/icons/unv.png';
 */
 
 const MAX_LIST_SIZE = 1000; // maximal size of the list of ENodes and CNodeGroups
@@ -387,15 +395,15 @@ type DepItemKey =
     | 'unv';
 
 const depItemInfos = [
-    // Commenting out what hasn't been implemented yet:
-    /*
     new DepItemInfo(
         'Broad tip',
         'trn',
         trnSrc,
-        'An arrow that has as its tip a closed, reflectionally symmetric figure',
+        'An arrow ending in a laterally symmetric blade',
         2
     ),
+    // Commenting out what hasn't been implemented yet:
+    /*
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
     new DepItemInfo('Chevron', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
     new DepItemInfo('Dot', 'exs', exsSrc, 'A square-shaped ornament attached to a node', 1),
@@ -440,6 +448,7 @@ const sNodeClassMap: Partial<Record<DepItemKey, new (i: number, closest: boolean
     adj: Adjunction,
     orp: Order,
     idt: Identity,
+    trn: Transition,
 };
 
 const highestActive = (item: Item): Item | Group<any> => {
@@ -3506,6 +3515,7 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                                             node={it}
                                             yOffset={yOffset}
                                             primaryColor={primaryColor}
+                                            bg={dark ? CANVAS_HSL_DARK_MODE : CANVAS_HSL_LIGHT_MODE}
                                             rerender={!it.locationDefined || dependents.has(it) ? [] : null}
                                         />
                                     ) : null}

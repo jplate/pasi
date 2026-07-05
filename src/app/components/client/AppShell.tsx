@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import React, { useRef, useState, useEffect, useCallback, useLayoutEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import clsx from 'clsx';
-import type { CodeButtonSpec } from '../../Content';
+import type { CodeButtonSpec } from '@/app/Content';
 import {
     IntroSection,
     HotkeySection,
@@ -13,16 +13,16 @@ import {
     ConnectorsSection,
     SampleFileSection,
     ContourExamplesSection,
-} from '../Sections.tsx';
-import { moonIcon, sunIcon } from '../Icons.tsx';
-import Loading from '../../loading';
+} from '@/app/components/Sections.tsx';
+import { moonIcon, sunIcon } from '@/app/components/Icons.tsx';
+import Loading from '@/app/loading';
 
-const MainPanel = dynamic(() => import('./MainPanel.tsx'), {
+const MainPanel = dynamic(() => import('@/app/components/client/MainPanel.tsx'), {
     ssr: false,
     loading: () => <Loading />,
 });
 
-const MyFooter = dynamic(() => import('../Footer.tsx'), { ssr: true });
+const MyFooter = dynamic(() => import('@/app/components/Footer.tsx'), { ssr: true });
 
 const getInitialColorScheme = () => {
     const storedMode = localStorage.getItem('color-scheme');

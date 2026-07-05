@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import clsx from 'clsx';
-import { Placement } from './EditorComponents';
-import { BasicColoredButton } from './Button';
+import { Placement } from '@/app/components/client/EditorComponents';
+import { BasicColoredButton } from '@/app/components/client/Button';
 import {
     CheckBoxField,
     MenuField,
@@ -11,12 +11,12 @@ import {
     Textarea,
     Width,
     validInt,
-} from './EditorComponents.tsx';
-import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from '../../Constants.ts';
-import Item from './items/Item';
-import ENode from './items/ENode';
-import CNode from './items/CNode';
-import CNodeGroup from './CNodeGroup';
+} from '@/app/components/client/EditorComponents.tsx';
+import { MIN_TRANSLATION_LOG_INCREMENT, MAX_TRANSLATION_LOG_INCREMENT } from '@/app/Constants.ts';
+import Item from '@/app/components/client/items/Item';
+import ENode from '@/app/components/client/items/ENode';
+import CNode from '@/app/components/client/items/CNode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
 
 export const MAX_ROTATION_INPUT = 9999;
 

@@ -46,7 +46,8 @@ Item (abstract)              src/app/components/client/items/Item.tsx
 │  │  ├─ SNode (abstract)    items/SNode.tsx — state nodes: connectors/arrows between nodes
 │  │  │  ├─ Adjunction       items/snodes/*.tsx — concrete arrow kinds; each parses/emits
 │  │  │  ├─ Identity           its own texdraw and drives the ItemEditor
-│  │  │  └─ Order
+│  │  │  ├─ Order
+|  |  |  └─ Transition
 │  │  └─ GNode               items/GNode.tsx — 'ghost nodes' that transfer group membership
 │  └─ CNode                  items/CNode.tsx — contour nodes; arrays form a Contour
 └─ Ornament (abstract)       items/Ornament.tsx — attached to a Node (no own Z-index)

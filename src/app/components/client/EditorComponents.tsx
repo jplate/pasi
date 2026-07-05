@@ -2,10 +2,10 @@ import React, { useContext, useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { useFloating, shift, offset, Strategy } from '@floating-ui/react-dom';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
-import { getCyclicValue, round } from '../../util/MathTools';
+import { getCyclicValue, round } from '@/app/util/MathTools';
 import { TOOLTIP_DELAY, TOOLTIP_OPACITY } from '@/app/Constants';
 
-import { DarkModeContext } from './MainPanel';
+import { DarkModeContext } from '@/app/components/client/MainPanel';
 
 const ACCENT_LIGHT = 'accent-slate-50';
 const ACCENT_DARK = 'accent-amber-600 dark';

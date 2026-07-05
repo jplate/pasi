@@ -1,5 +1,5 @@
 import React from 'react';
-import { HSL } from './Item';
+import { HSL } from '@/app/components/client/items/Item';
 import Node, {
     Info,
     Handler,
@@ -13,8 +13,8 @@ import Node, {
     MAX_LINEWIDTH,
     LINECAP_STYLE,
     LINEJOIN_STYLE,
-} from './Node';
-import ENode, { validateLinewidth, validateDash, validateRadius } from './ENode';
+} from '@/app/components/client/items/Node';
+import ENode, { validateLinewidth, validateDash, validateRadius } from '@/app/components/client/items/ENode';
 import {
     H,
     MIN_TRANSLATION_LOG_INCREMENT,
@@ -23,16 +23,22 @@ import {
     TRAVEL_STEP_SIZE,
     TRAVEL_TOLERANCE,
     MAX_DEVIANCE,
-} from '../../../Constants';
-import CNodeGroup from '../CNodeGroup';
-import CNode from './CNode';
-import { Entry, MAX_ROTATION_INPUT } from '../ItemEditor';
-import { DashValidator, validFloat, parseInputValue, parseCyclicInputValue } from '../EditorComponents';
+} from '@/app/Constants';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import CNode from '@/app/components/client/items/CNode';
+import { Entry, MAX_ROTATION_INPUT } from '@/app/components/client/ItemEditor';
+import {
+    DashValidator,
+    validFloat,
+    parseInputValue,
+    parseCyclicInputValue,
+} from '@/app/components/client/EditorComponents';
 import {
     Shape,
     round,
     getBounds,
     getPath,
+    getConnectedPath,
     angle,
     angleDiff,
     CubicCurve,
@@ -40,11 +46,19 @@ import {
     findClosest,
     getCyclicValue,
     travel,
-} from '../../../util/MathTools';
-import * as Texdraw from '../../../codec/Texdraw';
-import { ParseError, makeParseError } from '../../../codec/Texdraw';
-import { encode, decode } from '../../../codec/General';
-import { Bounds, fSvg, svgHsl, mergeBounds, isValidBounds, roundSvg } from '@/app/util/SvgTools';
+} from '@/app/util/MathTools';
+import * as Texdraw from '@/app/codec/Texdraw';
+import { ParseError, makeParseError } from '@/app/codec/Texdraw';
+import { encode, decode } from '@/app/codec/General';
+import {
+    Bounds,
+    fSvg,
+    svgHsl,
+    svgShadingFill,
+    mergeBounds,
+    isValidBounds,
+    roundSvg,
+} from '@/app/util/SvgTools';
 
 export const DEFAULT_RADIUS = 5;
 export const DEFAULT_GAP0 = 0;
@@ -164,6 +178,10 @@ const d1Tooltip = <>The distance from the connector&rsquo;s second control point
 
 const gap1Tooltip = <>The gap between the connector&rsquo;s end point and its target node.</>;
 
+const bidirectionalTooltip = (
+    <>If checked, the arrowhead appears (with identical geometry) on both ends of the arrow.</>
+);
+
 /**
  * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
  * This class roughly corresponds to the Connector class of the 2007 applet.
@@ -197,6 +215,7 @@ export default abstract class SNode extends ENode {
     phi1: number = 0;
     manual = false; // indicates whether chi0 and chi1, or cpr0 and cpr1, have been selected manually.
     closest = true; // indicates whether the connector should link to the closest CNode of the relevant CNodeGroup (relevant if either involute is a CNode)
+    bidirectional = false; // indicates whether the arrowhead (if any) should appear on both ends of the arrow
 
     t: number = 0.5; // the parameter that indicates the position of this Node on the connector between the two involutes.
 
@@ -339,6 +358,7 @@ export default abstract class SNode extends ENode {
         target.phi1 = this.phi1;
         target.manual = this.manual;
         target.closest = this.closest;
+        target.bidirectional = this.bidirectional;
         target.t = this.t;
     }
 
@@ -436,6 +456,19 @@ export default abstract class SNode extends ENode {
             [x2, y2] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
         }
         return angle(x3, y3, x2, y2, true);
+    }
+
+    /**
+     * @return the angle (in radians) in which an arrowhead that sits at the start (rather than the end) of the connector is
+     * supposed to be oriented.
+     */
+    getArrowheadAngle0(adjustedLine: CubicCurve): number {
+        let { x1, y1 } = adjustedLine;
+        const { x0, y0 } = adjustedLine;
+        if (Math.abs(this.phi0) + Math.abs(this.phi1) > MAX_DEVIANCE) {
+            [x1, y1] = travel([0], this.w0, adjustedLine, TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
+        }
+        return angle(x0, y0, x1, y1, true);
     }
 
     override move(dx: number, dy: number): void {
@@ -613,6 +646,14 @@ export default abstract class SNode extends ENode {
      */
     getArrowheadInfo(): Entry[] {
         return [
+            {
+                type: 'checkbox',
+                key: 'bidirectional',
+                text: 'Bidirectional',
+                value: this.bidirectional,
+                tooltip: bidirectionalTooltip,
+                tooltipPlacement: 'left',
+            },
             {
                 type: 'number input',
                 key: 'ahLw',
@@ -817,6 +858,18 @@ export default abstract class SNode extends ENode {
     };
 
     protected commonArrowheadEditHandler: Handler = {
+        bidirectional: () => {
+            const bd = !this.bidirectional;
+            return [
+                (item, array) => {
+                    if (item instanceof SNode) {
+                        item.bidirectional = bd;
+                    }
+                    return array;
+                },
+                'ENodesAndCNodeGroups',
+            ];
+        },
         ahLw: ({ e }: Info) => {
             if (e)
                 return [
@@ -848,7 +901,7 @@ export default abstract class SNode extends ENode {
     }
 
     /**
-     * Overridden by (but also called frmo) subclasses.
+     * Overridden by (but also called from) subclasses.
      */
     override getInfoString(): string {
         const nodeDisplayed = this.nodeIsDisplayed();
@@ -860,7 +913,6 @@ export default abstract class SNode extends ENode {
 
     override getTexdrawCode(): string {
         const conShapes = this.getConnectorShapes();
-        const ahShapes = this.getArrowheadShapes();
         const nodeDisplayed = this.nodeIsDisplayed();
         const connectorCode = Texdraw.getCommandSequenceForDrawnShapes(
             Texdraw.translateShapes(conShapes),
@@ -870,16 +922,24 @@ export default abstract class SNode extends ENode {
             undefined,
             this.ahDash
         );
-        const ahCode = Texdraw.getCommandSequenceForDrawnShapes(
-            Texdraw.translateShapes(ahShapes),
+        const ahCode = this.getArrowheadTexdrawCode();
+        const nodeCode = nodeDisplayed ? super.getTexdrawCode() : '';
+        return [connectorCode, ahCode, nodeCode].join('');
+    }
+
+    /**
+     * @return the texdraw code for this SNode's arrowhead. Expected to be overridden by subclasses (like Transition) whose arrowheads
+     * consist of more than a series of 'drawn' (i.e., non-filled) shapes.
+     */
+    protected getArrowheadTexdrawCode(): string {
+        return Texdraw.getCommandSequenceForDrawnShapes(
+            Texdraw.translateShapes(this.getArrowheadShapes()),
             this.ahLinewidth,
             this.ahDash,
             this.conLinewidth,
             this.conDash,
             this.dash
         );
-        const nodeCode = nodeDisplayed ? super.getTexdrawCode() : '';
-        return [connectorCode, ahCode, nodeCode].join('');
     }
 
     override extractCircles(stShapes: Texdraw.StrokedShape[]) {
@@ -1184,10 +1244,33 @@ export default abstract class SNode extends ENode {
     }
 
     /**
-     * This is expected to be overridden by subclasses that use an arrowhead.
+     * @return the Shapes that make up this SNode's arrowhead -- or arrowheads, if this.bidirectional is true, in which case the
+     * Shapes for the arrowhead at the start of the connector come after those for the arrowhead at its end.
      */
     getArrowheadShapes(): Shape[] {
+        const line = this.getLine();
+        const shapes = this.getArrowheadShapesAt(line.x3, line.y3, this.getArrowheadAngle(line));
+        if (this.bidirectional) {
+            shapes.push(...this.getArrowheadShapesAt(line.x0, line.y0, this.getArrowheadAngle0(line)));
+        }
+        return shapes;
+    }
+
+    /**
+     * This is expected to be overridden by subclasses that use an arrowhead.
+     * @return the Shapes that make up a single arrowhead whose tip lies at the specified location and whose axis points in the
+     * direction indicated by gamma (which is understood to point from the tip 'backwards', along the arrow's shaft).
+     */
+    getArrowheadShapesAt(_tipX: number, _tipY: number, _gamma: number): Shape[] {
         return [];
+    }
+
+    /**
+     * @return the shading of this SNode's arrowhead (0: transparent; 1: fully opaque). Expected to be overridden by subclasses
+     * (like Transition) whose arrowheads can be filled.
+     */
+    getArrowheadShading(): number {
+        return 0;
     }
 
     override getSvgBounds(): Bounds | null {
@@ -1229,7 +1312,18 @@ export default abstract class SNode extends ENode {
         if (this.conLinewidth > 0 && conShapes.length > 0) {
             parts.push(pathSvg(conShapes, this.conLinewidth, this.conDash));
         }
-        if (this.ahLinewidth > 0 && ahShapes.length > 0) {
+        const ahShading = this.getArrowheadShading();
+        if (ahShading > 0 && ahShapes.length > 0) {
+            parts.push(
+                `<path d="${getConnectedPath(ahShapes, roundX, roundY)}" ` +
+                    `fill="${svgShadingFill(bg, primaryColor, ahShading)}" ` +
+                    (this.ahLinewidth > 0
+                        ? `stroke="${stroke}" stroke-width="${fSvg(this.ahLinewidth)}"` +
+                          (this.ahDash.length > 0 ? ` stroke-dasharray="${this.ahDash.join(' ')}"` : '') +
+                          ` stroke-linecap="${LINECAP_STYLE}" stroke-linejoin="${LINEJOIN_STYLE}"/>`
+                        : 'stroke="none"/>')
+            );
+        } else if (this.ahLinewidth > 0 && ahShapes.length > 0) {
             parts.push(pathSvg(ahShapes, this.ahLinewidth, this.ahDash));
         }
         if (!this.isHidden(false)) {
@@ -1247,15 +1341,17 @@ interface ConnectorCompProps {
     node: SNode;
     yOffset: number;
     primaryColor: HSL;
+    bg: HSL;
     rerender: boolean[] | null; // A new (empty) array will be passed if the component needs to rerender. The passing of this array will cause React to
     // rerender the component.
 }
 
-export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: ConnectorCompProps) => {
+export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor, bg }: ConnectorCompProps) => {
     if (node.involutes.length !== 2) return null;
 
     const conShapes = node.getConnectorShapes();
     const ahShapes = node.getArrowheadShapes();
+    const ahShading = node.getArrowheadShading();
 
     const { minX, maxX, minY, maxY } = getBounds([...conShapes, ...ahShapes]);
     const width = maxX - minX;
@@ -1275,7 +1371,10 @@ export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: Co
     const xTransform = (x: number) => x - minX + lwc;
     const yTransform = (y: number) => height - y + minY + lwc;
     const conPath = getPath(conShapes, xTransform, yTransform);
-    const ahPath = getPath(ahShapes, xTransform, yTransform);
+    const ahPath =
+        ahShading > 0
+            ? getConnectedPath(ahShapes, xTransform, yTransform) // A connected path is needed for the fill to come out right.
+            : getPath(ahShapes, xTransform, yTransform);
 
     return (
         <div
@@ -1303,7 +1402,7 @@ export const ConnectorComp = React.memo(({ id, node, yOffset, primaryColor }: Co
                 />
                 <path
                     d={ahPath}
-                    fill='none'
+                    fill={ahShading > 0 ? svgShadingFill(bg, primaryColor, ahShading) : 'none'}
                     stroke={`hsl(${primaryColor.hue},${primaryColor.sat}%,${primaryColor.lgt}%)`}
                     strokeWidth={ahLw}
                     strokeDasharray={node.ahDash.join(' ')}

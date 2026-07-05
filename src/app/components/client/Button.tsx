@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, forwardRef, CSSProperties, type JSX } from 'react';
 import clsx from 'clsx';
-import { WithTooltip, Placement } from './EditorComponents';
-import { useThrottle } from '../../util/Misc';
+import { WithTooltip, Placement } from '@/app/components/client/EditorComponents';
+import { useThrottle } from '@/app/util/Misc';
 
 interface ButtonProps {
     id: string;

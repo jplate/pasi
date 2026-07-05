@@ -1,5 +1,5 @@
-import SNode from '../SNode';
-import { Entry } from '../../ItemEditor';
+import SNode from '@/app/components/client/items/SNode';
+import { Entry } from '@/app/components/client/ItemEditor';
 import { ParseError, StrokedShape } from '@/app/codec/Texdraw';
 
 export const DEFAULT_W0 = 8;

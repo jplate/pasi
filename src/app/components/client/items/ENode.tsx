@@ -1,6 +1,6 @@
 import React from 'react';
 //import assert from 'assert' // pretty hefty package, and not really needed
-import Item, { HSL } from './Item';
+import Item, { HSL } from '@/app/components/client/items/Item';
 import Node, {
     Info,
     Handler,
@@ -11,8 +11,8 @@ import Node, {
     LINECAP_STYLE,
     LINEJOIN_STYLE,
     MAX_RADIUS,
-} from './Node';
-import { Entry, getRankMover } from '../ItemEditor';
+} from '@/app/components/client/items/Node';
+import { Entry, getRankMover } from '@/app/components/client/ItemEditor';
 import {
     H,
     MAX_X,
@@ -22,13 +22,13 @@ import {
     MARK_LINEWIDTH,
     MIN_TRANSLATION_LOG_INCREMENT,
     ROUNDING_DIGITS,
-} from '../../../Constants';
-import { validFloat, DashValidator } from '../EditorComponents';
-import CNodeGroup from '../CNodeGroup';
-import { getCoordinateHandler } from '../Moving';
-import * as Texdraw from '../../../codec/Texdraw';
-import { ParseError, makeParseError } from '../../../codec/Texdraw';
-import { encode, decode } from '../../../codec/General';
+} from '@/app/Constants';
+import { validFloat, DashValidator } from '@/app/components/client/EditorComponents';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import { getCoordinateHandler } from '@/app/components/client/Moving';
+import * as Texdraw from '@/app/codec/Texdraw';
+import { ParseError, makeParseError } from '@/app/codec/Texdraw';
+import { encode, decode } from '@/app/codec/General';
 import { addAlpha } from '@/app/util/Misc';
 import { round } from '@/app/util/MathTools';
 import { Bounds, fSvg, svgHsl, svgShadingFill } from '@/app/util/SvgTools';

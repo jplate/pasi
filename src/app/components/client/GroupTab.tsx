@@ -1,8 +1,8 @@
 import React from 'react';
 
-import Item from './items/Item';
-import { getGroups } from './Group';
-import { BasicColoredButton } from './Button';
+import Item from '@/app/components/client/items/Item';
+import { getGroups } from '@/app/components/client/Group';
+import { BasicColoredButton } from '@/app/components/client/Button';
 import { HotkeyComp } from '@/app/Hotkeys';
 
 const createTooltip = (

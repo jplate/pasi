@@ -221,6 +221,38 @@ export const getPath = (shapes: Shape[], transX: (x: number) => number, transY: 
 };
 
 /**
+ * Returns the SVG path corresponding to the supplied array of Shapes, with coordinates transformed according to the supplied functions.
+ * Unlike getPath(), this function inserts 'M' commands only where consecutive Shapes fail to connect, which makes the resulting
+ * path suitable for filling.
+ */
+export const getConnectedPath = (
+    shapes: Shape[],
+    transX: (x: number) => number,
+    transY: (y: number) => number
+) => {
+    const path: string[] = [];
+    let prevX: number | null = null,
+        prevY: number | null = null;
+    for (const sh of shapes) {
+        if (sh.x0 !== prevX || sh.y0 !== prevY) {
+            path.push(`M ${transX(sh.x0)} ${transY(sh.y0)}`);
+        }
+        if ('x3' in sh) {
+            path.push(
+                `C ${transX(sh.x1)} ${transY(sh.y1)}, ${transX(sh.x2)} ${transY(sh.y2)}, ${transX(sh.x3)} ${transY(sh.y3)}`
+            );
+            prevX = sh.x3;
+            prevY = sh.y3;
+        } else {
+            path.push(`L ${transX(sh.x1)} ${transY(sh.y1)}`);
+            prevX = sh.x1;
+            prevY = sh.y1;
+        }
+    }
+    return path.join(' ');
+};
+
+/**
  * @return the point of the cubic curve defined by the specified points that corresponds to the parameter t.
  */
 export const cubicBezier = (c: CubicCurve, t: number) => {

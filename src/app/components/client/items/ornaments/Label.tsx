@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState, useCallback, useMemo, CSSProperties } from 'react';
 import clsx from 'clsx';
 import { Lora } from 'next/font/google';
-import Item, { HSL, Range } from '../Item';
-import Ornament, { OrnamentCompProps, ROUNDING_DIGITS, MIN_GAP, MAX_GAP } from '../Ornament';
-import Node from '../Node';
-import ENode from '../ENode';
-import CNodeGroup from '../../CNodeGroup';
+import Item, { HSL, Range } from '@/app/components/client/items/Item';
+import Ornament, {
+    OrnamentCompProps,
+    ROUNDING_DIGITS,
+    MIN_GAP,
+    MAX_GAP,
+} from '@/app/components/client/items/Ornament';
+import Node from '@/app/components/client/items/Node';
+import ENode from '@/app/components/client/items/ENode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
 import { H, MARK_LINEWIDTH } from '@/app/Constants';
-import { Entry } from '../../ItemEditor';
-import { parseInputValue, parseCyclicInputValue, validInt } from '../../EditorComponents';
+import { Entry } from '@/app/components/client/ItemEditor';
+import { parseInputValue, parseCyclicInputValue, validInt } from '@/app/components/client/EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import { getCyclicValue, round, rotatePoint } from '@/app/util/MathTools';
 import { Bounds, fSvg, svgHsl, escapeSvgText } from '@/app/util/SvgTools';

@@ -1,13 +1,13 @@
-import Item from './items/Item';
-import Node, { DEFAULT_DISTANCE, addDependents } from './items/Node';
-import ENode from './items/ENode';
-import GNode, { DEFAULT_RADIUS } from './items/GNode';
-import CNodeGroup from './CNodeGroup';
-import CNode from './items/CNode';
-import Group, { StandardGroup, getGroups, getLeafMembers } from './Group';
-import Ornament from './items/Ornament';
-import SNode from './items/SNode';
-import Label from './items/ornaments/Label';
+import Item from '@/app/components/client/items/Item';
+import Node, { DEFAULT_DISTANCE, addDependents } from '@/app/components/client/items/Node';
+import ENode from '@/app/components/client/items/ENode';
+import GNode, { DEFAULT_RADIUS } from '@/app/components/client/items/GNode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import CNode from '@/app/components/client/items/CNode';
+import Group, { StandardGroup, getGroups, getLeafMembers } from '@/app/components/client/Group';
+import Ornament from '@/app/components/client/items/Ornament';
+import SNode from '@/app/components/client/items/SNode';
+import Label from '@/app/components/client/items/ornaments/Label';
 
 /**
  * Returns an array of

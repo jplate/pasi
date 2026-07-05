@@ -1,5 +1,5 @@
-import ENode, { DEFAULT_RADIUS as ENODE_DEFAULT_RADIUS } from './ENode';
-import { Entry } from '../ItemEditor';
+import ENode, { DEFAULT_RADIUS as ENODE_DEFAULT_RADIUS } from '@/app/components/client/items/ENode';
+import { Entry } from '@/app/components/client/ItemEditor';
 
 export const DEFAULT_RADIUS = ENODE_DEFAULT_RADIUS;
 export const DEFAULT_LINEWIDTH = 0;

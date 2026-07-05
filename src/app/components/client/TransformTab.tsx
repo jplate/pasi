@@ -5,9 +5,9 @@ import {
     parseInputValue,
     parseCyclicInputValue,
     validInt,
-} from './EditorComponents.tsx';
-import { BasicColoredButton } from './Button.tsx';
-import { MAX_SCALING, MIN_ROTATION } from './MainPanel';
+} from '@/app/components/client/EditorComponents.tsx';
+import { BasicColoredButton } from '@/app/components/client/Button.tsx';
+import { MAX_SCALING, MIN_ROTATION } from '@/app/components/client/MainPanel';
 import { HotkeyComp } from '@/app/Hotkeys';
 import {
     MIN_ROTATION_LOG_INCREMENT,
@@ -15,7 +15,7 @@ import {
     MIN_SCALING_LOG_INCREMENT,
     MAX_SCALING_LOG_INCREMENT,
     MAX_ROTATION_INPUT,
-} from '../../Constants.ts';
+} from '@/app/Constants.ts';
 
 const slwTooltip = (
     <>

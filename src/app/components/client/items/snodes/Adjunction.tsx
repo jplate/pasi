@@ -1,8 +1,8 @@
-import { Info } from '../Node';
-import SNode, { complain } from '../SNode';
-import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor';
+import { Info } from '@/app/components/client/items/Node';
+import SNode, { complain } from '@/app/components/client/items/SNode';
+import { Entry, MAX_ROTATION_INPUT } from '@/app/components/client/ItemEditor';
 import { Shape, angle, round, getCyclicValue, angleDiff } from '@/app/util/MathTools';
-import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents';
+import { parseInputValue, parseCyclicInputValue } from '@/app/components/client/EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
@@ -136,19 +136,16 @@ export default class Adjunction extends SNode {
         ];
     }
 
-    override getArrowheadShapes(): Shape[] {
-        const adjustedLine = this.getAdjustedLine();
+    override getArrowheadShapesAt(tipX: number, tipY: number, gamma: number): Shape[] {
         const len = this.hookLength;
         const a = (this.hookAngle / 180) * Math.PI;
-        const { x3: p1x, y3: p1y } = adjustedLine;
-        const gamma = this.getArrowheadAngle(adjustedLine);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
         const bx1 = len * Math.cos(gamma + a);
         const by1 = len * Math.sin(gamma + a);
         return [
-            { x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }, // the left hook
-            { x0: p1x, y0: p1y, x1: p1x + bx1, y1: p1y + by1 }, // the right hook
+            { x0: tipX, y0: tipY, x1: tipX + bx0, y1: tipY + by0 }, // the left hook
+            { x0: tipX, y0: tipY, x1: tipX + bx1, y1: tipY + by1 }, // the right hook
         ];
     }
 
@@ -199,6 +196,18 @@ export default class Adjunction extends SNode {
             3
         );
 
+        // If there are two more Lines, they make up a second arrowhead, sitting at the start of the arrow.
+        // (Any shapes that represent the SNode itself will be Circles rather than Lines.)
+        if (stShapes.length > 2 && stShapes[2].shape instanceof Texdraw.Line) {
+            if (!(stShapes.length > 3 && stShapes[3].shape instanceof Texdraw.Line)) {
+                throw new ParseError(
+                    <span>{complain(nodeName)}: expected two lines for the second arrowhead.</span>
+                );
+            }
+            this.bidirectional = true;
+            return stShapes.slice(4);
+        }
+        this.bidirectional = false;
         return stShapes.slice(2);
     }
 }

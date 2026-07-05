@@ -1,8 +1,8 @@
-import { Info } from '../Node';
-import SNode, { complain } from '../SNode';
-import { Entry, MAX_ROTATION_INPUT } from '../../ItemEditor';
+import { Info } from '@/app/components/client/items/Node';
+import SNode, { complain } from '@/app/components/client/items/SNode';
+import { Entry, MAX_ROTATION_INPUT } from '@/app/components/client/ItemEditor';
 import { Shape, angle, round, getCyclicValue, angleDiff } from '@/app/util/MathTools';
-import { parseInputValue, parseCyclicInputValue } from '../../EditorComponents';
+import { parseInputValue, parseCyclicInputValue } from '@/app/components/client/EditorComponents';
 import { MIN_ROTATION } from '@/app/Constants';
 import * as Texdraw from '@/app/codec/Texdraw';
 import { ParseError } from '@/app/codec/Texdraw';
@@ -140,15 +140,12 @@ export default class Order extends SNode {
         ];
     }
 
-    override getArrowheadShapes(): Shape[] {
-        const adjustedLine = this.getAdjustedLine();
+    override getArrowheadShapesAt(tipX: number, tipY: number, gamma: number): Shape[] {
         const len = this.hookLength;
         const a = (this.hookAngle / 180) * Math.PI;
-        const { x3: p1x, y3: p1y } = adjustedLine;
-        const gamma = this.getArrowheadAngle(adjustedLine);
         const bx0 = len * Math.cos(gamma - a);
         const by0 = len * Math.sin(gamma - a);
-        return [{ x0: p1x, y0: p1y, x1: p1x + bx0, y1: p1y + by0 }];
+        return [{ x0: tipX, y0: tipY, x1: tipX + bx0, y1: tipY + by0 }];
     }
 
     override parseArrowhead(
@@ -189,6 +186,13 @@ export default class Order extends SNode {
             3
         );
 
-        return stShapes.slice(2);
+        // If the next StrokedShape is also a Line, it represents a second arrowhead, sitting at the start of the arrow.
+        // (Any shapes that represent the SNode itself will be Circles rather than Lines.)
+        if (stShapes.length > 1 && stShapes[1].shape instanceof Texdraw.Line) {
+            this.bidirectional = true;
+            return stShapes.slice(2);
+        }
+        this.bidirectional = false;
+        return stShapes.slice(1);
     }
 }

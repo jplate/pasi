@@ -1,7 +1,7 @@
 import React from 'react';
-import { Grid } from './MainPanel';
-import { BasicColoredButton } from './Button';
-import { LabelField, InputField, CheckBoxField } from './EditorComponents';
+import { Grid } from '@/app/components/client/MainPanel';
+import { BasicColoredButton } from '@/app/components/client/Button';
+import { LabelField, InputField, CheckBoxField } from '@/app/components/client/EditorComponents';
 
 const dffTooltip = (
     <>

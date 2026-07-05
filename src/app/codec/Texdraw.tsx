@@ -1,7 +1,7 @@
-import { round } from '../util/MathTools';
-import { Shape as MathShape } from '../util/MathTools';
-import { equalArrays } from '../util/Misc';
-import BidirectionalMap from '../util/BidirectionalMap';
+import { round } from '@/app/util/MathTools';
+import { Shape as MathShape } from '@/app/util/MathTools';
+import { equalArrays } from '@/app/util/Misc';
+import BidirectionalMap from '@/app/util/BidirectionalMap';
 
 export const ROUNDING_DIGITS = 4;
 const PRECISION = 10 ** ROUNDING_DIGITS;

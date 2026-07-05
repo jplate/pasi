@@ -1,7 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 //import assert from 'assert'
-import Item, { HSL } from './items/Item';
+import Item, { HSL } from '@/app/components/client/items/Item';
 import Node, {
     DEFAULT_LINEWIDTH,
     DEFAULT_DASH,
@@ -11,8 +11,8 @@ import Node, {
     MAX_LINEWIDTH,
     MAX_DASH_LENGTH,
     MAX_DASH_VALUE,
-} from './items/Node';
-import Group from './Group.tsx';
+} from '@/app/components/client/items/Node';
+import Group from '@/app/components/client/Group.tsx';
 import {
     H,
     MARK_LINEWIDTH,
@@ -22,14 +22,17 @@ import {
     MIN_Y,
     ROUNDING_DIGITS,
     MIN_ROTATION,
-} from '../../Constants.ts';
-import { DashValidator } from './EditorComponents.tsx';
-import CNode, { MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW, CNodeComp } from './items/CNode.tsx';
-import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '../../util/MathTools.ts';
-import * as Texdraw from '../../codec/Texdraw.tsx';
-import { ParseError, makeParseError } from '../../codec/Texdraw';
-import { encode, decode } from '../../codec/General';
-import { Bounds, fSvg, svgHsl, svgShadingFill, isValidBounds } from '../../util/SvgTools';
+} from '@/app/Constants.ts';
+import { DashValidator } from '@/app/components/client/EditorComponents.tsx';
+import CNode, {
+    MIN_DISTANCE_TO_NEXT_NODE_FOR_ARROW,
+    CNodeComp,
+} from '@/app/components/client/items/CNode.tsx';
+import { CubicCurve, round, toBase64, fromBase64, getCyclicValue, angle } from '@/app/util/MathTools.ts';
+import * as Texdraw from '@/app/codec/Texdraw.tsx';
+import { ParseError, makeParseError } from '@/app/codec/Texdraw';
+import { encode, decode } from '@/app/codec/General';
+import { Bounds, fSvg, svgHsl, svgShadingFill, isValidBounds } from '@/app/util/SvgTools';
 
 const STANDARD_CONTOUR_HEIGHT = 80;
 const STANDARD_CONTOUR_WIDTH = 120;

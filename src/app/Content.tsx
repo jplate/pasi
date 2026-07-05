@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react';
 import Image from 'next/image';
 import clsx from 'clsx';
-import { hotkeys, pasi } from './Hotkeys';
+import { hotkeys, pasi } from '@/app/Hotkeys';
 import relationshipSrcLight from '@/images/relationshipLight.png';
 import relationshipSrcDark from '@/images/relationshipDark.png';
 

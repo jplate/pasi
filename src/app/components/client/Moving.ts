@@ -1,7 +1,7 @@
-import Node, { Info, Handler, getDependents } from './items/Node';
-import CNodeGroup from './CNodeGroup';
+import Node, { Info, Handler, getDependents } from '@/app/components/client/items/Node';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
 import { MAX_X, MIN_Y, MAX_Y, MIN_TRANSLATION_LOG_INCREMENT } from '@/app/Constants';
-import { parseInputValue } from './EditorComponents';
+import { parseInputValue } from '@/app/components/client/EditorComponents';
 
 /**
  * Moves the nodes in the specified array (but only those whose locations do not depend on those of any others in the array) by the specified amounts.

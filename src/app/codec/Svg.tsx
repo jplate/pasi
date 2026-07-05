@@ -1,9 +1,9 @@
-import ENode from '../components/client/items/ENode';
-import GNode from '../components/client/items/GNode';
-import CNodeGroup from '../components/client/CNodeGroup';
-import Ornament from '../components/client/items/Ornament';
-import { HSL } from '../components/client/items/Item';
-import { Bounds, fSvg, mergeBounds } from '../util/SvgTools';
+import ENode from '@/app/components/client/items/ENode';
+import GNode from '@/app/components/client/items/GNode';
+import CNodeGroup from '@/app/components/client/CNodeGroup';
+import Ornament from '@/app/components/client/items/Ornament';
+import { HSL } from '@/app/components/client/items/Item';
+import { Bounds, fSvg, mergeBounds } from '@/app/util/SvgTools';
 
 export const SVG_MARGIN = 5; // the margin (in pixels) around the diagram's contents
 

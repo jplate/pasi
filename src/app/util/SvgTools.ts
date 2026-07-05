@@ -1,4 +1,4 @@
-import { HSL } from '../components/client/items/Item';
+import { HSL } from '@/app/components/client/items/Item';
 
 export type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
 

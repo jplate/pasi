@@ -76,6 +76,7 @@ Item (abstract)
 |  |  |  |_ Adjunction
 |  |  |  |_ Identity
 |  |  |  |_ Order
+|  |  |  |_ Transition
 |  |  |  |_ ...
 |  |  |_ GNode
 |  |_ CNode

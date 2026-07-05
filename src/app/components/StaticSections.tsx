@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
-import StaticSection from './StaticSection';
-import StaticLatexCode from './StaticLatexCode';
+import StaticSection from '@/app/components/StaticSection';
+import StaticLatexCode from '@/app/components/StaticLatexCode';
 import {
     sampleFile,
     type CodeButtonSpec,
@@ -11,7 +11,7 @@ import {
     SampleFileSectionContent,
     ConnectorsSectionContent,
     ContourExamplesSectionContent,
-} from '../Content';
+} from '@/app/Content';
 
 export interface PasiSectionProps {
     dark: boolean;
