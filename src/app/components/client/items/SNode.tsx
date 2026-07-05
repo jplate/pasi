@@ -178,10 +178,6 @@ const d1Tooltip = <>The distance from the connector&rsquo;s second control point
 
 const gap1Tooltip = <>The gap between the connector&rsquo;s end point and its target node.</>;
 
-const bidirectionalTooltip = (
-    <>If checked, the arrowhead appears (with identical geometry) on both ends of the arrow.</>
-);
-
 /**
  * SNodes are 'state nodes': they represent states, in particular instantiations of dyadic relations, by lines and arrows on the canvas.
  * This class roughly corresponds to the Connector class of the 2007 applet.
@@ -651,8 +647,6 @@ export default abstract class SNode extends ENode {
                 key: 'bidirectional',
                 text: 'Bidirectional',
                 value: this.bidirectional,
-                tooltip: bidirectionalTooltip,
-                tooltipPlacement: 'left',
             },
             {
                 type: 'number input',
