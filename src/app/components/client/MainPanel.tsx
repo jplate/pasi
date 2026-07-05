@@ -2498,7 +2498,6 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
             transformFlags.scaleLinewidths,
             transformFlags.scaleConnectors,
             transformFlags.scaleArrowheads,
-            transformFlags.flipArrowheads,
         ]
     );
 
