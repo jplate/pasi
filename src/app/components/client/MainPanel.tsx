@@ -395,13 +395,7 @@ type DepItemKey =
     | 'unv';
 
 const depItemInfos = [
-    new DepItemInfo(
-        'Broad tip',
-        'trn',
-        trnSrc,
-        'An arrow ending in a laterally symmetric blade',
-        2
-    ),
+    new DepItemInfo('Broad tip', 'trn', trnSrc, 'An arrow ending in a laterally symmetric blade', 2),
     // Commenting out what hasn't been implemented yet:
     /*
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
