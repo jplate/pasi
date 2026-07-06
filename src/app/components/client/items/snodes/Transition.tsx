@@ -34,36 +34,44 @@ type GeometricParam = 'x1' | 'y1' | 'x2' | 'y2' | 'x3' | 'y3' | 'depth';
 
 const x1Tooltip = (
     <>
-        The X-coordinate (in pixels) of the first control point of each of the two B&eacute;zier curves. The
-        origin of the coordinate system lies at the arrow&rsquo;s tip, with the X-axis pointing
-        &lsquo;backwards&rsquo;, along the arrow&rsquo;s shaft.
+        The X-coordinate (in pixels) of the forward edge&rsquo;s first control point. (The origin of the
+        coordinate system lies at the arrow&rsquo;s tip, with the X-axis pointing backwards along the
+        arrow&rsquo;s shaft.)
     </>
 );
 
 const y1Tooltip = (
     <>
-        The Y-coordinate (in pixels) of the first control point of the first B&eacute;zier curve, measured
-        from the arrow&rsquo;s tip. (The second curve uses the same value with opposite sign.)
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the forward
+        edge&rsquo;s first control point.
     </>
 );
 
 const x2Tooltip = (
-    <>The X-coordinate (in pixels) of the second control point of each of the two B&eacute;zier curves.</>
+    <>
+        The X-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the forward
+        edge&rsquo;s second control point.
+    </>
 );
 
 const y2Tooltip = (
     <>
-        The Y-coordinate (in pixels) of the second control point of the first B&eacute;zier curve. (The second
-        curve uses the same value with opposite sign.)
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the forward
+        edge&rsquo;s second control point.
     </>
 );
 
-const x3Tooltip = <>The X-coordinate (in pixels) of the end point of each of the two B&eacute;zier curves.</>;
+const x3Tooltip = (
+    <>
+        The X-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the forward
+        edge&rsquo;s end point.
+    </>
+);
 
 const y3Tooltip = (
     <>
-        The Y-coordinate (in pixels) of the end point of the first B&eacute;zier curve. (The second curve uses
-        the same value with opposite sign.)
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the forward
+        edge&rsquo;s end point.
     </>
 );
 

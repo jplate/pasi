@@ -30,20 +30,45 @@ type GeometricParam = 'x1' | 'y1' | 'x2' | 'y2' | 'x3' | 'y3';
 const x1Tooltip = (
     <>
         The X-coordinate (in pixels) of the barb&rsquo;s first control point. (The origin of the coordinate
-        system lies at the arrow&rsquo;s tip, with the X-axis pointing &lsquo;backwards&rsquo;, along the
-        arrow&rsquo;s shaft.)
+        system lies at the arrow&rsquo;s tip, with the X-axis pointing backwards along the arrow&rsquo;s
+        shaft.)
     </>
 );
 
-const y1Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s first control point.</>;
+const y1Tooltip = (
+    <>
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the barb&rsquo;s first
+        control point.
+    </>
+);
 
-const x2Tooltip = <>The X-coordinate (in pixels) of the barb&rsquo;s second control point.</>;
+const x2Tooltip = (
+    <>
+        The X-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the barb&rsquo;s second
+        control point.
+    </>
+);
 
-const y2Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s second control point.</>;
+const y2Tooltip = (
+    <>
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the barb&rsquo;s second
+        control point.
+    </>
+);
 
-const x3Tooltip = <>The X-coordinate (in pixels) of the barb&rsquo;s end point.</>;
+const x3Tooltip = (
+    <>
+        The X-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the barb&rsquo;s end
+        point.
+    </>
+);
 
-const y3Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s end point.</>;
+const y3Tooltip = (
+    <>
+        The Y-coordinate (in a coordinate system centered on the arrow&rsquo;s tip) of the barb&rsquo;s end
+        point.
+    </>
+);
 
 /**
  * Entailments are SNodes whose arrowheads consist of two 'barbs', laterally symmetric with respect to the arrow's shaft, each
