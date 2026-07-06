@@ -245,12 +245,11 @@ export function ConnectorsSectionContent({ dark, keyCmd, renderCodeButton }: Con
                 connector in the menu immediately above that button.
             </p>
             <p>
-                One thing to note about connectors is that, roughly speaking, they are implemented as
-                odd-looking entity nodes. <em>Normal</em> entity nodes appear as circles. In the case of a
-                connector, by contrast, the circle is usually invisible, and instead the user only sees a line
-                or arrow connecting two nodes. (Of course, in a natural sense, a connector <i>just is</i> that
-                line or arrow.) The circle only becomes visible when the user clicks somewhere near the center
-                of the line or arrow.
+                One thing to note about connectors is that they are implemented as entity nodes that{' '}
+                <em>appear</em> as lines or arrows. Whereas <em>normal</em> entity nodes appear as circles, in
+                the case of a connector the circle is usually invisible, and instead the user only sees a line
+                or arrow connecting two nodes. The circle only becomes visible when the user clicks somewhere
+                near the center of that line or arrow.
             </p>
             <p>
                 The reason for this somewhat unusual design is that <i>pasi</i> has originally been developed
