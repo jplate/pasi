@@ -83,7 +83,9 @@ const width2Tooltip = <>The distance between the two inner points on the pointer
 
 const heightTooltip = <>The distance between the tip of the pointer and the center of its base.</>;
 
-const depthTooltip = <>The distance between the tip of the pointer and the apex of its inner outline.</>;
+const depthTooltip = (
+    <>The distance between the tip of the pointer and the control point for the apex of its inner outline.</>
+);
 
 /**
  * A Pointer is an Ornament that manifests as a chevron-shaped ('capital Lambda') figure attached to a Node, whose tip always points
