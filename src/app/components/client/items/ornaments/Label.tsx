@@ -107,8 +107,7 @@ const vphantTooltip = (
 
 const fontSizeTooltip = (
     <>
-        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>
-        ).
+        Include font size command (if distinct from <code>\{Texdraw.NORMAL_SIZE_STRING}</code>).
     </>
 );
 

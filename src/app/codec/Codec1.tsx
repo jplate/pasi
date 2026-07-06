@@ -10,6 +10,7 @@ import { ParseError } from '@/app/codec/Texdraw';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
 import Existence from '@/app/components/client/items/ornaments/Existence';
+import Pointer from '@/app/components/client/items/ornaments/Pointer';
 import Adjunction from '@/app/components/client/items/snodes/Adjunction';
 import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Identity from '@/app/components/client/items/snodes/Identity';
@@ -31,6 +32,7 @@ const CNODE_NAME_INFIX = '-'; // Used in constructing names of CNodes in the 'hi
 const ornamentPrefixMap = new BidirectionalMap<string, new (node: Node) => Ornament>([
     ['L', Label],
     ['X', Existence],
+    ['P', Pointer],
 ]);
 
 const sNodePrefixMap = new BidirectionalMap<string, new (i: number, closest: boolean) => SNode>([

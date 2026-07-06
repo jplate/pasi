@@ -28,7 +28,7 @@ const hookLengthTooltip = <>The length of the arrowhead&rsquo;s hook.</>;
 export default class Adjunction extends SNode {
     hookAngle = DEFAULT_HOOK_ANGLE; // the angle (in degrees) of the 'harpoonhead's' hook
     hookLength = DEFAULT_HOOK_LENGTH; // the length of that hook
-    hookLength100 = DEFAULT_HOOK_LENGTH; // the length of that hook
+    hookLength100 = DEFAULT_HOOK_LENGTH; // the same length, stored for the purpose of scaling (it represents the value at 100% scaling)
 
     constructor(i: number, closest: boolean) {
         super(i, closest);

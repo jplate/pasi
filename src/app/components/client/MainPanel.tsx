@@ -79,6 +79,7 @@ import Entailment from '@/app/components/client/items/snodes/Entailment';
 import Ornament from '@/app/components/client/items/Ornament';
 import Label from '@/app/components/client/items/ornaments/Label';
 import Existence from '@/app/components/client/items/ornaments/Existence';
+import Pointer from '@/app/components/client/items/ornaments/Pointer';
 
 import lblSrc from '@/icons/lbl.png';
 import adjSrc from '@/icons/adj.png';
@@ -87,13 +88,13 @@ import orpSrc from '@/icons/orp.png';
 import trnSrc from '@/icons/trn.png';
 import entSrc from '@/icons/ent.png';
 import exsSrc from '@/icons/exs.png';
+import ptrSrc from '@/icons/ptr.png';
 /*
 import cntSrc from '@/icons/cnt.png';
 import incSrc from '@/icons/inc.png';
 import insSrc from '@/icons/ins.png';
 import negSrc from '@/icons/neg.png';
 import prdSrc from '@/icons/prd.png';
-import ptrSrc from '@/icons/ptr.png';
 import rstSrc from '@/icons/rst.png';
 import trnSrc from '@/icons/trn.png';
 import unvSrc from '@/icons/unv.png';
@@ -402,7 +403,6 @@ const depItemInfos = [
     // Commenting out what hasn't been implemented yet:
     /*
     new DepItemInfo('Broken line', 'neg', negSrc, 'A line that is broken in the middle', 2),
-    new DepItemInfo('Chevron', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
     new DepItemInfo(
         'Double hook, circular',
         'ins',
@@ -413,6 +413,7 @@ const depItemInfos = [
     new DepItemInfo('Harpoon', 'inc', incSrc, 'An arrow with an asymmetric, harpoonlike tip', 2),
     */
     new DepItemInfo('Label', 'lbl', lblSrc, 'A label attached to a node', 1),
+    new DepItemInfo('Pointer', 'ptr', ptrSrc, 'A chevron-shaped ornament attached to a node', 1),
     // new DepItemInfo('Round tip', 'cnt', cntSrc, 'A round-tipped arrow', 2),
     new DepItemInfo('Rectangle', 'exs', exsSrc, 'A rectangular ornament attached to a node', 1),
     new DepItemInfo('Simple line', 'idt', idtSrc, 'A simple line', 2),
@@ -2006,6 +2007,9 @@ const MainPanel = ({ dark, diagramCode, reset }: MainPanelProps) => {
                             break;
                         case 'exs':
                             newSelection = selectedNodes.map((node) => new Existence(node));
+                            break;
+                        case 'ptr':
+                            newSelection = selectedNodes.map((node) => new Pointer(node));
                             break;
                         default:
                             if (key in sNodeClassMap) {
