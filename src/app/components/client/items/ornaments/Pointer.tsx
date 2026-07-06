@@ -273,6 +273,7 @@ export default class Pointer extends Ornament {
                 max: 1,
                 step: 0.1,
             },
+            { type: 'gloss', text: '(Shading=0: transparent; >0: opaque)', style: 'text-right text-xs' },
         ];
     }
 
