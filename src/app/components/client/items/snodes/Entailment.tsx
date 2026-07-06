@@ -11,7 +11,7 @@ export const DEFAULT_W1 = 8;
 export const DEFAULT_WC = 8;
 
 export const DEFAULT_X1 = 3;
-export const DEFAULT_Y1 = 3;
+export const DEFAULT_Y1 = 2;
 export const DEFAULT_X2 = 10;
 export const DEFAULT_Y2 = 5;
 export const DEFAULT_X3 = 11;
@@ -29,38 +29,21 @@ type GeometricParam = 'x1' | 'y1' | 'x2' | 'y2' | 'x3' | 'y3';
 
 const x1Tooltip = (
     <>
-        The X-coordinate (in pixels) of the first control point of each of the two B&eacute;zier curves. The
-        origin of the coordinate system lies at the arrow&rsquo;s tip, with the X-axis pointing
-        &lsquo;backwards&rsquo;, along the arrow&rsquo;s shaft.
+        The X-coordinate (in pixels) of the barb&rsquo;s first control point. (The origin of the coordinate
+        system lies at the arrow&rsquo;s tip, with the X-axis pointing &lsquo;backwards&rsquo;, along the
+        arrow&rsquo;s shaft.)
     </>
 );
 
-const y1Tooltip = (
-    <>
-        The Y-coordinate (in pixels) of the first control point of the first B&eacute;zier curve, measured
-        from the arrow&rsquo;s tip. (The second curve uses the same value with opposite sign.)
-    </>
-);
+const y1Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s first control point.</>;
 
-const x2Tooltip = (
-    <>The X-coordinate (in pixels) of the second control point of each of the two B&eacute;zier curves.</>
-);
+const x2Tooltip = <>The X-coordinate (in pixels) of the barb&rsquo;s second control point.</>;
 
-const y2Tooltip = (
-    <>
-        The Y-coordinate (in pixels) of the second control point of the first B&eacute;zier curve. (The second
-        curve uses the same value with opposite sign.)
-    </>
-);
+const y2Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s second control point.</>;
 
-const x3Tooltip = <>The X-coordinate (in pixels) of the end point of each of the two B&eacute;zier curves.</>;
+const x3Tooltip = <>The X-coordinate (in pixels) of the barb&rsquo;s end point.</>;
 
-const y3Tooltip = (
-    <>
-        The Y-coordinate (in pixels) of the end point of the first B&eacute;zier curve. (The second curve uses
-        the same value with opposite sign.)
-    </>
-);
+const y3Tooltip = <>The Y-coordinate (in pixels) of the barb&rsquo;s end point.</>;
 
 /**
  * Entailments are SNodes whose arrowheads consist of two 'barbs', laterally symmetric with respect to the arrow's shaft, each
