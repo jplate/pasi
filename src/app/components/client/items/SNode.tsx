@@ -443,28 +443,21 @@ export default abstract class SNode extends ENode {
     }
 
     /**
-     * @return the angle (in radians) in which the arrowhead is supposed to be oriented.
+     * @param atStart if true, compute the angle for an arrowhead at the start of the connector; otherwise at the end
+     * @return the angle (in radians) in which the arrowhead is supposed to be oriented
      */
-    getArrowheadAngle(adjustedLine: CubicCurve): number {
-        let { x2, y2 } = adjustedLine;
-        const { x3, y3 } = adjustedLine;
+    getArrowheadAngle(adjustedLine: CubicCurve, atStart = false): number {
+        const { x0, y0, x1, y1, x2, y2, x3, y3 } = adjustedLine;
+        const [fixedX, fixedY, pointX, pointY] = atStart ? [x0, y0, x1, y1] : [x3, y3, x2, y2];
+        let px = pointX;
+        let py = pointY;
         if (Math.abs(this.phi0) + Math.abs(this.phi1) > MAX_DEVIANCE) {
-            [x2, y2] = travel([1], this.w1, adjustedLine, -TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
+            const travelFromT = atStart ? 0 : 1;
+            const weight = atStart ? this.w0 : this.w1;
+            const travelStep = atStart ? TRAVEL_STEP_SIZE : -TRAVEL_STEP_SIZE;
+            [px, py] = travel([travelFromT], weight, adjustedLine, travelStep, TRAVEL_TOLERANCE);
         }
-        return angle(x3, y3, x2, y2, true);
-    }
-
-    /**
-     * @return the angle (in radians) in which an arrowhead that sits at the start (rather than the end) of the connector is
-     * supposed to be oriented.
-     */
-    getArrowheadAngle0(adjustedLine: CubicCurve): number {
-        let { x1, y1 } = adjustedLine;
-        const { x0, y0 } = adjustedLine;
-        if (Math.abs(this.phi0) + Math.abs(this.phi1) > MAX_DEVIANCE) {
-            [x1, y1] = travel([0], this.w0, adjustedLine, TRAVEL_STEP_SIZE, TRAVEL_TOLERANCE);
-        }
-        return angle(x0, y0, x1, y1, true);
+        return angle(fixedX, fixedY, px, py, true);
     }
 
     override move(dx: number, dy: number): void {
@@ -1245,7 +1238,7 @@ export default abstract class SNode extends ENode {
         const line = this.getLine();
         const shapes = this.getArrowheadShapesAt(line.x3, line.y3, this.getArrowheadAngle(line));
         if (this.bidirectional) {
-            shapes.push(...this.getArrowheadShapesAt(line.x0, line.y0, this.getArrowheadAngle0(line)));
+            shapes.push(...this.getArrowheadShapesAt(line.x0, line.y0, this.getArrowheadAngle(line, true)));
         }
         return shapes;
     }

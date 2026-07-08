@@ -310,7 +310,7 @@ export default class Transition extends SNode {
             y3: line.y3 + dy1,
         };
         if (this.bidirectional) {
-            const gamma0 = this.getArrowheadAngle0(line);
+            const gamma0 = this.getArrowheadAngle(line, true);
             const dx0 = this.depth * Math.cos(gamma0);
             const dy0 = this.depth * Math.sin(gamma0);
             result.x0 += dx0;
